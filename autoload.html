@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>hoge</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script>
+	
+function loadXml()
+{
+	var weapon = "";
+	var shield = "";
+	var playcount = "";
+	var cur = "";
+	var today_score = "";
+	var today_notes = "";
+	
+	var getxml = $.ajax({
+		url: "data.xml",
+		type: 'GET',
+		dataType: 'xml',
+		cache: false
+		});
+	
+	getxml.done(function(xml){
+		playcount = $(xml).find('playcount').text();
+		cur = $(xml).find('cur').text();
+		today_score = $(xml).find('today_score').text();
+		today_notes = $(xml).find('today_notes').text();
+		$('#playcount span').text(playcount);
+		$('#cur span').text(cur);
+		$('#today_score span').text(today_score);
+		$('#today_notes span').text(today_notes);
+	});
+	
+	getxml.fail(function(error){
+		//alert("読み込み失敗");
+	});
+	
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+	var roopTimer = setInterval(loadXml, 50);
+});
+
+
+</script>
+</head>
+
+<body>
+    <div id="playcount">plays: <span></span></div>
+    <div id="cur">score: <span></span></div>
+    <div id="today_score">today: <span></span></div>
+    <div id="today_notes"><span></span></div>
+</body>
+</html>
