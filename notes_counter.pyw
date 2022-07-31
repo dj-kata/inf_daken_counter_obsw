@@ -20,19 +20,20 @@ today_total = 0
 stop_thread = False # メインスレッドを強制停止するために使う
 
 def load_settings():
-    # default値を先にセットしておく
+    default_val = {'target_srate':'72%', 'sx':'0','sy':'0', 'sleep_time':'1.0',
+    'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False}
     ret = {}
     try:
         with open(savefile) as f:
             ret = json.load(f)
             print(f"設定をロードしました。")
     except Exception:
-        ret['target_srate'] = '72%'
-        ret['sx'] = '0'
-        ret['sy'] = '0'
-        ret['sleep_time'] = '1.0'
-        ret['run_on_boot'] = False
         print(f"有効な設定ファイルなし。デフォルト値を使います。")
+
+    ### 後から追加した値がない場合にもここでケア
+    for k in default_val.keys():
+        if not k in ret.keys():
+            ret[k] = default_val[k]
 
     return ret
 
@@ -170,13 +171,15 @@ def gui():
         ,sg.Text('INFINITAS sx:', font=FONT), sg.Input('2560', key='sx', font=FONT, size=(5,1))
         ,sg.Text('sy:', font=FONT), sg.Input('0', key='sy', font=FONT, size=(5,1))
         ],
-        [sg.Button('start', key='start', font=FONT, size=(35,1)), sg.Button('test', key='test_screenshot', font=FONT)],
-        [sg.Text('plays:', font=FONT), sg.Text('0', key='today_plays', font=FONT), sg.Text(' ', font=FONT, size=(15,1))
-        ,sg.Checkbox("起動時に即startする", default=False, font=FONT, key='run_on_boot')
+        [sg.Button('start', key='start', font=FONT, size=(33,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('test', key='test_screenshot', font=FONT)],
+        [sg.Text('plays:', font=FONT), sg.Text('0', key='today_plays', font=FONT)
+        ,sg.Text(' ', font=FONT, size=(5,1))
+        ,sg.Checkbox("起動時に即start", default=False, font=FONT, key='run_on_boot')
+        ,sg.Checkbox("start時にreset", default=False, font=FONT, key='reset_on_boot')
         ],
         [sg.Text("EXスコア        ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("0", key='cur_score',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("0", key='today_score',font=FONT)],
-        [sg.Text("推定ノーツ数   ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("0", key='cur_notes',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("0", key='today_notes',font=FONT)],
-        [sg.Output(size=(51,5), font=('Meiryo',12))] # ここを消すと標準出力になる
+        [sg.Text("推定ノーツ数   ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("-", key='cur_notes',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("-", key='today_notes',font=FONT)],
+        [sg.Output(size=(56,5), font=('Meiryo',12))] # ここを消すと標準出力になる
         ]
     ico=ico_path('icon.ico')
     window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico)
@@ -189,13 +192,13 @@ def gui():
     window['sx'].update(value=settings['sx'])
     window['sy'].update(value=settings['sy'])
     window['run_on_boot'].update(settings['run_on_boot'])
+    window['reset_on_boot'].update(settings['reset_on_boot'])
     SLEEP_TIME = float(settings['sleep_time'])
 
-
-    # カウントした値は現状起動時にリセットとしている
-    # 保存するかどうかは仕様をよく考えてから
-    today_score = 0
-    today_plays = 0
+    today_score = int(settings['total_score'])
+    today_plays = int(settings['plays'])
+    window['today_score'].update(value=f"{today_score}")
+    window['today_plays'].update(value=f"{today_plays}")
     pre_cur = 0
     pre_cur_notes = 0
     running = settings['run_on_boot'] # 実行中かどうかの区別に使う。スレッド停止用のstop_threadとは役割が違うので注意
@@ -203,6 +206,10 @@ def gui():
 
     if settings['run_on_boot']: # 起動後即開始設定の場合
         print('自動起動設定が有効です。')
+        if settings['reset_on_boot']:
+            print('自動reset設定が有効です。カウンタを初期化します。')
+            today_score = 0
+            today_plays = 0
         running = True
         sx = int(settings['sx'])
         sy = int(settings['sy'])
@@ -212,11 +219,13 @@ def gui():
 
     while True:
         ev, val = window.read()
+        # 設定を最新化
         if settings and val: # 起動後、そのまま何もせずに終了するとvalが拾われないため対策している
             settings['target_srate'] = val['target_srate']
             settings['sx'] = val['sx']
             settings['sy'] = val['sy']
             settings['run_on_boot'] = val['run_on_boot']
+            settings['reset_on_boot'] = val['reset_on_boot']
         if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-'):
             save_settings(settings)
             break
@@ -225,6 +234,10 @@ def gui():
             if running:
                 sx = int(val['sx'])
                 sy = int(val['sy'])
+                if settings['reset_on_boot']:
+                    print('自動リセット設定が有効です。')
+                    today_score = 0
+                    today_plays = 0
                 th = threading.Thread(target=detect_top, args=(window, sx, sy, SLEEP_TIME), daemon=True)
                 th.start()
                 window['start'].update("stop")
@@ -235,6 +248,15 @@ def gui():
                 stop_thread = False
                 print(f'スコア検出スレッド終了。')
                 window['start'].update("start")
+        elif ev.startswith('reset'):
+            print(f'プレイ回数と合計スコアをリセットします。')
+            today_plays = 0
+            today_score = 0
+            settings['plays'] = today_plays
+            settings['total_score'] = today_score
+            window['today_score'].update(value=f"0")
+            window['today_notes'].update(value=f"-")
+            window['today_plays'].update(value=f"0")
         elif ev.startswith('test_screenshot'):
             get_screen_all(int(val['sx']), int(val['sy']), width, height)
         elif ev == '-THREAD-':
@@ -256,6 +278,8 @@ def gui():
             window['cur_notes'].update(value=f"{cur_notes}")
             window['today_notes'].update(value=f"{tmp_today_notes}")
             window['today_plays'].update(value=f"{today_plays}")
+            settings['plays'] = today_plays
+            settings['total_score'] = tmp_today_score
             gen_html(cur,tmp_today_score,cur_notes,tmp_today_notes,today_plays)
             pre_cur = cur
             pre_cur_notes = cur_notes
