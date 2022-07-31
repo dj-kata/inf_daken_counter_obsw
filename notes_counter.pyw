@@ -26,13 +26,14 @@ def load_settings():
     try:
         with open(savefile) as f:
             ret = json.load(f)
-            print(f"設定をロードしました。")
+            print(f"設定をロードしました。\n")
     except Exception:
         print(f"有効な設定ファイルなし。デフォルト値を使います。")
 
     ### 後から追加した値がない場合にもここでケア
     for k in default_val.keys():
         if not k in ret.keys():
+            print(f"{k}が設定ファイル内に存在しません。デフォルト値({default_val[k]}を登録します。)")
             ret[k] = default_val[k]
 
     return ret
