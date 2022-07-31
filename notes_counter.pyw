@@ -40,6 +40,14 @@ def save_settings(settings):
     with open(savefile, 'w') as f:
         json.dump(settings, f, indent=2)
 
+# icon用
+def ico_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
 # デバッグ用、現在設定している座標の画像を切り出してファイルに保存。
 def get_screen_all(sx,sy,_w,_h): 
     print(f"設定された左上座標({sx},{sy})から{width}x{height}だけ切り出した画像をtest.pngに保存します。")
@@ -170,7 +178,8 @@ def gui():
         [sg.Text("推定ノーツ数   ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("0", key='cur_notes',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("0", key='today_notes',font=FONT)],
         [sg.Output(size=(51,5), font=('Meiryo',12))] # ここを消すと標準出力になる
         ]
-    window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True)
+    ico=ico_path('icon.ico')
+    window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico)
 
     # 設定のロード
     settings = load_settings()
@@ -237,15 +246,17 @@ def gui():
             tmp_today_notes = math.ceil((cur+today_score) / 2 / (srate/100))
             if cmd == 'cur':
                 window['today_score'].update(value=f"{today_score + cur}")
+                tmp_today_score = today_score + cur
             elif cmd == 'end':
                 today_plays += 1
                 today_score += pre_cur
+                tmp_today_score = today_score
                 window['today_score'].update(value=f"{today_score}")
             window['cur_score'].update(value=f"{cur}")
             window['cur_notes'].update(value=f"{cur_notes}")
             window['today_notes'].update(value=f"{tmp_today_notes}")
             window['today_plays'].update(value=f"{today_plays}")
-            gen_html(cur,today_score,cur_notes,tmp_today_notes,today_plays)
+            gen_html(cur,tmp_today_score,cur_notes,tmp_today_notes,today_plays)
             pre_cur = cur
             pre_cur_notes = cur_notes
 
