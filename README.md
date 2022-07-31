@@ -51,9 +51,8 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 
 resetをクリックするとカウンタ(プレー回数・合計EXスコア)をリセットできます。  
 また、```start時にreset```にチェックしておくと、start後にカウンタを自動でリセットします。  
-(resetを押しても即座に設定ファイルから消えるようにはしていません。間違えて押してしまった場合は、すぐにnotes_counter.exeを終了すればカウント値を元に戻せます。)
-
-![打鍵カウンタ for INFINITAS 2022_07_31 1_15_42](https://user-images.githubusercontent.com/61326119/182008818-e3028a3c-d1d8-4e43-9b99-fd9ad0e81e71.png)
+(resetを押しても即座に設定ファイルから消えるようにはしていません。間違えて押してしまった場合は、すぐにnotes_counter.exeを終了すればカウント値を元に戻せます。)  
+![image](https://user-images.githubusercontent.com/61326119/182029142-f7eb1ad2-ba5e-4b0d-9ea1-ea109ceddbca.png)
 
 ### ゲーム画面位置の設定について
 正しいモニタが設定されているかの確認のために、Testボタンが使えます。  
