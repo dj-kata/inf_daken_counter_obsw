@@ -252,8 +252,8 @@ def gui():
             print(f'プレイ回数と合計スコアをリセットします。')
             today_plays = 0
             today_score = 0
-            settings['plays'] = today_plays
-            settings['total_score'] = today_score
+            #settings['plays'] = today_plays
+            #settings['total_score'] = today_score
             window['today_score'].update(value=f"0")
             window['today_notes'].update(value=f"-")
             window['today_plays'].update(value=f"0")
