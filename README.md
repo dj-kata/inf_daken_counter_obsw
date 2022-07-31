@@ -58,7 +58,7 @@ background-color: rgba(0, 0, 50, 0.8);
 margin: 10px;
 padding: 20px;
 overflow: hidden;
-font-family:"Mochiy Pop P One Regular";
+font-family:"Meiryo";
 color:#2196F3;   
 font-size: 64px;
 color: #fff;
