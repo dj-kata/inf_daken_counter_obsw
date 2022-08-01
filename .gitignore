@@ -6,3 +6,4 @@ data.xml
 inf_daken_counter/*
 build/*
 dist/*
+Makefile
