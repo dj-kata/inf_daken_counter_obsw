@@ -10,8 +10,8 @@ HTMLでリアルタイム表示するためのIFを備えており、OBSでの�
 64bit版Windows10でのみ動作確認済み。(32bitOSでは動作しません。)  
 
 また、CPUがRyzenの環境ではかなり重くなってしまうようです。  
-Ryzenマシンの方は、Windows版Pythonをインストールし、
-```python -m pip install pyautogui PySimpleGUI numpy keyboard```
+Ryzenマシンの方は、Windows版Pythonをインストールし、  
+```python -m pip install pyautogui PySimpleGUI numpy keyboard```  
 した上で[ソースコード](https://github.com/dj-kata/inf_daken_counter/archive/refs/heads/main.zip)内のnotes_counter.pywをダブルクリックして実行してください。  
 
 # 本ツールのメリット
