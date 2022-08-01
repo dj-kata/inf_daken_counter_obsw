@@ -157,7 +157,7 @@ def gen_html(cur,today_score, cur_notes,today_notes,plays):
     <cur>{cur}</cur>
     <cur_notes>{cur_notes}</cur_notes>
     <today_score>{today_score}</today_score>
-    <today_notes>(推定: {today_notes} notes)</today_notes>
+    <today_notes>{today_notes}</today_notes>
 </Items>''')
     f.close()
 
