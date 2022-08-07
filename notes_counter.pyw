@@ -58,6 +58,8 @@ def get_screen_all(sx,sy,_w,_h):
     print(f"切り出し実行。")
     sc = pgui.screenshot(region=(sx,sy,_w,_h))
     sc.save('test.bmp')
+    sc = pgui.screenshot()
+    sc.save('whole.bmp')
 
 ### スコア部分の切り出し
 def get_score_img(sx,sy,playside):
