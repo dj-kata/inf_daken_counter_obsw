@@ -52,10 +52,12 @@ def ico_path(relative_path):
 
 # デバッグ用、現在設定している座標の画像を切り出してファイルに保存。
 def get_screen_all(sx,sy,_w,_h): 
-    print(f"設定された左上座標({sx},{sy})から{width}x{height}だけ切り出した画像をtest.pngに保存します。")
+    print(f"10秒後に設定された左上座標({sx},{sy})から{width}x{height}だけ切り出した画像をtest.bmpに保存します。")
     print(f"INFINITASで使うモニタとなっていることを確認してください。")
+    time.sleep(10)
+    print(f"切り出し実行。")
     sc = pgui.screenshot(region=(sx,sy,_w,_h))
-    sc.save('test.png')
+    sc.save('test.bmp')
 
 ### スコア部分の切り出し
 def get_score_img(sx,sy,playside):
@@ -259,7 +261,8 @@ def gui():
             window['today_notes'].update(value=f"-")
             window['today_plays'].update(value=f"0")
         elif ev.startswith('test_screenshot'):
-            get_screen_all(int(val['sx']), int(val['sy']), width, height)
+            th_scshot = threading.Thread(target=get_screen_all, args=(int(val['sx']), int(val['sy']), width, height), daemon=True)
+            th_scshot.start()
         elif ev == '-THREAD-':
             dat = val[ev].split(' ')
             cmd = dat[0]
