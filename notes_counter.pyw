@@ -169,11 +169,11 @@ def gen_html(cur,today_score, cur_notes,today_notes,plays):
     f = codecs.open('data.xml', 'w', 'utf-8')
     f.write(f'''<?xml version="1.0" encoding="utf-8"?>
 <Items>
-    <playcount>{plays}</playcount>
-    <cur>{cur}</cur>
-    <cur_notes>{cur_notes}</cur_notes>
-    <today_score>{today_score}</today_score>
-    <today_notes>{today_notes}</today_notes>
+    <playcount>{plays:,}</playcount>
+    <cur>{cur:,}</cur>
+    <cur_notes>{cur_notes:,}</cur_notes>
+    <today_score>{today_score:,}</today_score>
+    <today_notes>{today_notes:,}</today_notes>
 </Items>''')
     f.close()
 
