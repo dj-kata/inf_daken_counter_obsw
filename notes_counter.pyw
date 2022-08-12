@@ -8,6 +8,7 @@ import threading
 import math
 import codecs
 import json
+import webbrowser, urllib
 
 ### 固定値
 width  = 1280
@@ -187,7 +188,7 @@ def gui():
         ,sg.Text('INFINITAS sx:', font=FONT), sg.Input('2560', key='sx', font=FONT, size=(5,1))
         ,sg.Text('sy:', font=FONT), sg.Input('0', key='sy', font=FONT, size=(5,1))
         ],
-        [sg.Button('start', key='start', font=FONT, size=(33,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('test', key='test_screenshot', font=FONT)],
+        [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('test', key='test_screenshot', font=FONT)],
         [sg.Text('plays:', font=FONT), sg.Text('0', key='today_plays', font=FONT)
         ,sg.Text(' ', font=FONT, size=(5,1))
         ,sg.Checkbox("起動時に即start", default=False, font=FONT, key='run_on_boot')
@@ -195,7 +196,7 @@ def gui():
         ],
         [sg.Text("EXスコア        ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("0", key='cur_score',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("0", key='today_score',font=FONT)],
         [sg.Text("推定ノーツ数   ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("-", key='cur_notes',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("-", key='today_notes',font=FONT)],
-        [sg.Output(size=(56,5), font=('Meiryo',12))] # ここを消すと標準出力になる
+        #[sg.Output(size=(56,5), font=('Meiryo',12))] # ここを消すと標準出力になる
         ]
     ico=ico_path('icon.ico')
     window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico)
@@ -275,6 +276,12 @@ def gui():
         elif ev.startswith('test_screenshot'):
             th_scshot = threading.Thread(target=get_screen_all, args=(int(val['sx']), int(val['sy']), width, height), daemon=True)
             th_scshot.start()
+        elif ev.startswith('tweet'):
+            srate = int(val['target_srate'][:-1])
+            cur_notes = math.ceil(today_score / 2 / (srate/100))
+            msg = f"今日は{today_plays:,}曲プレイし、約{cur_notes:,}ノーツ叩きました。\n(EXスコア合計:{today_score}, 目標スコアレート:{val['target_srate']})\n#INFINITAS_daken_counter"
+            encoded_msg = urllib.parse.quote(msg)
+            webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_msg}")
         elif ev == '-THREAD-':
             dat = val[ev].split(' ')
             cmd = dat[0]
