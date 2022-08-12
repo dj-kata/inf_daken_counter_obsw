@@ -53,9 +53,10 @@ def ico_path(relative_path):
 # デバッグ用、現在設定している座標の画像を切り出してファイルに保存。
 def get_screen_all(sx,sy,_w,_h): 
     print(f"10秒後に設定された左上座標({sx},{sy})から{width}x{height}だけ切り出した画像をtest.bmpに保存します。")
-    print(f"INFINITASで使うモニタとなっていることを確認してください。")
+    print(f"また、全モニタの画像をwhole.bmpに保存します。")
+    print(f"test.bmpがINFINITASで使うモニタとなっていることを確認してください。")
     time.sleep(10)
-    print(f"切り出し実行。")
+    print(f"\n10秒経過。キャプチャを実行します。")
     sc = pgui.screenshot(region=(sx,sy,_w,_h))
     sc.save('test.bmp')
     sc = pgui.screenshot()
@@ -123,21 +124,30 @@ def detect_digit(playside, sx, sy):
 ### 曲の開始・終了を数字から検出し、境界処理を行う
 ### 曲中は検出したスコアをprintする
 def detect_top(window, sx, sy, sleep_time):
+    global stop_thread
     pre_det = ''
+    stop_local = False
     playside = False
     print(f'スコア検出スレッド開始。inf=({sx},{sy})')
     while True:
         while True:
-            playside = detect_playside(sx,sy)
-            global stop_thread
-            if playside: # 曲頭を検出
-                print(f'曲開始を検出しました。\nEXスコア取得開始。mode={playside}')
+            #print('test')
+            try:
+                playside = detect_playside(sx,sy)
+                if playside: # 曲頭を検出
+                    print(f'曲開始を検出しました。\nEXスコア取得開始。mode={playside}')
+                    break
+            except Exception as e:
+                stop_local = True
+                print(f'スクリーンショットに失敗しました。{e}')
+                window.write_event_value('-SCRSHOT_ERROR-', " ")
                 break
             if stop_thread:
+                stop_local = True
                 break
             time.sleep(sleep_time)
 
-        if stop_thread:
+        if stop_local:
             break
 
         while True:
@@ -152,6 +162,7 @@ def detect_top(window, sx, sy, sleep_time):
                 break
 
             time.sleep(sleep_time)
+    print(f'スコア検出スレッド終了。')
     
 def gen_html(cur,today_score, cur_notes,today_notes,plays):
     f = codecs.open('data.xml', 'w', 'utf-8')
@@ -208,11 +219,11 @@ def gui():
     pre_cur_notes = 0
     running = settings['run_on_boot'] # 実行中かどうかの区別に使う。スレッド停止用のstop_threadとは役割が違うので注意
     th = False
+    global stop_thread
 
     if settings['run_on_boot']: # 起動後即開始設定の場合
         print('自動起動設定が有効です。')
         if settings['reset_on_boot']:
-            print('自動reset設定が有効です。カウンタを初期化します。')
             today_score = 0
             today_plays = 0
         running = True
@@ -237,17 +248,16 @@ def gui():
         elif ev.startswith('start'):
             running = not running
             if running:
-                sx = int(val['sx'])
-                sy = int(val['sy'])
                 if settings['reset_on_boot']:
                     print('自動リセット設定が有効です。')
                     today_score = 0
                     today_plays = 0
+                sx = int(val['sx'])
+                sy = int(val['sy'])
                 th = threading.Thread(target=detect_top, args=(window, sx, sy, SLEEP_TIME), daemon=True)
                 th.start()
                 window['start'].update("stop")
             else:
-                global stop_thread
                 stop_thread = True
                 th.join()
                 stop_thread = False
@@ -289,6 +299,16 @@ def gui():
             gen_html(cur,tmp_today_score,cur_notes,tmp_today_notes,today_plays)
             pre_cur = cur
             pre_cur_notes = cur_notes
+        elif ev == '-SCRSHOT_ERROR-':
+            stop_thread = True
+            th.join()
+            stop_thread = False
+            #print(f"th.is_alive:{th.is_alive()}")
+            print(f"スコア検出スレッドが異常終了しました。再スタートします。")
+            sx = int(val['sx'])
+            sy = int(val['sy'])
+            th = threading.Thread(target=detect_top, args=(window, sx, sy, SLEEP_TIME), daemon=True)
+            th.start()
 
 if __name__ == '__main__':
     gui()
