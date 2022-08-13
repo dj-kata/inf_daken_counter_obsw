@@ -279,7 +279,7 @@ def gui():
         elif ev.startswith('tweet'):
             srate = int(val['target_srate'][:-1])
             cur_notes = math.ceil(today_score / 2 / (srate/100))
-            msg = f"今日は{today_plays:,}曲プレイし、約{cur_notes:,}ノーツ叩きました。\n(EXスコア合計:{today_score}, 目標スコアレート:{val['target_srate']})\n#INFINITAS_daken_counter"
+            msg = f"今日は{today_plays:,}曲プレイし、約{cur_notes:,}ノーツ叩きました。\n(EXスコア合計:{today_score:,}, 目標スコアレート:{val['target_srate']})\n#INFINITAS_daken_counter"
             encoded_msg = urllib.parse.quote(msg)
             webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_msg}")
         elif ev == '-THREAD-':
