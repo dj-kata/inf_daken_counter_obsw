@@ -23,6 +23,8 @@ if len(sys.argv) > 1:
 today_total = 0
 stop_thread = False # メインスレッドを強制停止するために使う
 
+playopt = ''
+
 def load_settings():
     default_val = {'target_srate':'72%', 'sx':'0','sy':'0', 'sleep_time':'1.0',
     'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False, 'lx':0, 'ly':0}
@@ -107,7 +109,81 @@ def detect_playside(sx,sy):
 
 ### オプション検出を行う
 def detect_option(sx, sy):
-    pass
+    global playopt
+    flip = ''
+    left = False
+    right = False
+    assist = ''
+    gauge = ''
+    ### オプション画面かどうかを検出
+    px0 = pgui.screenshot(region=(sx+43,sy+33,1,1)).getpixel((0,0))
+    px1 = pgui.screenshot(region=(sx+44,sy+424,1,1)).getpixel((0,0))
+    px2 = pgui.screenshot(region=(sx+114,sy+645,1,1)).getpixel((0,0))
+    px_dp = pgui.screenshot(region=(sx+1070,sy+345,1,1)).getpixel((0,0)) # 右側の青色枠
+    px_sp = pgui.screenshot(region=(sx+905,sy+358,1,1)).getpixel((0,0))  # 右側の青色枠
+    if (px0 == (255,0,0)) and (px1 == (0xff,0x4f,0xbb)) and (px2 == (0xff,0x4f,0xbb)) and ((px_sp == (0x0,0x29,0x32)) or (px_dp== (0x0,0x29,0x32))): # オプション画面かどうか
+        flip_off   = pgui.screenshot(region=(sx+932,sy+200,1,1)).getpixel((0,0))
+        flip_on    = pgui.screenshot(region=(sx+932,sy+230,1,1)).getpixel((0,0))
+
+        if (flip_off == (0xff,0x6c,0x0)) or (flip_on == (0xff,0x6c,0x0)): # DP
+            left_off     = pgui.screenshot(region=(sx+390,sy+390,1,1)).getpixel((0,0))
+            left_ran     = pgui.screenshot(region=(sx+390,sy+422,1,1)).getpixel((0,0))
+            left_rran    = pgui.screenshot(region=(sx+384,sy+455,1,1)).getpixel((0,0))
+            left_sran    = pgui.screenshot(region=(sx+384,sy+489,1,1)).getpixel((0,0))
+            left_mirror  = pgui.screenshot(region=(sx+390,sy+520,1,1)).getpixel((0,0))
+        
+            right_off     = pgui.screenshot(region=(sx+536,sy+390,1,1)).getpixel((0,0))
+            right_ran     = pgui.screenshot(region=(sx+536,sy+422,1,1)).getpixel((0,0))
+            right_rran    = pgui.screenshot(region=(sx+530,sy+455,1,1)).getpixel((0,0))
+            right_sran    = pgui.screenshot(region=(sx+530,sy+489,1,1)).getpixel((0,0))
+            right_mirror  = pgui.screenshot(region=(sx+536,sy+520,1,1)).getpixel((0,0))
+        
+            assist_off    = pgui.screenshot(region=(sx+830,sy+390,1,1)).getpixel((0,0))
+            assist_as     = pgui.screenshot(region=(sx+858,sy+426,1,1)).getpixel((0,0))
+            assist_legacy = pgui.screenshot(region=(sx+880,sy+489,1,1)).getpixel((0,0))
+            if (flip_on == (0xff,0x6c,0x0)):
+                flip = ', FLIP'
+            # 左手
+            for pix,val in zip([left_off,left_ran,left_rran,left_mirror,left_sran],['OFF','RAN','R-RAN','MIR','S-RAN']):
+                if pix == (0xff, 0x6c, 0x0):
+                    left = val
+            # 右手
+            for pix,val in zip([right_off,right_ran,right_rran,right_mirror,right_sran],['OFF','RAN','R-RAN','MIR','S-RAN']):
+                if pix == (0xff, 0x6c, 0x0):
+                    right = val
+            # アシスト
+            for pix,val in zip([assist_off, assist_as, assist_legacy],['', ', A-SCR', ', LEGACY']):
+                if pix == (0xff, 0x6c, 0x0):
+                    assist += val
+
+            if left and right: # オプション画面のスライド中にバグるのを防ぐため
+                playopt = f"{left} / {right}{flip}{assist}"
+
+                gen_opt_xml(playopt)
+                print(f'オプションを検出しました。\n{playopt}')
+        else: # SP
+            right_off     = pgui.screenshot(region=(sx+375,sy+391,1,1)).getpixel((0,0))
+            right_ran     = pgui.screenshot(region=(sx+375,sy+424,1,1)).getpixel((0,0))
+            right_rran    = pgui.screenshot(region=(sx+369,sy+457,1,1)).getpixel((0,0))
+            right_sran    = pgui.screenshot(region=(sx+369,sy+489,1,1)).getpixel((0,0))
+            right_mirror  = pgui.screenshot(region=(sx+375,sy+520,1,1)).getpixel((0,0))
+
+            assist_off    = pgui.screenshot(region=(sx+680,sy+390,1,1)).getpixel((0,0))
+            assist_as     = pgui.screenshot(region=(sx+699,sy+426,1,1)).getpixel((0,0))
+            assist_legacy = pgui.screenshot(region=(sx+720,sy+489,1,1)).getpixel((0,0))
+            # 右手
+            for pix,val in zip([right_off,right_ran,right_rran,right_mirror,right_sran],['OFF','RAN','R-RAN','MIR','S-RAN']):
+                if pix == (0xff, 0x6c, 0x0):
+                    right = val
+            # アシスト
+            for pix,val in zip([assist_off, assist_as, assist_legacy],['', ', A-SCR', ', LEGACY']):
+                if pix == (0xff, 0x6c, 0x0):
+                    assist += val
+            if right: # オプション画面のスライド中にバグるのを防ぐため
+                playopt = f"{right}{assist}"
+
+                gen_opt_xml(playopt)
+                print(f'オプションを検出しました。\n{playopt}')
 
 ### スコアのデジタル数字を読む関数
 ### ビットマップの緑チャンネルの合計値で判別している
@@ -182,6 +258,14 @@ def gen_notes_xml(cur,today_score, cur_notes,today_notes,plays):
     <cur_notes>{cur_notes:,}</cur_notes>
     <today_score>{today_score:,}</today_score>
     <today_notes>{today_notes:,}</today_notes>
+</Items>''')
+    f.close()
+
+def gen_opt_xml(opt):
+    f = codecs.open('option.xml', 'w', 'utf-8')
+    f.write(f'''<?xml version="1.0" encoding="utf-8"?>
+<Items>
+    <option>{opt}</option>
 </Items>''')
     f.close()
 

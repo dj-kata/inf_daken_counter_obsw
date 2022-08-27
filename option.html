@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>hoge</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script>
+	
+function loadXml()
+{
+	var option = "";
+	
+	var getxml = $.ajax({
+		url: "option.xml",
+		type: 'GET',
+		dataType: 'xml',
+		cache: false
+		});
+	
+	getxml.done(function(xml){
+		option = $(xml).find('option').text();
+		$('#option span').text(option);
+	});
+	
+	getxml.fail(function(error){
+		//alert("読み込み失敗");
+	});
+	
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+	var roopTimer = setInterval(loadXml, 50);
+});
+
+
+</script>
+</head>
+
+<body>
+    <div id="option">opt: <span></span></div>
+</body>
+</html>
