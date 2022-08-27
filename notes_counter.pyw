@@ -131,7 +131,7 @@ def detect_top(window, sx, sy, sleep_time):
     playside = False
     print(f'スコア検出スレッド開始。inf=({sx},{sy})')
     while True:
-        while True:
+        while True: # 曲開始までを検出
             #print('test')
             try:
                 playside = detect_playside(sx,sy)
@@ -151,7 +151,7 @@ def detect_top(window, sx, sy, sleep_time):
         if stop_local:
             break
 
-        while True:
+        while True: # 曲中の処理
             det = detect_digit(playside, sx, sy)
             try:
                 score = int(det)
@@ -165,7 +165,7 @@ def detect_top(window, sx, sy, sleep_time):
             time.sleep(sleep_time)
     print(f'スコア検出スレッド終了。')
     
-def gen_html(cur,today_score, cur_notes,today_notes,plays):
+def gen_notes_xml(cur,today_score, cur_notes,today_notes,plays):
     f = codecs.open('data.xml', 'w', 'utf-8')
     f.write(f'''<?xml version="1.0" encoding="utf-8"?>
 <Items>
@@ -303,7 +303,7 @@ def gui():
             window['today_plays'].update(value=f"{today_plays}")
             settings['plays'] = today_plays
             settings['total_score'] = tmp_today_score
-            gen_html(cur,tmp_today_score,cur_notes,tmp_today_notes,today_plays)
+            gen_notes_xml(cur,tmp_today_score,cur_notes,tmp_today_notes,today_plays)
             pre_cur = cur
             pre_cur_notes = cur_notes
         elif ev == '-SCRSHOT_ERROR-':
