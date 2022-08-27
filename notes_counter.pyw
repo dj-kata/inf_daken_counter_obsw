@@ -16,13 +16,16 @@ height = 720
 digit_vals = [43860,16065,44880,43095,32895,43605,46920,28050,52020,49215]
 savefile   = 'settings.json'
 
+if len(sys.argv) > 1:
+    savefile = sys.argv[1]
+
 ### グローバル変数
 today_total = 0
 stop_thread = False # メインスレッドを強制停止するために使う
 
 def load_settings():
     default_val = {'target_srate':'72%', 'sx':'0','sy':'0', 'sleep_time':'1.0',
-    'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False}
+    'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False, 'lx':0, 'ly':0}
     ret = {}
     try:
         with open(savefile) as f:
@@ -102,6 +105,10 @@ def detect_playside(sx,sy):
             ret = t
     return ret
 
+### オプション検出を行う
+def detect_option(sx, sy):
+    pass
+
 ### スコアのデジタル数字を読む関数
 ### ビットマップの緑チャンネルの合計値で判別している
 def detect_digit(playside, sx, sy):
@@ -135,6 +142,7 @@ def detect_top(window, sx, sy, sleep_time):
             #print('test')
             try:
                 playside = detect_playside(sx,sy)
+                detect_option(sx, sy)
                 if playside: # 曲頭を検出
                     print(f'曲開始を検出しました。\nEXスコア取得開始。mode={playside}')
                     break
@@ -177,8 +185,10 @@ def gen_notes_xml(cur,today_score, cur_notes,today_notes,plays):
 </Items>''')
     f.close()
 
-def gui():
-    # GUI設定
+def gui(): # GUI設定
+    # 設定のロード
+    settings = load_settings()
+
     sg.theme('DarkAmber')
     FONT = ('Meiryo',16)
     srate_cand = ['50%','66%','72%'] + [f"{i}%" for i in range(77,101)]
@@ -199,10 +209,7 @@ def gui():
         [sg.Output(size=(56,5), font=('Meiryo',12))] # ここを消すと標準出力になる
         ]
     ico=ico_path('icon.ico')
-    window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico)
-
-    # 設定のロード
-    settings = load_settings()
+    window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(settings['lx'], settings['ly']))
 
     # 設定をもとにGUIの値を変更
     window['target_srate'].update(value=settings['target_srate'])
@@ -241,6 +248,8 @@ def gui():
             settings['target_srate'] = val['target_srate']
             settings['sx'] = val['sx']
             settings['sy'] = val['sy']
+            settings['lx'] = window.current_location()[0]
+            settings['ly'] = window.current_location()[1]
             settings['run_on_boot'] = val['run_on_boot']
             settings['reset_on_boot'] = val['reset_on_boot']
         if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-'):
