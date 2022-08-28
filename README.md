@@ -38,7 +38,9 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 (以下にCSSのサンプルも記載しています)
 
 # インストール方法
-[リリースページ](https://github.com/dj-kata/inf_daken_counter/releases)から最新版のパッケージ(.zip)をダウンロードし、好きなフォルダに解凍してください。
+[リリースページ](https://github.com/dj-kata/inf_daken_counter/releases)から最新版のパッケージ(.zip)をダウンロードし、好きなフォルダに解凍してください。  
+アップデートする場合は、古いバージョンのフォルダを最新版のファイルで上書きしてください。  
+(settings.jsonを移行するだけでもOK)
 
 # ファイル一覧
 |ファイル名|説明|
@@ -102,6 +104,11 @@ text-shadow: 6px 6px 0 #000,
 ```
 
 ![image](https://user-images.githubusercontent.com/61326119/182008763-7ff255a4-890b-4fe8-9b00-4cf9b1bed0aa.png)
+
+また、プレーオプション(乱やFLIP等)をOBSに表示するためのoption.htmlも同梱しています。  
+こちらも設定方法は同様ですが、上記のCSSを使う場合は幅2000,高さ130ぐらいにするといいかもです。  
+プレー画面でのみオプションを表示するためのタグ(<opt_dyn>)も一応用意しています。
+
 
 # AMDのCPU(Ryzenなど)をお使いの方向け
 AMDのCPU(Ryzenなど)を搭載したPCではかなり重くなってしまうようです。  
