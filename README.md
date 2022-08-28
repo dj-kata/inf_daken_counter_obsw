@@ -111,6 +111,11 @@ text-shadow: 6px 6px 0 #000,
 
 こちらもOBSでの設定方法は同様ですが、上記のCSSを使う場合は幅2000,高さ130ぐらいにするといいかもです。  
 プレー画面でのみオプションを表示するためのタグ(<opt_dyn>)も一応用意しています。  
+必要に応じてHTMLを修正しながら使っていただけたらと思います。
+
+(option.htmlから<opt_dyn>の行を削除した場合の設定例)
+![image](https://user-images.githubusercontent.com/61326119/187085019-392eed60-71f5-4380-b2b4-43e3b9df533f.png)
+
 
 # AMDのCPU(Ryzenなど)をお使いの方向け
 AMDのCPU(Ryzenなど)を搭載したPCではかなり重くなってしまうようです。  
