@@ -18,9 +18,10 @@ function loadXml()
 		});
 	
 	getxml.done(function(xml){
-		option = $(xml).find('option').text();
+		option = $(xml).find('option').text(); // 常時表示
+		opt_dyn = $(xml).find('opt_dyn').text(); // 曲中のみ表示
 		$('#option span').text(option);
-		$('opt_dyn').text(option);
+		$('opt_dyn').text(opt_dyn);
 	});
 	
 	getxml.fail(function(error){
