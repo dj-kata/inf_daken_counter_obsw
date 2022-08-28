@@ -113,7 +113,7 @@ text-shadow: 6px 6px 0 #000,
 プレー画面でのみオプションを表示するためのタグ(<opt_dyn>)も一応用意しています。  
 必要に応じてHTMLを修正しながら使っていただけたらと思います。
 
-(option.htmlから<opt_dyn>の行を削除した場合の設定例)
+(option.htmlから<opt_dyn>の行を削除した場合の設定例)  
 ![image](https://user-images.githubusercontent.com/61326119/187085019-392eed60-71f5-4380-b2b4-43e3b9df533f.png)
 
 
