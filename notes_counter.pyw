@@ -159,7 +159,7 @@ def detect_option(sx, sy):
             if left and right: # オプション画面のスライド中にバグるのを防ぐため
                 playopt = f"{left} / {right}{flip}{assist}"
 
-                gen_opt_xml(playopt)
+                gen_opt_xml(playopt, '')
                 print(f'オプションを検出しました。\n{playopt}')
         else: # SP
             right_off     = pgui.screenshot(region=(sx+375,sy+391,1,1)).getpixel((0,0))
@@ -208,7 +208,7 @@ def detect_digit(playside, sx, sy):
 ### 曲の開始・終了を数字から検出し、境界処理を行う
 ### 曲中は検出したスコアをprintする
 def detect_top(window, sx, sy, sleep_time):
-    global stop_thread
+    global stop_thread, playopt
     pre_det = ''
     stop_local = False
     playside = False
@@ -221,6 +221,7 @@ def detect_top(window, sx, sy, sleep_time):
                 detect_option(sx, sy)
                 if playside: # 曲頭を検出
                     print(f'曲開始を検出しました。\nEXスコア取得開始。mode={playside}')
+                    gen_opt_xml(playopt, 'opt: '+playopt)
                     break
             except Exception as e:
                 stop_local = True
@@ -241,10 +242,13 @@ def detect_top(window, sx, sy, sleep_time):
                 score = int(det)
                 window.write_event_value('-THREAD-', f"cur {score}")
                 pre_score = score
-            except ValueError: #暗転
-                window.write_event_value('-THREAD-', f"end {pre_score}")
-                print(f'曲終了を検出しました。 => {pre_score}')
-                break
+            except ValueError: # intに変換できない数値を検出&暗転の両方を見る
+                topleft = pgui.screenshot(region=(sx,sy,120,120))
+                if np.array(topleft).sum() == 0:
+                    window.write_event_value('-THREAD-', f"end {pre_score}")
+                    print(f'曲終了を検出しました。 => {pre_score}')
+                    gen_opt_xml(playopt, '')
+                    break
 
             time.sleep(sleep_time)
     print(f'スコア検出スレッド終了。')
@@ -261,11 +265,12 @@ def gen_notes_xml(cur,today_score, cur_notes,today_notes,plays):
 </Items>''')
     f.close()
 
-def gen_opt_xml(opt):
+def gen_opt_xml(opt, opt_dyn): # opt_dyn: 曲中のみ表示する用
     f = codecs.open('option.xml', 'w', 'utf-8')
     f.write(f'''<?xml version="1.0" encoding="utf-8"?>
 <Items>
     <option>{opt}</option>
+    <opt_dyn>{opt_dyn}</opt_dyn>
 </Items>''')
     f.close()
 

@@ -20,6 +20,7 @@ function loadXml()
 	getxml.done(function(xml){
 		option = $(xml).find('option').text();
 		$('#option span').text(option);
+		$('opt_dyn').text(option);
 	});
 	
 	getxml.fail(function(error){
@@ -38,5 +39,6 @@ window.addEventListener('DOMContentLoaded', function() {
 
 <body>
     <div id="option">opt: <span></span></div>
+	<opt_dyn></opt_dyn>
 </body>
 </html>
