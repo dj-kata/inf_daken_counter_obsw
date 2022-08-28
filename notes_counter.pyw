@@ -182,7 +182,7 @@ def detect_option(sx, sy):
             if right: # オプション画面のスライド中にバグるのを防ぐため
                 playopt = f"{right}{assist}"
 
-                gen_opt_xml(playopt)
+                gen_opt_xml(playopt, '')
                 print(f'オプションを検出しました。\n{playopt}')
 
 ### スコアのデジタル数字を読む関数
