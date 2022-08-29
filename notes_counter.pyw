@@ -231,7 +231,8 @@ def detect_top(window, sx, sy, sleep_time):
             if stop_thread:
                 stop_local = True
                 break
-            time.sleep(sleep_time)
+            #time.sleep(sleep_time)
+            time.sleep(0.1) # オプション取得のためにここは短くしたほうがよさそう？
 
         if stop_local:
             break
