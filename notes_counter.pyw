@@ -124,8 +124,6 @@ def detect_option(sx, sy):
     px_dp = whole.getpixel((1070,345)) == (0x0,0x29,0x32)
     px_sp = whole.getpixel((905,358)) == (0x0,0x29,0x32)
 
-    print(px0,px1,px2,px_sp,px_dp)
-    
     if px0 and px1 and px2 and (px_sp or px_dp): # オプション画面かどうか
         flip_off   = whole.getpixel((932,200)) == (0xff,0x6c,0x0)
         flip_on    = whole.getpixel((932,230)) == (0xff,0x6c,0x0)
@@ -134,7 +132,7 @@ def detect_option(sx, sy):
         hran   = whole.getpixel((167,534)) != (0xff,0xff,0xff) # 白かどうかをみる、白ならオフ
     
         normal    = whole.getpixel((683,390)) == (0xff, 0x6c, 0x0)
-        a_easy    = whole.getpixel((742,430)) == (0xff, 0x6c, 0x0)
+        a_easy    = whole.getpixel((742,422)) != (0, 0, 0)
         easy      = whole.getpixel((683,456)) == (0xff, 0x6c, 0x0)
         hard      = whole.getpixel((683,489)) == (0xff, 0x6c, 0x0)
         ex_hard   = whole.getpixel((682,522)) == (0xff, 0x6c, 0x0)
@@ -145,7 +143,7 @@ def detect_option(sx, sy):
         if isbattle:
             battle = 'BATTLE, '
 
-        if flip_off or flip_on: # DP
+        if px_dp: # DP
             left_off     = whole.getpixel((390,390)) == (0xff, 0x6c, 0x0)
             left_ran     = whole.getpixel((390,422)) == (0xff, 0x6c, 0x0)
             left_rran    = whole.getpixel((384,455)) == (0xff, 0x6c, 0x0)
@@ -158,6 +156,9 @@ def detect_option(sx, sy):
             right_sran    = whole.getpixel((530,489)) == (0xff, 0x6c, 0x0)
             right_mirror  = whole.getpixel((536,520)) == (0xff, 0x6c, 0x0)
         
+            sync_ran      = whole.getpixel((394,554)) == (0xff, 0x6c, 0x0)
+            symm_ran      = whole.getpixel((394,585)) == (0xff, 0x6c, 0x0)
+
             assist_off    = whole.getpixel((830,390)) == (0xff, 0x6c, 0x0)
             assist_as     = whole.getpixel((858,426)) == (0xff, 0x6c, 0x0)
             assist_legacy = whole.getpixel((880,489)) == (0xff, 0x6c, 0x0)
@@ -175,16 +176,27 @@ def detect_option(sx, sy):
             for pix,val in zip([right_off,right_ran,right_rran,right_mirror,right_sran],['OFF','RAN','R-RAN','MIR', sran_str]):
                 if pix:
                     right = val
+            if isbattle:
+                if sync_ran:
+                    left = ' '
+                    right = 'SYNC-RAN'
+                elif symm_ran:
+                    left = ' '
+                    right = 'SYMM-RAN'
             # アシスト
             for pix,val in zip([assist_off, assist_as, assist_legacy],['', ', A-SCR', ', LEGACY']):
                 if pix:
                     assist += val
 
             if left and right: # オプション画面のスライド中にバグるのを防ぐため
-                playopt = f"{battle}{left} / {right}{flip}{assist}"
+                if battle and (symm_ran or sync_ran):
+                    playopt = f"{battle}{right}{assist}"
+                else:
+                    playopt = f"{battle}{left} / {right}{flip}{assist}"
 
                 gen_opt_xml(playopt, '')
                 print(f'オプションを検出しました。\nopt: {playopt}, gauge:{gauge}')
+
         else: # SP
             right_off     = whole.getpixel((375,391))
             right_ran     = whole.getpixel((375,424))
