@@ -110,80 +110,104 @@ def detect_playside(sx,sy):
 ### オプション検出を行う
 def detect_option(sx, sy):
     global playopt
+    whole = pgui.screenshot(region=(sx,sy,1280,720))
     flip = ''
     left = False
     right = False
     assist = ''
     gauge = ''
+    battle = ''
     ### オプション画面かどうかを検出
-    px0 = pgui.screenshot(region=(sx+43,sy+33,1,1)).getpixel((0,0))
-    px1 = pgui.screenshot(region=(sx+44,sy+424,1,1)).getpixel((0,0))
-    px2 = pgui.screenshot(region=(sx+114,sy+645,1,1)).getpixel((0,0))
-    px_dp = pgui.screenshot(region=(sx+1070,sy+345,1,1)).getpixel((0,0)) # 右側の青色枠
-    px_sp = pgui.screenshot(region=(sx+905,sy+358,1,1)).getpixel((0,0))  # 右側の青色枠
-    if (px0 == (255,0,0)) and (px1 == (0xff,0x4f,0xbb)) and (px2 == (0xff,0x4f,0xbb)) and ((px_sp == (0x0,0x29,0x32)) or (px_dp== (0x0,0x29,0x32))): # オプション画面かどうか
-        flip_off   = pgui.screenshot(region=(sx+932,sy+200,1,1)).getpixel((0,0))
-        flip_on    = pgui.screenshot(region=(sx+932,sy+230,1,1)).getpixel((0,0))
+    px0 = whole.getpixel((43,33)) == (255,0,0)
+    px1 = whole.getpixel((44,424)) == (0xff,0x4f,0xbb)
+    px2 = whole.getpixel((114,645)) == (0xff,0x4f,0xbb)
+    px_dp = whole.getpixel((1070,345)) == (0x0,0x29,0x32)
+    px_sp = whole.getpixel((905,358)) == (0x0,0x29,0x32)
 
-        if (flip_off == (0xff,0x6c,0x0)) or (flip_on == (0xff,0x6c,0x0)): # DP
-            left_off     = pgui.screenshot(region=(sx+390,sy+390,1,1)).getpixel((0,0))
-            left_ran     = pgui.screenshot(region=(sx+390,sy+422,1,1)).getpixel((0,0))
-            left_rran    = pgui.screenshot(region=(sx+384,sy+455,1,1)).getpixel((0,0))
-            left_sran    = pgui.screenshot(region=(sx+384,sy+489,1,1)).getpixel((0,0))
-            left_mirror  = pgui.screenshot(region=(sx+390,sy+520,1,1)).getpixel((0,0))
+    print(px0,px1,px2,px_sp,px_dp)
+    
+    if px0 and px1 and px2 and (px_sp or px_dp): # オプション画面かどうか
+        flip_off   = whole.getpixel((932,200)) == (0xff,0x6c,0x0)
+        flip_on    = whole.getpixel((932,230)) == (0xff,0x6c,0x0)
         
-            right_off     = pgui.screenshot(region=(sx+536,sy+390,1,1)).getpixel((0,0))
-            right_ran     = pgui.screenshot(region=(sx+536,sy+422,1,1)).getpixel((0,0))
-            right_rran    = pgui.screenshot(region=(sx+530,sy+455,1,1)).getpixel((0,0))
-            right_sran    = pgui.screenshot(region=(sx+530,sy+489,1,1)).getpixel((0,0))
-            right_mirror  = pgui.screenshot(region=(sx+536,sy+520,1,1)).getpixel((0,0))
+        isbattle = whole.getpixel((148,514)) != (0xff,0xff,0xff) # 白かどうかをみる、白ならオフ
+        hran   = whole.getpixel((167,534)) != (0xff,0xff,0xff) # 白かどうかをみる、白ならオフ
+    
+        normal    = whole.getpixel((683,390)) == (0xff, 0x6c, 0x0)
+        a_easy    = whole.getpixel((742,430)) == (0xff, 0x6c, 0x0)
+        easy      = whole.getpixel((683,456)) == (0xff, 0x6c, 0x0)
+        hard      = whole.getpixel((683,489)) == (0xff, 0x6c, 0x0)
+        ex_hard   = whole.getpixel((682,522)) == (0xff, 0x6c, 0x0)
+        for pix,val in zip([normal,a_easy,easy,hard,ex_hard],['NORMAL','A-EASY','EASY','HARD', 'EX-HARD']):
+            if pix:
+                gauge = val
+
+        if isbattle:
+            battle = 'BATTLE, '
+
+        if flip_off or flip_on: # DP
+            left_off     = whole.getpixel((390,390)) == (0xff, 0x6c, 0x0)
+            left_ran     = whole.getpixel((390,422)) == (0xff, 0x6c, 0x0)
+            left_rran    = whole.getpixel((384,455)) == (0xff, 0x6c, 0x0)
+            left_sran    = whole.getpixel((384,489)) == (0xff, 0x6c, 0x0)
+            left_mirror  = whole.getpixel((390,520)) == (0xff, 0x6c, 0x0)
         
-            assist_off    = pgui.screenshot(region=(sx+830,sy+390,1,1)).getpixel((0,0))
-            assist_as     = pgui.screenshot(region=(sx+858,sy+426,1,1)).getpixel((0,0))
-            assist_legacy = pgui.screenshot(region=(sx+880,sy+489,1,1)).getpixel((0,0))
-            if (flip_on == (0xff,0x6c,0x0)):
+            right_off     = whole.getpixel((536,390)) == (0xff, 0x6c, 0x0)
+            right_ran     = whole.getpixel((536,422)) == (0xff, 0x6c, 0x0)
+            right_rran    = whole.getpixel((530,455)) == (0xff, 0x6c, 0x0)
+            right_sran    = whole.getpixel((530,489)) == (0xff, 0x6c, 0x0)
+            right_mirror  = whole.getpixel((536,520)) == (0xff, 0x6c, 0x0)
+        
+            assist_off    = whole.getpixel((830,390)) == (0xff, 0x6c, 0x0)
+            assist_as     = whole.getpixel((858,426)) == (0xff, 0x6c, 0x0)
+            assist_legacy = whole.getpixel((880,489)) == (0xff, 0x6c, 0x0)
+
+            if flip_on:
                 flip = ', FLIP'
+            sran_str = 'S-RAN'
+            if hran:
+                sran_str = 'H-RAN'
             # 左手
-            for pix,val in zip([left_off,left_ran,left_rran,left_mirror,left_sran],['OFF','RAN','R-RAN','MIR','S-RAN']):
-                if pix == (0xff, 0x6c, 0x0):
+            for pix,val in zip([left_off,left_ran,left_rran,left_mirror,left_sran],['OFF','RAN','R-RAN','MIR', sran_str]):
+                if pix:
                     left = val
             # 右手
-            for pix,val in zip([right_off,right_ran,right_rran,right_mirror,right_sran],['OFF','RAN','R-RAN','MIR','S-RAN']):
-                if pix == (0xff, 0x6c, 0x0):
+            for pix,val in zip([right_off,right_ran,right_rran,right_mirror,right_sran],['OFF','RAN','R-RAN','MIR', sran_str]):
+                if pix:
                     right = val
             # アシスト
             for pix,val in zip([assist_off, assist_as, assist_legacy],['', ', A-SCR', ', LEGACY']):
-                if pix == (0xff, 0x6c, 0x0):
+                if pix:
                     assist += val
 
             if left and right: # オプション画面のスライド中にバグるのを防ぐため
-                playopt = f"{left} / {right}{flip}{assist}"
+                playopt = f"{battle}{left} / {right}{flip}{assist}"
 
                 gen_opt_xml(playopt, '')
-                print(f'オプションを検出しました。\n{playopt}')
+                print(f'オプションを検出しました。\nopt: {playopt}, gauge:{gauge}')
         else: # SP
-            right_off     = pgui.screenshot(region=(sx+375,sy+391,1,1)).getpixel((0,0))
-            right_ran     = pgui.screenshot(region=(sx+375,sy+424,1,1)).getpixel((0,0))
-            right_rran    = pgui.screenshot(region=(sx+369,sy+457,1,1)).getpixel((0,0))
-            right_sran    = pgui.screenshot(region=(sx+369,sy+489,1,1)).getpixel((0,0))
-            right_mirror  = pgui.screenshot(region=(sx+375,sy+520,1,1)).getpixel((0,0))
+            right_off     = whole.getpixel((375,391))
+            right_ran     = whole.getpixel((375,424))
+            right_rran    = whole.getpixel((369,457))
+            right_sran    = whole.getpixel((369,489))
+            right_mirror  = whole.getpixel((375,520))
 
-            assist_off    = pgui.screenshot(region=(sx+680,sy+390,1,1)).getpixel((0,0))
-            assist_as     = pgui.screenshot(region=(sx+699,sy+426,1,1)).getpixel((0,0))
-            assist_legacy = pgui.screenshot(region=(sx+720,sy+489,1,1)).getpixel((0,0))
+            assist_off    = whole.getpixel((680,390))
+            assist_as     = whole.getpixel((699,426))
+            assist_legacy = whole.getpixel((720,489))
             # 右手
             for pix,val in zip([right_off,right_ran,right_rran,right_mirror,right_sran],['OFF','RAN','R-RAN','MIR','S-RAN']):
-                if pix == (0xff, 0x6c, 0x0):
+                if pix:
                     right = val
             # アシスト
             for pix,val in zip([assist_off, assist_as, assist_legacy],['', ', A-SCR', ', LEGACY']):
-                if pix == (0xff, 0x6c, 0x0):
+                if pix:
                     assist += val
             if right: # オプション画面のスライド中にバグるのを防ぐため
                 playopt = f"{right}{assist}"
 
                 gen_opt_xml(playopt, '')
-                print(f'オプションを検出しました。\n{playopt}')
+                print(f'オプションを検出しました。\nopt: {playopt}, gauge:{gauge}')
 
 ### スコアのデジタル数字を読む関数
 ### ビットマップの緑チャンネルの合計値で判別している
