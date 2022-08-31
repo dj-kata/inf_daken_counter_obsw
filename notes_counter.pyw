@@ -23,8 +23,6 @@ if len(sys.argv) > 1:
 today_total = 0
 stop_thread = False # メインスレッドを強制停止するために使う
 
-playopt = ''
-
 def load_settings():
     default_val = {'target_srate':'72%', 'sx':'0','sy':'0', 'sleep_time':'1.0',
     'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False, 'lx':0, 'ly':0}
@@ -109,13 +107,13 @@ def detect_playside(sx,sy):
 
 ### オプション検出を行う
 def detect_option(sx, sy):
-    global playopt
+    playopt = False
     whole = pgui.screenshot(region=(sx,sy,1280,720))
     flip = ''
     left = False
     right = False
     assist = ''
-    gauge = ''
+    gauge = False
     battle = ''
     ### オプション画面かどうかを検出
     px0 = whole.getpixel((43,33)) == (255,0,0)
@@ -194,9 +192,6 @@ def detect_option(sx, sy):
                 else:
                     playopt = f"{battle}{left} / {right}{flip}{assist}"
 
-                gen_opt_xml(playopt, '')
-                print(f'オプションを検出しました。\nopt: {playopt}, gauge:{gauge}')
-
         else: # SP
             right_off     = whole.getpixel((375,391))
             right_ran     = whole.getpixel((375,424))
@@ -217,9 +212,7 @@ def detect_option(sx, sy):
                     assist += val
             if right: # オプション画面のスライド中にバグるのを防ぐため
                 playopt = f"{right}{assist}"
-
-                gen_opt_xml(playopt, '')
-                print(f'オプションを検出しました。\nopt: {playopt}, gauge:{gauge}')
+    return playopt, gauge
 
 ### スコアのデジタル数字を読む関数
 ### ビットマップの緑チャンネルの合計値で判別している
@@ -244,20 +237,30 @@ def detect_digit(playside, sx, sy):
 ### 曲の開始・終了を数字から検出し、境界処理を行う
 ### 曲中は検出したスコアをprintする
 def detect_top(window, sx, sy, sleep_time):
-    global stop_thread, playopt
+    global stop_thread
     pre_det = ''
     stop_local = False
     playside = False
+    playopt = '' # 曲開始タイミングとオプション検出タイミングは一致しないため、最後の値を覚えておく
+    gauge   = ''
     print(f'スコア検出スレッド開始。inf=({sx},{sy})')
     while True:
         while True: # 曲開始までを検出
             #print('test')
             try:
                 playside = detect_playside(sx,sy)
-                detect_option(sx, sy)
+                tmp_playopt, tmp_gauge = detect_option(sx, sy)
+                if tmp_playopt and tmp_gauge:
+                    if playopt != tmp_playopt:
+                        window.write_event_value('-PLAYOPT-', tmp_playopt)
+                    if gauge != tmp_gauge:
+                        window.write_event_value('-GAUGE-', tmp_gauge)
+                    playopt = tmp_playopt
+                    gauge = tmp_gauge
+                    gen_opt_xml(playopt, gauge) # 常時表示オプションを書き出す
                 if playside: # 曲頭を検出
                     print(f'曲開始を検出しました。\nEXスコア取得開始。mode={playside}')
-                    gen_opt_xml(playopt, 'opt: '+playopt)
+                    gen_opt_xml(playopt, gauge, True) # 常時表示+曲中のみデータの書き出し
                     break
             except Exception as e:
                 stop_local = True
@@ -284,7 +287,7 @@ def detect_top(window, sx, sy, sleep_time):
                 if np.array(topleft).sum() == 0:
                     window.write_event_value('-THREAD-', f"end {pre_score}")
                     print(f'曲終了を検出しました。 => {pre_score}')
-                    gen_opt_xml(playopt, '')
+                    gen_opt_xml(playopt, gauge) # 曲中のみデータの削除
                     break
 
             time.sleep(sleep_time)
@@ -302,12 +305,23 @@ def gen_notes_xml(cur,today_score, cur_notes,today_notes,plays):
 </Items>''')
     f.close()
 
-def gen_opt_xml(opt, opt_dyn): # opt_dyn: 曲中のみ表示する用
+def gen_opt_xml(opt, in_gauge, onSong=False): # onSong: 曲開始時の呼び出し時にTrue->曲中のみ文字列を設定
+    gauge = f"<{re.sub('-', '', in_gauge.lower())}>{in_gauge}</{re.sub('-', '', in_gauge.lower())}>"
+
     f = codecs.open('option.xml', 'w', 'utf-8')
+    opt_dyn = ''
+    gauge_dyn = ''
+    if onSong:
+        opt_dyn = 'opt: opt'
+        gauge_dyn = f"<{re.sub('-', '', in_gauge.lower())}_dyn>{in_gauge}</{re.sub('-', '', in_gauge.lower())}_dyn>"
+
+
     f.write(f'''<?xml version="1.0" encoding="utf-8"?>
 <Items>
     <option>{opt}</option>
     <opt_dyn>{opt_dyn}</opt_dyn>
+    {gauge}
+    {gauge_dyn}
 </Items>''')
     f.close()
 
@@ -316,7 +330,7 @@ def gui(): # GUI設定
     settings = load_settings()
 
     sg.theme('DarkAmber')
-    FONT = ('Meiryo',16)
+    FONT = ('Meiryo',12)
     srate_cand = ['50%','66%','72%'] + [f"{i}%" for i in range(77,101)]
     layout = [
         [sg.Text("target", font=FONT)
@@ -332,7 +346,8 @@ def gui(): # GUI設定
         ],
         [sg.Text("EXスコア        ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("0", key='cur_score',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("0", key='today_score',font=FONT)],
         [sg.Text("推定ノーツ数   ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("-", key='cur_notes',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("-", key='today_notes',font=FONT)],
-        [sg.Output(size=(56,5), font=('Meiryo',12))] # ここを消すと標準出力になる
+        [sg.Text("option:", font=FONT),sg.Text(" ", key='playopt',font=FONT, ),sg.Text("ゲージ:", font=FONT),sg.Text(" ", key='gauge',font=FONT)],
+        [sg.Output(size=(45,5), font=('Meiryo',12))] # ここを消すと標準出力になる
         ]
     ico=ico_path('icon.ico')
     window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(settings['lx'], settings['ly']))
@@ -417,6 +432,10 @@ def gui(): # GUI設定
             msg = f"今日は{today_plays:,}曲プレイし、約{cur_notes:,}ノーツ叩きました。\n(EXスコア合計:{today_score:,}, 目標スコアレート:{val['target_srate']})\n#INFINITAS_daken_counter"
             encoded_msg = urllib.parse.quote(msg)
             webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_msg}")
+        elif ev == '-GAUGE-':
+            window['gauge'].update(value=val[ev])
+        elif ev == '-PLAYOPT-':
+            window['playopt'].update(value=val[ev])
         elif ev == '-THREAD-':
             dat = val[ev].split(' ')
             cmd = dat[0]
