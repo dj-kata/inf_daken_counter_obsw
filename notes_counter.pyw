@@ -129,19 +129,19 @@ def detect_option(sx, sy):
         isbattle = whole.getpixel((148,514)) != (0xff,0xff,0xff) # 白かどうかをみる、白ならオフ
         hran   = whole.getpixel((167,534)) != (0xff,0xff,0xff) # 白かどうかをみる、白ならオフ
     
-        normal    = whole.getpixel((683,390)) == (0xff, 0x6c, 0x0)
-        a_easy    = whole.getpixel((742,422)) != (0, 0, 0)
-        easy      = whole.getpixel((683,456)) == (0xff, 0x6c, 0x0)
-        hard      = whole.getpixel((683,489)) == (0xff, 0x6c, 0x0)
-        ex_hard   = whole.getpixel((682,522)) == (0xff, 0x6c, 0x0)
-        for pix,val in zip([normal,a_easy,easy,hard,ex_hard],['NORMAL','A-EASY','EASY','HARD', 'EX-HARD']):
-            if pix:
-                gauge = val
-
         if isbattle:
             battle = 'BATTLE, '
 
         if px_dp: # DP
+            normal    = whole.getpixel((683,390)) == (0xff, 0x6c, 0x0)
+            a_easy    = whole.getpixel((742,422)) != (0, 0, 0)
+            easy      = whole.getpixel((683,456)) == (0xff, 0x6c, 0x0)
+            hard      = whole.getpixel((683,489)) == (0xff, 0x6c, 0x0)
+            ex_hard   = whole.getpixel((682,522)) == (0xff, 0x6c, 0x0)
+            for pix,val in zip([normal,a_easy,easy,hard,ex_hard],['NORMAL','A-EASY','EASY','HARD', 'EX-HARD']):
+                if pix:
+                    gauge = val
+
             left_off     = whole.getpixel((390,390)) == (0xff, 0x6c, 0x0)
             left_ran     = whole.getpixel((390,422)) == (0xff, 0x6c, 0x0)
             left_rran    = whole.getpixel((384,455)) == (0xff, 0x6c, 0x0)
@@ -193,15 +193,24 @@ def detect_option(sx, sy):
                     playopt = f"{battle}{left} / {right}{flip}{assist}"
 
         else: # SP
-            right_off     = whole.getpixel((375,391))
-            right_ran     = whole.getpixel((375,424))
-            right_rran    = whole.getpixel((369,457))
-            right_sran    = whole.getpixel((369,489))
-            right_mirror  = whole.getpixel((375,520))
+            normal    = whole.getpixel((524,390)) == (0xff, 0x6c, 0x0)
+            a_easy    = whole.getpixel((582,422)) != (0, 0, 0)
+            easy      = whole.getpixel((524,456)) == (0xff, 0x6c, 0x0)
+            hard      = whole.getpixel((524,489)) == (0xff, 0x6c, 0x0)
+            ex_hard   = whole.getpixel((518,522)) == (0xff, 0x6c, 0x0)
+            for pix,val in zip([normal,a_easy,easy,hard,ex_hard],['NORMAL','A-EASY','EASY','HARD', 'EX-HARD']):
+                if pix:
+                    gauge = val
 
-            assist_off    = whole.getpixel((680,390))
-            assist_as     = whole.getpixel((699,426))
-            assist_legacy = whole.getpixel((720,489))
+            right_off     = whole.getpixel((375,391)) == (0xff, 0x6c, 0x0)
+            right_ran     = whole.getpixel((375,424)) == (0xff, 0x6c, 0x0)
+            right_rran    = whole.getpixel((369,457)) == (0xff, 0x6c, 0x0)
+            right_sran    = whole.getpixel((369,489)) == (0xff, 0x6c, 0x0)
+            right_mirror  = whole.getpixel((375,520)) == (0xff, 0x6c, 0x0)
+
+            assist_off    = whole.getpixel((680,390)) == (0xff, 0x6c, 0x0)
+            assist_as     = whole.getpixel((699,426)) == (0xff, 0x6c, 0x0)
+            assist_legacy = whole.getpixel((720,489)) == (0xff, 0x6c, 0x0)
             # 右手
             for pix,val in zip([right_off,right_ran,right_rran,right_mirror,right_sran],['OFF','RAN','R-RAN','MIR','S-RAN']):
                 if pix:
@@ -271,7 +280,7 @@ def detect_top(window, sx, sy, sleep_time):
                 stop_local = True
                 break
             #time.sleep(sleep_time)
-            time.sleep(0.1) # オプション取得のためにここは短くしたほうがよさそう？
+            time.sleep(0.3) # オプション取得のためにここは短くしたほうがよさそう？
 
         if stop_local:
             break
