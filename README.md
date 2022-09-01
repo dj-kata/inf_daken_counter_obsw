@@ -46,7 +46,9 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 |ファイル名|説明|
 |---|---|
 |notes_counter.exe|ツール本体|
-|autoload.html|OBSで読み込むHTMLファイル|
+|autoload.html|OBSで読み込むノーツ数表示用HTMLファイル|
+|option.html|OBSで読み込むオプション表示用HTMLファイル|
+|gauge.html|OBSで読み込むグルーブゲージ情報表示用HTMLファイル|
 |data.xml|自動生成されるスコア情報|
 |settings.json|ツール本体の設定ファイル。|
 |README.txt|本説明書|
@@ -78,6 +80,7 @@ test.pngを見て正しいモニタから取得できていることを確認し
 作者の環境(2560×1440のモニタ3枚が横に並んでいて、真ん中のモニタでプレイしている)では、```sx:2560, sy:0```を設定します。
 
 ## OBSへの設定方法
+### ノーツ数の表示方法
 1. ソースの追加 -> ブラウザを選択する。好きな名前を付けてOK。  
 ![image](https://user-images.githubusercontent.com/61326119/182008724-44d2711d-fb3e-4e32-b1f1-9fa95b8ed751.png)
 2. 1.で作成したブラウザソースをダブルクリックする。
@@ -105,9 +108,10 @@ text-shadow: 6px 6px 0 #000,
 
 ![image](https://user-images.githubusercontent.com/61326119/182008763-7ff255a4-890b-4fe8-9b00-4cf9b1bed0aa.png)
 
-また、プレーオプション(乱やFLIP等)をOBSに表示するためのoption.htmlも同梱しています。  
+### プレーオプションの表示方法
+プレーオプション(乱やFLIP等)をOBSに表示するためのoption.htmlも同梱しています。  
 プレーオプション設定画面を開くと自動でオプション情報を取得します。  
-(オプション取得処理に1秒近くかかるため、Startボタンを離すのが速すぎると取得できません)
+(オプション取得処理に0.5秒くらいかかるため、Startボタンを離すのが速すぎると取得できません)
 
 こちらもOBSでの設定方法は同様ですが、上記のCSSを使う場合は幅2000,高さ130ぐらいにするといいかもです。  
 プレー画面でのみオプションを表示するためのタグ(<opt_dyn>)も一応用意しています。  
@@ -115,6 +119,159 @@ text-shadow: 6px 6px 0 #000,
 
 (option.htmlから<opt_dyn>の行を削除した場合の設定例)  
 ![image](https://user-images.githubusercontent.com/61326119/187085019-392eed60-71f5-4380-b2b4-43e3b9df533f.png)
+
+### グルーブゲージ情報の表示方法
+グルーブゲージ種別(EX-HARDとかEASYとか)を表示するためのgauge.htmlも同梱しています。  
+取得タイミングはプレーオプションと同時(約0.5s必要)なので、切り替えが速すぎると取得漏れする場合があります。  
+
+OBSでは幅800高さ600ぐらいに設定し、以下のようなCSSを設定するとよいです。  
+gauge.htmlには2行分のデータが含まれています。  
+1行目は常時表示、2行目は曲中のみ表示されるデータとなります。  
+配信レイアウトに応じて必要な行のみを切り取って使ってください。  
+(Altを押しながらドラッグでトリミングできます)
+```
+exhard { 
+color: #ffff00;
+
+background-color: rgba(0, 0, 50, 0);
+overflow: hidden;
+font-family:"Mochiy Pop P One Regular";
+font-size: 64px;
+    text-shadow:
+            3px 3px 3px #000, -3px -3px 3px #000,
+           -3px 3px 3px #000,  3px -3px 3px #000,
+            3px 0px 3px #000, -3px -0px 3px #000,
+            0px 3px 3px #000,  0px -3px 3px #000;
+    margin: 0;
+}
+hard { 
+color: #ff2222;
+
+background-color: rgba(0, 0, 50, 0);
+overflow: hidden;
+font-family:"Mochiy Pop P One Regular"; 
+font-size: 64px;
+    text-shadow:
+            3px 3px 3px #000, -3px -3px 3px #000,
+           -3px 3px 3px #000,  3px -3px 3px #000,
+            3px 0px 3px #000, -3px -0px 3px #000,
+            0px 3px 3px #000,  0px -3px 3px #000;
+    margin: 0;
+}
+normal { 
+color: #22aaff;
+
+background-color: rgba(0, 0, 50, 0);
+overflow: hidden;
+font-family:"Mochiy Pop P One Regular"; 
+font-size: 64px;
+    text-shadow:
+            3px 3px 3px #000, -3px -3px 3px #000,
+           -3px 3px 3px #000,  3px -3px 3px #000,
+            3px 0px 3px #000, -3px -0px 3px #000,
+            0px 3px 3px #000,  0px -3px 3px #000;
+    margin: 0;
+}
+easy { 
+color: #00ff22;
+
+background-color: rgba(0, 0, 50, 0);
+overflow: hidden;
+font-family:"Mochiy Pop P One Regular"; 
+font-size: 64px;
+    text-shadow:
+            3px 3px 3px #000, -3px -3px 3px #000,
+           -3px 3px 3px #000,  3px -3px 3px #000,
+            3px 0px 3px #000, -3px -0px 3px #000,
+            0px 3px 3px #000,  0px -3px 3px #000;
+    margin: 0;
+}
+aeasy { 
+color: #cc00ff;
+
+background-color: rgba(0, 0, 50, 0);
+overflow: hidden;
+font-family:"Mochiy Pop P One Regular"; 
+font-size: 64px;
+    text-shadow:
+            3px 3px 3px #000, -3px -3px 3px #000,
+           -3px 3px 3px #000,  3px -3px 3px #000,
+            3px 0px 3px #000, -3px -0px 3px #000,
+            0px 3px 3px #000,  0px -3px 3px #000;
+    margin: 0;
+}
+
+exhard_dyn { 
+color: #ffff00;
+
+background-color: rgba(0, 0, 50, 0);
+overflow: hidden;
+font-family:"Mochiy Pop P One Regular";
+font-size: 64px;
+    text-shadow:
+            3px 3px 3px #000, -3px -3px 3px #000,
+           -3px 3px 3px #000,  3px -3px 3px #000,
+            3px 0px 3px #000, -3px -0px 3px #000,
+            0px 3px 3px #000,  0px -3px 3px #000;
+    margin: 0;
+}
+hard_dyn { 
+color: #ff2222;
+
+background-color: rgba(0, 0, 50, 0);
+overflow: hidden;
+font-family:"Mochiy Pop P One Regular"; 
+font-size: 64px;
+    text-shadow:
+            3px 3px 3px #000, -3px -3px 3px #000,
+           -3px 3px 3px #000,  3px -3px 3px #000,
+            3px 0px 3px #000, -3px -0px 3px #000,
+            0px 3px 3px #000,  0px -3px 3px #000;
+    margin: 0;
+}
+normal_dyn { 
+color: #22aaff;
+
+background-color: rgba(0, 0, 50, 0);
+overflow: hidden;
+font-family:"Mochiy Pop P One Regular"; 
+font-size: 64px;
+    text-shadow:
+            3px 3px 3px #000, -3px -3px 3px #000,
+           -3px 3px 3px #000,  3px -3px 3px #000,
+            3px 0px 3px #000, -3px -0px 3px #000,
+            0px 3px 3px #000,  0px -3px 3px #000;
+    margin: 0;
+}
+easy_dyn { 
+color: #00ff22;
+
+background-color: rgba(0, 0, 50, 0);
+overflow: hidden;
+font-family:"Mochiy Pop P One Regular"; 
+font-size: 64px;
+    text-shadow:
+            3px 3px 3px #000, -3px -3px 3px #000,
+           -3px 3px 3px #000,  3px -3px 3px #000,
+            3px 0px 3px #000, -3px -0px 3px #000,
+            0px 3px 3px #000,  0px -3px 3px #000;
+    margin: 0;
+}
+aeasy_dyn { 
+color: #cc00ff;
+
+background-color: rgba(0, 0, 50, 0);
+overflow: hidden;
+font-family:"Mochiy Pop P One Regular"; 
+font-size: 64px;
+    text-shadow:
+            3px 3px 3px #000, -3px -3px 3px #000,
+           -3px 3px 3px #000,  3px -3px 3px #000,
+            3px 0px 3px #000, -3px -0px 3px #000,
+            0px 3px 3px #000,  0px -3px 3px #000;
+    margin: 0;
+}
+```
 
 
 # AMDのCPU(Ryzenなど)をお使いの方向け
