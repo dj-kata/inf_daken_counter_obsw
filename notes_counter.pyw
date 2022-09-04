@@ -483,7 +483,7 @@ def gui(): # GUI設定
             score = int(dat[0])
             srate = int(val['target_srate'][:-1])
             cur_notes = math.ceil(cur / 2 / (srate/100))
-            option = dat[1]
+            option = val[ev][len(dat[0])+1:]
             if 'BATTLE' in option:
                 notes_battle += cur_notes
             elif 'RAN / RAN' in option: # 両乱だけ数えるか片乱だけ数えるか未定
