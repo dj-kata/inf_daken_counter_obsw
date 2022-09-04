@@ -294,6 +294,7 @@ def detect_top(window, sx, sy, sleep_time):
             except ValueError: # intに変換できない数値を検出&暗転の両方を見る
                 topleft = pgui.screenshot(region=(sx,sy,120,120))
                 if np.array(topleft).sum() == 0:
+                    window.write_event_value('-ENDSONG-', f"{pre_score} {playopt}")
                     window.write_event_value('-THREAD-', f"end {pre_score}")
                     print(f'曲終了を検出しました。 => {pre_score}')
                     gen_opt_xml(playopt, gauge) # 曲中のみデータの削除
@@ -302,7 +303,7 @@ def detect_top(window, sx, sy, sleep_time):
             time.sleep(sleep_time)
     print(f'スコア検出スレッド終了。')
     
-def gen_notes_xml(cur,today_score, cur_notes,today_notes,plays):
+def gen_notes_xml(cur,today_score, cur_notes,today_notes,plays, notes_ran, notes_battle):
     f = codecs.open('data.xml', 'w', 'utf-8')
     f.write(f'''<?xml version="1.0" encoding="utf-8"?>
 <Items>
@@ -311,6 +312,8 @@ def gen_notes_xml(cur,today_score, cur_notes,today_notes,plays):
     <cur_notes>{cur_notes:,}</cur_notes>
     <today_score>{today_score:,}</today_score>
     <today_notes>{today_notes:,}</today_notes>
+    <notes_ran>{notes_ran:,}</notes_ran>
+    <notes_battle>{notes_battle:,}</notes_battle>
 </Items>''')
     f.close()
 
@@ -373,6 +376,8 @@ def gui(): # GUI設定
     today_plays = int(settings['plays'])
     window['today_score'].update(value=f"{today_score}")
     window['today_plays'].update(value=f"{today_plays}")
+    notes_ran = 0
+    notes_battle  = 0
     pre_cur = 0
     pre_cur_notes = 0
     running = settings['run_on_boot'] # 実行中かどうかの区別に使う。スレッド停止用のstop_threadとは役割が違うので注意
@@ -384,6 +389,8 @@ def gui(): # GUI設定
         if settings['reset_on_boot']:
             today_score = 0
             today_plays = 0
+            notes_ran = 0
+            notes_battle  = 0
         running = True
         sx = int(settings['sx'])
         sy = int(settings['sy'])
@@ -425,8 +432,10 @@ def gui(): # GUI設定
                 window['start'].update("start")
         elif ev.startswith('reset'):
             print(f'プレイ回数と合計スコアをリセットします。')
-            today_plays = 0
-            today_score = 0
+            today_plays  = 0
+            today_score  = 0
+            noets_ran    = 0
+            notes_battle = 0
             #settings['plays'] = today_plays
             #settings['total_score'] = today_score
             window['today_score'].update(value=f"0")
@@ -466,9 +475,19 @@ def gui(): # GUI設定
             window['today_plays'].update(value=f"{today_plays}")
             settings['plays'] = today_plays
             settings['total_score'] = tmp_today_score
-            gen_notes_xml(cur,tmp_today_score,cur_notes,tmp_today_notes,today_plays)
+            gen_notes_xml(cur,tmp_today_score,cur_notes,tmp_today_notes,today_plays, notes_ran, notes_battle)
             pre_cur = cur
             pre_cur_notes = cur_notes
+        elif ev == '-ENDSONG-': # TODO 将来的にコマンドを分けたい
+            dat = val[ev].split(' ')
+            score = int(dat[0])
+            srate = int(val['target_srate'][:-1])
+            cur_notes = math.ceil(cur / 2 / (srate/100))
+            option = dat[1]
+            if 'BATTLE' in option:
+                notes_battle += cur_notes
+            elif 'RAN / RAN' in option: # 両乱だけ数えるか片乱だけ数えるか未定
+                notes_ran += cur_notes
         elif ev == '-SCRSHOT_ERROR-':
             stop_thread = True
             th.join()
