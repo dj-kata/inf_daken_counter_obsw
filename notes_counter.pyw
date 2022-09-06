@@ -8,7 +8,8 @@ import threading
 import math
 import codecs
 import json
-import webbrowser, urllib
+import webbrowser, urllib, requests
+from bs4 import BeautifulSoup
 
 ### 固定値
 width  = 1280
@@ -337,6 +338,46 @@ def gen_opt_xml(opt, in_gauge, onSong=False): # onSong: 曲開始時の呼び出
 </Items>''')
     f.close()
 
+def parse_url(url):
+    ret = False
+    if re.search('www.youtube.com.*v=', url):
+        ret = re.sub('.*v=', '', url)
+    elif re.search('livestreaming\Z', url):
+        ret = url.split('/')[-2]
+    return ret
+
+def write_series_xml(title):
+    dat = re.findall('\S+', title)
+    series = '#???'
+    for dd in dat:
+        if "#" in dd:
+            series = dd
+    print(f"series.xmlを更新しました => {series}\n")
+    f=open('series.xml', 'w')
+    f.write(f'''<?xml version="1.0" encoding="utf-8"?>
+<Items>
+    <series>{series}</series>
+</Items>''')
+    f.close()
+def get_ytinfo(url):
+    liveid = parse_url(url)
+    if liveid:
+        regular_url = f"https://www.youtube.com/watch?v={liveid}"
+        r = requests.get(regular_url)
+        soup = BeautifulSoup(r.text,features="html.parser")
+        title = re.sub(' - YouTube\Z', '', soup.find('title').text)
+        #print(f"liveid = {liveid}")
+        print(f"配信タイトル:\n{title}\n")
+        print(f"コメント欄用:\nhttps://www.youtube.com/live_chat?is_popout=1&v={liveid}\n")
+        print(f"ツイート用:\n{title}\n{regular_url}\n")
+
+        encoded_title = urllib.parse.quote(f"{title}\n{regular_url}\n")
+        webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_title}")
+
+        write_series_xml(title)
+    else:
+        print('無効なURLです\n')
+
 def gui(): # GUI設定
     # 設定のロード
     settings = load_settings()
@@ -400,6 +441,7 @@ def gui(): # GUI設定
 
     while True:
         ev, val = window.read()
+        #print(f"event='{ev}', values={val}")
         # 設定を最新化
         if settings and val: # 起動後、そのまま何もせずに終了するとvalが拾われないため対策している
             settings['target_srate'] = val['target_srate']
@@ -498,6 +540,10 @@ def gui(): # GUI設定
             sy = int(val['sy'])
             th = threading.Thread(target=detect_top, args=(window, sx, sy, SLEEP_TIME), daemon=True)
             th.start()
+        elif ev == 'Y:89':
+            print('隠しコマンド')
+            url = sg.popup_get_text('YoutubeLiveのURL(Studioでも可)を入力してください。', 'Youtube準備用コマンド')
+            get_ytinfo(url)
 
 if __name__ == '__main__':
     gui()
