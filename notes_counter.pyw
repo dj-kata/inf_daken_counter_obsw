@@ -346,12 +346,7 @@ def parse_url(url):
         ret = url.split('/')[-2]
     return ret
 
-def write_series_xml(title):
-    dat = re.findall('\S+', title)
-    series = '#???'
-    for dd in dat:
-        if "#" in dd:
-            series = dd
+def write_series_xml(series):
     print(f"series.xmlを更新しました => {series}\n")
     f=open('series.xml', 'w')
     f.write(f'''<?xml version="1.0" encoding="utf-8"?>
@@ -361,6 +356,7 @@ def write_series_xml(title):
     f.close()
 def get_ytinfo(url):
     liveid = parse_url(url)
+    ret = False
     if liveid:
         regular_url = f"https://www.youtube.com/watch?v={liveid}"
         r = requests.get(regular_url)
@@ -375,8 +371,42 @@ def get_ytinfo(url):
         webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_title}")
 
         write_series_xml(title)
+        ret = title
     else:
         print('無効なURLです\n')
+    return ret
+
+def gui_ytinfo():
+    sg.theme('DarkAmber')
+    FONT = ('Meiryo',12)
+    ico=ico_path('icon.ico')
+    layout = [
+        [sg.Text("YoutubeLive URL(配信、スタジオ等)", font=FONT)],
+        [sg.Input("", font=FONT, key='youtube_url', size=(50,1))],
+        [sg.Text("シリーズ文字列の検索クエリ(例: #[number] [number]日目等)", font=FONT)],
+        [sg.Input("#[number]", font=FONT, key='series_query', size=(10,1))],
+        [sg.Button('go', size=(20,1))]
+    ]
+    window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico)
+    while True:
+        ev, val = window.read()
+        print(f"event='{ev}', values={val}")
+        # 設定を最新化
+        if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-'):
+            print('キャンセルされました。')
+            window.close()
+            break
+        elif ev.startswith('go'):
+            url = val['youtube_url']
+            query = val['series_query'].replace('[number]', '\d+')
+            title = get_ytinfo(url)
+            if title:
+                series = ''
+                if len(re.findall(query, title)) > 0:
+                    series = re.findall(query, title)[0]
+                write_series_xml(series)
+                window.close()
+                break
 
 def gui(): # GUI設定
     # 設定のロード
@@ -400,7 +430,7 @@ def gui(): # GUI設定
         [sg.Text("EXスコア        ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("0", key='cur_score',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("0", key='today_score',font=FONT)],
         [sg.Text("推定ノーツ数   ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("-", key='cur_notes',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("-", key='today_notes',font=FONT)],
         [sg.Text("option:", font=FONT),sg.Text(" ", key='playopt',font=FONT, ),sg.Text("ゲージ:", font=FONT),sg.Text(" ", key='gauge',font=FONT)],
-        [sg.Output(size=(63,8), font=('Meiryo',9))] # ここを消すと標準出力になる
+        #[sg.Output(size=(63,8), font=('Meiryo',9))] # ここを消すと標準出力になる
         ]
     ico=ico_path('icon.ico')
     window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(settings['lx'], settings['ly']))
@@ -541,9 +571,10 @@ def gui(): # GUI設定
             th = threading.Thread(target=detect_top, args=(window, sx, sy, SLEEP_TIME), daemon=True)
             th.start()
         elif ev == 'Y:89':
-            print('隠しコマンド')
-            url = sg.popup_get_text('YoutubeLiveのURL(Studioでも可)を入力してください。', 'Youtube準備用コマンド')
-            get_ytinfo(url)
+            #print('隠しコマンド')
+            #url = sg.popup_get_text('YoutubeLiveのURL(Studioでも可)を入力してください。', 'Youtube準備用コマンド')
+            gui_ytinfo()
+            #get_ytinfo(url)
 
 if __name__ == '__main__':
     gui()
