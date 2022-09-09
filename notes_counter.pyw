@@ -26,7 +26,8 @@ stop_thread = False # メインスレッドを強制停止するために使う
 
 def load_settings():
     default_val = {'target_srate':'72%', 'sx':'0','sy':'0', 'sleep_time':'1.0',
-    'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False, 'lx':0, 'ly':0}
+    'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False, 'lx':0, 'ly':0,
+    'series_query':'#[number]'}
     ret = {}
     try:
         with open(savefile) as f:
@@ -376,7 +377,7 @@ def get_ytinfo(url):
         print('無効なURLです\n')
     return ret
 
-def gui_ytinfo():
+def gui_ytinfo(default_query='#[number]'):
     sg.theme('DarkAmber')
     FONT = ('Meiryo',12)
     ico=ico_path('icon.ico')
@@ -384,29 +385,33 @@ def gui_ytinfo():
         [sg.Text("YoutubeLive URL(配信、スタジオ等)", font=FONT)],
         [sg.Input("", font=FONT, key='youtube_url', size=(50,1))],
         [sg.Text("シリーズ文字列の検索クエリ(例: #[number] [number]日目等)", font=FONT)],
-        [sg.Input("#[number]", font=FONT, key='series_query', size=(10,1))],
-        [sg.Button('go', size=(20,1))]
+        [sg.Input(default_query, font=FONT, key='series_query', size=(10,1))],
+        [sg.Button('go', size=(40,1))]
     ]
-    window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico)
+    window = sg.Window('YoutubeLive準備用ツール(隠しコマンド)', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico)
+    window['youtube_url'].bind('<Return>', '_Enter')
+    window['series_query'].bind('<Return>', '_Enter')
     while True:
         ev, val = window.read()
-        print(f"event='{ev}', values={val}")
+        #print(f"event='{ev}', values={val}")
+        default_query = val['series_query']
         # 設定を最新化
         if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-'):
             print('キャンセルされました。')
             window.close()
             break
-        elif ev.startswith('go'):
+        elif ev in ('go', 'youtube_url_Enter', 'series_query_Enter'):
             url = val['youtube_url']
-            query = val['series_query'].replace('[number]', '\d+')
+            query = val['series_query'].replace('[number]', '[0-9０-９]+')
             title = get_ytinfo(url)
             if title:
                 series = ''
-                if len(re.findall(query, title)) > 0:
-                    series = re.findall(query, title)[0]
+                if re.search(query, title):
+                    series = re.search(query, title).group()
                 write_series_xml(series)
                 window.close()
                 break
+    return default_query
 
 def gui(): # GUI設定
     # 設定のロード
@@ -430,7 +435,7 @@ def gui(): # GUI設定
         [sg.Text("EXスコア        ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("0", key='cur_score',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("0", key='today_score',font=FONT)],
         [sg.Text("推定ノーツ数   ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("-", key='cur_notes',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("-", key='today_notes',font=FONT)],
         [sg.Text("option:", font=FONT),sg.Text(" ", key='playopt',font=FONT, ),sg.Text("ゲージ:", font=FONT),sg.Text(" ", key='gauge',font=FONT)],
-        #[sg.Output(size=(63,8), font=('Meiryo',9))] # ここを消すと標準出力になる
+        [sg.Output(size=(63,8), font=('Meiryo',9))] # ここを消すと標準出力になる
         ]
     ico=ico_path('icon.ico')
     window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(settings['lx'], settings['ly']))
@@ -573,7 +578,8 @@ def gui(): # GUI設定
         elif ev == 'Y:89':
             #print('隠しコマンド')
             #url = sg.popup_get_text('YoutubeLiveのURL(Studioでも可)を入力してください。', 'Youtube準備用コマンド')
-            gui_ytinfo()
+            q = gui_ytinfo(settings['series_query'])
+            settings['series_query'] = q
             #get_ytinfo(url)
 
 if __name__ == '__main__':
