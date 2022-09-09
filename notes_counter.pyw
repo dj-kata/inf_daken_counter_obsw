@@ -370,8 +370,6 @@ def get_ytinfo(url):
 
         encoded_title = urllib.parse.quote(f"{title}\n{regular_url}\n")
         webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_title}")
-
-        write_series_xml(title)
         ret = title
     else:
         print('無効なURLです\n')
@@ -385,8 +383,8 @@ def gui_ytinfo(default_query='#[number]'):
         [sg.Text("YoutubeLive URL(配信、スタジオ等)", font=FONT)],
         [sg.Input("", font=FONT, key='youtube_url', size=(50,1))],
         [sg.Text("シリーズ文字列の検索クエリ(例: #[number] [number]日目等)", font=FONT)],
-        [sg.Input(default_query, font=FONT, key='series_query', size=(10,1))],
-        [sg.Button('go', size=(40,1))]
+        [sg.Input(default_query, font=FONT, key='series_query', size=(20,1))],
+        [sg.Button('go', size=(10,1))]
     ]
     window = sg.Window('YoutubeLive準備用ツール(隠しコマンド)', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico)
     window['youtube_url'].bind('<Return>', '_Enter')
