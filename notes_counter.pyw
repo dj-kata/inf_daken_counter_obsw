@@ -349,7 +349,7 @@ def parse_url(url):
 
 def write_series_xml(series):
     print(f"series.xmlを更新しました => {series}\n")
-    f=open('series.xml', 'w')
+    f=codecs.open('series.xml', 'w', 'utf-8')
     f.write(f'''<?xml version="1.0" encoding="utf-8"?>
 <Items>
     <series>{series}</series>
