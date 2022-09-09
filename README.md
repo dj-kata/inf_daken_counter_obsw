@@ -273,6 +273,33 @@ font-size: 64px;
 }
 ```
 
+### 配信タイトル内のシリーズ文字列の表示方法
+第XXX回のような文字列を配信タイトルから抽出して表示するseries.htmlも同梱しています。
+配信を行う度に、以下のようにURLを取り込む必要があります。
+
+1. Ctrl + Shift + yを押して配信準備用隠しコマンドを実行
+2. Youtube LiveのURLを入力する
+3. タイトル文字列に応じて検索クエリを設定する。  
+(例えば、九段たぬきのINFINITAS DP配信 #85 のようなタイトルの場合、#[number]と設定)
+4. goボタンをクリック(または入力欄でEnterキーを押す)
+
+あとは、OBSのブラウザソースでseries.htmlを取り込んでおいてください。  
+CSSはノーツ数などと同様に設定してください。  
+私は以下のように、縁取りなし・背景色なしで使っています。
+
+```
+body { 
+
+background-color: rgba(0, 0, 50, 0);
+margin: 10px;
+padding: 20px;
+overflow: hidden;
+font-family:"Meiryo";
+color:#2196F3;   
+font-size: 64px;
+color: #fff;
+}
+```
 
 # AMDのCPU(Ryzenなど)をお使いの方向け
 AMDのCPU(Ryzenなど)を搭載したPCではかなり重くなってしまうようです。  
