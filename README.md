@@ -275,6 +275,8 @@ font-size: 64px;
 
 ### 配信タイトル内のシリーズ文字列の表示方法
 第XXX回のような文字列を配信タイトルから抽出して表示するseries.htmlも同梱しています。
+![image](https://user-images.githubusercontent.com/61326119/189257615-3b9939e0-8f04-418a-a393-cbb21e8583de.png)
+
 配信を行う度に、以下のようにURLを取り込む必要があります。
 
 1. Ctrl + Shift + yを押して配信準備用隠しコマンドを実行
@@ -283,6 +285,9 @@ font-size: 64px;
 (例えば、九段たぬきのINFINITAS DP配信 #85 のようなタイトルの場合、#[number]と設定)
 4. goボタンをクリック(または入力欄でEnterキーを押す)
 5. ブラウザにて配信情報をツイートするための画面が表示されます。また、アプリ上にOBSで使うコメント欄用のURLが表示されます。
+
+![image](https://user-images.githubusercontent.com/61326119/189258000-e81acdcc-d280-4017-bbd9-2be2bdc99e6f.png)
+![image](https://user-images.githubusercontent.com/61326119/189259266-f85c64b1-ae7d-426e-9868-032c2cab3df6.png)
 
 あとは、OBSのブラウザソースでseries.htmlを取り込んでおいてください。  
 CSSはノーツ数などと同様に設定してください。  
