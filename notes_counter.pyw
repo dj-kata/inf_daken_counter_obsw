@@ -28,7 +28,7 @@ stop_thread = False # メインスレッドを強制停止するために使う
 def load_settings():
     default_val = {'target_srate':'72%', 'sx':'0','sy':'0', 'sleep_time':'1.0',
     'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False, 'lx':0, 'ly':0,
-    'series_query':'#[number]'}
+    'series_query':'#[number]','judge':[0,0,0,0,0,0]}
     ret = {}
     try:
         with open(savefile) as f:
@@ -86,7 +86,7 @@ def detect_playside(sx,sy):
     target = ['1p-l', '1p-r', '2p-l', '2p-r', 'dp-l', 'dp-r'] # BGA表示エリアの位置
     for t in target:
         det = detect_judge(t, sx, sy)
-        if det[0] == '   0':
+        if det[0] == '0':
             ret = t
     return ret
 
@@ -217,7 +217,7 @@ def get_judge_img(playside,sx,sy):
     elif playside == '2p-l':
         sc = pgui.screenshot(region=(sx+571,sy+647,38,57))
     elif playside == '2p-r':
-        sc = pgui.screenshot(region=(sx+571,sy+647,38,57))
+        sc = pgui.screenshot(region=(sx+871,sy+647,38,57))
     elif playside == 'dp-l':
         sc = pgui.screenshot(region=(sx+1064,sy+650,38,57))
     elif playside == 'dp-r':
@@ -246,7 +246,7 @@ def detect_judge(playside, sx, sy):
             val = dd.sum()
             tmp = '?'
             if val == 0:
-                tmp  =' '
+                tmp  = '' # 従来スペースを入れていたが、消しても動く?
             elif val in mdigit_vals:
                 if val == mdigit_vals[2]: # 2,5がひっくり返しただけで合計値が同じなのでケア
                     if dd[2,1] == 255:
@@ -306,13 +306,14 @@ def detect_top(window, sx, sy, sleep_time):
             det = detect_judge(playside, sx,sy)
             try:
                 score = int(det[0])+int(det[1])+int(det[2])
-                window.write_event_value('-THREAD-', f"cur {score}")
+                window.write_event_value('-THREAD-', f"cur {score} {det[0]} {det[1]} {det[2]} {det[3]} {det[4]} {det[5]}")
                 pre_score = score
+                pre_judge = det
             except ValueError: # intに変換できない数値を検出&暗転の両方を見る
                 topleft = pgui.screenshot(region=(sx,sy,120,120))
                 if np.array(topleft).sum() == 0:
                     window.write_event_value('-ENDSONG-', f"{pre_score} {playopt}")
-                    window.write_event_value('-THREAD-', f"end {pre_score}")
+                    window.write_event_value('-THREAD-', f"end {pre_score} {pre_judge[0]} {pre_judge[1]} {pre_judge[2]} {pre_judge[3]} {pre_judge[4]} {pre_judge[5]}")
                     print(f'曲終了を検出しました。 => {pre_score}')
                     gen_opt_xml(playopt, gauge) # 曲中のみデータの削除
                     break
@@ -320,15 +321,13 @@ def detect_top(window, sx, sy, sleep_time):
             time.sleep(sleep_time)
     print(f'スコア検出スレッド終了。')
     
-def gen_notes_xml(cur,today_score, cur_notes,today_notes,plays, notes_ran, notes_battle):
+def gen_notes_xml(cur,today, plays, notes_ran, notes_battle):
     f = codecs.open('data.xml', 'w', 'utf-8')
     f.write(f'''<?xml version="1.0" encoding="utf-8"?>
 <Items>
     <playcount>{plays:,}</playcount>
-    <cur>{cur:,}</cur>
-    <cur_notes>{cur_notes:,}</cur_notes>
-    <today_score>{today_score:,}</today_score>
-    <today_notes>{today_notes:,}</today_notes>
+    <cur_notes>{cur:,}</cur_notes>
+    <today_notes>{today:,}</today_notes>
     <notes_ran>{notes_ran:,}</notes_ran>
     <notes_battle>{notes_battle:,}</notes_battle>
 </Items>''')
@@ -432,29 +431,26 @@ def gui(): # GUI設定
 
     sg.theme('DarkAmber')
     FONT = ('Meiryo',12)
-    srate_cand = ['50%','66%','72%'] + [f"{i}%" for i in range(77,101)]
+    FONTs = ('Meiryo',8)
     layout = [
-        [sg.Text("target", font=FONT)
-        ,sg.Combo(srate_cand, key='target_srate',font=FONT,default_value="72%",readonly=True)
-        ,sg.Text('INFINITAS sx:', font=FONT), sg.Input('2560', key='sx', font=FONT, size=(5,1))
+        [sg.Text('INFINITAS sx:', font=FONT), sg.Input('2560', key='sx', font=FONT, size=(5,1))
         ,sg.Text('sy:', font=FONT), sg.Input('0', key='sy', font=FONT, size=(5,1))
         ],
         [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('test', key='test_screenshot', font=FONT)],
-        [sg.Text('plays:', font=FONT), sg.Text('0', key='today_plays', font=FONT)
+        [sg.Text('plays:', font=FONT), sg.Text('0', key='plays', font=FONT)
         ,sg.Text(' ', font=FONT, size=(5,1))
         ,sg.Checkbox("起動時に即start", default=False, font=FONT, key='run_on_boot')
         ,sg.Checkbox("start時にreset", default=False, font=FONT, key='reset_on_boot')
         ],
-        [sg.Text("EXスコア        ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("0", key='cur_score',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("0", key='today_score',font=FONT)],
-        [sg.Text("推定ノーツ数   ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("-", key='cur_notes',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("-", key='today_notes',font=FONT)],
+        [sg.Text("ノーツ数 ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("0", key='cur',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("0", key='today',font=FONT)],
+        [sg.Text('PG:',font=FONTs),sg.Text('0',key='judge0',font=FONTs),sg.Text('GR:',font=FONTs),sg.Text('0',key='judge1',font=FONTs),sg.Text('GD:',font=FONTs),sg.Text('0',key='judge2',font=FONTs),sg.Text('BD:',font=FONTs),sg.Text('0',key='judge3',font=FONTs),sg.Text('PR:',font=FONTs),sg.Text('0',key='judge4',font=FONTs),sg.Text('CB:',font=FONTs),sg.Text('0',key='judge5',font=FONTs)],
         [sg.Text("option:", font=FONT),sg.Text(" ", key='playopt',font=FONT, ),sg.Text("ゲージ:", font=FONT),sg.Text(" ", key='gauge',font=FONT)],
-        [sg.Output(size=(63,8), font=('Meiryo',9))] # ここを消すと標準出力になる
+        #[sg.Output(size=(63,8), font=('Meiryo',9))] # ここを消すと標準出力になる
         ]
     ico=ico_path('icon.ico')
     window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(settings['lx'], settings['ly']))
 
     # 設定をもとにGUIの値を変更
-    window['target_srate'].update(value=settings['target_srate'])
     window['sx'].update(value=settings['sx'])
     window['sy'].update(value=settings['sy'])
     window['run_on_boot'].update(settings['run_on_boot'])
@@ -463,12 +459,14 @@ def gui(): # GUI設定
 
     today_score = int(settings['total_score'])
     today_plays = int(settings['plays'])
-    window['today_score'].update(value=f"{today_score}")
-    window['today_plays'].update(value=f"{today_plays}")
+    window['today'].update(value=f"{today_score}")
+    window['plays'].update(value=f"{today_plays}")
+    judge = settings['judge']
+    for i in range(6):
+        window[f'judge{i}'].update(value=judge[i])
     notes_ran = 0
     notes_battle  = 0
     pre_cur = 0
-    pre_cur_notes = 0
     running = settings['run_on_boot'] # 実行中かどうかの区別に使う。スレッド停止用のstop_threadとは役割が違うので注意
     th = False
     global stop_thread
@@ -492,13 +490,13 @@ def gui(): # GUI設定
         #print(f"event='{ev}', values={val}")
         # 設定を最新化
         if settings and val: # 起動後、そのまま何もせずに終了するとvalが拾われないため対策している
-            settings['target_srate'] = val['target_srate']
             settings['sx'] = val['sx']
             settings['sy'] = val['sy']
             settings['lx'] = window.current_location()[0]
             settings['ly'] = window.current_location()[1]
             settings['run_on_boot'] = val['run_on_boot']
             settings['reset_on_boot'] = val['reset_on_boot']
+            settings['judge'] = judge
         if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-'):
             save_settings(settings)
             break
@@ -526,18 +524,14 @@ def gui(): # GUI設定
             today_score  = 0
             noets_ran    = 0
             notes_battle = 0
-            #settings['plays'] = today_plays
-            #settings['total_score'] = today_score
-            window['today_score'].update(value=f"0")
-            window['today_notes'].update(value=f"-")
-            window['today_plays'].update(value=f"0")
+            window['today'].update(value=f"0")
+            window['plays'].update(value=f"0")
         elif ev.startswith('test_screenshot'):
             th_scshot = threading.Thread(target=get_screen_all, args=(int(val['sx']), int(val['sy']), width, height), daemon=True)
             th_scshot.start()
         elif ev.startswith('tweet'):
-            srate = int(val['target_srate'][:-1])
-            cur_notes = math.ceil(today_score / 2 / (srate/100))
-            msg = f"今日は{today_plays:,}曲プレイし、約{cur_notes:,}ノーツ叩きました。\n(EXスコア合計:{today_score:,}, 目標スコアレート:{val['target_srate']})\n#INFINITAS_daken_counter"
+            cur_notes = today_score
+            msg = f"今日は{today_plays:,}曲プレイし、{cur_notes:,}ノーツ叩きました。\n#INFINITAS_daken_counter"
             encoded_msg = urllib.parse.quote(msg)
             webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_msg}")
         elif ev == '-GAUGE-':
@@ -548,36 +542,35 @@ def gui(): # GUI設定
             dat = val[ev].split(' ')
             cmd = dat[0]
             cur = int(dat[1])
-            srate = int(val['target_srate'][:-1])
-            cur_notes = math.ceil(cur / 2 / (srate/100))
-            tmp_today_notes = math.ceil((cur+today_score) / 2 / (srate/100))
+            tmp_today_notes = cur+today_score
+            print(dat)
+            tmp_judge = [judge[i]+int(dat[2+i]) for i in range(6)]
+            for i in range(6):
+                window[f"judge{i}"].update(value=tmp_judge[i])
             if cmd == 'cur':
-                window['today_score'].update(value=f"{today_score + cur}")
+                window['today'].update(value=f"{today_score + cur}")
                 tmp_today_score = today_score + cur
             elif cmd == 'end':
                 today_plays += 1
                 today_score += pre_cur
                 tmp_today_score = today_score
-                window['today_score'].update(value=f"{today_score}")
-            window['cur_score'].update(value=f"{cur}")
-            window['cur_notes'].update(value=f"{cur_notes}")
-            window['today_notes'].update(value=f"{tmp_today_notes}")
-            window['today_plays'].update(value=f"{today_plays}")
+                window['today'].update(value=f"{today_score}")
+                for i in range(6):
+                    judge[i] += int(dat[2+i])
+            window['cur'].update(value=f"{cur}")
+            window['plays'].update(value=f"{today_plays}")
             settings['plays'] = today_plays
             settings['total_score'] = tmp_today_score
-            gen_notes_xml(cur,tmp_today_score,cur_notes,tmp_today_notes,today_plays, notes_ran, notes_battle)
+            gen_notes_xml(cur,tmp_today_notes,today_plays, notes_ran, notes_battle)
             pre_cur = cur
-            pre_cur_notes = cur_notes
         elif ev == '-ENDSONG-': # TODO 将来的にコマンドを分けたい
             dat = val[ev].split(' ')
             score = int(dat[0])
-            srate = int(val['target_srate'][:-1])
-            cur_notes = math.ceil(cur / 2 / (srate/100))
             option = val[ev][len(dat[0])+1:]
             if 'BATTLE' in option:
-                notes_battle += cur_notes
+                notes_battle += cur
             elif 'RAN / RAN' in option: # 両乱だけ数えるか片乱だけ数えるか未定
-                notes_ran += cur_notes
+                notes_ran += cur
         elif ev == '-SCRSHOT_ERROR-':
             stop_thread = True
             th.join()
