@@ -285,7 +285,7 @@ def detect_top(window, sx, sy, sleep_time):
                     gauge = tmp_gauge
                     gen_opt_xml(playopt, gauge) # 常時表示オプションを書き出す
                 if playside: # 曲頭を検出
-                    print(f'曲開始を検出しました。\nEXスコア取得開始。mode={playside}')
+                    print(f'曲開始を検出しました。\nEXスコア取得開始。mode={playside.upper()}')
                     gen_opt_xml(playopt, gauge, True) # 常時表示+曲中のみデータの書き出し
                     break
             except Exception as e:
@@ -457,9 +457,9 @@ def gui(): # GUI設定
     window['reset_on_boot'].update(settings['reset_on_boot'])
     SLEEP_TIME = float(settings['sleep_time'])
 
-    today_score = int(settings['total_score'])
+    today_notes = int(settings['total_score'])
     today_plays = int(settings['plays'])
-    window['today'].update(value=f"{today_score}")
+    window['today'].update(value=f"{today_notes}")
     window['plays'].update(value=f"{today_plays}")
     judge = settings['judge']
     for i in range(6):
@@ -474,7 +474,7 @@ def gui(): # GUI設定
     if settings['run_on_boot']: # 起動後即開始設定の場合
         print('自動起動設定が有効です。')
         if settings['reset_on_boot']:
-            today_score = 0
+            today_notes = 0
             today_plays = 0
             notes_ran = 0
             notes_battle  = 0
@@ -505,7 +505,7 @@ def gui(): # GUI設定
             if running:
                 if settings['reset_on_boot']:
                     print('自動リセット設定が有効です。')
-                    today_score = 0
+                    today_notes = 0
                     today_plays = 0
                     notes_ran = 0
                     notes_battle = 0
@@ -524,7 +524,7 @@ def gui(): # GUI設定
         elif ev.startswith('reset'):
             print(f'プレイ回数と合計スコアをリセットします。')
             today_plays  = 0
-            today_score  = 0
+            today_notes  = 0
             notes_ran    = 0
             notes_battle = 0
             window['today'].update(value=f"0")
@@ -535,7 +535,7 @@ def gui(): # GUI設定
             th_scshot = threading.Thread(target=get_screen_all, args=(int(val['sx']), int(val['sy']), width, height), daemon=True)
             th_scshot.start()
         elif ev.startswith('tweet'):
-            cur_notes = today_score
+            cur_notes = today_notes
             msg = f"今日は{today_plays:,}曲プレイし、{cur_notes:,}ノーツ叩きました。\n#INFINITAS_daken_counter"
             encoded_msg = urllib.parse.quote(msg)
             webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_msg}")
@@ -547,26 +547,27 @@ def gui(): # GUI設定
             dat = val[ev].split(' ')
             cmd = dat[0]
             cur = int(dat[1])
-            tmp_today_notes = cur+today_score
-            print(dat)
-            tmp_judge = [judge[i]+int(dat[2+i]) for i in range(6)] # 前の曲までの値judge[i]に現在の曲の値dat[2+i]を加算したもの
+            tmp_today_notes = cur+today_notes
+            window['today'].update(value=f"{tmp_today_notes}")
+            try:
+                tmp_judge = [judge[i]+int(dat[2+i]) for i in range(6)] # 前の曲までの値judge[i]に現在の曲の値dat[2+i]を加算したもの
+            except:
+                print(f'error!!! datの値が不正?, dat={dat}')
+                tmp_judge = judge[i]
+
             for i in range(6):
                 window[f"judge{i}"].update(value=tmp_judge[i])
-            if cmd == 'cur':
-                window['today'].update(value=f"{today_score + cur}")
-                tmp_today_score = today_score + cur
-            elif cmd == 'end':
+            if cmd == 'end':
                 today_plays += 1
-                today_score += pre_cur
-                tmp_today_score = today_score
-                window['today'].update(value=f"{today_score}")
+                today_notes += pre_cur
+                window['today'].update(value=f"{today_notes}")
                 for i in range(6):
                     judge[i] += int(dat[2+i])
             window['cur'].update(value=f"{cur}")
             window['plays'].update(value=f"{today_plays}")
             ### スコアなどのセーブデータはここで更新(安全なresetとさせるため)
             settings['plays'] = today_plays
-            settings['total_score'] = tmp_today_score
+            settings['total_score'] = tmp_today_notes
             settings['judge'] = tmp_judge
             gen_notes_xml(cur,tmp_today_notes,today_plays, notes_ran, notes_battle)
             pre_cur = cur
