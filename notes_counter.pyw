@@ -490,13 +490,13 @@ def gui(): # GUI設定
         #print(f"event='{ev}', values={val}")
         # 設定を最新化
         if settings and val: # 起動後、そのまま何もせずに終了するとvalが拾われないため対策している
+            # 今日のノーツ数とか今日の回数とかはここに記述しないこと(resetボタンを押すと即反映されてしまうため)
             settings['sx'] = val['sx']
             settings['sy'] = val['sy']
             settings['lx'] = window.current_location()[0]
             settings['ly'] = window.current_location()[1]
             settings['run_on_boot'] = val['run_on_boot']
             settings['reset_on_boot'] = val['reset_on_boot']
-            settings['judge'] = judge
         if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-'):
             save_settings(settings)
             break
@@ -507,6 +507,9 @@ def gui(): # GUI設定
                     print('自動リセット設定が有効です。')
                     today_score = 0
                     today_plays = 0
+                    notes_ran = 0
+                    notes_battle = 0
+                    judge = [0,0,0,0,0,0]
                 sx = int(val['sx'])
                 sy = int(val['sy'])
                 th = threading.Thread(target=detect_top, args=(window, sx, sy, SLEEP_TIME), daemon=True)
@@ -522,10 +525,12 @@ def gui(): # GUI設定
             print(f'プレイ回数と合計スコアをリセットします。')
             today_plays  = 0
             today_score  = 0
-            noets_ran    = 0
+            notes_ran    = 0
             notes_battle = 0
             window['today'].update(value=f"0")
             window['plays'].update(value=f"0")
+            for i in range(6):
+                window[f"judge{i}"].update(value='0')
         elif ev.startswith('test_screenshot'):
             th_scshot = threading.Thread(target=get_screen_all, args=(int(val['sx']), int(val['sy']), width, height), daemon=True)
             th_scshot.start()
@@ -544,7 +549,7 @@ def gui(): # GUI設定
             cur = int(dat[1])
             tmp_today_notes = cur+today_score
             print(dat)
-            tmp_judge = [judge[i]+int(dat[2+i]) for i in range(6)]
+            tmp_judge = [judge[i]+int(dat[2+i]) for i in range(6)] # 前の曲までの値judge[i]に現在の曲の値dat[2+i]を加算したもの
             for i in range(6):
                 window[f"judge{i}"].update(value=tmp_judge[i])
             if cmd == 'cur':
@@ -559,8 +564,10 @@ def gui(): # GUI設定
                     judge[i] += int(dat[2+i])
             window['cur'].update(value=f"{cur}")
             window['plays'].update(value=f"{today_plays}")
+            ### スコアなどのセーブデータはここで更新(安全なresetとさせるため)
             settings['plays'] = today_plays
             settings['total_score'] = tmp_today_score
+            settings['judge'] = tmp_judge
             gen_notes_xml(cur,tmp_today_notes,today_plays, notes_ran, notes_battle)
             pre_cur = cur
         elif ev == '-ENDSONG-': # TODO 将来的にコマンドを分けたい
