@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup
 width  = 1280
 height = 720
 digit_vals = [43860,16065,44880,43095,32895,43605,46920,28050,52020,49215]
+mdigit_vals = [9690,3570,9945,8415,7650,9945,10965,6885,10710,11475]
 savefile   = 'settings.json'
 
 if len(sys.argv) > 1:
@@ -68,24 +69,6 @@ def get_screen_all(sx,sy,_w,_h):
     sc = pgui.screenshot()
     sc.save('whole.bmp')
 
-### スコア部分の切り出し
-def get_score_img(sx,sy,playside):
-    if playside == '1P':
-        sc = pgui.screenshot(region=(sx+113,sy+650,105,15)) # 1P
-    elif playside == '2P':
-        sc = pgui.screenshot(region=(sx+1064,sy+650,105,15)) # 2P
-    else: # DP
-        sc = pgui.screenshot(region=(sx+350,sy+588,105,15)) # DP
-    #sc.save('score.png')
-    d = []
-    for i in range(4):
-        DW = 24
-        DH = 15
-        DSEPA = 3
-        d.append(sc.crop((i*DW+i*DSEPA,0,(i+1)*DW+i*DSEPA,DH)))
-        #d[-1].save(f"d{i}.png")
-    return np.array(sc), d
-
 ### キーボード操作用関数(未使用)
 ### 曲開始時にOBSのシーンを切り替えたりできそうだな～と思って一応用意している
 def send_key(cmd):
@@ -100,10 +83,10 @@ def release_key(cmd):
 ### プレイサイド検出を行う
 def detect_playside(sx,sy):
     ret = False
-    target = ['1P', '2P', 'DP']
+    target = ['1p-l', '1p-r', '2p-l', '2p-r', 'dp-l', 'dp-r'] # BGA表示エリアの位置
     for t in target:
-        det = detect_digit(t, sx, sy)
-        if det == '   0':
+        det = detect_judge(t, sx, sy)
+        if det[0] == '   0':
             ret = t
     return ret
 
@@ -225,23 +208,55 @@ def detect_option(sx, sy):
                 playopt = f"{right}{assist}"
     return playopt, gauge
 
-### スコアのデジタル数字を読む関数
-### ビットマップの緑チャンネルの合計値で判別している
-def detect_digit(playside, sx, sy):
-    sc,digits = get_score_img(sx,sy,playside)
-    ret = ''
-    for d in digits:
-        res = '?'
-        a = np.array(d)[:,:,1]
-        a = (a>180)*255
-        wsum = a.sum()
+### 判定部分の切り出し
+def get_judge_img(playside,sx,sy):
+    if playside == '1p-l':
+        sc = pgui.screenshot(region=(sx+113,sy+647,38,57))
+    elif playside == '1p-r':
+        sc = pgui.screenshot(region=(sx+113,sy+647,38,57))
+    elif playside == '2p-l':
+        sc = pgui.screenshot(region=(sx+571,sy+647,38,57))
+    elif playside == '2p-r':
+        sc = pgui.screenshot(region=(sx+571,sy+647,38,57))
+    elif playside == 'dp-l':
+        sc = pgui.screenshot(region=(sx+1064,sy+650,38,57))
+    elif playside == 'dp-r':
+        sc = pgui.screenshot(region=(sx+1064,sy+650,38,57))
+    d = []
+    for j in range(6): # pg～prの5つ
+        tmp_sec = []
+        for i in range(4): # 4文字
+            DW = 8
+            DH = 7
+            DSEPA = 2
+            tmp = np.array(sc.crop((i*(DW+DSEPA),10*j,(i+1)*DW+i*DSEPA,10*j+DH)))
+            tmp_sec.append(tmp)
+        d.append(tmp_sec)
+    return np.array(sc), d
 
-        # 推定部
-        if wsum == 0:
-            res = ' '
-        elif wsum in digit_vals:
-            res = digit_vals.index(wsum)
-        ret += str(res)
+### プレー画面から判定内訳を取得
+def detect_judge(playside, sx, sy):
+    sc,digits = get_judge_img(playside,sx,sy)
+    ret = []
+    for jj in digits: # 各判定、ピカグレー>POORの順
+        line = ''
+        for d in jj:
+            dd = d[:,:,2]
+            dd = (dd>100)*255
+            val = dd.sum()
+            tmp = '?'
+            if val == 0:
+                tmp  =' '
+            elif val in mdigit_vals:
+                if val == mdigit_vals[2]: # 2,5がひっくり返しただけで合計値が同じなのでケア
+                    if dd[2,1] == 255:
+                        tmp = '5'
+                    else:
+                        tmp = '2'
+                else:
+                    tmp = str(mdigit_vals.index(val))
+            line += tmp 
+        ret.append(line)
     return ret
 
 ### 無限ループにする(終了時は上から止める)
@@ -288,9 +303,9 @@ def detect_top(window, sx, sy, sleep_time):
             break
 
         while True: # 曲中の処理
-            det = detect_digit(playside, sx, sy)
+            det = detect_judge(playside, sx,sy)
             try:
-                score = int(det)
+                score = int(det[0])+int(det[1])+int(det[2])
                 window.write_event_value('-THREAD-', f"cur {score}")
                 pre_score = score
             except ValueError: # intに変換できない数値を検出&暗転の両方を見る
