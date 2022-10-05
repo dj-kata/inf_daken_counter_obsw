@@ -211,7 +211,7 @@ def detect_option(sx, sy):
 ### 判定部分の切り出し
 def get_judge_img(playside,sx,sy):
     if playside == '1p-l':
-        sc = pgui.screenshot(region=(sx+414,sy+657,38,57))
+        sc = pgui.screenshot(region=(sx+414,sy+647,38,57))
     elif playside == '1p-r':
         sc = pgui.screenshot(region=(sx+694,sy+647,38,57))
     elif playside == '2p-l':
