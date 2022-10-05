@@ -211,17 +211,17 @@ def detect_option(sx, sy):
 ### 判定部分の切り出し
 def get_judge_img(playside,sx,sy):
     if playside == '1p-l':
-        sc = pgui.screenshot(region=(sx+113,sy+647,38,57))
+        sc = pgui.screenshot(region=(sx+113,sy+647,38,57)) #TODO
     elif playside == '1p-r':
-        sc = pgui.screenshot(region=(sx+113,sy+647,38,57))
+        sc = pgui.screenshot(region=(sx+113,sy+647,38,57)) #TODO
     elif playside == '2p-l':
         sc = pgui.screenshot(region=(sx+571,sy+647,38,57))
     elif playside == '2p-r':
-        sc = pgui.screenshot(region=(sx+871,sy+647,38,57))
+        sc = pgui.screenshot(region=(sx+871,sy+647,38,57)) #TODO
     elif playside == 'dp-l':
-        sc = pgui.screenshot(region=(sx+1064,sy+650,38,57))
+        sc = pgui.screenshot(region=(sx+164,sy+600,38,57)) #TODO
     elif playside == 'dp-r':
-        sc = pgui.screenshot(region=(sx+1064,sy+650,38,57))
+        sc = pgui.screenshot(region=(sx+1089,sy+600,38,57))
     d = []
     for j in range(6): # pg～prの5つ
         tmp_sec = []
@@ -321,7 +321,8 @@ def detect_top(window, sx, sy, sleep_time):
             time.sleep(sleep_time)
     print(f'スコア検出スレッド終了。')
     
-def gen_notes_xml(cur,today, plays, notes_ran, notes_battle):
+def gen_notes_xml(cur,today, plays, notes_ran, notes_battle, judge):
+    srate = (judge[0]*2+judge[1])/(judge[0]+judge[1]+judge[2]+judge[5])*50
     f = codecs.open('data.xml', 'w', 'utf-8')
     f.write(f'''<?xml version="1.0" encoding="utf-8"?>
 <Items>
@@ -330,6 +331,13 @@ def gen_notes_xml(cur,today, plays, notes_ran, notes_battle):
     <today_notes>{today:,}</today_notes>
     <notes_ran>{notes_ran:,}</notes_ran>
     <notes_battle>{notes_battle:,}</notes_battle>
+    <pg>{judge[0]:,}</pg>
+    <gr>{judge[1]:,}</gr>
+    <gd>{judge[2]:,}</gd>
+    <bd>{judge[3]:,}</bd>
+    <pr>{judge[4]:,}</pr>
+    <cb>{judge[5]:,}</cb>
+    <score_rate>{srate:.2f}</score_rate>
 </Items>''')
     f.close()
 
@@ -444,8 +452,8 @@ def gui(): # GUI設定
         ],
         [sg.Text("ノーツ数 ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("0", key='cur',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("0", key='today',font=FONT)],
         [sg.Text('PG:',font=FONTs),sg.Text('0',key='judge0',font=FONTs),sg.Text('GR:',font=FONTs),sg.Text('0',key='judge1',font=FONTs),sg.Text('GD:',font=FONTs),sg.Text('0',key='judge2',font=FONTs),sg.Text('BD:',font=FONTs),sg.Text('0',key='judge3',font=FONTs),sg.Text('PR:',font=FONTs),sg.Text('0',key='judge4',font=FONTs),sg.Text('CB:',font=FONTs),sg.Text('0',key='judge5',font=FONTs)],
-        [sg.Text("option:", font=FONT),sg.Text(" ", key='playopt',font=FONT, ),sg.Text("ゲージ:", font=FONT),sg.Text(" ", key='gauge',font=FONT)],
-        #[sg.Output(size=(63,8), font=('Meiryo',9))] # ここを消すと標準出力になる
+        [sg.Text("option:", font=FONT),sg.Text(" ", key='playopt',font=FONT, ),sg.Text("ゲージ:", font=FONT),sg.Text(" ", key='gauge',font=FONT),sg.Text('平均スコアレート:',font=FONT),sg.Text('0 %',key='srate',font=FONT)],
+        [sg.Output(size=(63,8), font=('Meiryo',9))] # ここを消すと標準出力になる
         ]
     ico=ico_path('icon.ico')
     window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(settings['lx'], settings['ly']))
@@ -464,6 +472,8 @@ def gui(): # GUI設定
     judge = settings['judge']
     for i in range(6):
         window[f'judge{i}'].update(value=judge[i])
+    srate = (judge[0]*2+judge[1])/(judge[0]+judge[1]+judge[2]+judge[5])*50
+    window['srate'].update(value=f"{srate:.2f} %")
     notes_ran = 0
     notes_battle  = 0
     pre_cur = 0
@@ -557,6 +567,8 @@ def gui(): # GUI設定
 
             for i in range(6):
                 window[f"judge{i}"].update(value=tmp_judge[i])
+            srate = (tmp_judge[0]*2+tmp_judge[1])/(tmp_judge[0]+tmp_judge[1]+tmp_judge[2]+tmp_judge[5])*50
+            window['srate'].update(value=f"{srate:.2f} %")
             if cmd == 'end':
                 today_plays += 1
                 today_notes += pre_cur
@@ -569,7 +581,7 @@ def gui(): # GUI設定
             settings['plays'] = today_plays
             settings['total_score'] = tmp_today_notes
             settings['judge'] = tmp_judge
-            gen_notes_xml(cur,tmp_today_notes,today_plays, notes_ran, notes_battle)
+            gen_notes_xml(cur,tmp_today_notes,today_plays, notes_ran, notes_battle, tmp_judge)
             pre_cur = cur
         elif ev == '-ENDSONG-': # TODO 将来的にコマンドを分けたい
             dat = val[ev].split(' ')
