@@ -26,7 +26,7 @@ text-shadow: 6px 6px 0 #000,
 function loadXml()
 {
 	var playcount = "";
-	var cur = "";
+	var cur_notes = "";
 	var today_notes = "";
 	var score_rate = "";
 	
@@ -39,13 +39,13 @@ function loadXml()
 	
 	getxml.done(function(xml){
 		playcount = $(xml).find('playcount').text();
-		cur = $(xml).find('cur').text();
+		cur_notes = $(xml).find('cur_notes').text();
 		today_notes = $(xml).find('today_notes').text();
 		notes_ran = $(xml).find('notes_ran').text();
 		notes_battle = $(xml).find('notes_battle').text();
 		score_rate = $(xml).find('score_rate').text();
 		$('#playcount span').text(playcount);
-		$('#cur span').text(cur);
+		$('#cur_notes span').text(cur_notes);
 		$('#today_notes span').text(today_notes);
 		$('#notes_ran span').text(notes_ran);
 		$('#notes_battle span').text(notes_battle);
@@ -68,7 +68,7 @@ window.addEventListener('DOMContentLoaded', function() {
 
 <body>
     <div id="playcount">plays: <span></span></div>
-    <div id="cur"><span></span> notes</div>
+    <div id="cur_notes"><span></span> notes</div>
     <div id="today_notes">(本日: <span></span> notes)</div>
     <div id="score_rate">スコアレート:<span></span> %</div>
 </body>
