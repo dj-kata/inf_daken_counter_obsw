@@ -1,0 +1,124 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>hoge</title>
+<style>
+body { 
+
+background-color: rgba(0, 0, 50, 0.8);
+margin: 5px;
+padding: 10px;
+overflow: hidden;
+font-family:"Mochiy Pop P One Regular";
+color:#2196F3;   
+font-size: 64px;
+color: #fff;
+text-shadow:
+            3px 3px 3px #000, -3px -3px 3px #000,
+           -3px 3px 3px #000,  3px -3px 3px #000,
+            3px 0px 3px #000, -3px -0px 3px #000,
+            0px 3px 3px #000,  0px -3px 3px #000;
+
+}
+title-pg {color: #00e4ff;}
+title-gr {color: #fffe4b;}
+title-gd {color: #f98700;}
+title-bd {color: #ff9b00;}
+title-pr {color: #ec2610;}
+title-cb {color: #ffffff;
+text-shadow:
+            3px 3px 3px #f00, -3px -3px 3px #f00,
+           -3px 3px 3px #f00,  3px -3px 3px #f00,
+            3px 0px 3px #f00, -3px -0px 3px #f00,
+            0px 3px 3px #f00,  0px -3px 3px #f00;
+}
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script>
+	
+function loadXml()
+{
+	var pg = "";
+	var gr = "";
+	var gd = "";
+	var bd = "";
+	var pr = "";
+	var cb = "";
+	
+	var getxml = $.ajax({
+		url: "data.xml",
+		type: 'GET',
+		dataType: 'xml',
+		cache: false
+		});
+	
+	getxml.done(function(xml){
+		pg = $(xml).find('pg').text();
+		gr = $(xml).find('gr').text();
+		gd = $(xml).find('gd').text();
+		bd = $(xml).find('bd').text();
+		pr = $(xml).find('pr').text();
+		cb = $(xml).find('cb').text();
+		$('pg').text(pg);
+		$('gr').text(gr);
+		$('gd').text(gd);
+		$('bd').text(bd);
+		$('pr').text(pr);
+		$('cb').text(cb);
+	});
+	
+	getxml.fail(function(error){
+		//alert("読み込み失敗");
+	});
+	
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+	var roopTimer = setInterval(loadXml, 2000);
+});
+
+
+</script>
+</head>
+
+<body>
+    <table>
+		<tr>
+			<td><title-pg>PG</title-pg></td>
+			<td width="100pt">   </td>
+			<td align="right"><pg></pg></td>
+		</tr>
+		<tr>
+			<td><title-gr>GR</title-gr></td>
+			<td width="100pt">   </td>
+			<td align="right"><gr></gr></td>
+		</tr>
+		<tr>
+			<td><title-gd>GD</title-gd></td>
+			<td width="100pt">   </td>
+			<td align="right"><gd></gd></td>
+		</tr>
+		<tr>
+			<td><title-bd>BD</title-bd></td>
+			<td width="100pt">   </td>
+			<td align="right"><bd></bd></td>
+		</tr>
+		<tr>
+			<td><title-pr>PR</title-pr></td>
+			<td width="100pt">   </td>
+			<td align="right"><pr></pr></td>
+		</tr>
+		<tr>
+			<td><title-cb>CB</title-cb></td>
+			<td width="100pt">   </td>
+			<td align="right"><cb></cb></td>
+		</tr>
+		<tr>
+			<td><title-cb>--</title-cb></td>
+			<td width="100pt">   </td>
+			<td align="right"><dummy>000000</dummy></td>
+		</tr>
+	</table>
+</body>
+</html>
