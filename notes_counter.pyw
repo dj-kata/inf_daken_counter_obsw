@@ -322,7 +322,9 @@ def detect_top(window, sx, sy, sleep_time):
     print(f'スコア検出スレッド終了。')
     
 def gen_notes_xml(cur,today, plays, notes_ran, notes_battle, judge):
-    srate = (judge[0]*2+judge[1])/(judge[0]+judge[1]+judge[2]+judge[5])*50
+    srate = 0.0
+    if judge[0]+judge[1]+judge[2]+judge[5] > 0:
+        srate = (judge[0]*2+judge[1])/(judge[0]+judge[1]+judge[2]+judge[5])*50
     f = codecs.open('data.xml', 'w', 'utf-8')
     f.write(f'''<?xml version="1.0" encoding="utf-8"?>
 <Items>
@@ -337,7 +339,7 @@ def gen_notes_xml(cur,today, plays, notes_ran, notes_battle, judge):
     <bd>{judge[3]:,}</bd>
     <pr>{judge[4]:,}</pr>
     <cb>{judge[5]:,}</cb>
-    <score_rate>{srate:.2f}</score_rate>
+    <score_rate>{srate:.1f}</score_rate>
 </Items>''')
     f.close()
 
@@ -472,7 +474,9 @@ def gui(): # GUI設定
     judge = settings['judge']
     for i in range(6):
         window[f'judge{i}'].update(value=judge[i])
-    srate = (judge[0]*2+judge[1])/(judge[0]+judge[1]+judge[2]+judge[5])*50
+    srate = 0.0
+    if judge[0]+judge[1]+judge[2]+judge[5] > 0:
+        srate = (judge[0]*2+judge[1])/(judge[0]+judge[1]+judge[2]+judge[5])*50
     window['srate'].update(value=f"{srate:.2f} %")
     notes_ran = 0
     notes_battle  = 0
@@ -567,7 +571,9 @@ def gui(): # GUI設定
 
             for i in range(6):
                 window[f"judge{i}"].update(value=tmp_judge[i])
-            srate = (tmp_judge[0]*2+tmp_judge[1])/(tmp_judge[0]+tmp_judge[1]+tmp_judge[2]+tmp_judge[5])*50
+            srate = 0.0
+            if judge[0]+judge[1]+judge[2]+judge[5] > 0:
+                srate = (tmp_judge[0]*2+tmp_judge[1])/(tmp_judge[0]+tmp_judge[1]+tmp_judge[2]+tmp_judge[5])*50
             window['srate'].update(value=f"{srate:.2f} %")
             if cmd == 'end':
                 today_plays += 1
