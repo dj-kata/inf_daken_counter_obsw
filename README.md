@@ -192,7 +192,7 @@ color: #fff;
 # AMDのCPU(Ryzenなど)をお使いの方向け
 AMDのCPU(Ryzenなど)を搭載したPCではかなり重くなってしまうようです。  
 このような方は、Windows版Pythonをインストールし、  
-```python -m pip install pyautogui PySimpleGUI numpy keyboard```  
+```python -m pip install pyautogui PySimpleGUI numpy keyboard pillow requests beautifulsoup4```  
 した上で[ソースコード](https://github.com/dj-kata/inf_daken_counter/archive/refs/heads/main.zip)内のnotes_counter.pywをダブルクリックして実行してください。  
 
 # その他
