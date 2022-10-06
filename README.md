@@ -20,7 +20,7 @@ GPU: NVIDIA系(RTX3050)
 - 32bitOSでは動作しません。
 - スクリーンショットを封じてくる系のウイルス対策ソフト(カスペルスキー他多数)がいる環境では恐らく動きません
 - プレー設定(Start->E2)の「判定の数リアルタイム表示」を有効にしないと動きません
-- INFINITAS本体(C:\Program Files\INFINITAS\game\app\bm2dx.exe)の互換性設定で最適化を無効にしていると動きません。以下の状態にしておいてください。
+- INFINITAS本体(C:\Program Files\INFINITAS\game\app\bm2dx.exe)の互換性設定で最適化を無効にしていると動きません。以下の状態にしておいてください。  
 ![image](https://user-images.githubusercontent.com/61326119/194267084-7fe76c5f-d938-408c-8f67-29f0fdfb653d.png)
 
 # 本ツールのメリット
