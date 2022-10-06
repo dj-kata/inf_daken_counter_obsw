@@ -201,10 +201,6 @@ AMDのCPU(Ryzenなど)を搭載したPCではかなり重くなってしまう�
 
 スコア取得開始後はdata.xmlにデータが逐次書き込まれます。
 
-(わかる人向け)ソースコードから実行する場合は、Windows版Python3をインストールし、  
-```$ pip install pyautogui PySimpleGUI numpy keyboard```  
-のように必要なパッケージをインストールしてからnotes_counter.pywをダブルクリックしてください。
-
 スコア取得間隔はsettings.jsonのsleep_timeから変更可能です(デフォルト:1秒)。  
 密度の高い曲でクイックリトライした場合は取得が追いつかず、少し低めに出る場合があります。  
 厳密さを求める方はsleep_timeを小さめに設定してもいいかもしれません。
