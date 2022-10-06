@@ -114,6 +114,8 @@ text-shadow: 6px 6px 0 #000,
 ### 各判定の合計値の表示方法
 その日の各判定(PG,GR,GD,...)の合計を表示するためのjudge.htmlも同梱しています。  
 設定方法はautoload.htmlと同様です。CSSも同じものをコピペでOKです。
+![image](https://user-images.githubusercontent.com/61326119/194270140-28b3604c-3248-4fe0-a736-99a3a690b474.png)
+
 
 ### プレーオプションの表示方法
 プレーオプション(乱やFLIP等)をOBSに表示するためのoption.htmlも同梱しています。  
