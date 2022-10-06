@@ -130,12 +130,10 @@ gauge.htmlには2行分のデータが含まれています。
 配信レイアウトに応じて必要な行のみを切り取って使ってください。  
 (Altを押しながらドラッグでトリミングできます)
 ```
-exhard { 
-color: #ffff00;
-
+body { 
 background-color: rgba(0, 0, 50, 0);
 overflow: hidden;
-font-family:"Mochiy Pop P One Regular";
+font-family:"Meiryo";
 font-size: 64px;
     text-shadow:
             3px 3px 3px #000, -3px -3px 3px #000,
@@ -144,133 +142,16 @@ font-size: 64px;
             0px 3px 3px #000,  0px -3px 3px #000;
     margin: 0;
 }
-hard { 
-color: #ff2222;
-
-background-color: rgba(0, 0, 50, 0);
-overflow: hidden;
-font-family:"Mochiy Pop P One Regular"; 
-font-size: 64px;
-    text-shadow:
-            3px 3px 3px #000, -3px -3px 3px #000,
-           -3px 3px 3px #000,  3px -3px 3px #000,
-            3px 0px 3px #000, -3px -0px 3px #000,
-            0px 3px 3px #000,  0px -3px 3px #000;
-    margin: 0;
-}
-normal { 
-color: #22aaff;
-
-background-color: rgba(0, 0, 50, 0);
-overflow: hidden;
-font-family:"Mochiy Pop P One Regular"; 
-font-size: 64px;
-    text-shadow:
-            3px 3px 3px #000, -3px -3px 3px #000,
-           -3px 3px 3px #000,  3px -3px 3px #000,
-            3px 0px 3px #000, -3px -0px 3px #000,
-            0px 3px 3px #000,  0px -3px 3px #000;
-    margin: 0;
-}
-easy { 
-color: #00ff22;
-
-background-color: rgba(0, 0, 50, 0);
-overflow: hidden;
-font-family:"Mochiy Pop P One Regular"; 
-font-size: 64px;
-    text-shadow:
-            3px 3px 3px #000, -3px -3px 3px #000,
-           -3px 3px 3px #000,  3px -3px 3px #000,
-            3px 0px 3px #000, -3px -0px 3px #000,
-            0px 3px 3px #000,  0px -3px 3px #000;
-    margin: 0;
-}
-aeasy { 
-color: #cc00ff;
-
-background-color: rgba(0, 0, 50, 0);
-overflow: hidden;
-font-family:"Mochiy Pop P One Regular"; 
-font-size: 64px;
-    text-shadow:
-            3px 3px 3px #000, -3px -3px 3px #000,
-           -3px 3px 3px #000,  3px -3px 3px #000,
-            3px 0px 3px #000, -3px -0px 3px #000,
-            0px 3px 3px #000,  0px -3px 3px #000;
-    margin: 0;
-}
-
-exhard_dyn { 
-color: #ffff00;
-
-background-color: rgba(0, 0, 50, 0);
-overflow: hidden;
-font-family:"Mochiy Pop P One Regular";
-font-size: 64px;
-    text-shadow:
-            3px 3px 3px #000, -3px -3px 3px #000,
-           -3px 3px 3px #000,  3px -3px 3px #000,
-            3px 0px 3px #000, -3px -0px 3px #000,
-            0px 3px 3px #000,  0px -3px 3px #000;
-    margin: 0;
-}
-hard_dyn { 
-color: #ff2222;
-
-background-color: rgba(0, 0, 50, 0);
-overflow: hidden;
-font-family:"Mochiy Pop P One Regular"; 
-font-size: 64px;
-    text-shadow:
-            3px 3px 3px #000, -3px -3px 3px #000,
-           -3px 3px 3px #000,  3px -3px 3px #000,
-            3px 0px 3px #000, -3px -0px 3px #000,
-            0px 3px 3px #000,  0px -3px 3px #000;
-    margin: 0;
-}
-normal_dyn { 
-color: #22aaff;
-
-background-color: rgba(0, 0, 50, 0);
-overflow: hidden;
-font-family:"Mochiy Pop P One Regular"; 
-font-size: 64px;
-    text-shadow:
-            3px 3px 3px #000, -3px -3px 3px #000,
-           -3px 3px 3px #000,  3px -3px 3px #000,
-            3px 0px 3px #000, -3px -0px 3px #000,
-            0px 3px 3px #000,  0px -3px 3px #000;
-    margin: 0;
-}
-easy_dyn { 
-color: #00ff22;
-
-background-color: rgba(0, 0, 50, 0);
-overflow: hidden;
-font-family:"Mochiy Pop P One Regular"; 
-font-size: 64px;
-    text-shadow:
-            3px 3px 3px #000, -3px -3px 3px #000,
-           -3px 3px 3px #000,  3px -3px 3px #000,
-            3px 0px 3px #000, -3px -0px 3px #000,
-            0px 3px 3px #000,  0px -3px 3px #000;
-    margin: 0;
-}
-aeasy_dyn { 
-color: #cc00ff;
-
-background-color: rgba(0, 0, 50, 0);
-overflow: hidden;
-font-family:"Mochiy Pop P One Regular"; 
-font-size: 64px;
-    text-shadow:
-            3px 3px 3px #000, -3px -3px 3px #000,
-           -3px 3px 3px #000,  3px -3px 3px #000,
-            3px 0px 3px #000, -3px -0px 3px #000,
-            0px 3px 3px #000,  0px -3px 3px #000;
-    margin: 0;
-}
+exhard {color: #ffff00;}
+hard {color: #ff2222;}
+normal {color:#22aaff;}
+easy {color: #00ff22;}
+aeasy {color: #cc00ff;}
+exhard_dyn {color: #ffff00;}
+hard_dyn {color: #ff2222;}
+normal_dyn {color:#22aaff;}
+easy_dyn {color: #00ff22;}
+aeasy_dyn {color: #cc00ff;}
 ```
 
 ### 配信タイトル内のシリーズ文字列の表示方法
