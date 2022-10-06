@@ -216,7 +216,7 @@ def get_judge_img(playside,sx,sy):
     elif playside == '1p-r':
         sc = pgui.screenshot(region=(sx+694,sy+647,38,57))
     elif playside == '2p-l':
-        sc = pgui.screenshot(region=(sx+571,sy+647,38,57))
+        sc = pgui.screenshot(region=(sx+570,sy+647,38,57))
     elif playside == '2p-r':
         sc = pgui.screenshot(region=(sx+850,sy+647,38,57))
     elif playside == 'dp-l':
