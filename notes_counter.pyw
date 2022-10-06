@@ -16,6 +16,7 @@ width  = 1280
 height = 720
 digit_vals = [43860,16065,44880,43095,32895,43605,46920,28050,52020,49215]
 mdigit_vals = [9690,3570,9945,8415,7650,9945,10965,6885,10710,11475]
+mdigit_vals = [10965,3570,9945,8925,8160,9945,12240,7140,11730,12495] # 10/5に急に変わった？
 savefile   = 'settings.json'
 
 if len(sys.argv) > 1:
@@ -256,6 +257,10 @@ def detect_judge(playside, sx, sy):
                 else:
                     tmp = str(mdigit_vals.index(val))
             line += tmp 
+            #if (playside == '2p-r') and (val>0):
+            #    print(f"val={val}, tmp(det)={tmp}")
+        #if (playside == '2p-r') and (line!=''):
+        #    print(f"line={line}")
         ret.append(line)
     return ret
 
