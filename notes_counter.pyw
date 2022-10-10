@@ -270,6 +270,8 @@ def detect_judge(playside, sx, sy):
 def detect_top(window, sx, sy, sleep_time):
     global stop_thread
     pre_det = ''
+    pre_judge = ['0','0','0','0','0','0']
+    pre_score = 0
     stop_local = False
     playside = False
     playopt = '' # 曲開始タイミングとオプション検出タイミングは一致しないため、最後の値を覚えておく
@@ -408,9 +410,10 @@ def gui_ytinfo(default_query='#[number]'):
     sg.theme('DarkAmber')
     FONT = ('Meiryo',12)
     ico=ico_path('icon.ico')
+    right_click_menu = ['&Right', ['貼り付け']]
     layout = [
         [sg.Text("YoutubeLive URL(配信、スタジオ等)", font=FONT)],
-        [sg.Input("", font=FONT, key='youtube_url', size=(50,1))],
+        [sg.Input("", font=FONT, key='youtube_url', size=(50,1),right_click_menu=right_click_menu)],
         [sg.Text("シリーズ文字列の検索クエリ(例: #[number] [number]日目等)", font=FONT)],
         [sg.Input(default_query, font=FONT, key='series_query', size=(20,1))],
         [sg.Button('go', size=(10,1))]
@@ -438,6 +441,14 @@ def gui_ytinfo(default_query='#[number]'):
                 write_series_xml(series)
                 window.close()
                 break
+        elif ev == '貼り付け':
+            try:
+                clipboard_text = window["youtube_url"].Widget.clipboard_get()
+                insert_pos = window["youtube_url"].Widget.index("insert")
+                window["youtube_url"].Widget.insert(insert_pos, clipboard_text)
+            except:
+                pass
+        
     return default_query
 
 def gui(): # GUI設定
@@ -460,7 +471,7 @@ def gui(): # GUI設定
         [sg.Text("ノーツ数 ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("0", key='cur',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("0", key='today',font=FONT)],
         [sg.Text('PG:',font=FONTs),sg.Text('0',key='judge0',font=FONTs),sg.Text('GR:',font=FONTs),sg.Text('0',key='judge1',font=FONTs),sg.Text('GD:',font=FONTs),sg.Text('0',key='judge2',font=FONTs),sg.Text('BD:',font=FONTs),sg.Text('0',key='judge3',font=FONTs),sg.Text('PR:',font=FONTs),sg.Text('0',key='judge4',font=FONTs),sg.Text('CB:',font=FONTs),sg.Text('0',key='judge5',font=FONTs)],
         [sg.Text("option:", font=FONT),sg.Text(" ", key='playopt',font=FONT, ),sg.Text("ゲージ:", font=FONT),sg.Text(" ", key='gauge',font=FONT),sg.Text('平均スコアレート:',font=FONT),sg.Text('0 %',key='srate',font=FONT)],
-        [sg.Output(size=(63,8), font=('Meiryo',9))] # ここを消すと標準出力になる
+        [sg.Output(size=(63,8), key='output', font=('Meiryo',9))] # ここを消すと標準出力になる
         ]
     ico=ico_path('icon.ico')
     window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(settings['lx'], settings['ly']))
@@ -555,7 +566,9 @@ def gui(): # GUI設定
             th_scshot.start()
         elif ev.startswith('tweet'):
             cur_notes = today_notes
-            msg = f"今日は{today_plays:,}曲プレイし、{cur_notes:,}ノーツ叩きました。\n#INFINITAS_daken_counter"
+            msg = f"今日は{today_plays:,}曲プレイし、{cur_notes:,}ノーツ叩きました。\n"
+            msg += f'(PG:{judge[0]}, GR{judge[1]}:, GD{judge[2]}:, BD{judge[3]}:, PR{judge[4]}:, CB:{judge[5]})\n'
+            msg += '#INFINITAS_daken_counter'
             encoded_msg = urllib.parse.quote(msg)
             webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_msg}")
         elif ev == '-GAUGE-':
@@ -618,6 +631,16 @@ def gui(): # GUI設定
             q = gui_ytinfo(settings['series_query'])
             settings['series_query'] = q
             #get_ytinfo(url)
+        elif ev in ("コピー"):
+            # try - except で弾かれたとき用に、バックアップの値を用意しておく
+            backup = window["output"].Widget.clipboard_get()
+            window["output"].Widget.clipboard_clear()
+            try:
+                selected_text = window["output"].Widget.selection_get()
+                window["output"].Widget.clipboard_append(selected_text)
+            except:
+                window["output"].Widget.clipboard_append(backup)
+                pass
 
 if __name__ == '__main__':
     gui()
