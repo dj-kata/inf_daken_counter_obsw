@@ -20,7 +20,8 @@ GPU: NVIDIA系(RTX3050)
 - 32bitOSでは動作しません。
 - スクリーンショットを封じてくる系のウイルス対策ソフト(カスペルスキー他多数)がいる環境では恐らく動きません
 - プレー設定(Start->E2)の「判定の数リアルタイム表示」を有効にしないと動きません
-- INFINITAS本体(C:\Program Files\INFINITAS\game\app\bm2dx.exe)の互換性設定で最適化を無効にしていると動きません。
+- INFINITAS本体(C:\Program Files\INFINITAS\game\app\bm2dx.exe)の互換性設定で最適化を無効にしていると動きません。以下の状態にしておいてください。  
+![image](https://user-images.githubusercontent.com/61326119/194267084-7fe76c5f-d938-408c-8f67-29f0fdfb653d.png)
 
 # 本ツールのメリット
 ## SP,DPの両方に対応
@@ -68,7 +69,7 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 resetをクリックするとカウンタ(プレー回数・ノーツ数・各判定値)をリセットできます。  
 また、```start時にreset```にチェックしておくと、start後にカウンタを自動でリセットします。  
 (resetを押しても即座に設定ファイルから消えるようにはしていません。間違えて押してしまった場合は、すぐにnotes_counter.exeを終了すればカウント値を元に戻せます。)  
-![image](https://user-images.githubusercontent.com/61326119/182029142-f7eb1ad2-ba5e-4b0d-9ea1-ea109ceddbca.png)
+![image](https://user-images.githubusercontent.com/61326119/194268205-6c7ebaa8-cc9f-4b4f-8bef-c47ffda9b7bd.png)
 
 tweetをクリックすると、その時点でのプレー曲数・ノーツ数をTwitterに投稿できます。  
 (ブラウザが開きます)
@@ -113,6 +114,8 @@ text-shadow: 6px 6px 0 #000,
 ### 各判定の合計値の表示方法
 その日の各判定(PG,GR,GD,...)の合計を表示するためのjudge.htmlも同梱しています。  
 設定方法はautoload.htmlと同様です。CSSも同じものをコピペでOKです。
+![image](https://user-images.githubusercontent.com/61326119/194270140-28b3604c-3248-4fe0-a736-99a3a690b474.png)
+
 
 ### プレーオプションの表示方法
 プレーオプション(乱やFLIP等)をOBSに表示するためのoption.htmlも同梱しています。  
@@ -175,7 +178,7 @@ aeasy_dyn {color: #cc00ff;}
 5. ブラウザにて配信情報をツイートするための画面が表示されます。また、アプリ上にOBSで使うコメント欄用のURLが表示されます。
 
 ![image](https://user-images.githubusercontent.com/61326119/189258000-e81acdcc-d280-4017-bbd9-2be2bdc99e6f.png)
-![image](https://user-images.githubusercontent.com/61326119/189259266-f85c64b1-ae7d-426e-9868-032c2cab3df6.png)
+![image](https://user-images.githubusercontent.com/61326119/194268626-4beed23e-ebe9-4fcb-bc48-b3e07b690894.png)
 
 あとは、OBSのブラウザソースでseries.htmlを取り込んでおいてください。  
 CSSはノーツ数などと同様に設定してください。  
