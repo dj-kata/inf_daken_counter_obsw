@@ -84,7 +84,7 @@ def release_key(cmd):
 ### プレイサイド検出を行う
 def detect_playside(sx,sy):
     ret = False
-    target = ['1p-l', '1p-r', '2p-l', '2p-r', 'dp-l', 'dp-r'] # BGA表示エリアの位置
+    target = ['1p-l', '1p-r', '2p-l', '2p-r', '1p_nograph', '2p_nograph', 'dp-l', 'dp-r'] # BGA表示エリアの位置
     for t in target:
         det = detect_judge(t, sx, sy)
         if det[0] == '0':
@@ -219,6 +219,10 @@ def get_judge_img(playside,sx,sy):
         sc = pgui.screenshot(region=(sx+570,sy+647,38,57))
     elif playside == '2p-r':
         sc = pgui.screenshot(region=(sx+850,sy+647,38,57))
+    elif playside == '1p_nograph':
+        sc = pgui.screenshot(region=(sx+383,sy+649,38,57))
+    elif playside == '2p_nograph':
+        sc = pgui.screenshot(region=(sx+881,sy+649,38,57))
     elif playside == 'dp-l':
         sc = pgui.screenshot(region=(sx+176,sy+600,38,57))
     elif playside == 'dp-r':
@@ -508,6 +512,7 @@ def gui(): # GUI設定
             today_plays = 0
             notes_ran = 0
             notes_battle  = 0
+            judge = [0,0,0,0,0,0]
         running = True
         sx = int(settings['sx'])
         sy = int(settings['sy'])
