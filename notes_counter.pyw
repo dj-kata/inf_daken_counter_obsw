@@ -571,8 +571,12 @@ def gui(): # GUI設定
             th_scshot.start()
         elif ev.startswith('tweet'):
             cur_notes = today_notes
+            srate = 0.0
+            if judge[0]+judge[1]+judge[2]+judge[5] > 0:
+                srate = (judge[0]*2+judge[1])/(judge[0]+judge[1]+judge[2]+judge[5])*50
             msg = f"今日は{today_plays:,}曲プレイし、{cur_notes:,}ノーツ叩きました。\n"
-            msg += f'(PG:{judge[0]}, GR{judge[1]}:, GD{judge[2]}:, BD{judge[3]}:, PR{judge[4]}:, CB:{judge[5]})\n'
+            msg += f'(PG:{judge[0]:,}, GR:{judge[1]:,}, GD:{judge[2]:,}, BD:{judge[3]:,}, PR:{judge[4]:,}, CB:{judge[5]:,})\n'
+            msg += f'(スコアレート: {srate:.1f}%)\n'
             msg += '#INFINITAS_daken_counter'
             encoded_msg = urllib.parse.quote(msg)
             webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_msg}")
@@ -595,7 +599,7 @@ def gui(): # GUI設定
             for i in range(6):
                 window[f"judge{i}"].update(value=tmp_judge[i])
             srate = 0.0
-            if judge[0]+judge[1]+judge[2]+judge[5] > 0:
+            if tmp_judge[0]+tmp_judge[1]+tmp_judge[2]+tmp_judge[5] > 0:
                 srate = (tmp_judge[0]*2+tmp_judge[1])/(tmp_judge[0]+tmp_judge[1]+tmp_judge[2]+tmp_judge[5])*50
             window['srate'].update(value=f"{srate:.2f} %")
             if cmd == 'end':
