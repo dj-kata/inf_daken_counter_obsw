@@ -9,6 +9,7 @@ import math
 import codecs
 import json
 import webbrowser, urllib, requests
+import copy
 from bs4 import BeautifulSoup
 
 ### 固定値
@@ -594,7 +595,7 @@ def gui(): # GUI設定
                 tmp_judge = [judge[i]+int(dat[2+i]) for i in range(6)] # 前の曲までの値judge[i]に現在の曲の値dat[2+i]を加算したもの
             except:
                 print(f'error!!! datの値が不正?, dat={dat}')
-                tmp_judge = judge[i]
+                tmp_judge = copy.copy(judge)
 
             for i in range(6):
                 window[f"judge{i}"].update(value=tmp_judge[i])
