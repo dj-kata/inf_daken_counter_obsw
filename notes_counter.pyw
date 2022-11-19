@@ -401,8 +401,8 @@ def get_ytinfo(url):
         title = re.sub(' - YouTube\Z', '', soup.find('title').text)
         #print(f"liveid = {liveid}")
         print(f"配信タイトル:\n{title}\n")
-        print(f"コメント欄用:\nhttps://www.youtube.com/live_chat?is_popout=1&v={liveid}\n")
         print(f"ツイート用:\n{title}\n{regular_url}\n")
+        print(f"コメント欄用:\nhttps://www.youtube.com/live_chat?is_popout=1&v={liveid}\n")
 
         encoded_title = urllib.parse.quote(f"{title}\n{regular_url}\n")
         webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_title}")
@@ -608,7 +608,12 @@ def gui(): # GUI設定
                 today_notes += pre_cur
                 window['today'].update(value=f"{today_notes}")
                 for i in range(6):
-                    judge[i] += int(dat[2+i])
+                    try:
+                        judge[i] += int(dat[2+i])
+                    except ValueError:
+                        print(f'{i}番目の値の取得に失敗。エラー部分を空白に置き換えて加算します。')
+                        judge[i] += int(dat[2+i].replace('?', ''))
+
             window['cur'].update(value=f"{cur}")
             window['plays'].update(value=f"{today_plays}")
             ### スコアなどのセーブデータはここで更新(安全なresetとさせるため)
