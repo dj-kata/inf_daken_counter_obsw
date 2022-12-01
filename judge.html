@@ -54,18 +54,18 @@ function loadXml()
 		});
 	
 	getxml.done(function(xml){
-		pg = $(xml).find('pg').text();
-		gr = $(xml).find('gr').text();
-		gd = $(xml).find('gd').text();
-		bd = $(xml).find('bd').text();
-		pr = $(xml).find('pr').text();
-		cb = $(xml).find('cb').text();
-		$('pg').text(pg);
-		$('gr').text(gr);
-		$('gd').text(gd);
-		$('bd').text(bd);
-		$('pr').text(pr);
-		$('cb').text(cb);
+		pg = Number($(xml).find('pg').text());
+		gr = Number($(xml).find('gr').text());
+		gd = Number($(xml).find('gd').text());
+		bd = Number($(xml).find('bd').text());
+		pr = Number($(xml).find('pr').text());
+		cb = Number($(xml).find('cb').text());
+		$('pg').text(pg.toLocaleString());
+		$('gr').text(gr.toLocaleString());
+		$('gd').text(gd.toLocaleString());
+		$('bd').text(bd.toLocaleString());
+		$('pr').text(pr.toLocaleString());
+		$('cb').text(cb.toLocaleString());
 	});
 	
 	getxml.fail(function(error){

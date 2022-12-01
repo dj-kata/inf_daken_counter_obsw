@@ -38,17 +38,17 @@ function loadXml()
 		});
 	
 	getxml.done(function(xml){
-		playcount = $(xml).find('playcount').text();
-		cur_notes = $(xml).find('cur_notes').text();
-		today_notes = $(xml).find('today_notes').text();
-		notes_ran = $(xml).find('notes_ran').text();
-		notes_battle = $(xml).find('notes_battle').text();
-		score_rate = $(xml).find('score_rate').text();
-		$('#playcount span').text(playcount);
-		$('#cur_notes span').text(cur_notes);
-		$('#today_notes span').text(today_notes);
-		$('#notes_ran span').text(notes_ran);
-		$('#notes_battle span').text(notes_battle);
+		playcount    = Number($(xml).find('playcount').text());
+		cur_notes    = Number($(xml).find('cur_notes').text());
+		today_notes  = Number($(xml).find('today_notes').text());
+		notes_ran    = Number($(xml).find('notes_ran').text());
+		notes_battle = Number($(xml).find('notes_battle').text());
+		score_rate   = $(xml).find('score_rate').text();
+		$('#playcount span').text(playcount.toLocaleString());
+		$('#cur_notes span').text(cur_notes.toLocaleString());
+		$('#today_notes span').text(today_notes.toLocaleString());
+		$('#notes_ran span').text(notes_ran.toLocaleString());
+		$('#notes_battle span').text(notes_battle.toLocaleString());
 		$('#score_rate span').text(score_rate);
 	});
 	

@@ -340,17 +340,17 @@ def gen_notes_xml(cur,today, plays, notes_ran, notes_battle, judge):
     f = codecs.open('data.xml', 'w', 'utf-8')
     f.write(f'''<?xml version="1.0" encoding="utf-8"?>
 <Items>
-    <playcount>{plays:,}</playcount>
-    <cur_notes>{cur:,}</cur_notes>
-    <today_notes>{today:,}</today_notes>
-    <notes_ran>{notes_ran:,}</notes_ran>
-    <notes_battle>{notes_battle:,}</notes_battle>
-    <pg>{judge[0]:,}</pg>
-    <gr>{judge[1]:,}</gr>
-    <gd>{judge[2]:,}</gd>
-    <bd>{judge[3]:,}</bd>
-    <pr>{judge[4]:,}</pr>
-    <cb>{judge[5]:,}</cb>
+    <playcount>{plays}</playcount>
+    <cur_notes>{cur}</cur_notes>
+    <today_notes>{today}</today_notes>
+    <notes_ran>{notes_ran}</notes_ran>
+    <notes_battle>{notes_battle}</notes_battle>
+    <pg>{judge[0]}</pg>
+    <gr>{judge[1]}</gr>
+    <gd>{judge[2]}</gd>
+    <bd>{judge[3]}</bd>
+    <pr>{judge[4]}</pr>
+    <cb>{judge[5]}</cb>
     <score_rate>{srate:.1f}</score_rate>
 </Items>''')
     f.close()
@@ -549,6 +549,7 @@ def gui(): # GUI設定
                 sx = int(val['sx'])
                 sy = int(val['sy'])
                 th = threading.Thread(target=detect_top, args=(window, sx, sy, SLEEP_TIME), daemon=True)
+                gen_notes_xml(0,today_notes,today_plays, notes_ran, notes_battle, judge)
                 th.start()
                 window['start'].update("stop")
             else:
