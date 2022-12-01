@@ -518,6 +518,7 @@ def gui(): # GUI設定
         sx = int(settings['sx'])
         sy = int(settings['sy'])
         th = threading.Thread(target=detect_top, args=(window, sx, sy, SLEEP_TIME), daemon=True)
+        gen_notes_xml(0,today_notes,today_plays, notes_ran, notes_battle, judge)
         th.start()
         window['start'].update("stop")
 
