@@ -65,13 +65,12 @@
           var data = google.visualization.arrayToDataTable([
             ['pr', 'ran', 'gd', 'gr', 'pg', { role: 'annotation' } ],
             ['today', 0, gd, gr, pg, pr+bd+gd+gr+pg],
-            ['ran', ran, 0, 0, 0, ran],
           ]);
           var options = {
                   width: 600,
                   height: 200,
                   legend: { position: 'none'},
-                  bar: { groupWidth: '100%' },
+                  bar: { groupWidth: '80%' },
                   isStacked: true,
                   backgroundColor: "#000000",
                   series: {
