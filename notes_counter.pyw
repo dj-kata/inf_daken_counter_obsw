@@ -613,8 +613,8 @@ def gui(): # GUI設定
                     try:
                         judge[i] += int(dat[2+i])
                     except ValueError:
-                        print(f'{i}番目の値の取得に失敗。エラー部分を空白に置き換えて加算します。')
-                        judge[i] += int(dat[2+i].replace('?', ''))
+                        print(f'{i}番目の値の取得に失敗。skipします。')
+                        judge[i] = tmp_judge[i]
 
             window['cur'].update(value=f"{cur}")
             window['plays'].update(value=f"{today_plays}")
@@ -630,7 +630,7 @@ def gui(): # GUI設定
             option = val[ev][len(dat[0])+1:]
             if 'BATTLE' in option:
                 notes_battle += cur
-            elif 'RAN / RAN' in option: # 両乱だけ数えるか片乱だけ数えるか未定
+            elif ('RAN / RAN' in option) or ('S-RAN / S-RAN' in option) or ('H-RAN / H-RAN' in option): # 両乱だけ数えるか片乱だけ数えるか未定
                 notes_ran += cur
         elif ev == '-SCRSHOT_ERROR-':
             stop_thread = True
