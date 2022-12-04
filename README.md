@@ -94,6 +94,8 @@ test.pngを見て正しいモニタから取得できていることを確認し
 ```
 body { background-color: rgba(0, 0, 0, 0.8); margin: 0px auto; overflow: hidden; }
 ```
+![image](https://user-images.githubusercontent.com/61326119/205484852-fb082d10-5c7a-41e0-be60-16015a76a581.png)
+
 
 ### ノーツ数の表示方法(old)
 ノーツ数グラフを使う場合は不要です。(多分)
