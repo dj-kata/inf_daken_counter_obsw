@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8">
+  <title>Google Charts</title>
+  <style>
+    body {
+      background-color: rbga(0, 0, 50, 0.5);
+      margin: 5px;
+      padding: 10px;
+      line-height: 150%;
+      overflow: hidden;
+      font-family: "Meiryo";
+      color: #fff;
+      font-size: 32px;
+      text-shadow:
+        1px 1px 1px #000, -1px -1px 1px #000,
+        -1px 1px 1px #000, 1px -1px 1px #000,
+        1px 1px 1px #000, -1px -1px 1px #000,
+        1px 1px 1px #000, 1px -1px 1px #000;
+      margin: 0;
+    }
+  </style>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+  <script type="text/javascript">
+    var data;
+    var chart;
+    var options;
+    google.charts.load('current', { 'packages': ['corechart', 'bar'], 'language': 'ja' });
+    google.charts.setOnLoadCallback(drawChart);
+    function drawChart() {
+      data = google.visualization.arrayToDataTable([
+        ['pr', 'ran', 'gd', 'gr', 'pg', { role: 'annotation' }],
+        ['', 0, 0, 0, 0, 0],
+        //['両乱', 0, 0, 0, 0, 0],
+        //['僧', 0, 0, 0, 0, 0],
+      ]);
+      options = {
+        //width: 600,
+        chartArea:{left:100,right:100,top:0,width:500,height:'75%'},
+        height: 200,
+        legend: { position: 'none' },
+        bar: { groupWidth: '40%' },
+        isStacked: true,
+        backgroundColor: { color: "#000000", fill: 'transparent' },
+        series: {
+          0: { color: '#DD4445' },
+          1: { color: '#77FF00' },
+          2: { color: '#FFBB00' },
+          3: { color: '#00AAFF' }
+        },
+        annotations: {
+          textStyle: {
+            color: 'white',
+            fontSize: 32,
+          },
+          alwaysOutside: true
+        },
+        hAxis: {
+          textStyle: { fontSize: 30, color: '#FFFFFF'},
+          format: '#,###', minValue: 0
+          ,maxValue: 100000
+          ,gridlines: { count: 4 }
+          ,ticks: [100000]
+        },
+        vAxis: {
+          textStyle: { fontSize: 30, color: '#FFFFFF' , fontName:'Meiryo'},
+        },
+      };
+      // Instantiate and draw our chart, passing in some options.
+      chart = new google.visualization.BarChart(document.getElementById('chart_div'));
+      chart.draw(data, options);
+
+    }
+    function update() {
+      var pg = 0;
+      var gr = 0;
+      var gd = 0;
+      var bd = 0;
+      var pr = 0;
+      var cb = 0;
+      var ran = 0;
+
+      var getxml = $.ajax({
+        url: "data.xml",
+        type: 'GET',
+        dataType: 'xml',
+        cache: false
+      });
+      getxml.done(function (xml) {
+
+        pg = Number($(xml).find('pg').text());
+        gr = Number($(xml).find('gr').text());
+        gd = Number($(xml).find('gd').text());
+        bd = Number($(xml).find('bd').text());
+        pr = Number($(xml).find('pr').text());
+        cb = Number($(xml).find('cb').text());
+        ran = Number($(xml).find('notes_ran').text());
+        dbx = Number($(xml).find('notes_battle').text());
+        xmax = Math.max(50000,(Math.floor((pg + gr + gd) / 25000) + 1) * 25000);
+        playcount = Number($(xml).find('playcount').text());
+        cur_notes = Number($(xml).find('cur_notes').text());
+        today_notes = Number($(xml).find('today_notes').text());
+        notes_ran = Number($(xml).find('notes_ran').text());
+        notes_battle = Number($(xml).find('notes_battle').text());
+        score_rate = $(xml).find('score_rate').text();
+        $('playcount').text(playcount.toLocaleString());
+        $('cur_notes').text(cur_notes.toLocaleString());
+        $('score_rate').text(score_rate);
+        $('today_notes').text(today_notes);
+
+        data.setValue(0, 2, gd);
+        data.setValue(0, 3, gr);
+        data.setValue(0, 4, pg);
+        data.setValue(0, 5, pg+gd+gr);
+        //data.setValue(1, 1, ran);
+        //data.setValue(1, 5, ran);
+        //data.setValue(1, 1, dbx);
+        //data.setValue(1, 5, dbx);
+        options.hAxis.maxValue = xmax;
+        options.hAxis.ticks = [xmax];
+        chart.draw(data, options)
+      });
+      getxml.fail(function (error) {
+        //alert("読み込み失敗");
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+      var roopTimer = setInterval(update, 300);
+    });
+  </script>
+</head>
+
+<body>
+  <div id="chart_div"></div>
+  &emsp;&emsp;&nbsp;plays:<playcount></playcount>,&emsp;rate:<score_rate></score_rate>%
+</body>
+
+</html>
