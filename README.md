@@ -51,6 +51,7 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 |autoload.html|OBSで読み込むノーツ数表示用HTMLファイル|
 |option.html|OBSで読み込むオプション表示用HTMLファイル|
 |gauge.html|OBSで読み込むグルーブゲージ情報表示用HTMLファイル|
+|graph.html|OBSで読み込むノーツ数リアルタイム表示用HTMLファイル|
 |judge.html|OBSで読み込む判定内訳表示用HTMLファイル|
 |data.xml|自動生成されるスコア情報|
 |option.xml|自動生成される設定中のオプション情報|
@@ -83,31 +84,21 @@ test.pngを見て正しいモニタから取得できていることを確認し
 作者の環境(2560×1440のモニタ3枚が横に並んでいて、真ん中のモニタでプレイしている)では、```sx:2560, sy:0```を設定します。
 
 ## OBSへの設定方法
-### ノーツ数の表示方法
+### ノーツ数グラフの表示方法(New)
 1. ソースの追加 -> ブラウザを選択する。好きな名前を付けてOK。  
 ![image](https://user-images.githubusercontent.com/61326119/182008724-44d2711d-fb3e-4e32-b1f1-9fa95b8ed751.png)
 2. 1.で作成したブラウザソースをダブルクリックする。
-3. ローカルファイルのチェックを入れ、同梱のautoload.htmlを選択する。
-4. 幅1200、高さ600ぐらいに設定する。(Alt+ドラッグでトリミングできるので小さすぎなければ適当で良いです)
-5. 必要に応じて以下のようなカスタムCSSを設定する。
-
+3. ローカルファイルのチェックを入れ、同梱のgraph.htmlを選択する。
+4. 画面の大きさは幅800、高さ400ぐらいに設定する。(Alt+ドラッグでトリミングできるので小さすぎなければ適当で良いです)
+5. 背景に色を付ける場合は以下のようなカスタムCSSを設定する。(graph.htmlのみOBS側での設定が必要。他はHTML内の変更でもOK。)
 ```
-body { 
-
-background-color: rgba(0, 0, 50, 0.8);
-margin: 10px;
-padding: 20px;
-overflow: hidden;
-font-family:"Meiryo";
-color:#2196F3;   
-font-size: 64px;
-color: #fff;
-text-shadow: 6px 6px 0 #000,
-             -2px 2px 0 #000,
-             2px -2px 0 #000,
-             -2px -2px 0 #000;
-}
+body { background-color: rgba(0, 0, 0, 0.8); margin: 0px auto; overflow: hidden; }
 ```
+
+### ノーツ数の表示方法(old)
+ノーツ数グラフを使う場合は不要です。(多分)
+
+autoload.htmlから設定できます。
 
 ![image](https://user-images.githubusercontent.com/61326119/182008763-7ff255a4-890b-4fe8-9b00-4cf9b1bed0aa.png)
 
@@ -133,35 +124,10 @@ text-shadow: 6px 6px 0 #000,
 グルーブゲージ種別(EX-HARDとかEASYとか)を表示するためのgauge.htmlも同梱しています。  
 取得タイミングはプレーオプションと同時(約0.5s必要)なので、切り替えが速すぎると取得漏れする場合があります。  
 
-OBSでは幅800高さ600ぐらいに設定し、以下のようなCSSを設定するとよいです。  
 gauge.htmlには2行分のデータが含まれています。  
 1行目は常時表示、2行目は曲中のみ表示されるデータとなります。  
 配信レイアウトに応じて必要な行のみを切り取って使ってください。  
 (Altを押しながらドラッグでトリミングできます)
-```
-body { 
-background-color: rgba(0, 0, 50, 0);
-overflow: hidden;
-font-family:"Meiryo";
-font-size: 64px;
-    text-shadow:
-            3px 3px 3px #000, -3px -3px 3px #000,
-           -3px 3px 3px #000,  3px -3px 3px #000,
-            3px 0px 3px #000, -3px -0px 3px #000,
-            0px 3px 3px #000,  0px -3px 3px #000;
-    margin: 0;
-}
-exhard {color: #ffff00;}
-hard {color: #ff2222;}
-normal {color:#22aaff;}
-easy {color: #00ff22;}
-aeasy {color: #cc00ff;}
-exhard_dyn {color: #ffff00;}
-hard_dyn {color: #ff2222;}
-normal_dyn {color:#22aaff;}
-easy_dyn {color: #00ff22;}
-aeasy_dyn {color: #cc00ff;}
-```
 
 ### 配信タイトル内のシリーズ文字列の表示方法
 第XXX回のような文字列を配信タイトルから抽出して表示するseries.htmlも同梱しています。  
@@ -184,19 +150,6 @@ aeasy_dyn {color: #cc00ff;}
 CSSはノーツ数などと同様に設定してください。  
 私は以下のように、縁取りなし・背景色なしで使っています。
 
-```
-body { 
-
-background-color: rgba(0, 0, 50, 0);
-margin: 10px;
-padding: 20px;
-overflow: hidden;
-font-family:"Meiryo";
-color:#2196F3;   
-font-size: 64px;
-color: #fff;
-}
-```
 
 # AMDのCPU(Ryzenなど)をお使いの方向け
 AMDのCPU(Ryzenなど)を搭載したPCではかなり重くなってしまうようです。  
