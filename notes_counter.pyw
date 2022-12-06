@@ -383,12 +383,13 @@ def parse_url(url):
         ret = url.split('/')[-2]
     return ret
 
-def write_series_xml(series):
+def write_series_xml(series, basetitle):
     print(f"series.xmlを更新しました => {series}\n")
     f=codecs.open('series.xml', 'w', 'utf-8')
     f.write(f'''<?xml version="1.0" encoding="utf-8"?>
 <Items>
     <series>{series}</series>
+    <basetitle>{basetitle}</basetitle>
 </Items>''')
     f.close()
 def get_ytinfo(url):
@@ -443,7 +444,8 @@ def gui_ytinfo(default_query='#[number]'):
                 series = ''
                 if re.search(query, title):
                     series = re.search(query, title).group()
-                write_series_xml(series)
+                basetitle = re.sub('【[^【】]*】', '', title.replace(series, ''))
+                write_series_xml(series, basetitle)
                 window.close()
                 break
         elif ev == '貼り付け':
