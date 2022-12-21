@@ -113,8 +113,8 @@ def detect_option(sx, sy):
         flip_off   = whole.getpixel((932,200)) == (0xff,0x6c,0x0)
         flip_on    = whole.getpixel((932,230)) == (0xff,0x6c,0x0)
         
-        isbattle = whole.getpixel((148,514)) != (0xff,0xff,0xff) # 白かどうかをみる、白ならオフ
-        hran   = whole.getpixel((167,534)) != (0xff,0xff,0xff) # 白かどうかをみる、白ならオフ
+        isbattle = whole.getpixel((148,536)) != (0xff,0xff,0xff) # 白かどうかをみる、白ならオフ
+        hran   = whole.getpixel((167,555)) != (0xff,0xff,0xff) # 白かどうかをみる、白ならオフ
     
         if isbattle:
             battle = 'BATTLE, '
