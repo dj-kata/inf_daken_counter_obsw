@@ -159,6 +159,10 @@ AMDのCPU(Ryzenなど)を搭載したPCではかなり重くなってしまう�
 ```python -m pip install pyautogui PySimpleGUI numpy keyboard pillow requests beautifulsoup4```  
 した上で[ソースコード](https://github.com/dj-kata/inf_daken_counter/archive/refs/heads/main.zip)内のnotes_counter.pywをダブルクリックして実行してください。  
 
+numpyとの相性が悪いという説もあるらしく、もしかしたら以下のMKL版をインストールしないとダメかもしれません。  
+[ビルド済みnumpy配布先](https://www.lfd.uci.edu/~gohlke/pythonlibs/#numpy)  
+[インストール方法など参考](https://self-development.info/numpy%E3%82%92%E9%AB%98%E9%80%9F%E5%8C%96%E3%81%99%E3%82%8B%E6%9C%80%E3%82%82%E7%B0%A1%E5%8D%98%E3%81%AA%E6%96%B9%E6%B3%95%E3%80%90python-on-windows%E3%80%91/)
+
 # その他
 設定ファイル(settings.json)がない場合は起動時に生成されます。  
 設定がおかしくなった場合は起動前にsettings.jsonを削除すればリセットできます。
