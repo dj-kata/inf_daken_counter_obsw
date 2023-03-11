@@ -1,4 +1,4 @@
-# 概要
+# INFINITAS打鍵カウンタ(OBS websocket版)
 beatmania IIDX INFINITAS専用の打鍵カウンタです。
 
 SP,DPのどちらにも対応しています。  
