@@ -33,7 +33,7 @@ today_total = 0
 stop_thread = False # メインスレッドを強制停止するために使う
 
 def load_settings():
-    default_val = {'target_srate':'72%', 'sx':'0','sy':'0', 'sleep_time':'1.0',
+    default_val = {'target_srate':'72%', 'sleep_time':'1.0',
     'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False, 'lx':0, 'ly':0,
     'series_query':'#[number]','judge':[0,0,0,0,0,0]}
     ret = {}
@@ -65,8 +65,8 @@ def ico_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 # デバッグ用、現在設定している座標の画像を切り出してファイルに保存。
-def get_screen_all(sx,sy,_w,_h): 
-    print(f"10秒後に設定された左上座標({sx},{sy})から{width}x{height}だけ切り出した画像をtest.bmpに保存します。")
+def get_screen_all(): 
+    print(f"10秒後にキャプチャ画像をtest.bmpに保存します。")
     print(f"また、全モニタの画像をwhole.bmpに保存します。")
     print(f"test.bmpがINFINITASで使うモニタとなっていることを確認してください。")
     time.sleep(10)
@@ -74,17 +74,17 @@ def get_screen_all(sx,sy,_w,_h):
     sc = obs.save_screenshot()
 
 ### プレイサイド検出を行う
-def detect_playside(sx,sy):
+def detect_playside():
     ret = False
     target = ['1p-l', '1p-r', '2p-l', '2p-r', '1p_nograph', '2p_nograph', 'dp-l', 'dp-r'] # BGA表示エリアの位置
     for t in target:
-        det = detect_judge(t, sx, sy)
+        det = detect_judge(t)
         if det[0] == '0':
             ret = t
     return ret
 
 ### オプション検出を行う
-def detect_option(sx, sy):
+def detect_option():
     playopt = False
     obs.save_screenshot()
     whole = Image.open(imgpath)
@@ -203,7 +203,7 @@ def detect_option(sx, sy):
     return playopt, gauge
 
 ### 判定部分の切り出し
-def get_judge_img(playside,sx,sy):
+def get_judge_img(playside):
     obs.save_screenshot()
     img = Image.open(imgpath)
     if playside == '1p-l':
@@ -244,8 +244,8 @@ def get_judge_img(playside,sx,sy):
     return np.array(sc), d
 
 ### プレー画面から判定内訳を取得
-def detect_judge(playside, sx, sy):
-    sc,digits = get_judge_img(playside,sx,sy)
+def detect_judge(playside):
+    sc,digits = get_judge_img(playside)
     ret = []
     for jj in digits: # 各判定、ピカグレー>POORの順
         line = ''
@@ -275,7 +275,7 @@ def detect_judge(playside, sx, sy):
 ### 無限ループにする(終了時は上から止める)
 ### 曲の開始・終了を数字から検出し、境界処理を行う
 ### 曲中は検出したスコアをprintする
-def detect_top(window, sx, sy, sleep_time):
+def detect_top(window, sleep_time):
     global stop_thread
     pre_det = ''
     pre_judge = ['0','0','0','0','0','0']
@@ -284,13 +284,13 @@ def detect_top(window, sx, sy, sleep_time):
     playside = False
     playopt = '' # 曲開始タイミングとオプション検出タイミングは一致しないため、最後の値を覚えておく
     gauge   = ''
-    print(f'スコア検出スレッド開始。inf=({sx},{sy})')
+    print(f'スコア検出スレッド開始。')
     while True:
         while True: # 曲開始までを検出
             #print('test')
             try:
-                playside = detect_playside(sx,sy)
-                tmp_playopt, tmp_gauge = detect_option(sx, sy)
+                playside = detect_playside()
+                tmp_playopt, tmp_gauge = detect_option()
                 if tmp_playopt and tmp_gauge:
                     if playopt != tmp_playopt:
                         window.write_event_value('-PLAYOPT-', tmp_playopt)
@@ -318,7 +318,7 @@ def detect_top(window, sx, sy, sleep_time):
             break
 
         while True: # 曲中の処理
-            det = detect_judge(playside, sx,sy)
+            det = detect_judge(playside)
             try:
                 score = int(det[0])+int(det[1])+int(det[2])
                 window.write_event_value('-THREAD-', f"cur {score} {det[0]} {det[1]} {det[2]} {det[3]} {det[4]} {det[5]}")
@@ -328,7 +328,8 @@ def detect_top(window, sx, sy, sleep_time):
                 obs.save_screenshot()
                 tmp = Image.open(imgpath)
                 topleft = tmp.crop((0,0,120,120))
-                if np.array(topleft).sum() == 0:
+                print(np.array(topleft).sum(), np.array(topleft).shape)
+                if np.array(topleft).sum()==120*120*255: # alpha=255の分を考慮
                     window.write_event_value('-ENDSONG-', f"{pre_score} {playopt}")
                     window.write_event_value('-THREAD-', f"end {pre_score} {pre_judge[0]} {pre_judge[1]} {pre_judge[2]} {pre_judge[3]} {pre_judge[4]} {pre_judge[5]}")
                     print(f'曲終了を検出しました。 => {pre_score}')
@@ -471,9 +472,6 @@ def gui(): # GUI設定
     FONT = ('Meiryo',12)
     FONTs = ('Meiryo',8)
     layout = [
-        [sg.Text('INFINITAS sx:', font=FONT), sg.Input('2560', key='sx', font=FONT, size=(5,1))
-        ,sg.Text('sy:', font=FONT), sg.Input('0', key='sy', font=FONT, size=(5,1))
-        ],
         [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('test', key='test_screenshot', font=FONT)],
         [sg.Text('plays:', font=FONT), sg.Text('0', key='plays', font=FONT)
         ,sg.Text(' ', font=FONT, size=(5,1))
@@ -489,8 +487,6 @@ def gui(): # GUI設定
     window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(settings['lx'], settings['ly']))
 
     # 設定をもとにGUIの値を変更
-    window['sx'].update(value=settings['sx'])
-    window['sy'].update(value=settings['sy'])
     window['run_on_boot'].update(settings['run_on_boot'])
     window['reset_on_boot'].update(settings['reset_on_boot'])
     SLEEP_TIME = float(settings['sleep_time'])
@@ -522,9 +518,7 @@ def gui(): # GUI設定
             notes_battle  = 0
             judge = [0,0,0,0,0,0]
         running = True
-        sx = int(settings['sx'])
-        sy = int(settings['sy'])
-        th = threading.Thread(target=detect_top, args=(window, sx, sy, SLEEP_TIME), daemon=True)
+        th = threading.Thread(target=detect_top, args=(window, SLEEP_TIME), daemon=True)
         gen_notes_xml(0,today_notes,today_plays, notes_ran, notes_battle, judge)
         th.start()
         window['start'].update("stop")
@@ -535,8 +529,6 @@ def gui(): # GUI設定
         # 設定を最新化
         if settings and val: # 起動後、そのまま何もせずに終了するとvalが拾われないため対策している
             # 今日のノーツ数とか今日の回数とかはここに記述しないこと(resetボタンを押すと即反映されてしまうため)
-            settings['sx'] = val['sx']
-            settings['sy'] = val['sy']
             settings['lx'] = window.current_location()[0]
             settings['ly'] = window.current_location()[1]
             settings['run_on_boot'] = val['run_on_boot']
@@ -554,9 +546,7 @@ def gui(): # GUI設定
                     notes_ran = 0
                     notes_battle = 0
                     judge = [0,0,0,0,0,0]
-                sx = int(val['sx'])
-                sy = int(val['sy'])
-                th = threading.Thread(target=detect_top, args=(window, sx, sy, SLEEP_TIME), daemon=True)
+                th = threading.Thread(target=detect_top, args=(window, SLEEP_TIME), daemon=True)
                 gen_notes_xml(0,today_notes,today_plays, notes_ran, notes_battle, judge)
                 th.start()
                 window['start'].update("stop")
@@ -577,7 +567,7 @@ def gui(): # GUI設定
             for i in range(6):
                 window[f"judge{i}"].update(value='0')
         elif ev.startswith('test_screenshot'):
-            th_scshot = threading.Thread(target=get_screen_all, args=(int(val['sx']), int(val['sy']), width, height), daemon=True)
+            th_scshot = threading.Thread(target=get_screen_all, daemon=True)
             th_scshot.start()
         elif ev.startswith('tweet'):
             cur_notes = today_notes
@@ -645,9 +635,7 @@ def gui(): # GUI設定
             stop_thread = False
             #print(f"th.is_alive:{th.is_alive()}")
             print(f"スコア検出スレッドが異常終了しました。再スタートします。")
-            sx = int(val['sx'])
-            sy = int(val['sy'])
-            th = threading.Thread(target=detect_top, args=(window, sx, sy, SLEEP_TIME), daemon=True)
+            th = threading.Thread(target=detect_top, args=(window, SLEEP_TIME), daemon=True)
             th.start()
         elif ev == 'Y:89':
             #print('隠しコマンド')
