@@ -15,12 +15,17 @@ from obssocket import OBSSocket
 from PIL import Image, ImageFilter
 
 ### 固定値
+SWNAME = 'INFINITAS打鍵カウンタ'
+SWVER  = 'v2.0'
+
 width  = 1280
 height = 720
 digit_vals = [43860,16065,44880,43095,32895,43605,46920,28050,52020,49215]
 mdigit_vals = [9690,3570,9945,8415,7650,9945,10965,6885,10710,11475]
 mdigit_vals = [10965,3570,9945,8925,8160,9945,12240,7140,11730,12495] # 10/5に急に変わった？
 savefile   = 'settings.json'
+FONT = ('Meiryo',12)
+FONTs = ('Meiryo',8)
 
 imgpath = 'C:\\Users\\katao\\OneDrive\\デスクトップ\\hoge.png'
 
@@ -39,7 +44,7 @@ class DakenCounter:
     def load_settings(self):
         default_val = {'target_srate':'72%', 'sleep_time':'1.0',
         'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False, 'lx':0, 'ly':0,
-        'series_query':'#[number]','judge':[0,0,0,0,0,0]}
+        'series_query':'#[number]','judge':[0,0,0,0,0,0], 'playopt':'OFF'}
         ret = {}
         try:
             with open(self.savefile) as f:
@@ -289,8 +294,8 @@ class DakenCounter:
         pre_score = 0
         stop_local = False
         playside = False
-        playopt = '' # 曲開始タイミングとオプション検出タイミングは一致しないため、最後の値を覚えておく
-        gauge   = ''
+        self.playopt = '' # 曲開始タイミングとオプション検出タイミングは一致しないため、最後の値を覚えておく
+        self.gauge   = ''
         print(f'スコア検出スレッド開始。')
         while True:
             while True: # 曲開始までを検出
@@ -299,13 +304,13 @@ class DakenCounter:
                     playside = self.detect_playside()
                     tmp_playopt, tmp_gauge = self.detect_option()
                     if tmp_playopt and tmp_gauge:
-                        if playopt != tmp_playopt:
+                        if self.playopt != tmp_playopt:
                             self.window.write_event_value('-PLAYOPT-', tmp_playopt)
-                        if gauge != tmp_gauge:
+                        if self.gauge != tmp_gauge:
                             self.window.write_event_value('-GAUGE-', tmp_gauge)
-                        playopt = tmp_playopt
-                        gauge = tmp_gauge
-                        self.gen_opt_xml(playopt, gauge) # 常時表示オプションを書き出す
+                        self.playopt = tmp_playopt
+                        self.gauge = tmp_gauge
+                        self.gen_opt_xml(self.playopt, self.gauge) # 常時表示オプションを書き出す
                     if playside: # 曲頭を検出
                         print(f'曲開始を検出しました。\nEXスコア取得開始。mode={playside.upper()}')
                         self.gen_opt_xml(playopt, gauge, True) # 常時表示+曲中のみデータの書き出し
@@ -470,14 +475,35 @@ class DakenCounter:
 
         return default_query
 
-    def gui(self): # GUI設定
+    def gui_setting(self): # GUI設定
+        if self.window:
+            self.window.close()
+        sg.theme('SystemDefault')
+
+    def gui_info(self): #情報表示用
+        self.mode = 'info'
+        if self.window:
+            self.window.close()
+        layout = [
+            [sg.Text(f'{SWNAME}', font=FONT)],
+            [sg.Text(f'version: {SWVER}', font=FONT)],
+            [sg.Text(f'')],
+            [sg.Text(f'author: かたさん (@cold_planet_)')],
+            [sg.Text(f'https://github.com/dj-kata/inf_daken_counter_obsw', enable_events=True, key="URL https://github.com/dj-kata/inf_daken_counter_obsw", font=('Meiryo', 10, 'underline'))],
+            [sg.Button('OK', key='btn_close_info', font=FONT)],
+        ]
+        ico=self.ico_path('icon.ico')
+        self.window = sg.Window(f"{SWNAME}について", layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']), size=(400,220))
+
+    def gui_main(self): # GUI設定
+        self.mode = 'main'
         if self.window:
             self.window.close()
 
         sg.theme('SystemDefault')
-        FONT = ('Meiryo',12)
-        FONTs = ('Meiryo',8)
+        menuitems = [['ファイル',['設定',]],['ヘルプ',[f'{SWNAME}について']]]
         layout = [
+            [sg.Menubar(menuitems, key='menu')],
             [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('test', key='test_screenshot', font=FONT)],
             [sg.Text('plays:', font=FONT), sg.Text('0', key='plays', font=FONT)
             ,sg.Text(' ', font=FONT, size=(5,1))
@@ -492,27 +518,29 @@ class DakenCounter:
             ]
         ico=self.ico_path('icon.ico')
         self.window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']))
-
-    def main(self):
-        self.gui()
-        # 設定をもとにGUIの値を変更
         self.window['run_on_boot'].update(self.settings['run_on_boot'])
         self.window['reset_on_boot'].update(self.settings['reset_on_boot'])
+        self.window['today'].update(value=f"{self.today_notes}")
+        self.window['plays'].update(value=f"{self.today_plays}")
+        for i in range(6):
+            self.window[f'judge{i}'].update(value=self.judge[i])
+        self.window['srate'].update(value=f"{self.srate:.2f} %")
+        self.window['playopt'].update(value=self.settings['playopt'])
+
+    def main(self):
+        # 設定をもとにGUIの値を変更
         SLEEP_TIME = float(self.settings['sleep_time'])
 
-        today_notes = int(self.settings['total_score'])
-        today_plays = int(self.settings['plays'])
-        self.window['today'].update(value=f"{today_notes}")
-        self.window['plays'].update(value=f"{today_plays}")
-        judge = self.settings['judge']
-        for i in range(6):
-            self.window[f'judge{i}'].update(value=judge[i])
-        srate = 0.0
-        if judge[0]+judge[1]+judge[2]+judge[5] > 0:
-            srate = (judge[0]*2+judge[1])/(judge[0]+judge[1]+judge[2]+judge[5])*50
-        self.window['srate'].update(value=f"{srate:.2f} %")
-        notes_ran = 0
-        notes_battle  = 0
+        self.today_notes = int(self.settings['total_score'])
+        self.today_plays = int(self.settings['plays'])
+        self.playopt     = self.settings['playopt']
+        self.judge       = self.settings['judge']
+        self.srate       = 0.0
+        if self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5] > 0:
+            self.srate = (self.judge[0]*2+self.judge[1])/(self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5])*50
+        self.gui_main()
+        self.notes_ran = 0
+        self.notes_battle  = 0
         pre_cur = 0
         running = self.settings['run_on_boot'] # 実行中かどうかの区別に使う。スレッド停止用のstop_threadとは役割が違うので注意
         th = False
@@ -520,14 +548,14 @@ class DakenCounter:
         if self.settings['run_on_boot']: # 起動後即開始設定の場合
             print('自動起動設定が有効です。')
             if self.settings['reset_on_boot']:
-                today_notes = 0
-                today_plays = 0
-                notes_ran = 0
-                notes_battle  = 0
-                judge = [0,0,0,0,0,0]
+                self.today_notes = 0
+                self.today_plays = 0
+                self.notes_ran = 0
+                self.notes_battle  = 0
+                self.judge = [0,0,0,0,0,0]
             running = True
             th = threading.Thread(target=self.detect_top, args=(SLEEP_TIME,), daemon=True)
-            self.gen_notes_xml(0,today_notes,today_plays, notes_ran, notes_battle, judge)
+            self.gen_notes_xml(0,self.today_notes,self.today_plays, self.notes_ran, self.notes_battle, self.judge)
             th.start()
             self.window['start'].update("stop")
 
@@ -535,27 +563,30 @@ class DakenCounter:
             ev, val = self.window.read()
             #print(f"event='{ev}', values={val}")
             # 設定を最新化
-            if self.settings and val: # 起動後、そのまま何もせずに終了するとvalが拾われないため対策している
+            if self.settings and val and self.mode=='main': # 起動後、そのまま何もせずに終了するとvalが拾われないため対策している
                 # 今日のノーツ数とか今日の回数とかはここに記述しないこと(resetボタンを押すと即反映されてしまうため)
                 self.settings['lx'] = self.window.current_location()[0]
                 self.settings['ly'] = self.window.current_location()[1]
-                self.settings['run_on_boot'] = val['run_on_boot']
+                self.settings['run_on_boot'] = val['run_on_boot'] # TODO KeyErrorが出ているが原因が分かっていない
                 self.settings['reset_on_boot'] = val['reset_on_boot']
-            if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-'):
-                self.save_settings()
-                break
+            if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-', 'btn_close_info'):
+                if self.mode == 'info':
+                    self.gui_main()
+                else:
+                    self.save_settings()
+                    break
             elif ev.startswith('start'):
                 running = not running
                 if running:
                     if self.settings['reset_on_boot']:
                         print('自動リセット設定が有効です。')
-                        today_notes = 0
-                        today_plays = 0
-                        notes_ran = 0
-                        notes_battle = 0
-                        judge = [0,0,0,0,0,0]
+                        self.today_notes = 0
+                        self.today_plays = 0
+                        self.notes_ran = 0
+                        self.notes_battle = 0
+                        self.judge = [0,0,0,0,0,0]
                     th = threading.Thread(target=self.detect_top, args=(SLEEP_TIME,), daemon=True)
-                    self.gen_notes_xml(0,today_notes,today_plays, notes_ran, notes_battle, judge)
+                    self.gen_notes_xml(0,self.today_notes,self.today_plays, self.notes_ran, self.notes_battle, self.judge)
                     th.start()
                     self.window['start'].update("stop")
                 else:
@@ -566,10 +597,10 @@ class DakenCounter:
                     self.window['start'].update("start")
             elif ev.startswith('reset'):
                 print(f'プレイ回数と合計スコアをリセットします。')
-                today_plays  = 0
-                today_notes  = 0
-                notes_ran    = 0
-                notes_battle = 0
+                self.today_plays  = 0
+                self.today_notes  = 0
+                self.notes_ran    = 0
+                self.notes_battle = 0
                 self.window['today'].update(value=f"0")
                 self.window['plays'].update(value=f"0")
                 for i in range(6):
@@ -596,7 +627,7 @@ class DakenCounter:
                 dat = val[ev].split(' ')
                 cmd = dat[0]
                 cur = int(dat[1])
-                tmp_today_notes = cur+today_notes
+                tmp_today_notes = cur+self.today_notes
                 self.window['today'].update(value=f"{tmp_today_notes}")
                 try:
                     tmp_judge = [judge[i]+int(dat[2+i]) for i in range(6)] # 前の曲までの値judge[i]に現在の曲の値dat[2+i]を加算したもの
@@ -606,14 +637,14 @@ class DakenCounter:
 
                 for i in range(6):
                     self.window[f"judge{i}"].update(value=tmp_judge[i])
-                srate = 0.0
+                self.srate = 0.0
                 if tmp_judge[0]+tmp_judge[1]+tmp_judge[2]+tmp_judge[5] > 0:
-                    srate = (tmp_judge[0]*2+tmp_judge[1])/(tmp_judge[0]+tmp_judge[1]+tmp_judge[2]+tmp_judge[5])*50
-                self.window['srate'].update(value=f"{srate:.2f} %")
+                    self.srate = (tmp_judge[0]*2+tmp_judge[1])/(tmp_judge[0]+tmp_judge[1]+tmp_judge[2]+tmp_judge[5])*50
+                self.window['srate'].update(value=f"{self.srate:.2f} %")
                 if cmd == 'end':
-                    today_plays += 1
-                    today_notes += pre_cur
-                    self.window['today'].update(value=f"{today_notes}")
+                    self.today_plays += 1
+                    self.today_notes += pre_cur
+                    self.window['today'].update(value=f"{self.today_notes}")
                     for i in range(6):
                         try:
                             judge[i] += int(dat[2+i])
@@ -627,15 +658,15 @@ class DakenCounter:
                 self.settings['plays'] = today_plays
                 self.settings['total_score'] = tmp_today_notes
                 self.settings['judge'] = tmp_judge
-                self.gen_notes_xml(cur,tmp_today_notes,today_plays, notes_ran, notes_battle, tmp_judge)
+                self.gen_notes_xml(cur,tmp_today_notes,self.today_plays, self.notes_ran, self.notes_battle, tmp_judge)
                 pre_cur = cur
             elif ev == '-ENDSONG-': # TODO 将来的にコマンドを分けたい
                 dat = val[ev].split(' ')
                 score = int(dat[0])
-                option = val[ev][len(dat[0])+1:]
-                if 'BATTLE' in option:
+                #self.option = val[ev][len(dat[0])+1:]
+                if 'BATTLE' in self.playopt:
                     notes_battle += cur
-                elif ('RAN / RAN' in option) or ('S-RAN / S-RAN' in option) or ('H-RAN / H-RAN' in option): # 両乱だけ数えるか片乱だけ数えるか未定
+                elif ('RAN / RAN' in self.playopt) or ('S-RAN / S-RAN' in self.playopt) or ('H-RAN / H-RAN' in self.playopt): # 両乱だけ数えるか片乱だけ数えるか未定
                     notes_ran += cur
             elif ev == '-SCRSHOT_ERROR-':
                 self.stop_thread = True
@@ -661,6 +692,16 @@ class DakenCounter:
                 except:
                     self.window["output"].Widget.clipboard_append(backup)
                     pass
+
+            elif ev in ('btn_setting', '設定'):
+                self.gui_setting()
+
+            elif ev  == f'{SWNAME}について':
+                self.gui_info()
+
+            elif ev.startswith('URL '): # URLをブラウザで開く;info用
+                url = ev.split(' ')[1]
+                webbrowser.open(url)
 
 if __name__ == '__main__':
     a = DakenCounter()
