@@ -27,8 +27,6 @@ savefile   = 'settings.json'
 FONT = ('Meiryo',12)
 FONTs = ('Meiryo',8)
 
-imgpath = 'C:\\Users\\katao\\OneDrive\\デスクトップ\\hoge.png'
-
 if len(sys.argv) > 1:
     savefile = sys.argv[1]
 
@@ -39,12 +37,19 @@ class DakenCounter:
         self.window      = False
         self.savefile    = savefile
         self.load_settings()
-        self.obs = OBSSocket('localhost', 4455, 'panipaninoakuma', 'INFINITAS', imgpath)
+        self.imgpath = os.path.dirname(__file__) + '\\tmp.png'
+        try:
+            self.obs = OBSSocket(self.settings['host'], self.settings['port'], self.settings['passwd'], self.settings['obs_source'], self.imgpath)
+        except:
+            self.obs = False
+            print('obs socket error!')
+            pass
 
     def load_settings(self):
         default_val = {'target_srate':'72%', 'sleep_time':'1.0',
         'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False, 'lx':0, 'ly':0,
-        'series_query':'#[number]','judge':[0,0,0,0,0,0], 'playopt':'OFF'}
+        'series_query':'#[number]','judge':[0,0,0,0,0,0], 'playopt':'OFF',
+        'host':'localhost', 'port':'4444', 'passwd':'', 'obs_source':'INFINITAS'}
         ret = {}
         try:
             with open(self.savefile) as f:
@@ -76,12 +81,12 @@ class DakenCounter:
 
     # デバッグ用、現在設定している座標の画像を切り出してファイルに保存。
     def get_screen_all(self): 
-        print(f"10秒後にキャプチャ画像をtest.bmpに保存します。")
-        print(f"また、全モニタの画像をwhole.bmpに保存します。")
+        print(f"10秒後にキャプチャ画像をtest.pngに保存します。")
         print(f"test.bmpがINFINITASで使うモニタとなっていることを確認してください。")
         time.sleep(10)
         print(f"\n10秒経過。キャプチャを実行します。")
-        sc = self.obs.save_screenshot()
+        imgpath = os.path.dirname(__file__) + '\\test.png'
+        sc = self.obs.save_screenshot_dst(imgpath)
 
     ### プレイサイド検出を行う
     def detect_playside(self):
@@ -97,7 +102,7 @@ class DakenCounter:
     def detect_option(self):
         playopt = False
         self.obs.save_screenshot()
-        whole = Image.open(imgpath)
+        whole = Image.open(self.imgpath)
         flip = ''
         left = False
         right = False
@@ -218,7 +223,7 @@ class DakenCounter:
     ### 判定部分の切り出し
     def get_judge_img(self, playside):
         self.obs.save_screenshot()
-        img = Image.open(imgpath)
+        img = Image.open(self.imgpath)
         if playside == '1p-l':
             x=414
             y=647
@@ -338,7 +343,7 @@ class DakenCounter:
                     pre_judge = det
                 except ValueError: # intに変換できない数値を検出&暗転の両方を見る
                     self.obs.save_screenshot()
-                    tmp = Image.open(imgpath)
+                    tmp = Image.open(self.imgpath)
                     topleft = tmp.crop((0,0,120,120))
                     #print(np.array(topleft).sum(), np.array(topleft).shape)
                     if np.array(topleft).sum()==120*120*255: # alpha=255の分を考慮
@@ -404,11 +409,12 @@ class DakenCounter:
         print(f"series.xmlを更新しました => {series}\n")
         f=codecs.open('series.xml', 'w', 'utf-8')
         f.write(f'''<?xml version="1.0" encoding="utf-8"?>
-    <Items>
-        <series>{series}</series>
-        <basetitle>{basetitle}</basetitle>
-    </Items>''')
+<Items>
+    <series>{series}</series>
+    <basetitle>{basetitle}</basetitle>
+</Items>''')
         f.close()
+
     def get_ytinfo(self, url):
         liveid = self.parse_url(url)
         ret = False
@@ -475,10 +481,20 @@ class DakenCounter:
 
         return default_query
 
-    def gui_setting(self): # GUI設定
+    def gui_setting(self):
+        self.mode = 'setting'
         if self.window:
             self.window.close()
-        sg.theme('SystemDefault')
+        layout = [
+            [sg.Text('OBS host: ', font=FONT), sg.Input(self.settings['host'], font=FONT, key='input_host', size=(20,20))],
+            [sg.Text('OBS websocket port: ', font=FONT), sg.Input(self.settings['port'], font=FONT, key='input_port', size=(10,20))],
+            #[sg.Text('OBS websocket password', font=FONT), sg.Input('', font=FONT, key='input_passwd', size=(20,20), password_char='*')],
+            [sg.Text('OBS websocket password: ', font=FONT), sg.Input(self.settings['passwd'], font=FONT, key='input_passwd', size=(20,20))],
+            [sg.Text('INFINITAS用ソース名: ', font=FONT), sg.Input(self.settings['obs_source'], font=FONT, key='input_obs_source', size=(20,20))],
+            [sg.Button('close', key='btn_close_setting', font=FONT)],
+            ]
+        ico=self.ico_path('icon.ico')
+        self.window = sg.Window(f'{SWNAME} - 設定', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']))
 
     def gui_info(self): #情報表示用
         self.mode = 'info'
@@ -563,18 +579,34 @@ class DakenCounter:
             ev, val = self.window.read()
             #print(f"event='{ev}', values={val}")
             # 設定を最新化
-            if self.settings and val and self.mode=='main': # 起動後、そのまま何もせずに終了するとvalが拾われないため対策している
-                # 今日のノーツ数とか今日の回数とかはここに記述しないこと(resetボタンを押すと即反映されてしまうため)
-                self.settings['lx'] = self.window.current_location()[0]
-                self.settings['ly'] = self.window.current_location()[1]
-                self.settings['run_on_boot'] = val['run_on_boot'] # TODO KeyErrorが出ているが原因が分かっていない
-                self.settings['reset_on_boot'] = val['reset_on_boot']
-            if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-', 'btn_close_info'):
-                if self.mode == 'info':
-                    self.gui_main()
-                else:
+            if self.settings and val: # 起動後、そのまま何もせずに終了するとvalが拾われないため対策している
+                if self.mode == 'main':
+                    # 今日のノーツ数とか今日の回数とかはここに記述しないこと(resetボタンを押すと即反映されてしまうため)
+                    self.settings['lx'] = self.window.current_location()[0]
+                    self.settings['ly'] = self.window.current_location()[1]
+                    self.settings['run_on_boot'] = val['run_on_boot']
+                    self.settings['reset_on_boot'] = val['reset_on_boot']
+                elif self.mode == 'setting':
+                    self.settings['host'] = val['input_host']
+                    self.settings['port'] = val['input_port']
+                    self.settings['passwd'] = val['input_passwd']
+                    self.settings['obs_source'] = val['input_obs_source']
+            if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-', 'btn_close_info', 'btn_close_setting'):
+                if self.mode == 'main':
                     self.save_settings()
                     break
+                else:
+                    if self.mode == 'setting':
+                        if self.obs:
+                            self.obs.close()
+                        del self.obs
+                        try:
+                            self.obs = OBSSocket(self.settings['host'], self.settings['port'], self.settings['passwd'], self.settings['obs_source'], self.imgpath)
+                        except:
+                            self.obs = False
+                            print('obs socket error!')
+                            pass
+                    self.gui_main()
             elif ev.startswith('start'):
                 running = not running
                 if running:
