@@ -87,6 +87,7 @@ class DakenCounter:
         print(f"\n10秒経過。キャプチャを実行します。")
         imgpath = os.path.dirname(__file__) + '\\test.png'
         sc = self.obs.save_screenshot_dst(imgpath)
+        print(f'-> {imgpath}')
 
     ### プレイサイド検出を行う
     def detect_playside(self):
@@ -318,7 +319,7 @@ class DakenCounter:
                         self.gen_opt_xml(self.playopt, self.gauge) # 常時表示オプションを書き出す
                     if playside: # 曲頭を検出
                         print(f'曲開始を検出しました。\nEXスコア取得開始。mode={playside.upper()}')
-                        self.gen_opt_xml(playopt, gauge, True) # 常時表示+曲中のみデータの書き出し
+                        self.gen_opt_xml(self.playopt, self.gauge, True) # 常時表示+曲中のみデータの書き出し
                         break
                 except Exception as e:
                     stop_local = True
@@ -349,10 +350,10 @@ class DakenCounter:
                     topleft = tmp.crop((0,0,120,120))
                     #print(np.array(topleft).sum(), np.array(topleft).shape)
                     if np.array(topleft).sum()==120*120*255: # alpha=255の分を考慮
-                        self.window.write_event_value('-ENDSONG-', f"{pre_score} {playopt}")
+                        self.window.write_event_value('-ENDSONG-', f"{pre_score} {self.playopt}")
                         self.window.write_event_value('-THREAD-', f"end {pre_score} {pre_judge[0]} {pre_judge[1]} {pre_judge[2]} {pre_judge[3]} {pre_judge[4]} {pre_judge[5]}")
                         print(f'曲終了を検出しました。 => {pre_score}')
-                        self.gen_opt_xml(playopt, gauge) # 曲中のみデータの削除
+                        self.gen_opt_xml(self.playopt, self.gauge) # 曲中のみデータの削除
                         break
 
                 time.sleep(sleep_time)
@@ -646,10 +647,10 @@ class DakenCounter:
             elif ev.startswith('tweet'):
                 cur_notes = today_notes
                 srate = 0.0
-                if judge[0]+judge[1]+judge[2]+judge[5] > 0:
-                    srate = (judge[0]*2+judge[1])/(judge[0]+judge[1]+judge[2]+judge[5])*50
+                if self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5] > 0:
+                    srate = (self.judge[0]*2+self.judge[1])/(self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5])*50
                 msg = f"今日は{today_plays:,}曲プレイし、{cur_notes:,}ノーツ叩きました。\n"
-                msg += f'(PG:{judge[0]:,}, GR:{judge[1]:,}, GD:{judge[2]:,}, BD:{judge[3]:,}, PR:{judge[4]:,}, CB:{judge[5]:,})\n'
+                msg += f'(PG:{self.judge[0]:,}, GR:{self.judge[1]:,}, GD:{self.judge[2]:,}, BD:{self.judge[3]:,}, PR:{self.judge[4]:,}, CB:{self.judge[5]:,})\n'
                 msg += f'(スコアレート: {srate:.1f}%)\n'
                 msg += '#INFINITAS_daken_counter'
                 encoded_msg = urllib.parse.quote(msg)
@@ -665,10 +666,10 @@ class DakenCounter:
                 tmp_today_notes = cur+self.today_notes
                 self.window['today'].update(value=f"{tmp_today_notes}")
                 try:
-                    tmp_judge = [judge[i]+int(dat[2+i]) for i in range(6)] # 前の曲までの値judge[i]に現在の曲の値dat[2+i]を加算したもの
+                    tmp_judge = [self.judge[i]+int(dat[2+i]) for i in range(6)] # 前の曲までの値judge[i]に現在の曲の値dat[2+i]を加算したもの
                 except:
                     print(f'error!!! datの値が不正?, dat={dat}')
-                    tmp_judge = copy.copy(judge)
+                    tmp_judge = copy.copy(self.judge)
 
                 for i in range(6):
                     self.window[f"judge{i}"].update(value=tmp_judge[i])
@@ -682,15 +683,15 @@ class DakenCounter:
                     self.window['today'].update(value=f"{self.today_notes}")
                     for i in range(6):
                         try:
-                            judge[i] += int(dat[2+i])
+                            self.judge[i] += int(dat[2+i])
                         except ValueError:
                             print(f'{i}番目の値の取得に失敗。skipします。')
-                            judge[i] = tmp_judge[i]
+                            self.judge[i] = tmp_judge[i]
 
                 self.window['cur'].update(value=f"{cur}")
-                self.window['plays'].update(value=f"{today_plays}")
+                self.window['plays'].update(value=f"{self.today_plays}")
                 ### スコアなどのセーブデータはここで更新(安全なresetとさせるため)
-                self.settings['plays'] = today_plays
+                self.settings['plays'] = self.today_plays
                 self.settings['total_score'] = tmp_today_notes
                 self.settings['judge'] = tmp_judge
                 self.gen_notes_xml(cur,tmp_today_notes,self.today_plays, self.notes_ran, self.notes_battle, tmp_judge)
@@ -700,9 +701,9 @@ class DakenCounter:
                 score = int(dat[0])
                 #self.option = val[ev][len(dat[0])+1:]
                 if 'BATTLE' in self.playopt:
-                    notes_battle += cur
+                    self.notes_battle += cur
                 elif ('RAN / RAN' in self.playopt) or ('S-RAN / S-RAN' in self.playopt) or ('H-RAN / H-RAN' in self.playopt): # 両乱だけ数えるか片乱だけ数えるか未定
-                    notes_ran += cur
+                    self.notes_ran += cur
             elif ev == '-SCRSHOT_ERROR-':
                 self.stop_thread = True
                 th.join()
