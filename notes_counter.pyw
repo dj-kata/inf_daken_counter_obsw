@@ -11,6 +11,8 @@ import json
 import webbrowser, urllib, requests
 import copy
 from bs4 import BeautifulSoup
+from obssocket import OBSSocket
+from PIL import Image, ImageFilter
 
 ### 固定値
 width  = 1280
@@ -19,6 +21,9 @@ digit_vals = [43860,16065,44880,43095,32895,43605,46920,28050,52020,49215]
 mdigit_vals = [9690,3570,9945,8415,7650,9945,10965,6885,10710,11475]
 mdigit_vals = [10965,3570,9945,8925,8160,9945,12240,7140,11730,12495] # 10/5に急に変わった？
 savefile   = 'settings.json'
+
+imgpath = 'C:\\Users\\katao\\OneDrive\\デスクトップ\\hoge.png'
+obs = OBSSocket('localhost', 4455, 'panipaninoakuma', 'INFINITAS', imgpath)
 
 if len(sys.argv) > 1:
     savefile = sys.argv[1]
@@ -66,21 +71,7 @@ def get_screen_all(sx,sy,_w,_h):
     print(f"test.bmpがINFINITASで使うモニタとなっていることを確認してください。")
     time.sleep(10)
     print(f"\n10秒経過。キャプチャを実行します。")
-    sc = pgui.screenshot(region=(sx,sy,_w,_h))
-    sc.save('test.bmp')
-    sc = pgui.screenshot()
-    sc.save('whole.bmp')
-
-### キーボード操作用関数(未使用)
-### 曲開始時にOBSのシーンを切り替えたりできそうだな～と思って一応用意している
-def send_key(cmd):
-    pgui.typewrite(cmd)
-
-def push_key(cmd):
-    pgui.keyDown(cmd)
-
-def release_key(cmd):
-    pgui.keyUp(cmd)
+    sc = obs.save_screenshot()
 
 ### プレイサイド検出を行う
 def detect_playside(sx,sy):
@@ -95,7 +86,8 @@ def detect_playside(sx,sy):
 ### オプション検出を行う
 def detect_option(sx, sy):
     playopt = False
-    whole = pgui.screenshot(region=(sx,sy,1280,720))
+    obs.save_screenshot()
+    whole = Image.open(imgpath)
     flip = ''
     left = False
     right = False
@@ -103,50 +95,50 @@ def detect_option(sx, sy):
     gauge = False
     battle = ''
     ### オプション画面かどうかを検出
-    px0 = whole.getpixel((43,33)) == (255,0,0)
-    px1 = whole.getpixel((44,424)) == (0xff,0x4f,0xbb)
-    px2 = whole.getpixel((114,645)) == (0xff,0x4f,0xbb)
-    px_dp = whole.getpixel((1070,345)) == (0x0,0x29,0x32)
-    px_sp = whole.getpixel((905,358)) == (0x0,0x29,0x32)
+    px0 = whole.getpixel((43,33)) == (255,0,0,255)
+    px1 = whole.getpixel((44,424)) == (0xff,0x4f,0xbb,255)
+    px2 = whole.getpixel((114,645)) == (0xff,0x4f,0xbb,255)
+    px_dp = whole.getpixel((1070,345)) == (0x0,0x29,0x32,255)
+    px_sp = whole.getpixel((905,358)) == (0x0,0x29,0x32,255)
 
     if px0 and px1 and px2 and (px_sp or px_dp): # オプション画面かどうか
-        flip_off   = whole.getpixel((932,200)) == (0xff,0x6c,0x0)
-        flip_on    = whole.getpixel((932,230)) == (0xff,0x6c,0x0)
+        flip_off   = whole.getpixel((932,200)) == (0xff,0x6c,0x0,255)
+        flip_on    = whole.getpixel((932,230)) == (0xff,0x6c,0x0,255)
         
-        isbattle = whole.getpixel((148,536)) != (0xff,0xff,0xff) # 白かどうかをみる、白ならオフ
-        hran   = whole.getpixel((167,555)) != (0xff,0xff,0xff) # 白かどうかをみる、白ならオフ
+        isbattle = whole.getpixel((148,536)) != (0xff,0xff,0xff,255) # 白かどうかをみる、白ならオフ
+        hran   = whole.getpixel((167,555)) != (0xff,0xff,0xff,255) # 白かどうかをみる、白ならオフ
     
         if isbattle:
             battle = 'BATTLE, '
 
         if px_dp: # DP
-            normal    = whole.getpixel((683,390)) == (0xff, 0x6c, 0x0)
-            a_easy    = whole.getpixel((742,422)) != (0, 0, 0)
-            easy      = whole.getpixel((683,456)) == (0xff, 0x6c, 0x0)
-            hard      = whole.getpixel((683,489)) == (0xff, 0x6c, 0x0)
-            ex_hard   = whole.getpixel((682,522)) == (0xff, 0x6c, 0x0)
+            normal    = whole.getpixel((683,390)) == (0xff, 0x6c, 0x0,255)
+            a_easy    = whole.getpixel((742,422)) != (0, 0, 0,255)
+            easy      = whole.getpixel((683,456)) == (0xff, 0x6c, 0x0,255)
+            hard      = whole.getpixel((683,489)) == (0xff, 0x6c, 0x0,255)
+            ex_hard   = whole.getpixel((682,522)) == (0xff, 0x6c, 0x0,255)
             for pix,val in zip([normal,a_easy,easy,hard,ex_hard],['NORMAL','A-EASY','EASY','HARD', 'EX-HARD']):
                 if pix:
                     gauge = val
 
-            left_off     = whole.getpixel((390,390)) == (0xff, 0x6c, 0x0)
-            left_ran     = whole.getpixel((390,422)) == (0xff, 0x6c, 0x0)
-            left_rran    = whole.getpixel((384,455)) == (0xff, 0x6c, 0x0)
-            left_sran    = whole.getpixel((384,489)) == (0xff, 0x6c, 0x0)
-            left_mirror  = whole.getpixel((390,520)) == (0xff, 0x6c, 0x0)
+            left_off     = whole.getpixel((390,390)) == (0xff, 0x6c, 0x0, 255)
+            left_ran     = whole.getpixel((390,422)) == (0xff, 0x6c, 0x0, 255)
+            left_rran    = whole.getpixel((384,455)) == (0xff, 0x6c, 0x0, 255)
+            left_sran    = whole.getpixel((384,489)) == (0xff, 0x6c, 0x0, 255)
+            left_mirror  = whole.getpixel((390,520)) == (0xff, 0x6c, 0x0, 255)
         
-            right_off     = whole.getpixel((536,390)) == (0xff, 0x6c, 0x0)
-            right_ran     = whole.getpixel((536,422)) == (0xff, 0x6c, 0x0)
-            right_rran    = whole.getpixel((530,455)) == (0xff, 0x6c, 0x0)
-            right_sran    = whole.getpixel((530,489)) == (0xff, 0x6c, 0x0)
-            right_mirror  = whole.getpixel((536,520)) == (0xff, 0x6c, 0x0)
+            right_off     = whole.getpixel((536,390)) == (0xff, 0x6c, 0x0, 255)
+            right_ran     = whole.getpixel((536,422)) == (0xff, 0x6c, 0x0, 255)
+            right_rran    = whole.getpixel((530,455)) == (0xff, 0x6c, 0x0, 255)
+            right_sran    = whole.getpixel((530,489)) == (0xff, 0x6c, 0x0, 255)
+            right_mirror  = whole.getpixel((536,520)) == (0xff, 0x6c, 0x0, 255)
         
-            sync_ran      = whole.getpixel((394,554)) == (0xff, 0x6c, 0x0)
-            symm_ran      = whole.getpixel((394,585)) == (0xff, 0x6c, 0x0)
+            sync_ran      = whole.getpixel((394,554)) == (0xff, 0x6c, 0x0, 255)
+            symm_ran      = whole.getpixel((394,585)) == (0xff, 0x6c, 0x0, 255)
 
-            assist_off    = whole.getpixel((830,390)) == (0xff, 0x6c, 0x0)
-            assist_as     = whole.getpixel((858,426)) == (0xff, 0x6c, 0x0)
-            assist_legacy = whole.getpixel((880,489)) == (0xff, 0x6c, 0x0)
+            assist_off    = whole.getpixel((830,390)) == (0xff, 0x6c, 0x0, 255)
+            assist_as     = whole.getpixel((858,426)) == (0xff, 0x6c, 0x0, 255)
+            assist_legacy = whole.getpixel((880,489)) == (0xff, 0x6c, 0x0, 255)
 
             if flip_on:
                 flip = ', FLIP'
@@ -180,24 +172,24 @@ def detect_option(sx, sy):
                     playopt = f"{battle}{left} / {right}{flip}{assist}"
 
         else: # SP
-            normal    = whole.getpixel((524,390)) == (0xff, 0x6c, 0x0)
-            a_easy    = whole.getpixel((582,422)) != (0, 0, 0)
-            easy      = whole.getpixel((524,456)) == (0xff, 0x6c, 0x0)
-            hard      = whole.getpixel((524,489)) == (0xff, 0x6c, 0x0)
-            ex_hard   = whole.getpixel((518,522)) == (0xff, 0x6c, 0x0)
+            normal    = whole.getpixel((524,390)) == (0xff, 0x6c, 0x0, 255)
+            a_easy    = whole.getpixel((582,422)) != (0, 0, 0, 255)
+            easy      = whole.getpixel((524,456)) == (0xff, 0x6c, 0x0, 255)
+            hard      = whole.getpixel((524,489)) == (0xff, 0x6c, 0x0, 255)
+            ex_hard   = whole.getpixel((518,522)) == (0xff, 0x6c, 0x0, 255)
             for pix,val in zip([normal,a_easy,easy,hard,ex_hard],['NORMAL','A-EASY','EASY','HARD', 'EX-HARD']):
                 if pix:
                     gauge = val
 
-            right_off     = whole.getpixel((375,391)) == (0xff, 0x6c, 0x0)
-            right_ran     = whole.getpixel((375,424)) == (0xff, 0x6c, 0x0)
-            right_rran    = whole.getpixel((369,457)) == (0xff, 0x6c, 0x0)
-            right_sran    = whole.getpixel((369,489)) == (0xff, 0x6c, 0x0)
-            right_mirror  = whole.getpixel((375,520)) == (0xff, 0x6c, 0x0)
+            right_off     = whole.getpixel((375,391)) == (0xff, 0x6c, 0x0, 255)
+            right_ran     = whole.getpixel((375,424)) == (0xff, 0x6c, 0x0, 255)
+            right_rran    = whole.getpixel((369,457)) == (0xff, 0x6c, 0x0, 255)
+            right_sran    = whole.getpixel((369,489)) == (0xff, 0x6c, 0x0, 255)
+            right_mirror  = whole.getpixel((375,520)) == (0xff, 0x6c, 0x0, 255)
 
-            assist_off    = whole.getpixel((680,390)) == (0xff, 0x6c, 0x0)
-            assist_as     = whole.getpixel((699,426)) == (0xff, 0x6c, 0x0)
-            assist_legacy = whole.getpixel((720,489)) == (0xff, 0x6c, 0x0)
+            assist_off    = whole.getpixel((680,390)) == (0xff, 0x6c, 0x0, 255)
+            assist_as     = whole.getpixel((699,426)) == (0xff, 0x6c, 0x0, 255)
+            assist_legacy = whole.getpixel((720,489)) == (0xff, 0x6c, 0x0, 255)
             # 右手
             for pix,val in zip([right_off,right_ran,right_rran,right_mirror,right_sran],['OFF','RAN','R-RAN','MIR','S-RAN']):
                 if pix:
@@ -212,22 +204,33 @@ def detect_option(sx, sy):
 
 ### 判定部分の切り出し
 def get_judge_img(playside,sx,sy):
+    obs.save_screenshot()
+    img = Image.open(imgpath)
     if playside == '1p-l':
-        sc = pgui.screenshot(region=(sx+414,sy+647,38,57))
+        x=414
+        y=647
     elif playside == '1p-r':
-        sc = pgui.screenshot(region=(sx+694,sy+647,38,57))
+        x=694
+        y=647
     elif playside == '2p-l':
-        sc = pgui.screenshot(region=(sx+570,sy+647,38,57))
+        x=570
+        y=647
     elif playside == '2p-r':
-        sc = pgui.screenshot(region=(sx+850,sy+647,38,57))
+        x=850
+        y=647
     elif playside == '1p_nograph':
-        sc = pgui.screenshot(region=(sx+383,sy+649,38,57))
+        x=383
+        y=649
     elif playside == '2p_nograph':
-        sc = pgui.screenshot(region=(sx+881,sy+649,38,57))
+        x=881
+        y=649
     elif playside == 'dp-l':
-        sc = pgui.screenshot(region=(sx+176,sy+600,38,57))
+        x=176
+        y=600
     elif playside == 'dp-r':
-        sc = pgui.screenshot(region=(sx+1089,sy+600,38,57))
+        x=1089
+        y=600
+    sc = img.crop((x,y,x+38,y+57))
     d = []
     for j in range(6): # pg～prの5つ
         tmp_sec = []
@@ -322,7 +325,9 @@ def detect_top(window, sx, sy, sleep_time):
                 pre_score = score
                 pre_judge = det
             except ValueError: # intに変換できない数値を検出&暗転の両方を見る
-                topleft = pgui.screenshot(region=(sx,sy,120,120))
+                obs.save_screenshot()
+                tmp = Image.open(imgpath)
+                topleft = tmp.crop((0,0,120,120))
                 if np.array(topleft).sum() == 0:
                     window.write_event_value('-ENDSONG-', f"{pre_score} {playopt}")
                     window.write_event_value('-THREAD-', f"end {pre_score} {pre_judge[0]} {pre_judge[1]} {pre_judge[2]} {pre_judge[3]} {pre_judge[4]} {pre_judge[5]}")
@@ -462,7 +467,7 @@ def gui(): # GUI設定
     # 設定のロード
     settings = load_settings()
 
-    sg.theme('DarkAmber')
+    sg.theme('SystemDefault')
     FONT = ('Meiryo',12)
     FONTs = ('Meiryo',8)
     layout = [
