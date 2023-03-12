@@ -324,6 +324,8 @@ class DakenCounter:
                     stop_local = True
                     print(f'スクリーンショットに失敗しました。{e}')
                     self.window.write_event_value('-SCRSHOT_ERROR-', " ")
+                    if self.obs == False:
+                        stop_local = True
                     break
                 if self.stop_thread:
                     stop_local = True
@@ -354,6 +356,7 @@ class DakenCounter:
                         break
 
                 time.sleep(sleep_time)
+        print('detect_top end')
 
     def gen_notes_xml(self, cur,today, plays, notes_ran, notes_battle, judge):
         srate = 0.0
@@ -705,9 +708,10 @@ class DakenCounter:
                 th.join()
                 self.stop_thread = False
                 #print(f"th.is_alive:{th.is_alive()}")
-                print(f"スコア検出スレッドが異常終了しました。再スタートします。")
-                th = threading.Thread(target=self.detect_top, args=(SLEEP_TIME,), daemon=True)
-                th.start()
+                if self.obs:
+                    print(f"スコア検出スレッドが異常終了しました。再スタートします。")
+                    th = threading.Thread(target=self.detect_top, args=(SLEEP_TIME,), daemon=True)
+                    th.start()
             elif ev == 'Y:89':
                 #print('隠しコマンド')
                 #url = sg.popup_get_text('YoutubeLiveのURL(Studioでも可)を入力してください。', 'Youtube準備用コマンド')
