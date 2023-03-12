@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import obsws_python as obsws
-import cv2, base64
+#import base64
 import numpy as np
 from PIL import Image
 
@@ -12,6 +12,9 @@ class OBSSocket():
         self.inf_source = inf_source
         self.dst_screenshot = dst_screenshot
         self.ws = obsws.ReqClient(host=self.host,port=self.port,password=self.passwd)
+
+    def close(self):
+        del self.ws
 
     def change_scene(self,name:str):
         self.ws.set_current_program_scene(name)
