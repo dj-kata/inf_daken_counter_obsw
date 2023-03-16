@@ -61,8 +61,11 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 (settings.jsonを新バージョンのフォルダに移行するだけでもOK)
 
 ## OBSwebsocketのインストール
-また、[OBSwebsocket](https://github.com/obsproject/obs-websocket/releases)もインストールしておいてください。  
-5.0のアルファ版は不安定らしいので、4.9系を推奨します。(2023/3/16時点)
+[OBSwebsocket](https://github.com/obsproject/obs-websocket/releases)をインストールしておいてください。  
+5.0のアルファ版は不安定らしいので、4.9系を推奨します。(2023/3/16時点)  
+～～Windows-Installer.exeと書いてあるファイルをダウンロードして実行します。  
+インストール後にOBSを再起動すると、メニューバー内ツールの中に**obs-websocket設定**が出てきます。
+
 
 OBSのメニューバー内ツール -> obs-websocket設定 を開き、
 - WebSocketサーバを有効にする にチェック
