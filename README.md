@@ -58,7 +58,7 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 ## 打鍵カウンタのインストール
 [リリースページ](https://github.com/dj-kata/inf_daken_counter_obsw/releases)から最新版のパッケージ(.zip)をダウンロードし、好きなフォルダに解凍してください。  
 アップデートする場合は、古いバージョンのフォルダを最新版のファイルで上書きしてください。  
-(settings.jsonを移行するだけでもOK)
+(settings.jsonを新バージョンのフォルダに移行するだけでもOK)
 
 ## OBSwebsocketのインストール
 また、[OBSwebsocket](https://github.com/obsproject/obs-websocket/releases)もインストールしておいてください。  
