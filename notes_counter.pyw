@@ -16,7 +16,7 @@ from PIL import Image, ImageFilter
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0'
+SWVER  = 'v2.0.0'
 
 width  = 1280
 height = 720
@@ -451,7 +451,7 @@ class DakenCounter:
             [sg.Input(default_query, font=FONT, key='series_query', size=(20,1))],
             [sg.Button('go', size=(10,1))]
         ]
-        window = sg.Window('YoutubeLive準備用ツール(隠しコマンド)', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico)
+        window = sg.Window('YoutubeLive準備用ツール', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico)
         window['youtube_url'].bind('<Return>', '_Enter')
         window['series_query'].bind('<Return>', '_Enter')
         while True:
@@ -471,8 +471,10 @@ class DakenCounter:
                     series = ''
                     if re.search(query, title):
                         series = re.search(query, title).group()
-                    basetitle = re.sub('【[^【】]*】', '', title.replace(series, ''))
-                    self.write_series_xml(series, basetitle)
+                    basetitle = title.replace(series, '')
+                    basetitle = re.sub('【[^【】]*】', '', basetitle)
+                    basetitle = re.sub('\[[^\[\]]*]', '', basetitle)
+                    self.write_series_xml(series, basetitle.strip())
                     window.close()
                     break
             elif ev == '貼り付け':
@@ -492,8 +494,8 @@ class DakenCounter:
         layout = [
             [sg.Text('OBS host: ', font=FONT), sg.Input(self.settings['host'], font=FONT, key='input_host', size=(20,20))],
             [sg.Text('OBS websocket port: ', font=FONT), sg.Input(self.settings['port'], font=FONT, key='input_port', size=(10,20))],
-            #[sg.Text('OBS websocket password', font=FONT), sg.Input('', font=FONT, key='input_passwd', size=(20,20), password_char='*')],
-            [sg.Text('OBS websocket password: ', font=FONT), sg.Input(self.settings['passwd'], font=FONT, key='input_passwd', size=(20,20))],
+            [sg.Text('OBS websocket password', font=FONT), sg.Input(self.settings['passwd'], font=FONT, key='input_passwd', size=(20,20), password_char='*')],
+            #[sg.Text('OBS websocket password: ', font=FONT), sg.Input(self.settings['passwd'], font=FONT, key='input_passwd', size=(20,20))],
             [sg.Text('INFINITAS用ソース名: ', font=FONT), sg.Input(self.settings['obs_source'], font=FONT, key='input_obs_source', size=(20,20))],
             [sg.Button('close', key='btn_close_setting', font=FONT)],
             ]
@@ -521,7 +523,7 @@ class DakenCounter:
             self.window.close()
 
         sg.theme('SystemDefault')
-        menuitems = [['ファイル',['設定',]],['ヘルプ',[f'{SWNAME}について']]]
+        menuitems = [['ファイル',['設定','配信を告知する',]],['ヘルプ',[f'{SWNAME}について']]]
         layout = [
             [sg.Menubar(menuitems, key='menu')],
             [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('test', key='test_screenshot', font=FONT)],
@@ -645,11 +647,10 @@ class DakenCounter:
                 th_scshot = threading.Thread(target=self.get_screen_all, daemon=True)
                 th_scshot.start()
             elif ev.startswith('tweet'):
-                cur_notes = today_notes
                 srate = 0.0
                 if self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5] > 0:
                     srate = (self.judge[0]*2+self.judge[1])/(self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5])*50
-                msg = f"今日は{today_plays:,}曲プレイし、{cur_notes:,}ノーツ叩きました。\n"
+                msg = f"今日は{self.today_plays:,}曲プレイし、{self.today_notes:,}ノーツ叩きました。\n"
                 msg += f'(PG:{self.judge[0]:,}, GR:{self.judge[1]:,}, GD:{self.judge[2]:,}, BD:{self.judge[3]:,}, PR:{self.judge[4]:,}, CB:{self.judge[5]:,})\n'
                 msg += f'(スコアレート: {srate:.1f}%)\n'
                 msg += '#INFINITAS_daken_counter'
@@ -713,8 +714,7 @@ class DakenCounter:
                     print(f"スコア検出スレッドが異常終了しました。再スタートします。")
                     th = threading.Thread(target=self.detect_top, args=(SLEEP_TIME,), daemon=True)
                     th.start()
-            elif ev == 'Y:89':
-                #print('隠しコマンド')
+            elif ev in ('Y:89', '配信を告知する'):
                 #url = sg.popup_get_text('YoutubeLiveのURL(Studioでも可)を入力してください。', 'Youtube準備用コマンド')
                 q = self.gui_ytinfo(self.settings['series_query'])
                 self.settings['series_query'] = q

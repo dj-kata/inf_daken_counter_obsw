@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>hoge</title>
+<style>
+body { 
+background-color: rgba(0, 0, 50, 0);
+overflow: hidden;
+font-family:"Mochiy Pop P One Regular";
+font-weight: bold;
+color:#2196F3;   
+font-size: 32px;
+color: #fff;
+}
+
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script>
+	
+function loadXml()
+{
+	var series = "";
+	var basetitle = "";
+	
+	var getxml = $.ajax({
+		url: "../series.xml",
+		type: 'GET',
+		dataType: 'xml',
+		cache: false
+		});
+	
+	getxml.done(function(xml){
+		series = $(xml).find('series').text();
+		basetitle = $(xml).find('basetitle').text();
+		$('#series span').text(series);
+		$('basetitle').text(basetitle);
+	});
+	
+	getxml.fail(function(error){
+		//alert("読み込み失敗");
+	});
+	
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+	var roopTimer = setInterval(loadXml, 2000);
+});
+
+
+</script>
+</head>
+
+<body>
+	<basetitle></basetitle>
+</body>
+</html>
