@@ -82,7 +82,7 @@ in_daken_counter内のnotes_counter.exeを実行します。
 OBSwebsocket関連の情報を入力してください。  
 - OBS hostは基本的にlocalhostで良いはずですが、環境に応じてローカルIPアドレスを設定してください。
 - OBS websocket portはOBS側と同一の値に設定してください。(OBS側を変更していなければ4444)
-- OBS websocket passwordはOBS側で設定したサーバーパスワードと同一のものを入力してください。
+- OBS websocket passwordは**OBS側で設定したサーバーパスワードと同一のもの**を入力してください。
 - INFINITAS用ソース名にはOBS側でINFINITASの画面を取り込んでいるゲームキャプチャソースの名前を入力してください。
 ![image](https://user-images.githubusercontent.com/61326119/225537930-49d98183-46b3-499d-a1d1-31f7d95e9dd3.png)
 
