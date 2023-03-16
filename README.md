@@ -116,7 +116,7 @@ tweetをクリックすると、その時点でのプレー曲数・ノーツ数
 ```
 body { background-color: rgba(0, 0, 0, 0.8); margin: 0px auto; overflow: hidden; }
 ```
-![image](https://user-images.githubusercontent.com/61326119/205484852-fb082d10-5c7a-41e0-be60-16015a76a581.png)
+![image](https://user-images.githubusercontent.com/61326119/225551460-856b8fc3-0731-465e-b202-bc33bcf8d7ca.png)
 
 ### プレーオプションの表示方法
 プレーオプション(乱やFLIP等)をOBSに表示するためのlayout\option.htmlも同梱しています。  
