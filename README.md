@@ -91,6 +91,11 @@ OBSwebsocket関連の情報を入力してください。
 正しく設定できていれば、打鍵カウンタの設定画面を閉じた時に以下のような接続通知が出ます。  
 ![image](https://user-images.githubusercontent.com/61326119/225539830-22796190-d969-4866-932c-1e220f3e1ae4.png)
 
+websocket設定及びINFINITAS用ソース名が正しく設定されていれば、  
+testボタンを押した時にキャプチャ画像の保存が行われます。  
+うまく動かない場合は確認してみてください。
+![image](https://user-images.githubusercontent.com/61326119/225552625-a7ff3dc4-5500-4ed4-9353-6615c8afd113.png)
+
 # 使い方
 1. notes_counter.exeを起動する。
 2. startをクリックする。(```起動時に即start```にチェックすると、次回以降はスキップ可能)
