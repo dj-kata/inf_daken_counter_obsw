@@ -96,9 +96,10 @@ testボタンを押した時にキャプチャ画像の保存が行われます�
 ![image](https://user-images.githubusercontent.com/61326119/225552625-a7ff3dc4-5500-4ed4-9353-6615c8afd113.png)
 
 # 使い方
-1. notes_counter.exeを起動する。
-2. startをクリックする。(```起動時に即start```にチェックすると、次回以降はスキップ可能)
-3. INFINITASをプレーする。
+1. OBSを起動する。
+2. notes_counter.exeを起動する。
+3. startをクリックする。(```起動時に即start```にチェックすると、次回以降はスキップ可能)
+4. INFINITASをプレーする。
 
 resetをクリックするとカウンタ(プレー回数・ノーツ数・各判定値)をリセットできます。  
 また、```start時にreset```にチェックしておくと、start後にカウンタを自動でリセットします。  
