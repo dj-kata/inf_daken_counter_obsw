@@ -12,6 +12,9 @@ class OBSSocket():
         self.inf_source = inf_source
         self.dst_screenshot = dst_screenshot
         self.ws = obsws.ReqClient(host=self.host,port=self.port,password=self.passwd)
+        self.active = True
+        self.ev = obsws.EventClient(host=self.host,port=self.port,password=self.passwd)
+        self.ev.callback.register([self.on_exit_started,])
 
     def close(self):
         del self.ws
@@ -27,25 +30,40 @@ class OBSSocket():
         res = self.ws.set_input_settings(source, {'text':text}, True)
 
     def save_screenshot(self):
-        res = self.ws.save_source_screenshot(self.inf_source, 'png', self.dst_screenshot, 1280, 720, 100)
+        try:
+            res = self.ws.save_source_screenshot(self.inf_source, 'png', self.dst_screenshot, 1280, 720, 100)
+            ret = True
+        except Exception as e:
+            print(f"get_screenshot error! {e}")
+            ret = False
+        return ret
 
     def save_screenshot_dst(self, dst):
-        res = self.ws.save_source_screenshot(self.inf_source, 'png', dst, 1280, 720, 100)
+        try:
+            res = self.ws.save_source_screenshot(self.inf_source, 'png', dst, 1280, 720, 100)
+            ret = True
+        except Exception as e:
+            print(f"get_screenshot error! {e}")
+            ret = False
+        return ret
 
     def get_screenshot(self, source, fmt):
-        res = self.ws.get_source_screenshot(source, fmt, 1920, 1080, 100)
-        scr = res.image_data
-        #img = cv2.imdecode(np.frombuffer(bytes(res.image_data, 'utf-8'), dtype='uint8'), cv2.IMREAD_UNCHANGED)
-        #img = Image.open(res.image_data)
-        #binary = base64.b64decode(res.image_data + "="*(-len(res.image_data) % 4))
-        #png = np.frombuffer(binary, dtype=np.uint8)
-        #img = cv2.imdecode(png, cv2.IMREAD_COLOR)
-        #return img
+        try:
+            res = self.ws.get_source_screenshot(source, fmt, 1920, 1080, 100)
+            scr = res.image_data
+        except Exception as e:
+            print(f"get_screenshot error! {e}")
+            scr = False
         return scr
 
+    def on_exit_started(self, _):
+        print("OBS closing!")
+        self.active = False
+        self.ev.unsubscribe()
+
 if __name__ == "__main__":
-    a = OBSSocket('localhost', 4455, 'panipaninoakuma')
-    a.save_screenshot('メインモニタ', 'png', 'C:\\Users\\katao\\OneDrive\\デスクトップ\\hoge.png')
+    a = OBSSocket('localhost', 4455, 'panipaninoakuma','INFINITAS','')
+    #a.save_screenshot('メインモニタ', 'png', 'C:\\Users\\katao\\OneDrive\\デスクトップ\\hoge.png')
     #tmp = a.get_screenshot('メインモニタ', 'png')
 #    a.change_scene('pksv_battle_end')
 #    a.change_text('txtTest', 'unko')
