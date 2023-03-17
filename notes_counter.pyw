@@ -16,7 +16,7 @@ from PIL import Image, ImageFilter
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0.0'
+SWVER  = 'v2.0.1'
 
 width  = 1280
 height = 720
@@ -82,7 +82,6 @@ class DakenCounter:
     # デバッグ用、現在設定している座標の画像を切り出してファイルに保存。
     def get_screen_all(self): 
         print(f"10秒後にキャプチャ画像をtest.pngに保存します。")
-        print(f"test.bmpがINFINITASで使うモニタとなっていることを確認してください。")
         time.sleep(10)
         print(f"\n10秒経過。キャプチャを実行します。")
         imgpath = os.path.dirname(__file__) + '\\test.png'
