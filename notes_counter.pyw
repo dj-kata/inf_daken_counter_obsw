@@ -327,6 +327,8 @@ class DakenCounter:
                     self.window.write_event_value('-SCRSHOT_ERROR-', " ")
                     if self.obs == False:
                         stop_local = True
+                    elif not self.obs.active: # obsインスタンスがあっても、OBSが落ちていたら止める
+                        stop_local = True
                     break
                 if self.stop_thread:
                     stop_local = True
@@ -709,11 +711,9 @@ class DakenCounter:
                 self.stop_thread = True
                 th.join()
                 self.stop_thread = False
-                #print(f"th.is_alive:{th.is_alive()}")
-                if self.obs:
-                    print(f"スコア検出スレッドが異常終了しました。再スタートします。")
-                    th = threading.Thread(target=self.detect_top, args=(SLEEP_TIME,), daemon=True)
-                    th.start()
+                running = not running
+                self.window['start'].update("start")
+                print(f"スコア検出スレッドが異常終了しました。")
             elif ev in ('Y:89', '配信を告知する'):
                 #url = sg.popup_get_text('YoutubeLiveのURL(Studioでも可)を入力してください。', 'Youtube準備用コマンド')
                 q = self.gui_ytinfo(self.settings['series_query'])
