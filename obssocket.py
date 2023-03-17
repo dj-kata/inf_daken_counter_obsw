@@ -30,31 +30,13 @@ class OBSSocket():
         res = self.ws.set_input_settings(source, {'text':text}, True)
 
     def save_screenshot(self):
-        try:
-            res = self.ws.save_source_screenshot(self.inf_source, 'png', self.dst_screenshot, 1280, 720, 100)
-            ret = True
-        except Exception as e:
-            print(f"get_screenshot error! {e}")
-            ret = False
-        return ret
+        res = self.ws.save_source_screenshot(self.inf_source, 'png', self.dst_screenshot, 1280, 720, 100)
 
     def save_screenshot_dst(self, dst):
-        try:
-            res = self.ws.save_source_screenshot(self.inf_source, 'png', dst, 1280, 720, 100)
-            ret = True
-        except Exception as e:
-            print(f"get_screenshot error! {e}")
-            ret = False
-        return ret
+        res = self.ws.save_source_screenshot(self.inf_source, 'png', dst, 1280, 720, 100)
 
     def get_screenshot(self, source, fmt):
-        try:
-            res = self.ws.get_source_screenshot(source, fmt, 1920, 1080, 100)
-            scr = res.image_data
-        except Exception as e:
-            print(f"get_screenshot error! {e}")
-            scr = False
-        return scr
+        res = self.ws.get_source_screenshot(source, fmt, 1920, 1080, 100)
 
     def on_exit_started(self, _):
         print("OBS closing!")
