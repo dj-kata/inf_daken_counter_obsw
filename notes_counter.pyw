@@ -390,7 +390,7 @@ class DakenCounter:
         opt_dyn = ''
         gauge_dyn = ''
         if onSong:
-            opt_dyn = 'opt: opt'
+            opt_dyn = f'opt: {opt}'
             gauge_dyn = f"<{re.sub('-', '', in_gauge.lower())}_dyn>{in_gauge}</{re.sub('-', '', in_gauge.lower())}_dyn>"
 
 
