@@ -22,6 +22,7 @@ OBS: 29.0.2
 - OBS28.0以降でないと動きません。OBS27以前を使いたい方は、[前のバージョン](https://github.com/dj-kata/inf_daken_counter)をお使いください。
 - 32bitOSでは動作しません。
 - プレー設定(Start->E2)の「判定の数リアルタイム表示」を有効にしないと動きません
+- INFINITAS用PCから配信用PCにキャプチャボード経由で映像を送る構成では動きません。
 
 # 本ツールのメリット
 ## SP,DPの両方に対応
@@ -58,11 +59,14 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 ## 打鍵カウンタのインストール
 [リリースページ](https://github.com/dj-kata/inf_daken_counter_obsw/releases)から最新版のパッケージ(.zip)をダウンロードし、好きなフォルダに解凍してください。  
 アップデートする場合は、古いバージョンのフォルダを最新版のファイルで上書きしてください。  
-(settings.jsonを移行するだけでもOK)
+(settings.jsonを新バージョンのフォルダに移行するだけでもOK)
 
 ## OBSwebsocketのインストール
-また、[OBSwebsocket](https://github.com/obsproject/obs-websocket/releases)もインストールしておいてください。  
-5.0のアルファ版は不安定らしいので、4.9系を推奨します。(2023/3/16時点)
+[OBSwebsocket](https://github.com/obsproject/obs-websocket/releases)をインストールしておいてください。  
+5.0のアルファ版は不安定らしいので、4.9系を推奨します。(2023/3/16時点)  
+～～Windows-Installer.exeと書いてあるファイルをダウンロードして実行します。  
+インストール後にOBSを再起動すると、メニューバー内ツールの中に**obs-websocket設定**が出てきます。
+
 
 OBSのメニューバー内ツール -> obs-websocket設定 を開き、
 - WebSocketサーバを有効にする にチェック
@@ -79,7 +83,7 @@ in_daken_counter内のnotes_counter.exeを実行します。
 OBSwebsocket関連の情報を入力してください。  
 - OBS hostは基本的にlocalhostで良いはずですが、環境に応じてローカルIPアドレスを設定してください。
 - OBS websocket portはOBS側と同一の値に設定してください。(OBS側を変更していなければ4444)
-- OBS websocket passwordはOBS側で設定したサーバーパスワードと同一のものを入力してください。
+- OBS websocket passwordは**OBS側で設定したサーバーパスワードと同一のもの**を入力してください。
 - INFINITAS用ソース名にはOBS側でINFINITASの画面を取り込んでいるゲームキャプチャソースの名前を入力してください。
 ![image](https://user-images.githubusercontent.com/61326119/225537930-49d98183-46b3-499d-a1d1-31f7d95e9dd3.png)
 
@@ -96,9 +100,10 @@ testボタンを押した時にキャプチャ画像の保存が行われます�
 ![image](https://user-images.githubusercontent.com/61326119/225552625-a7ff3dc4-5500-4ed4-9353-6615c8afd113.png)
 
 # 使い方
-1. notes_counter.exeを起動する。
-2. startをクリックする。(```起動時に即start```にチェックすると、次回以降はスキップ可能)
-3. INFINITASをプレーする。
+1. OBSを起動する。
+2. notes_counter.exeを起動する。
+3. startをクリックする。(```起動時に即start```にチェックすると、次回以降はスキップ可能)
+4. INFINITASをプレーする。
 
 resetをクリックするとカウンタ(プレー回数・ノーツ数・各判定値)をリセットできます。  
 また、```start時にreset```にチェックしておくと、start後にカウンタを自動でリセットします。  
