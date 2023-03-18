@@ -125,6 +125,8 @@ tweetをクリックすると、その時点でのプレー曲数・ノーツ数
 ```
 body { background-color: rgba(0, 0, 0, 0.8); margin: 0px auto; overflow: hidden; }
 ```
+PG,GR,GDのノーツ数が逐次更新されていきます。
+
 ![image](https://user-images.githubusercontent.com/61326119/225551460-856b8fc3-0731-465e-b202-bc33bcf8d7ca.png)
 
 ### プレーオプションの表示方法
