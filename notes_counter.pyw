@@ -13,10 +13,13 @@ import copy
 from bs4 import BeautifulSoup
 from obssocket import OBSSocket
 from PIL import Image, ImageFilter
+from tkinter import filedialog
+import datetime
+import imagehash
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0.1'
+SWVER  = 'v2.0.2'
 
 width  = 1280
 height = 720
@@ -37,6 +40,7 @@ class DakenCounter:
         self.window      = False
         self.savefile    = savefile
         self.load_settings()
+        self.playside = ''
         self.imgpath = os.path.dirname(__file__) + '\\tmp.png'
         try:
             self.obs = OBSSocket(self.settings['host'], self.settings['port'], self.settings['passwd'], self.settings['obs_source'], self.imgpath)
@@ -49,7 +53,10 @@ class DakenCounter:
         default_val = {'target_srate':'72%', 'sleep_time':'1.0',
         'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False, 'lx':0, 'ly':0,
         'series_query':'#[number]','judge':[0,0,0,0,0,0], 'playopt':'OFF',
-        'host':'localhost', 'port':'4444', 'passwd':'', 'obs_source':'INFINITAS'}
+        'host':'localhost', 'port':'4444', 'passwd':'', 'obs_source':'INFINITAS',
+        'autosave_lamp':False,'autosave_djlevel':False,'autosave_score':False,'autosave_bp':False,'autosave_dbx':False,
+        'autosave_dir':''
+        }
         ret = {}
         try:
             with open(self.savefile) as f:
@@ -88,6 +95,62 @@ class DakenCounter:
         sc = self.obs.save_screenshot_dst(imgpath)
         print(f'-> {imgpath}')
 
+    def save_result(self):
+        now = datetime.datetime.now()
+        fmtnow = format(now, "%Y%m%d_%H%M%S")
+        dst = f"{self.settings['autosave_dir']}/infinitas_{fmtnow}.png"
+        print(f"自動保存します。 -> {dst}")
+        self.obs.save_screenshot_dst(dst)
+
+    def autosave_result(self):
+        ret = False
+        img = Image.open(self.imgpath)
+        rival_1p = 0
+        rival_2p = 0
+        for y in range(6):
+            sc = img.crop((1215,195+y*80,1255,252+y*80))
+            rival_1p += np.array(sc).sum()
+            sc = img.crop((360,195+y*80,400,252+y*80))
+            rival_2p += np.array(sc).sum()
+        #print(f"sum 1p,2p = {rival_1p:,}, {rival_2p:,}")
+        update_1p = []
+        update_2p = []
+        result_threshold = 376200
+        result_threshold = 3864600
+        
+        # ライバル欄の画素値合計がしきい値と一致したらリザルト画面
+        #if rival_1p == 3864600 or rival_2p == 3864600:
+        # 1p, 355 - 385
+        # 1235,264 - 1265,282
+        # 1235,312 - 1265,330
+        # 1235,360 - 1265,378
+        # 1235,408 - 1265,426
+        #sum 1p,2p = 5,353,910, 3,864,600
+
+        if result_threshold in (rival_1p, rival_2p):
+            #ret = True
+            update_area = []
+            hash_target = imagehash.average_hash(Image.open('layout/update.png'))
+            for i in range(4):
+                if rival_1p == result_threshold:
+                    tmp = imagehash.average_hash(img.crop((355,258+48*i,385,288+48*i)))
+                    update_area.append(hash_target - tmp)
+
+                elif rival_2p == result_threshold:
+                    tmp = imagehash.average_hash(img.crop((1235,258+48*i,1265,288+48*i)))
+                    update_area.append(hash_target - tmp)
+
+            #print(f"update_area = {update_area}")
+            isLamp    = (self.settings['autosave_lamp'])    and (update_area[0] < 10)
+            isDjlevel = (self.settings['autosave_djlevel']) and (update_area[1] < 10)
+            isScore   = (self.settings['autosave_score'])   and (update_area[2] < 10)
+            isBp      = (self.settings['autosave_bp'])      and (update_area[3] < 10)
+            if isLamp or isDjlevel or isScore or isBp:
+                self.save_result()
+                ret = True
+
+        return ret
+
     ### プレイサイド検出を行う
     def detect_playside(self):
         ret = False
@@ -96,12 +159,13 @@ class DakenCounter:
             det = self.detect_judge(t)
             if det[0] == '0':
                 ret = t
+        self.playside = ret # 最後に検出したプレイサイドを覚えておく
         return ret
 
     ### オプション検出を行う
     def detect_option(self):
         playopt = False
-        self.obs.save_screenshot()
+        #self.obs.save_screenshot()
         whole = Image.open(self.imgpath)
         flip = ''
         left = False
@@ -222,7 +286,6 @@ class DakenCounter:
 
     ### 判定部分の切り出し
     def get_judge_img(self, playside):
-        self.obs.save_screenshot()
         img = Image.open(self.imgpath)
         if playside == '1p-l':
             x=414
@@ -301,13 +364,17 @@ class DakenCounter:
         playside = False
         self.playopt = '' # 曲開始タイミングとオプション検出タイミングは一致しないため、最後の値を覚えておく
         self.gauge   = ''
+        flg_autosave = False # その曲で自動保存を使ったかどうか, autosaveが成功したらTrue、曲終了時にリセット
         print(f'スコア検出スレッド開始。')
         while True:
             while True: # 曲開始までを検出
                 #print('test')
                 try:
+                    self.obs.save_screenshot()
                     playside = self.detect_playside()
                     tmp_playopt, tmp_gauge = self.detect_option()
+                    if not flg_autosave:
+                        flg_autosave = self.autosave_result()
                     if tmp_playopt and tmp_gauge:
                         if self.playopt != tmp_playopt:
                             self.window.write_event_value('-PLAYOPT-', tmp_playopt)
@@ -339,6 +406,7 @@ class DakenCounter:
                 break
 
             while True: # 曲中の処理
+                self.obs.save_screenshot()
                 det = self.detect_judge(playside)
                 try:
                     score = int(det[0])+int(det[1])+int(det[2])
@@ -355,6 +423,7 @@ class DakenCounter:
                         self.window.write_event_value('-THREAD-', f"end {pre_score} {pre_judge[0]} {pre_judge[1]} {pre_judge[2]} {pre_judge[3]} {pre_judge[4]} {pre_judge[5]}")
                         print(f'曲終了を検出しました。 => {pre_score}')
                         self.gen_opt_xml(self.playopt, self.gauge) # 曲中のみデータの削除
+                        flg_autosave = False
                         break
 
                 time.sleep(sleep_time)
@@ -492,12 +561,22 @@ class DakenCounter:
         self.mode = 'setting'
         if self.window:
             self.window.close()
+        #print(self.settings)
         layout = [
             [sg.Text('OBS host: ', font=FONT), sg.Input(self.settings['host'], font=FONT, key='input_host', size=(20,20))],
             [sg.Text('OBS websocket port: ', font=FONT), sg.Input(self.settings['port'], font=FONT, key='input_port', size=(10,20))],
             [sg.Text('OBS websocket password', font=FONT), sg.Input(self.settings['passwd'], font=FONT, key='input_passwd', size=(20,20), password_char='*')],
             #[sg.Text('OBS websocket password: ', font=FONT), sg.Input(self.settings['passwd'], font=FONT, key='input_passwd', size=(20,20))],
             [sg.Text('INFINITAS用ソース名: ', font=FONT), sg.Input(self.settings['obs_source'], font=FONT, key='input_obs_source', size=(20,20))],
+            [sg.Text('リザルト自動保存先フォルダ', font=FONT), sg.Button('変更', key='btn_autosave_dir')],
+            [sg.Text(self.settings['autosave_dir'], key='txt_autosave_dir')],
+            [sg.Text('リザルト自動保存用設定 (onになっている項目の更新時に保存)', font=FONT)],
+            [sg.Checkbox('クリアランプ',self.settings['autosave_lamp'],key='chk_lamp')
+            ,sg.Checkbox('DJ Level',self.settings['autosave_djlevel'], key='chk_djlevel')
+            ,sg.Checkbox('スコア', self.settings['autosave_score'], key='chk_score')
+            ,sg.Checkbox('ミスカウント', self.settings['autosave_bp'], key='chk_bp')
+            ],
+            #[sg.Checkbox('Battle時に自動セーブする(スコアが保存されないため毎回自己ベ扱いになる)', self.settings['autosave_dbx'], key='chk_dbx')],
             [sg.Button('close', key='btn_close_setting', font=FONT)],
             ]
         ico=self.ico_path('icon.ico')
@@ -594,10 +673,17 @@ class DakenCounter:
                     self.settings['run_on_boot'] = val['run_on_boot']
                     self.settings['reset_on_boot'] = val['reset_on_boot']
                 elif self.mode == 'setting':
+                    #self.settings['lx'] = self.window.current_location()[0]
+                    #self.settings['ly'] = self.window.current_location()[1]
                     self.settings['host'] = val['input_host']
                     self.settings['port'] = val['input_port']
                     self.settings['passwd'] = val['input_passwd']
                     self.settings['obs_source'] = val['input_obs_source']
+                    self.settings['autosave_lamp'] = val['chk_lamp']
+                    self.settings['autosave_djlevel'] = val['chk_djlevel']
+                    self.settings['autosave_score'] = val['chk_score']
+                    self.settings['autosave_bp'] = val['chk_bp']
+                    #self.settings['autosave_dbx'] = val['chk_dbx']
             if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-', 'btn_close_info', 'btn_close_setting'):
                 if self.mode == 'main':
                     self.save_settings()
@@ -731,6 +817,12 @@ class DakenCounter:
 
             elif ev in ('btn_setting', '設定'):
                 self.gui_setting()
+
+            elif ev in ('btn_autosave_dir'):
+                tmp = filedialog.askdirectory()
+                if tmp != '':
+                    self.settings['autosave_dir'] = tmp
+                    self.window['txt_autosave_dir'].update(tmp)
 
             elif ev  == f'{SWNAME}について':
                 self.gui_info()
