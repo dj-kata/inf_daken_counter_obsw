@@ -96,7 +96,7 @@ OBSwebsocket関連の情報を入力してください。
 
 websocket設定及びINFINITAS用ソース名が正しく設定されていれば、  
 testボタンを押した時にキャプチャ画像の保存が行われます。  
-うまく動かない場合は確認してみてください。
+うまく動かない場合は確認してみてください。  
 ![image](https://user-images.githubusercontent.com/61326119/225552625-a7ff3dc4-5500-4ed4-9353-6615c8afd113.png)
 
 ## リザルトの自動保存(new)
