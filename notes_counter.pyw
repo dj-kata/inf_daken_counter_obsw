@@ -19,7 +19,7 @@ import imagehash
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0.2'
+SWVER  = 'v2.0.3'
 
 width  = 1280
 height = 720
@@ -55,7 +55,7 @@ class DakenCounter:
         'series_query':'#[number]','judge':[0,0,0,0,0,0], 'playopt':'OFF',
         'host':'localhost', 'port':'4444', 'passwd':'', 'obs_source':'INFINITAS',
         'autosave_lamp':False,'autosave_djlevel':False,'autosave_score':False,'autosave_bp':False,'autosave_dbx':False,
-        'autosave_dir':''
+        'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False
         }
         ret = {}
         try:
@@ -95,12 +95,54 @@ class DakenCounter:
         sc = self.obs.save_screenshot_dst(imgpath)
         print(f'-> {imgpath}')
 
-    def save_result(self):
+    def save_result(self, mode):
         now = datetime.datetime.now()
         fmtnow = format(now, "%Y%m%d_%H%M%S")
         dst = f"{self.settings['autosave_dir']}/infinitas_{fmtnow}.png"
-        print(f"自動保存します。 -> {dst}")
-        self.obs.save_screenshot_dst(dst)
+        print(f"自動保存します。 -> {dst} (mode={mode})")
+        if self.settings['autosave_mosaic']:
+            # ライバルのモザイク処理
+            img = Image.open(self.imgpath)
+            img_array = np.array(img)
+            self.obs.save_screenshot_dst(dst)
+            if mode == '1p': # ライバルエリアが右側
+                rivalarea = img.crop((877,180,1212,655))
+                rivalarea = rivalarea.resize((33,47))
+                rivalarea = rivalarea.resize((335,475))
+                rival_array = np.array(rivalarea)
+                img_array[180:655, 877:1212] = rival_array
+            elif mode == '2p': # ライバルエリアが左側
+                rivalarea = img.crop((22,180,357,655))
+                rivalarea = rivalarea.resize((33,47))
+                rivalarea = rivalarea.resize((335,475))
+                rival_array = np.array(rivalarea)
+                img_array[180:655, 22:357] = rival_array
+            else:
+                # ここは絶対に通らないはずだが、一応用意している
+                print('error! リザルトのプレイサイド判別に失敗しています')
+            # 挑戦状エリアの処理
+            if img.getpixel((540,591)) == (0,0,0,255):
+                mailarea = img.crop((577,513,677,533))
+                mailarea = mailarea.resize((10,2))
+                mailarea = mailarea.resize((100,20))
+                mail_array = np.array(mailarea)
+                img_array[513:533, 577:677] = mail_array
+            # ターゲット名も隠す(ライバルの名前が入っている可能性があるため)
+            if mode == '2p':
+                targetarea = img.crop((910,456,1122,476))
+                targetarea = targetarea.resize((21,2))
+                targetarea = targetarea.resize((212,20))
+                img_array[456:476, 910:1122] = targetarea
+            else:
+                targetarea = img.crop((29,456,241,476))
+                targetarea = targetarea.resize((21,2))
+                targetarea = targetarea.resize((212,20))
+                img_array[456:476, 29:241] = targetarea
+
+            out = Image.fromarray(img_array)
+            out.save(dst)
+        else:
+            self.obs.save_screenshot_dst(dst)
 
     def autosave_result(self):
         ret = False
@@ -115,38 +157,33 @@ class DakenCounter:
         #print(f"sum 1p,2p = {rival_1p:,}, {rival_2p:,}")
         update_1p = []
         update_2p = []
-        result_threshold = 376200
         result_threshold = 3864600
         
         # ライバル欄の画素値合計がしきい値と一致したらリザルト画面
-        #if rival_1p == 3864600 or rival_2p == 3864600:
-        # 1p, 355 - 385
-        # 1235,264 - 1265,282
-        # 1235,312 - 1265,330
-        # 1235,360 - 1265,378
-        # 1235,408 - 1265,426
-        #sum 1p,2p = 5,353,910, 3,864,600
-
         if result_threshold in (rival_1p, rival_2p):
             #ret = True
             update_area = []
             hash_target = imagehash.average_hash(Image.open('layout/update.png'))
+            mode = ''
             for i in range(4):
                 if rival_1p == result_threshold:
                     tmp = imagehash.average_hash(img.crop((355,258+48*i,385,288+48*i)))
                     update_area.append(hash_target - tmp)
+                    mode = '1p'
 
                 elif rival_2p == result_threshold:
                     tmp = imagehash.average_hash(img.crop((1235,258+48*i,1265,288+48*i)))
                     update_area.append(hash_target - tmp)
+                    mode = '2p'
 
             #print(f"update_area = {update_area}")
+            isAlways  = (self.settings['autosave_always'])
             isLamp    = (self.settings['autosave_lamp'])    and (update_area[0] < 10)
             isDjlevel = (self.settings['autosave_djlevel']) and (update_area[1] < 10)
             isScore   = (self.settings['autosave_score'])   and (update_area[2] < 10)
             isBp      = (self.settings['autosave_bp'])      and (update_area[3] < 10)
-            if isLamp or isDjlevel or isScore or isBp:
-                self.save_result()
+            if isLamp or isDjlevel or isScore or isBp or isAlways:
+                self.save_result(mode)
                 ret = True
 
         return ret
@@ -562,25 +599,39 @@ class DakenCounter:
         if self.window:
             self.window.close()
         #print(self.settings)
-        layout = [
+        layout_obs = [
             [sg.Text('OBS host: ', font=FONT), sg.Input(self.settings['host'], font=FONT, key='input_host', size=(20,20))],
             [sg.Text('OBS websocket port: ', font=FONT), sg.Input(self.settings['port'], font=FONT, key='input_port', size=(10,20))],
             [sg.Text('OBS websocket password', font=FONT), sg.Input(self.settings['passwd'], font=FONT, key='input_passwd', size=(20,20), password_char='*')],
             #[sg.Text('OBS websocket password: ', font=FONT), sg.Input(self.settings['passwd'], font=FONT, key='input_passwd', size=(20,20))],
-            [sg.Text('INFINITAS用ソース名: ', font=FONT), sg.Input(self.settings['obs_source'], font=FONT, key='input_obs_source', size=(20,20))],
+            [sg.Text('INFINITAS用ソース名: ', font=FONT, tooltip='OBSでINFINITASを表示するのに使っているゲームソースの名前を入力してください。'), sg.Input(self.settings['obs_source'], font=FONT, key='input_obs_source', size=(20,20))],
+        ]
+        layout_autosave = [
             [sg.Text('リザルト自動保存先フォルダ', font=FONT), sg.Button('変更', key='btn_autosave_dir')],
             [sg.Text(self.settings['autosave_dir'], key='txt_autosave_dir')],
-            [sg.Text('リザルト自動保存用設定 (onになっている項目の更新時に保存)', font=FONT)],
-            [sg.Checkbox('クリアランプ',self.settings['autosave_lamp'],key='chk_lamp')
-            ,sg.Checkbox('DJ Level',self.settings['autosave_djlevel'], key='chk_djlevel')
-            ,sg.Checkbox('スコア', self.settings['autosave_score'], key='chk_score')
-            ,sg.Checkbox('ミスカウント', self.settings['autosave_bp'], key='chk_bp')
+            [
+                sg.Checkbox('更新に関係なく常時保存する',self.settings['autosave_always'],key='chk_always', enable_events=True, tooltip='チェックすると、DB系オプション利用時にも自動保存できます'),
+                sg.Checkbox('ライバルの名前を隠す',self.settings['autosave_mosaic'],key='chk_mosaic', enable_events=True)
             ],
-            #[sg.Checkbox('Battle時に自動セーブする(スコアが保存されないため毎回自己ベ扱いになる)', self.settings['autosave_dbx'], key='chk_dbx')],
+            [sg.Text('リザルト自動保存用設定 (onになっている項目の更新時に保存)', font=FONT)],
+            [sg.Checkbox('クリアランプ',self.settings['autosave_lamp'],key='chk_lamp', enable_events=True)
+            ,sg.Checkbox('DJ Level',self.settings['autosave_djlevel'], key='chk_djlevel', enable_events=True)
+            ,sg.Checkbox('スコア', self.settings['autosave_score'], key='chk_score', enable_events=True)
+            ,sg.Checkbox('ミスカウント', self.settings['autosave_bp'], key='chk_bp', enable_events=True)
+            ],
+        ]
+        layout = [
+            [sg.Frame('OBS設定', layout=layout_obs, title_color='#000044')],
+            [sg.Frame('リザルト自動保存設定', layout=layout_autosave, title_color='#000044')],
             [sg.Button('close', key='btn_close_setting', font=FONT)],
             ]
         ico=self.ico_path('icon.ico')
         self.window = sg.Window(f'{SWNAME} - 設定', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']))
+        if self.settings['autosave_always']:
+            self.window['chk_lamp'].update(disabled=True)
+            self.window['chk_djlevel'].update(disabled=True)
+            self.window['chk_score'].update(disabled=True)
+            self.window['chk_bp'].update(disabled=True)
 
     def gui_info(self): #情報表示用
         self.mode = 'info'
@@ -683,6 +734,18 @@ class DakenCounter:
                     self.settings['autosave_djlevel'] = val['chk_djlevel']
                     self.settings['autosave_score'] = val['chk_score']
                     self.settings['autosave_bp'] = val['chk_bp']
+                    self.settings['autosave_always'] = val['chk_always']
+                    self.settings['autosave_mosaic'] = val['chk_mosaic']
+                    if val['chk_always']:
+                        self.window['chk_lamp'].update(disabled=True)
+                        self.window['chk_djlevel'].update(disabled=True)
+                        self.window['chk_score'].update(disabled=True)
+                        self.window['chk_bp'].update(disabled=True)
+                    else:
+                        self.window['chk_lamp'].update(disabled=False)
+                        self.window['chk_djlevel'].update(disabled=False)
+                        self.window['chk_score'].update(disabled=False)
+                        self.window['chk_bp'].update(disabled=False)
                     #self.settings['autosave_dbx'] = val['chk_dbx']
             if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-', 'btn_close_info', 'btn_close_setting'):
                 if self.mode == 'main':
