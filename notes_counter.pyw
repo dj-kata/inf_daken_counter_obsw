@@ -610,7 +610,7 @@ class DakenCounter:
             [sg.Text('リザルト自動保存先フォルダ', font=FONT), sg.Button('変更', key='btn_autosave_dir')],
             [sg.Text(self.settings['autosave_dir'], key='txt_autosave_dir')],
             [
-                sg.Checkbox('更新に関係なく常時保存する',self.settings['autosave_always'],key='chk_always', enable_events=True, tooltip='チェックすると、DB系オプション利用時にも自動保存できます'),
+                sg.Checkbox('更新に関係なく常時保存する',self.settings['autosave_always'],key='chk_always', enable_events=True),
                 sg.Checkbox('ライバルの名前を隠す',self.settings['autosave_mosaic'],key='chk_mosaic', enable_events=True)
             ],
             [sg.Text('リザルト自動保存用設定 (onになっている項目の更新時に保存)', font=FONT)],
