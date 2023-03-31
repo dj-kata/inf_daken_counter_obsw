@@ -19,7 +19,7 @@ import imagehash
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0.3'
+SWVER  = 'v2.0.4'
 
 width  = 1280
 height = 720
@@ -150,14 +150,14 @@ class DakenCounter:
         rival_1p = 0
         rival_2p = 0
         for y in range(6):
-            sc = img.crop((1215,195+y*80,1255,252+y*80))
+            sc = img.crop((1215,195+y*80,1255,203+y*80))
             rival_1p += np.array(sc).sum()
-            sc = img.crop((360,195+y*80,400,252+y*80))
+            sc = img.crop((360,195+y*80,400,203+y*80))
             rival_2p += np.array(sc).sum()
         #print(f"sum 1p,2p = {rival_1p:,}, {rival_2p:,}")
         update_1p = []
         update_2p = []
-        result_threshold = 3864600
+        result_threshold = 542400
         
         # ライバル欄の画素値合計がしきい値と一致したらリザルト画面
         if result_threshold in (rival_1p, rival_2p):
@@ -182,9 +182,17 @@ class DakenCounter:
             isDjlevel = (self.settings['autosave_djlevel']) and (update_area[1] < 10)
             isScore   = (self.settings['autosave_score'])   and (update_area[2] < 10)
             isBp      = (self.settings['autosave_bp'])      and (update_area[3] < 10)
+            # 左上にミッション進捗が出ていないかどうか
+            isMissionEnd = img.getpixel((20,15)) != (44,61,77, 255)
+            # 獲得bitと所持bitのwindowが出ていないかどうか
+            tmp = np.array(img.crop((100,30,180,110)))
+            tmp[:,:][-1] = 0
+            isBitwindowEnd = tmp.sum() != 1914960
+
             if isLamp or isDjlevel or isScore or isBp or isAlways:
-                self.save_result(mode)
-                ret = True
+                if isMissionEnd and isBitwindowEnd:
+                    self.save_result(mode)
+                    ret = True
 
         return ret
 
