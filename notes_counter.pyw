@@ -16,10 +16,11 @@ from PIL import Image, ImageFilter
 from tkinter import filedialog
 import datetime
 import imagehash
+from daken_logger import DakenLogger
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0.4'
+SWVER  = 'v2.0.5'
 
 width  = 1280
 height = 720
@@ -41,6 +42,7 @@ class DakenCounter:
         self.savefile    = savefile
         self.load_settings()
         self.playside = ''
+        self.startdate = False # 最後にスレッドを開始した日付を記録。打鍵ログ保存用
         self.imgpath = os.path.dirname(__file__) + '\\tmp.png'
         try:
             self.obs = OBSSocket(self.settings['host'], self.settings['port'], self.settings['passwd'], self.settings['obs_source'], self.imgpath)
@@ -77,6 +79,17 @@ class DakenCounter:
     def save_settings(self):
         with open(self.savefile, 'w') as f:
             json.dump(self.settings, f, indent=2)
+
+    def save_dakenlog(self):
+        tmp = DakenLogger()
+        if self.today_plays > 0:
+            tmp.add(self.startdate, self.today_plays, self.judge)
+            tmp.save()
+
+    def gen_weekly_graph(self):
+        tmp = DakenLogger()
+        tmp.gen_entire_graph()
+        print('graph generated')
 
     # icon用
     def ico_path(self, relative_path):
@@ -410,6 +423,7 @@ class DakenCounter:
         self.playopt = '' # 曲開始タイミングとオプション検出タイミングは一致しないため、最後の値を覚えておく
         self.gauge   = ''
         flg_autosave = False # その曲で自動保存を使ったかどうか, autosaveが成功したらTrue、曲終了時にリセット
+        self.startdate = datetime.datetime.now().strftime("%Y/%m/%d")
         print(f'スコア検出スレッド開始。')
         while True:
             while True: # 曲開始までを検出
@@ -641,6 +655,17 @@ class DakenCounter:
             self.window['chk_score'].update(disabled=True)
             self.window['chk_bp'].update(disabled=True)
 
+    def gui_graph(self): # グラフ作成用
+        self.mode = 'graph'
+        if self.window:
+            self.window.close()
+        layout = [
+            [sg.Text(f'')],
+            [sg.Button('OK', key='btn_close_graph', font=FONT)],
+        ]
+        ico=self.ico_path('icon.ico')
+        self.window = sg.Window(f"{SWNAME}", layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']), size=(400,220))
+
     def gui_info(self): #情報表示用
         self.mode = 'info'
         if self.window:
@@ -662,7 +687,7 @@ class DakenCounter:
             self.window.close()
 
         sg.theme('SystemDefault')
-        menuitems = [['ファイル',['設定','配信を告知する',]],['ヘルプ',[f'{SWNAME}について']]]
+        menuitems = [['ファイル',['設定','配信を告知する','週間グラフ作成']],['ヘルプ',[f'{SWNAME}について']]]
         layout = [
             [sg.Menubar(menuitems, key='menu')],
             [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('test', key='test_screenshot', font=FONT)],
@@ -675,7 +700,7 @@ class DakenCounter:
             [sg.Text('PG:',font=FONTs),sg.Text('0',key='judge0',font=FONTs),sg.Text('GR:',font=FONTs),sg.Text('0',key='judge1',font=FONTs),sg.Text('GD:',font=FONTs),sg.Text('0',key='judge2',font=FONTs),sg.Text('BD:',font=FONTs),sg.Text('0',key='judge3',font=FONTs),sg.Text('PR:',font=FONTs),sg.Text('0',key='judge4',font=FONTs),sg.Text('CB:',font=FONTs),sg.Text('0',key='judge5',font=FONTs)],
             [sg.Text("ゲージ:", font=FONT),sg.Text(" ", key='gauge',font=FONT),sg.Text('平均スコアレート:',font=FONT),sg.Text('0 %',key='srate',font=FONT)],
             [sg.Text("option:", font=FONT),sg.Text(" ", key='playopt',font=FONT)],
-            [sg.Output(size=(63,8), key='output', font=('Meiryo',9))] # ここを消すと標準出力になる
+            #[sg.Output(size=(63,8), key='output', font=('Meiryo',9))] # ここを消すと標準出力になる
             ]
         ico=self.ico_path('icon.ico')
         self.window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']))
@@ -758,6 +783,7 @@ class DakenCounter:
             if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-', 'btn_close_info', 'btn_close_setting'):
                 if self.mode == 'main':
                     self.save_settings()
+                    self.save_dakenlog()
                     break
                 else:
                     if self.mode == 'setting':
@@ -875,6 +901,10 @@ class DakenCounter:
                 q = self.gui_ytinfo(self.settings['series_query'])
                 self.settings['series_query'] = q
                 #get_ytinfo(url)
+            elif ev == '週間グラフ作成':
+                #self.gen_weekly_graph()
+                self.gui_graph()
+
             elif ev in ("コピー"):
                 # try - except で弾かれたとき用に、バックアップの値を用意しておく
                 backup = self.window["output"].Widget.clipboard_get()
