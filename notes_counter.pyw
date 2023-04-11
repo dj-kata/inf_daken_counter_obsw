@@ -17,6 +17,7 @@ from tkinter import filedialog
 import datetime
 import imagehash
 from daken_logger import DakenLogger
+from log_manager import LogManager
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
@@ -700,7 +701,7 @@ class DakenCounter:
             [sg.Text('PG:',font=FONTs),sg.Text('0',key='judge0',font=FONTs),sg.Text('GR:',font=FONTs),sg.Text('0',key='judge1',font=FONTs),sg.Text('GD:',font=FONTs),sg.Text('0',key='judge2',font=FONTs),sg.Text('BD:',font=FONTs),sg.Text('0',key='judge3',font=FONTs),sg.Text('PR:',font=FONTs),sg.Text('0',key='judge4',font=FONTs),sg.Text('CB:',font=FONTs),sg.Text('0',key='judge5',font=FONTs)],
             [sg.Text("ゲージ:", font=FONT),sg.Text(" ", key='gauge',font=FONT),sg.Text('平均スコアレート:',font=FONT),sg.Text('0 %',key='srate',font=FONT)],
             [sg.Text("option:", font=FONT),sg.Text(" ", key='playopt',font=FONT)],
-            #[sg.Output(size=(63,8), key='output', font=('Meiryo',9))] # ここを消すと標準出力になる
+            [sg.Output(size=(63,8), key='output', font=('Meiryo',9))] # ここを消すと標準出力になる
             ]
         ico=self.ico_path('icon.ico')
         self.window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']))
@@ -747,7 +748,7 @@ class DakenCounter:
 
         while True:
             ev, val = self.window.read()
-            #print(f"event='{ev}', values={val}")
+            print(f"event='{ev}', values={val}")
             # 設定を最新化
             if self.settings and val: # 起動後、そのまま何もせずに終了するとvalが拾われないため対策している
                 if self.mode == 'main':
@@ -902,8 +903,8 @@ class DakenCounter:
                 self.settings['series_query'] = q
                 #get_ytinfo(url)
             elif ev == '週間グラフ作成':
-                #self.gen_weekly_graph()
-                self.gui_graph()
+                log_manager = LogManager(self.settings)
+                log_manager.main()
 
             elif ev in ("コピー"):
                 # try - except で弾かれたとき用に、バックアップの値を用意しておく

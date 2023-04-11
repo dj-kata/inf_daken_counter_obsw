@@ -7,6 +7,7 @@ import numpy as np
 class DakenLogger:
     def __init__(self):
         self.log = []
+        self.log_date = []
         self.load()
 
     def load(self):
@@ -16,6 +17,7 @@ class DakenLogger:
         else:
             with open('./dakenlog.pkl', 'rb') as f:
                 self.log = pickle.load(f)
+        self.log_date = [self.log[i][0] for i in range(len(self.log))]
 
     def save(self):
         with open('./dakenlog.pkl', 'wb') as f:
@@ -29,6 +31,10 @@ class DakenLogger:
         tmp = [date, plays] + judge
         self.log.append(tmp)
         ### TODO dateが既に存在する場合の処理
+
+    def delete(self, idx):
+        self.log.pop(idx)
+        self.log_date.pop(idx)
 
     # https://qiita.com/ZawaP/items/e959f7117b33fe5279ee
     def gradient_image(self, ax, direction=0.3, cmap_range=(0, 1), **kwargs):
@@ -47,7 +53,7 @@ class DakenLogger:
             self.gradient_image(ax, extent=(left, right, bottom, top),
                            cmap=cmap, cmap_range=cmap_range)
 
-    def gen_graph_core(self, filename, x, pg, gr, gd):
+    def gen_graph_core(self, filename, x, pg, gr, gd, write_sum=False):
         fig = plt.figure()
         fig.subplots_adjust(bottom=0.2)
         ax = fig.add_subplot(111)
@@ -70,54 +76,44 @@ class DakenLogger:
         bgd = ax.bar(x, gd, color=colors[2], width=0.5, edgecolor='Black', linewidth=1, facecolor='none')
         bgr = ax.bar(x, gr, bottom=gd, color=colors[1], width=0.5, edgecolor='Black', linewidth=1, facecolor='none')
         bpg = ax.bar(x, total, color=colors[0], width=0.5, edgecolor='Black', linewidth=1, facecolor='none')
-        for rect, t in zip(bpg, total):
-            h = rect.get_height()
-            if t>0:
-                ax.text(rect.get_x()+rect.get_width()/2, h+5, f"{t:,}", ha="center", va="bottom")
+        # 棒グラフの上に合計値を表示
+        if write_sum:
+            for rect, t in zip(bpg, total):
+                h = rect.get_height()
+                if t>0:
+                    ax.text(rect.get_x()+rect.get_width()/2, h+5, f"{t:,}", ha="center", va="bottom")
         # グラフの余白調整用、Xは-0.25～N-0.75、Y軸最大は適宜調整
         ax.bar([-0.25, len(pg)-0.75], [0, max(total)+5000], facecolor='none')
-        ax.set(xlabel='', ylabel='notes')
         #ax.legend(['PG', 'GR', 'GD'], loc='lower right', bbox_to_anchor=(1, 1), ncol=3)
         plt.savefig(filename)
 
-    def gen_entire_graph(self):
+    def gen_graph_with_date(self, filename, st, ed, write_sum=False):
         x  = []
         pg = []
         gr = []
         gd = []
-        for dd in self.log:
-            print(dd[0])
-            if dd[1] > 0 and dd[0]: # 1曲以上プレイ
-                x.append(dd[0])
-                pg.append(dd[2])
-                gr.append(dd[3])
-                gd.append(dd[4])
-        self.gen_graph_core('./all.png', x, pg, gr, gd)
+        out = [0]*7 # plays, pg, gr, gd, bd, pr, cb, 
 
-    def gen_graph_with_date(self, filename, datelist):
-        x  = []
-        pg = []
-        gr = []
-        gd = []
-
-        date_in_log = [self.log[i][0] for i in range(len(self.log))]
-        for date in datelist:
-            x.append(date)
-            if date in date_in_log:
-                idx = date_in_log.index(date)
+        for i in range((ed-st).days+1): 
+            cur_date = st + datetime.timedelta(days=i)
+            x.append(cur_date.strftime('%Y/%m/%d'))
+            if cur_date.strftime('%Y/%m/%d') in self.log_date:
+                idx = self.log_date.index(cur_date.strftime('%Y/%m/%d'))
                 pg.append(self.log[idx][2])
                 gr.append(self.log[idx][3])
                 gd.append(self.log[idx][4])
+                for i in range(7):
+                    out[i] += self.log[idx][1+i]
             else:
                 pg.append(0)
                 gr.append(0)
                 gd.append(0)
-        self.gen_graph_core(filename, x, pg, gr, gd)
+        self.gen_graph_core(filename, x, pg, gr, gd, write_sum)
+        return out
 
             
 if __name__ == "__main__":
     a = DakenLogger()
     a.disp()
     a.save()
-    a.gen_entire_graph()
-    a.gen_graph_with_date('tmp.png', ['2023/04/01', '2023/04/02', '2023/04/03', '2023/04/04', '2023/04/05', '2023/04/06', '2023/04/07'])
+    a.gen_graph_with_date('tmp.png', datetime.date(2023,4,1), datetime.date(2023,4,7))
