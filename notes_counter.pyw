@@ -688,7 +688,7 @@ class DakenCounter:
             self.window.close()
 
         sg.theme('SystemDefault')
-        menuitems = [['ファイル',['設定','配信を告知する','週間グラフ作成']],['ヘルプ',[f'{SWNAME}について']]]
+        menuitems = [['ファイル',['設定','配信を告知する','グラフ作成']],['ヘルプ',[f'{SWNAME}について']]]
         layout = [
             [sg.Menubar(menuitems, key='menu')],
             [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('test', key='test_screenshot', font=FONT)],
@@ -748,7 +748,7 @@ class DakenCounter:
 
         while True:
             ev, val = self.window.read()
-            print(f"event='{ev}', values={val}")
+            #print(f"event='{ev}', values={val}")
             # 設定を最新化
             if self.settings and val: # 起動後、そのまま何もせずに終了するとvalが拾われないため対策している
                 if self.mode == 'main':
@@ -902,7 +902,7 @@ class DakenCounter:
                 q = self.gui_ytinfo(self.settings['series_query'])
                 self.settings['series_query'] = q
                 #get_ytinfo(url)
-            elif ev == '週間グラフ作成':
+            elif ev == 'グラフ作成':
                 log_manager = LogManager(self.settings)
                 log_manager.main()
 
