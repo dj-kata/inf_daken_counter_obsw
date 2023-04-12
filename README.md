@@ -51,6 +51,7 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 |layout\judge.html|OBSで読み込む判定内訳表示用HTMLファイル|
 |data.xml|自動生成されるスコア情報|
 |option.xml|自動生成される設定中のオプション情報|
+|dakenlog.pkl|自動生成される過去に起動した日に叩いたノーツ数の情報|
 |settings.json|ツール本体の設定ファイル。|
 |README.txt|説明書|
 |LICENSE|ライセンス情報|
