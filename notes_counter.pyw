@@ -21,7 +21,7 @@ from log_manager import LogManager
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0.5'
+SWVER  = 'v2.0.6'
 
 width  = 1280
 height = 720

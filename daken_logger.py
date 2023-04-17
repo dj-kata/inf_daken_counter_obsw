@@ -12,8 +12,8 @@ class DakenLogger:
 
     def load(self):
         if not os.path.exists('./dakenlog.pkl'):
-            with open('./dakenlog.pkl', 'w') as f:
-                pass
+            with open('./dakenlog.pkl', 'wb') as f:
+                pickle.dump(self.log, f)
         else:
             with open('./dakenlog.pkl', 'rb') as f:
                 self.log = pickle.load(f)
