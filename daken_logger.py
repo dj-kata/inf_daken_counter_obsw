@@ -63,29 +63,30 @@ class DakenLogger:
         lim = ax.get_xlim()+ax.get_ylim()
         gr_gd = [gr[i]+gd[i] for i in range(len(pg))]
         total = [pg[i]+gr[i]+gd[i] for i in range(len(pg))]
-        ax.set_ylim([0, max(total)+5000]) # warning対策
-        labels = ax.get_xticklabels()
-        plt.setp(labels, rotation=90)
+        if len(total) > 0:
+            ax.set_ylim([0, max(total)+5000]) # warning対策
+            labels = ax.get_xticklabels()
+            plt.setp(labels, rotation=90)
 
-        # グラデーション
-        self.gradient_bar(ax, xxx, total, plt.cm.winter, width=0.5, cmap_range=(0.3,1.2))
-        self.gradient_bar(ax, xxx, gr_gd, plt.cm.Wistia, width=0.5, cmap_range=(-0.3, 0.7))
-        self.gradient_bar(ax, xxx, gd, plt.cm.twilight_shifted, width=0.5, cmap_range=(0,0.2))
+            # グラデーション
+            self.gradient_bar(ax, xxx, total, plt.cm.winter, width=0.5, cmap_range=(0.3,1.2))
+            self.gradient_bar(ax, xxx, gr_gd, plt.cm.Wistia, width=0.5, cmap_range=(-0.3, 0.7))
+            self.gradient_bar(ax, xxx, gd, plt.cm.twilight_shifted, width=0.5, cmap_range=(0,0.2))
 
-        #枠線, ax.textの都合上、bpgだけbottomなしでtotal(一番外側の矩形)を指定
-        bgd = ax.bar(x, gd, color=colors[2], width=0.5, edgecolor='Black', linewidth=1, facecolor='none')
-        bgr = ax.bar(x, gr, bottom=gd, color=colors[1], width=0.5, edgecolor='Black', linewidth=1, facecolor='none')
-        bpg = ax.bar(x, total, color=colors[0], width=0.5, edgecolor='Black', linewidth=1, facecolor='none')
-        # 棒グラフの上に合計値を表示
-        if write_sum:
-            for rect, t in zip(bpg, total):
-                h = rect.get_height()
-                if t>0:
-                    ax.text(rect.get_x()+rect.get_width()/2, h+5, f"{t:,}", ha="center", va="bottom")
-        # グラフの余白調整用、Xは-0.25～N-0.75、Y軸最大は適宜調整
-        ax.bar([-0.25, len(pg)-0.75], [0, max(total)+5000], facecolor='none')
-        #ax.legend(['PG', 'GR', 'GD'], loc='lower right', bbox_to_anchor=(1, 1), ncol=3)
-        plt.savefig(filename)
+            #枠線, ax.textの都合上、bpgだけbottomなしでtotal(一番外側の矩形)を指定
+            bgd = ax.bar(x, gd, color=colors[2], width=0.5, edgecolor='Black', linewidth=1, facecolor='none')
+            bgr = ax.bar(x, gr, bottom=gd, color=colors[1], width=0.5, edgecolor='Black', linewidth=1, facecolor='none')
+            bpg = ax.bar(x, total, color=colors[0], width=0.5, edgecolor='Black', linewidth=1, facecolor='none')
+            # 棒グラフの上に合計値を表示
+            if write_sum:
+                for rect, t in zip(bpg, total):
+                    h = rect.get_height()
+                    if t>0:
+                        ax.text(rect.get_x()+rect.get_width()/2, h+5, f"{t:,}", ha="center", va="bottom")
+            # グラフの余白調整用、Xは-0.25～N-0.75、Y軸最大は適宜調整
+            ax.bar([-0.25, len(pg)-0.75], [0, max(total)+5000], facecolor='none')
+            #ax.legend(['PG', 'GR', 'GD'], loc='lower right', bbox_to_anchor=(1, 1), ncol=3)
+            plt.savefig(filename)
 
     def gen_graph_with_date(self, filename, st, ed, write_sum=False):
         x  = []
