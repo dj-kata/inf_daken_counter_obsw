@@ -270,7 +270,8 @@ class LogManager:
             elif event == 'generate':
                 if range_st and range_ed:
                     filename = f"log_{range_st}_{range_ed}.png"
-                    stats = self.dakenlog.gen_graph_with_date(filename, range_st, range_ed)
+                    write_sum = (range_ed - range_st).days <= 7
+                    stats = self.dakenlog.gen_graph_with_date(filename, range_st, range_ed, write_sum=write_sum)
                     self.open_twitter(stats, f'{range_st.strftime("%Y年%m月%d日")}～{range_ed.strftime("%Y年%m月%d日")}')
                     self.window['info'].update(f"グラフ画像を生成しました -> {filename}")
 
