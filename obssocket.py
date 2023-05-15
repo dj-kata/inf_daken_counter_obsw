@@ -38,6 +38,12 @@ class OBSSocket():
     def get_screenshot(self, source, fmt):
         res = self.ws.get_source_screenshot(source, fmt, 1920, 1080, 100)
 
+    def enable_source(self, scenename, sourceid):
+        res = self.ws.set_scene_item_enabled(scenename, sourceid, enabled=True)
+
+    def disable_source(self, scenename, sourceid):
+        res = self.ws.set_scene_item_enabled(scenename, sourceid, enabled=False)
+
     def on_exit_started(self, _):
         print("OBS closing!")
         self.active = False
@@ -49,4 +55,7 @@ if __name__ == "__main__":
     #tmp = a.get_screenshot('メインモニタ', 'png')
 #    a.change_scene('pksv_battle_end')
 #    a.change_text('txtTest', 'unko')
-    
+    b = a.ws.get_scene_item_list('2. DP_NEW').scene_items
+    for s in b:
+        if s['sourceName'] == 'today_result':
+            print(s)
