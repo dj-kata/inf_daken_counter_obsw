@@ -59,3 +59,5 @@ if __name__ == "__main__":
     for s in b:
         if s['sourceName'] == 'today_result':
             print(s)
+        if s['sourceName'] == 'history_cursong':
+            print(s)

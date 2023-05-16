@@ -46,6 +46,7 @@ class DakenCounter:
         self.savefile    = savefile
         self.alllogfile  = './alllog.pkl'
         self.alllog      = []
+        self.dict_alllog = {}
         self.todaylog    = []
         self.write_today_update_html()
         self.load_alllog()
@@ -97,6 +98,11 @@ class DakenCounter:
             print('プレーログファイル(alllog.pkl)を作成します。')
             with open(self.alllogfile, 'wb') as f:
                 pickle.dump([], f)
+        for s in self.alllog:
+            key = f"{s[1]}({s[2]})"
+            if not key in self.dict_alllog.keys():
+                self.dict_alllog[key] = []
+            self.dict_alllog[key].append(s)
     
     def save_alllog(self):
         with open(self.alllogfile, 'wb') as f:
@@ -230,6 +236,20 @@ class DakenCounter:
                     ret = True
 
         return ret
+    
+    ### 自動保存用ディレクトリ内の画像からDBを作成する
+    def read_result_from_pic(self):
+        paths = list(Path(self.settings['autosave_dir']).glob(r'*.png'))
+        for f in paths:
+            if 'infinitas' in str(f).lower():
+                try:
+                    result = self.ocr(f)
+                    if not result in self.alllog:
+                        print(f"{result[-1]} {result[1]}({result[2]}) - {result[7]}, {result[9]-result[8]:+,}")
+                        self.alllog.append(result)
+                except Exception:
+                    pass
+        self.window.write_event_value('-OCR_FROM_IMG_END-', " ")
 
     ### プレイサイド検出を行う
     def detect_playside(self):
@@ -253,7 +273,8 @@ class DakenCounter:
         # 1p, 2pをケアする必要がある TODO
         pic_playdata = img_mono.crop((905,192,905+350,192+293))
         playdata     = recog.get_details(pic_playdata)
-        is_valid = (info.music!=None) and (info.level!=None) and (info.notes!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
+        is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
+        #print(is_valid, info.music, info.level, info.play_mode, info.difficulty)
         if is_valid:
             tmp.append(info.level)
             tmp.append(info.music)
@@ -272,7 +293,8 @@ class DakenCounter:
             tmp.append(playdata.miss_count.current)
             ts = os.path.getmtime(pic)
             dt = datetime.datetime.fromtimestamp(ts)
-            tmp.append(dt.strftime('%Y-%m-%d-%H-%M-%S'))
+            tmp.append(self.playopt)
+            tmp.append(dt.strftime('%Y-%m-%d-%H-%M'))
             ret = tmp
         return ret
 
@@ -506,7 +528,7 @@ class DakenCounter:
                         is_select = True
                         # TODO 設定画面作る、グループ内でも操作できるか確認する
                         self.obs.enable_source('2. DP_NEW', 51)
-                        # TODO HTML作成
+                        self.obs.disable_source('2. DP_NEW', 53)
                     else: # 選曲画面じゃなくなった(選曲中レイヤの停止用)
                         self.obs.disable_source('2. DP_NEW', 51) # TODO
                     if not is_pushed_to_alllog:
@@ -515,9 +537,15 @@ class DakenCounter:
                             if result:
                                 self.todaylog.append(result)
                                 self.alllog.append(result)
+                                key = f"{result[1]}({result[2]})"
+                                if not key in self.dict_alllog.keys():
+                                    self.dict_alllog[key] = []
+                                self.dict_alllog[key].append(result)
                                 is_pushed_to_alllog = True
                                 print(f"{result[1]}({result[2]}) - {result[7]},score:{result[9]:,}({result[9]-result[8]:+,}),")
                                 self.write_today_update_html()
+                                self.write_history_cursong_html(f"{result[1]}({result[2]})")
+                                self.obs.enable_source('2. DP_NEW', 53)
                         except:
                             pass
 
@@ -641,14 +669,45 @@ class DakenCounter:
 </Items>''')
         f.close()
 
+    def write_history_cursong_html(self, key):
+        with open('layout/history_cursong.html', 'w', encoding='utf-8') as f:
+            f.write('<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="3" ><title>hoge</title></head><body>\n')
+            f.write(f'<font color="green">{key}</font>\n')
+            f.write('<table border="0"><thead><th width="240"></th><th width="200"></th><th width="140"></th><th width="900"></th></thead>\n\n')
+            lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
+            for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
+                lamp = s[7]
+                cur = lamp_table.index(s[7])
+                if cur == 1:
+                    lamp = f'<font color="#ffff00">{s[7]}</font>'
+                if cur == 2:
+                    lamp = f'<font color="#cc00ff">{s[7]}</font>'
+                elif cur == 3:
+                    lamp = f'<font color="#00ff22">{s[7]}</font>'
+                elif cur == 4:
+                    lamp = f'<font color="#22aaff">{s[7]}</font>'
+                elif cur == 5:
+                    lamp = f'<font color="#ff2222">{s[7]}</font>'
+                elif cur == 6:
+                    lamp = f'<font color="#ffff00">{s[7]}</font>'
+                elif cur == 7:
+                    lamp = f'<font color="#ffcc00">{s[7]}</font>'
+
+                f.write('<tr>\n')
+                f.write(f'<td>{s[-1][:10]}</td>\n')
+                f.write(f'<td>{lamp}</td>\n')
+                f.write(f'<td>{s[9]}</td>\n')
+                f.write(f'<td>{s[-2]}</td>\n')
+                f.write('</tr>\n\n')
+            f.write('</table></body></html>\n')
+
     def write_today_update_html(self):
         with open('layout/today_update.html', 'w', encoding='utf-8') as f:
-            f.write('<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="1" ><title>hoge</title></head><body>\n')
+            f.write('<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="3" ><title>hoge</title></head><body>\n')
             f.write('<font color="green">今日の更新</font>\n')
             f.write('<table border="0"><thead><th width="200"></th><th width="980"></th><th width="400"></th><th width="200" align="right"></th></thead>\n\n')
             lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
             for s in reversed(self.todaylog):
-                title = s[1]
                 lamp = ''
                 score = ''
                 if (lamp_table.index(s[7]) > lamp_table.index(s[6])):
@@ -668,12 +727,18 @@ class DakenCounter:
 
                 if s[9] > s[8]:
                     score = f'+{s[9]-s[8]}'
-                if len(title) > 20:
-                    title = s[1][:20] + '...'
+                title = s[1]
+                if s[2][-1] == 'N':
+                    title = f'<font color="#b4d0ff">{title}</font>'
+                elif s[2][-1] == 'H':
+                    title = f'<font color="#ffffc8">{title}</font>'
+                elif s[2][-1] == 'A':
+                    title = f'<font color="#ffc8c8">{title}</font>'
                 if (lamp != '') or (score != ''):
                     f.write('<tr>\n')
                     f.write(f'<td>☆{s[0]}</td>\n')
-                    f.write(f'<td>{title} ({s[2]})</td>\n')
+                    #f.write(f'<td><div style="overflow:hidden;">{title} ({s[2]})</div></td>\n')
+                    f.write(f'<td><div style="overflow:hidden;">{title}</div></td>\n')
                     f.write(f'<td>{lamp}</td>\n')
                     f.write(f'<td align="right">{score}</td>\n')
                     f.write('</tr>\n\n')
@@ -775,7 +840,6 @@ class DakenCounter:
         ]
         layout_ocr = [
             [sg.Button('保存したリザルト画像からスコアデータに反映する', key='btn_ocr_from_savedir', tooltip='リザルト画像の数によってはかなり時間がかかります。')],
-            [sg.Text('', key='txt_ocr_status')],
         ]
         layout = [
             [sg.Frame('OBS設定', layout=layout_obs, title_color='#000044')],
@@ -1063,19 +1127,14 @@ class DakenCounter:
                     self.window['txt_autosave_dir'].update(tmp)
 
             elif ev in ('btn_ocr_from_savedir'): # リザルト画像フォルダからスコアを抽出。スコア一覧の初期値生成用
-                paths = list(Path(self.settings['autosave_dir']).glob(r'*.png'))
+                th_read_result = threading.Thread(target=self.read_result_from_pic, daemon=True)
+                self.playopt = '?' # 画像からオプションが取得できなさそうなので、不明にしておく
                 pre_len_alllog = len(self.alllog)
-                for f in paths:
-                    if 'infinitas' in str(f).lower():
-                        try:
-                            result = self.ocr(f)
-                            if not result in self.alllog:
-                                print(result)
-                                self.window['txt_ocr_status'].update(f"{result[-1]} {result[1]} added.")
-                                self.alllog.append(result)
-                        except Exception:
-                            pass
-                self.window['txt_ocr_status'].update(f"追加完了。({pre_len_alllog} -> {len(self.alllog)}; {len(self.alllog)-pre_len_alllog:+})")
+                th_read_result.start()
+
+            elif ev == '-OCR_FROM_IMG_END-':
+                th_read_result.join()
+                self.playopt = self.settings['playopt']
 
             elif ev  == f'{SWNAME}について':
                 self.gui_info()
