@@ -26,26 +26,23 @@
             	white-space:nowrap;
             }
             table td:nth-child(1) {
-            	width:200px;
+            	width:350px;
             }
             table td:nth-child(2) {
-            	overflow:hidden;
-            	text-overflow:ellipsis;
-            	max-width:90px;
-            }
-            table td:nth-child(3) {
             	width:200px;
             }
+            table td:nth-child(3) {
+            	width:250px;
+            }
             table td:nth-child(4) {
-            	width:1px;
+            	max-width:90%;
             }
         </style>
-    <body>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
         <script>
         function loadXml() {
             var getxml = $.ajax({
-                url: '../today_update.xml',
+                url: '../history_cursong.xml',
                 type: 'GET',
                 dataType: 'xml',
                 cache: false
@@ -53,25 +50,19 @@
             getxml.done(function(xml){
                 // xmlデータからほしいデータをfindで探し処理
                 var out = "";
+                var title = $(xml).find('Results music').text();
+                var lv = $(xml).find('Results lv').text();
+                var difficulty = $(xml).find('Results difficulty').text();
+                $("#hoge").text('☆'+lv+' '+title+' ('+difficulty+')');
                 $(xml).find("Results item").each(function(index, item){
-                    var lv = $(item).find('lv').text();
+                    var date = $(item).find('date').text();
                     var lamp = $(item).find('lamp').text();
-                    var difficulty = $(item).find('difficulty').text();
-                    var title = $(item).find('title').text();
                     var score = $(item).find('score').text();
-                    if (difficulty == "DPN"){
-                        title = '<font color="#8888ff">'+title+'</font>'
+                    var opt = $(item).find('opt').text();
+                    if (lamp == "FAILED"){
+                        lamp = '<font color="#770000">x</font>'
                     }
-                    if (difficulty == "DPH"){
-                        title = '<font color="#ffff88">'+title+'</font>'
-                    }
-                    if (difficulty == "DPA"){
-                        title = '<font color="#ff8888">'+title+'</font>'
-                    }
-                    if (difficulty == "DPL"){
-                        title = '<font color="#ff88ff">'+title+'</font>'
-                    }
-                    if (lamp == "A-CLEAR"){
+                    else if (lamp == "A-CLEAR"){
                         lamp = '<font color="#cc44ff">AC</font>'
                     }
                     else if (lamp == "E-CLEAR"){
@@ -89,19 +80,20 @@
                     else if (lamp == "F-COMBO"){
                         lamp = '<font color="#ff22ff">FC</font>'
                     }
-                    else{ // Failed, No playは何も表示しない
+                    else{ // No playは何も表示しない
                         lamp = ''
                     }
                     // テーブルに追加
-                    out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+lamp+'</td><td>'+score+'</td></tr>';
-                    if (index == 5){ // 直近の6曲だけ表示としている。曲数はここから変更可能。
+                    out +='<tr><td><font color="#ffffaa">'+date+'</font></td><td>'+lamp+'</td><td>'+score+'</td><td><font color="#aaffaa">'+opt+'</font></td></tr>';
+                    if (index == 19){ // 直近の20プレイだけ表示としている。曲数はここから変更可能。
                         return false;
                     }
                     });
                 $('#result tbody').html(out);
             });
             getxml.fail(function(err) {
-                // alert('failed');
+                $(songtitle).text("ERROR!!!"+err);
+                //alert('failed');
             });
         }
 
@@ -112,16 +104,8 @@
 </script>
 </head>
 <body>
-  <font color="#88bbff">Recent update</font>
+  <font color="#88bbff"><p id="hoge">b</p></font>
   <table id="result">
-    <thead>
-      <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-      </tr>
-    </thead>
     <tbody>
     </tbody>
   </table>
