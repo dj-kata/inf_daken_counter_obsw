@@ -48,7 +48,7 @@ class DakenCounter:
         self.alllog      = []
         self.dict_alllog = {}
         self.todaylog    = []
-        self.write_today_update_html()
+        self.write_today_update_xml()
         self.load_alllog()
         self.load_settings()
         self.playside = ''
@@ -512,6 +512,9 @@ class DakenCounter:
         self.gauge   = ''
         flg_autosave = True # その曲で自動保存を使ったかどうか, autosaveが成功したらTrue、曲終了時にリセット
         self.startdate = datetime.datetime.now().strftime("%Y/%m/%d")
+        # TODO
+        self.obs.disable_source('2. DP_NEW', 51)
+        self.obs.disable_source('2. DP_NEW', 53)
         print(f'スコア検出スレッド開始。')
         while True:
             is_pushed_to_alllog = False
@@ -524,7 +527,6 @@ class DakenCounter:
                     if not flg_autosave:
                         flg_autosave = self.autosave_result()
                     if self.detect_select() and len(self.todaylog) > 0:
-                        print('選曲画面を検出')
                         is_select = True
                         # TODO 設定画面作る、グループ内でも操作できるか確認する
                         self.obs.enable_source('2. DP_NEW', 51)
@@ -543,10 +545,11 @@ class DakenCounter:
                                 self.dict_alllog[key].append(result)
                                 is_pushed_to_alllog = True
                                 print(f"{result[1]}({result[2]}) - {result[7]},score:{result[9]:,}({result[9]-result[8]:+,}),")
-                                self.write_today_update_html()
-                                self.write_history_cursong_html(f"{result[1]}({result[2]})")
+                                self.write_today_update_xml()
+                                self.write_history_cursong_xml(result)
+                                #print(f"len:{len(self.todaylog)}\nlast3:[{self.todaylog[-3:]}]")
                                 self.obs.enable_source('2. DP_NEW', 53)
-                        except:
+                        except Exception as e:
                             pass
 
                     if tmp_playopt and tmp_gauge:
@@ -578,6 +581,9 @@ class DakenCounter:
 
             if stop_local:
                 break
+            
+            self.obs.disable_source('2. DP_NEW', 51)
+            self.obs.disable_source('2. DP_NEW', 53)
 
             while True: # 曲中の処理
                 self.obs.save_screenshot()
@@ -669,80 +675,46 @@ class DakenCounter:
 </Items>''')
         f.close()
 
-    def write_history_cursong_html(self, key):
-        with open('layout/history_cursong.html', 'w', encoding='utf-8') as f:
-            f.write('<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="3" ><title>hoge</title></head><body>\n')
-            f.write(f'<font color="green">{key}</font>\n')
-            f.write('<table border="0"><thead><th width="240"></th><th width="200"></th><th width="140"></th><th width="900"></th></thead>\n\n')
-            lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
+    def write_history_cursong_xml(self, result):
+        with open('history_cursong.xml', 'w', encoding='utf-8') as f:
+            f.write(f'<?xml version="1.0" encoding="utf-8"?>\n')
+            f.write("<Results>\n")
+            f.write(f'    <lv>{result[0]}</lv>\n')
+            f.write(f'    <music>{result[1]}</music>\n')
+            f.write(f'    <difficulty>{result[2]}</difficulty>\n')
+            key = f"{result[1]}({result[2]})"
+            #print(key)
             for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
-                lamp = s[7]
-                cur = lamp_table.index(s[7])
-                if cur == 1:
-                    lamp = f'<font color="#ffff00">{s[7]}</font>'
-                if cur == 2:
-                    lamp = f'<font color="#cc00ff">{s[7]}</font>'
-                elif cur == 3:
-                    lamp = f'<font color="#00ff22">{s[7]}</font>'
-                elif cur == 4:
-                    lamp = f'<font color="#22aaff">{s[7]}</font>'
-                elif cur == 5:
-                    lamp = f'<font color="#ff2222">{s[7]}</font>'
-                elif cur == 6:
-                    lamp = f'<font color="#ffff00">{s[7]}</font>'
-                elif cur == 7:
-                    lamp = f'<font color="#ffcc00">{s[7]}</font>'
+                #print(s)
+                f.write('    <item>\n')
+                f.write(f'        <date>{s[-1][2:10]}</date>\n')
+                f.write(f'        <lamp>{s[7]}</lamp>\n')
+                f.write(f'        <score>{s[9]}</score>\n')
+                f.write(f'        <opt>{s[-2]}</opt>\n')
+                f.write('    </item>\n')
+            f.write('</Results>\n')
 
-                f.write('<tr>\n')
-                f.write(f'<td>{s[-1][:10]}</td>\n')
-                f.write(f'<td>{lamp}</td>\n')
-                f.write(f'<td>{s[9]}</td>\n')
-                f.write(f'<td>{s[-2]}</td>\n')
-                f.write('</tr>\n\n')
-            f.write('</table></body></html>\n')
-
-    def write_today_update_html(self):
-        with open('layout/today_update.html', 'w', encoding='utf-8') as f:
-            f.write('<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="3" ><title>hoge</title></head><body>\n')
-            f.write('<font color="green">今日の更新</font>\n')
-            f.write('<table border="0"><thead><th width="200"></th><th width="980"></th><th width="400"></th><th width="200" align="right"></th></thead>\n\n')
+    def write_today_update_xml(self):
+        with open('today_update.xml', 'w', encoding='utf-8') as f:
+            f.write(f'<?xml version="1.0" encoding="utf-8"?>\n')
+            f.write("<Results>\n")
             lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
             for s in reversed(self.todaylog):
                 lamp = ''
                 score = ''
-                if (lamp_table.index(s[7]) > lamp_table.index(s[6])):
-                    cur = lamp_table.index(s[7])
-                    if cur == 2:
-                        lamp = f'<font color="#cc00ff">{s[7]}</font>'
-                    elif cur == 3:
-                        lamp = f'<font color="#00ff22">{s[7]}</font>'
-                    elif cur == 4:
-                        lamp = f'<font color="#22aaff">{s[7]}</font>'
-                    elif cur == 5:
-                        lamp = f'<font color="#ff2222">{s[7]}</font>'
-                    elif cur == 6:
-                        lamp = f'<font color="#ffff00">{s[7]}</font>'
-                    elif cur == 7:
-                        lamp = f'<font color="#ffcc00">{s[7]}</font>'
-
-                if s[9] > s[8]:
+                if (lamp_table.index(s[7]) > lamp_table.index(s[6])): # 更新時のみランプを送信
+                    lamp = s[7]
+                if s[9] > s[8]: # 更新時のみスコアを送信
                     score = f'+{s[9]-s[8]}'
-                title = s[1]
-                if s[2][-1] == 'N':
-                    title = f'<font color="#b4d0ff">{title}</font>'
-                elif s[2][-1] == 'H':
-                    title = f'<font color="#ffffc8">{title}</font>'
-                elif s[2][-1] == 'A':
-                    title = f'<font color="#ffc8c8">{title}</font>'
                 if (lamp != '') or (score != ''):
-                    f.write('<tr>\n')
-                    f.write(f'<td>☆{s[0]}</td>\n')
-                    #f.write(f'<td><div style="overflow:hidden;">{title} ({s[2]})</div></td>\n')
-                    f.write(f'<td><div style="overflow:hidden;">{title}</div></td>\n')
-                    f.write(f'<td>{lamp}</td>\n')
-                    f.write(f'<td align="right">{score}</td>\n')
-                    f.write('</tr>\n\n')
-            f.write('</table></body></html>\n')
+                    f.write('<item>\n')
+                    f.write(f'    <lv>{s[0]}</lv>\n')
+                    f.write(f'    <title>{s[1]}</title>\n')
+                    f.write(f'    <difficulty>{s[2]}</difficulty>\n')
+                    f.write(f'    <lamp>{lamp}</lamp>\n')
+                    f.write(f'    <score>{score}</score>\n')
+                    f.write('</item>\n')
+            f.write('</Results>\n')
 
     def get_ytinfo(self, url):
         liveid = self.parse_url(url)
