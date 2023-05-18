@@ -56,11 +56,14 @@ class OBSSocket():
         self.ev.unsubscribe()
 
     def search_itemid(self, scene, target):
-        allitem = self.ws.get_scene_item_list(scene).scene_items
         ret = None
-        for x in allitem:
-            if x['sourceName'] == target:
-                ret = x['sceneItemId']
+        try:
+            allitem = self.ws.get_scene_item_list(scene).scene_items
+            for x in allitem:
+                if x['sourceName'] == target:
+                    ret = x['sceneItemId']
+        except:
+            pass
         return ret
 
 if __name__ == "__main__":
