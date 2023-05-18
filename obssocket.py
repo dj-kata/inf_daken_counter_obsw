@@ -39,15 +39,29 @@ class OBSSocket():
         res = self.ws.get_source_screenshot(source, fmt, 1920, 1080, 100)
 
     def enable_source(self, scenename, sourceid):
-        res = self.ws.set_scene_item_enabled(scenename, sourceid, enabled=True)
+        try:
+            res = self.ws.set_scene_item_enabled(scenename, sourceid, enabled=True)
+        except Exception as e:
+            return e
 
     def disable_source(self, scenename, sourceid):
-        res = self.ws.set_scene_item_enabled(scenename, sourceid, enabled=False)
+        try:
+            res = self.ws.set_scene_item_enabled(scenename, sourceid, enabled=False)
+        except Exception as e:
+            return e
 
     def on_exit_started(self, _):
         print("OBS closing!")
         self.active = False
         self.ev.unsubscribe()
+
+    def search_itemid(self, scene, target):
+        allitem = self.ws.get_scene_item_list(scene).scene_items
+        ret = None
+        for x in allitem:
+            if x['sourceName'] == target:
+                ret = x['sceneItemId']
+        return ret
 
 if __name__ == "__main__":
     a = OBSSocket('localhost', 4455, 'panipaninoakuma','INFINITAS','')
@@ -55,9 +69,4 @@ if __name__ == "__main__":
     #tmp = a.get_screenshot('メインモニタ', 'png')
 #    a.change_scene('pksv_battle_end')
 #    a.change_text('txtTest', 'unko')
-    b = a.ws.get_scene_item_list('2. DP_NEW').scene_items
-    for s in b:
-        if s['sourceName'] == 'today_result':
-            print(s)
-        if s['sourceName'] == 'history_cursong':
-            print(s)
+    print(a.search_itemid('2. DP_NEW', 'history_cursong'))

@@ -51,7 +51,7 @@ class DakenCounter:
         self.write_today_update_xml()
         self.load_alllog()
         self.load_settings()
-        self.playside = ''
+        self.valid_playside = ''
         self.startdate = False # 最後にスレッドを開始した日付を記録。打鍵ログ保存用
         self.imgpath = os.path.dirname(__file__) + '\\tmp.png'
         try:
@@ -67,7 +67,8 @@ class DakenCounter:
         'series_query':'#[number]','judge':[0,0,0,0,0,0], 'playopt':'OFF',
         'host':'localhost', 'port':'4444', 'passwd':'', 'obs_source':'INFINITAS',
         'autosave_lamp':False,'autosave_djlevel':False,'autosave_score':False,'autosave_bp':False,'autosave_dbx':False,
-        'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False,
+        'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False, 'todaylog_always_push':False, 'todaylog_dbx_always_push':False,
+        'obs_scene':'', 'obs_itemid_history_cursong':False, 'obs_itemid_today_result':False,
         }
         ret = {}
         try:
@@ -259,7 +260,8 @@ class DakenCounter:
             det = self.detect_judge(t)
             if det[0] == '0':
                 ret = t
-        self.playside = ret # 最後に検出したプレイサイドを覚えておく
+        if ret:
+            self.valid_playside = ret # 最後に検出した有効なプレイサイドを覚えておく
         return ret
 
     # リザルト画像pngを受け取って、スコアツールの1entryとして返す
@@ -271,10 +273,12 @@ class DakenCounter:
         pic_info = img_mono.crop((410,633,870,704))
         info = recog.get_informations(pic_info)
         # 1p, 2pをケアする必要がある TODO
-        pic_playdata = img_mono.crop((905,192,905+350,192+293))
+        if ('2p' in self.valid_playside) or (self.valid_playside == 'dp-r'):
+            pic_playdata = img_mono.crop((905,192,905+350,192+293))
+        else:
+            pic_playdata = img_mono.crop((25,192,25+350,192+293))
         playdata     = recog.get_details(pic_playdata)
         is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
-        #print(is_valid, info.music, info.level, info.play_mode, info.difficulty)
         if is_valid:
             tmp.append(info.level)
             tmp.append(info.music)
@@ -482,10 +486,6 @@ class DakenCounter:
                     else:
                         tmp = str(mdigit_vals.index(val))
                 line += tmp 
-                #if (playside == '2p-r') and (val>0):
-                #    print(f"val={val}, tmp(det)={tmp}")
-            #if (playside == '2p-r') and (line!=''):
-            #    print(f"line={line}")
             ret.append(line)
         return ret
 
@@ -513,8 +513,8 @@ class DakenCounter:
         flg_autosave = True # その曲で自動保存を使ったかどうか, autosaveが成功したらTrue、曲終了時にリセット
         self.startdate = datetime.datetime.now().strftime("%Y/%m/%d")
         # TODO
-        self.obs.disable_source('2. DP_NEW', 51)
-        self.obs.disable_source('2. DP_NEW', 53)
+        self.obs.disable_source(self.settings['obs_scene'], self.settings['obs_itemid_today_result'])
+        self.obs.disable_source(self.settings['obs_scene'], self.settings['obs_itemid_history_cursong'])
         print(f'スコア検出スレッド開始。')
         while True:
             is_pushed_to_alllog = False
@@ -528,15 +528,14 @@ class DakenCounter:
                         flg_autosave = self.autosave_result()
                     if self.detect_select() and len(self.todaylog) > 0:
                         is_select = True
-                        # TODO 設定画面作る、グループ内でも操作できるか確認する
-                        self.obs.enable_source('2. DP_NEW', 51)
-                        self.obs.disable_source('2. DP_NEW', 53)
+                        self.obs.enable_source(self.settings['obs_scene'], self.settings['obs_itemid_today_result'])
+                        self.obs.disable_source(self.settings['obs_scene'], self.settings['obs_itemid_history_cursong'])
                     else: # 選曲画面じゃなくなった(選曲中レイヤの停止用)
-                        self.obs.disable_source('2. DP_NEW', 51) # TODO
+                        self.obs.disable_source(self.settings['obs_scene'], self.settings['obs_itemid_today_result'])
                     if not is_pushed_to_alllog:
                         try:
                             result = self.ocr(self.imgpath)
-                            if result:
+                            if result != False:
                                 self.todaylog.append(result)
                                 self.alllog.append(result)
                                 key = f"{result[1]}({result[2]})"
@@ -544,12 +543,13 @@ class DakenCounter:
                                     self.dict_alllog[key] = []
                                 self.dict_alllog[key].append(result)
                                 is_pushed_to_alllog = True
-                                print(f"{result[1]}({result[2]}) - {result[7]},score:{result[9]:,}({result[9]-result[8]:+,}),")
+                                print(f"{result[1]}({result[2]}) - {result[7]},score:{result[9]:,},")
                                 self.write_today_update_xml()
                                 self.write_history_cursong_xml(result)
                                 #print(f"len:{len(self.todaylog)}\nlast3:[{self.todaylog[-3:]}]")
-                                self.obs.enable_source('2. DP_NEW', 53)
+                                self.obs.enable_source(self.settings['obs_scene'], self.settings['obs_itemid_history_cursong'])
                         except Exception as e:
+                            #print(e)
                             pass
 
                     if tmp_playopt and tmp_gauge:
@@ -582,8 +582,8 @@ class DakenCounter:
             if stop_local:
                 break
             
-            self.obs.disable_source('2. DP_NEW', 51)
-            self.obs.disable_source('2. DP_NEW', 53)
+            self.obs.disable_source(self.settings['obs_scene'], self.settings['obs_itemid_today_result'])
+            self.obs.disable_source(self.settings['obs_scene'], self.settings['obs_itemid_history_cursong'])
 
             while True: # 曲中の処理
                 self.obs.save_screenshot()
@@ -683,15 +683,22 @@ class DakenCounter:
             f.write(f'    <music>{result[1]}</music>\n')
             f.write(f'    <difficulty>{result[2]}</difficulty>\n')
             key = f"{result[1]}({result[2]})"
-            #print(key)
             for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
-                #print(s)
-                f.write('    <item>\n')
-                f.write(f'        <date>{s[-1][2:10]}</date>\n')
-                f.write(f'        <lamp>{s[7]}</lamp>\n')
-                f.write(f'        <score>{s[9]}</score>\n')
-                f.write(f'        <opt>{s[-2]}</opt>\n')
-                f.write('    </item>\n')
+                if 'BATTLE' in self.playopt: # 現在DBx系オプションの場合、単曲履歴もDBxのリザルトのみを表示
+                    if 'BATTLE' in s[-2]:
+                        f.write('    <item>\n')
+                        f.write(f'        <date>{s[-1][2:10]}</date>\n')
+                        f.write(f'        <lamp>{s[7]}</lamp>\n')
+                        f.write(f'        <score>{s[9]}</score>\n')
+                        f.write(f'        <opt>{s[-2]}</opt>\n')
+                        f.write('    </item>\n')
+                else:
+                    f.write('    <item>\n')
+                    f.write(f'        <date>{s[-1][2:10]}</date>\n')
+                    f.write(f'        <lamp>{s[7]}</lamp>\n')
+                    f.write(f'        <score>{s[9]}</score>\n')
+                    f.write(f'        <opt>{s[-2]}</opt>\n')
+                    f.write('    </item>\n')
             f.write('</Results>\n')
 
     def write_today_update_xml(self):
@@ -702,14 +709,20 @@ class DakenCounter:
             for s in reversed(self.todaylog):
                 lamp = ''
                 score = ''
-                if (lamp_table.index(s[7]) > lamp_table.index(s[6])): # 更新時のみランプを送信
-                    lamp = s[7]
-                if s[9] > s[8]: # 更新時のみスコアを送信
-                    score = f'+{s[9]-s[8]}'
+                title = s[1]
+                if 'BATTLE' in self.playopt:
+                    title = "(DBx) "+s[1]
+                    if (lamp_table.index(s[7]) >= 2) or self.settings['todaylog_dbx_always_push']:
+                        lamp = s[7]
+                else:
+                    if (lamp_table.index(s[7]) > lamp_table.index(s[6])) or self.settings['todaylog_always_push']: # 更新時のみランプを送信
+                        lamp = s[7]
+                    if (s[9] > s[8]) or self.settings['todaylog_always_push']: # 更新時のみスコアを送信
+                        score = f'+{s[9]-s[8]}'
                 if (lamp != '') or (score != ''):
                     f.write('<item>\n')
                     f.write(f'    <lv>{s[0]}</lv>\n')
-                    f.write(f'    <title>{s[1]}</title>\n')
+                    f.write(f'    <title>{title}</title>\n')
                     f.write(f'    <difficulty>{s[2]}</difficulty>\n')
                     f.write(f'    <lamp>{lamp}</lamp>\n')
                     f.write(f'    <score>{score}</score>\n')
@@ -811,6 +824,9 @@ class DakenCounter:
             ],
         ]
         layout_ocr = [
+            [sg.Text('本日の履歴の更新:', font=FONT), sg.Radio(text='常時', group_id='1', default=self.settings['todaylog_always_push'], font=FONT, key='todaylog_always_push'), sg.Radio(text='更新時のみ', group_id='1', default=not self.settings['todaylog_always_push'], font=FONT)],
+            [sg.Text('DBx系の履歴の更新:', font=FONT),sg.Radio(text='常時', group_id='2', default=self.settings['todaylog_dbx_always_push'], font=FONT, key='todaylog_dbx_always_push'), sg.Radio(text='クリア時のみ', group_id='2', default=not self.settings['todaylog_dbx_always_push'], font=FONT)],
+            [sg.Text('INFINITAS用シーン名:', font=FONT), sg.Input(self.settings['obs_scene'], font=FONT, key="input_obs_scene", size=(20,1))],
             [sg.Button('保存したリザルト画像からスコアデータに反映する', key='btn_ocr_from_savedir', tooltip='リザルト画像の数によってはかなり時間がかかります。')],
         ]
         layout = [
@@ -933,6 +949,11 @@ class DakenCounter:
                     #self.settings['ly'] = self.window.current_location()[1]
                     self.settings['host'] = val['input_host']
                     self.settings['port'] = val['input_port']
+                    self.settings['obs_scene'] = val['input_obs_scene']
+                    self.settings['obs_itemid_history_cursong'] = self.obs.search_itemid(self.settings['obs_scene'], 'history_cursong')
+                    self.settings['obs_itemid_today_result'] = self.obs.search_itemid(self.settings['obs_scene'], 'today_result')
+                    self.settings['todaylog_always_push'] = val['todaylog_always_push']
+                    self.settings['todaylog_dbx_always_push'] = val['todaylog_dbx_always_push']
                     self.settings['passwd'] = val['input_passwd']
                     self.settings['obs_source'] = val['input_obs_source']
                     self.settings['autosave_lamp'] = val['chk_lamp']
