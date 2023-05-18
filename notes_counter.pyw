@@ -67,7 +67,7 @@ class DakenCounter:
         'series_query':'#[number]','judge':[0,0,0,0,0,0], 'playopt':'OFF',
         'host':'localhost', 'port':'4444', 'passwd':'', 'obs_source':'INFINITAS',
         'autosave_lamp':False,'autosave_djlevel':False,'autosave_score':False,'autosave_bp':False,'autosave_dbx':False,
-        'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False, 'todaylog_always_push':False, 'todaylog_dbx_always_push':False,
+        'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False, 'todaylog_always_push':True, 'todaylog_dbx_always_push':True,
         'obs_scene':'', 'obs_itemid_history_cursong':False, 'obs_itemid_today_result':False,
         }
         ret = {}
