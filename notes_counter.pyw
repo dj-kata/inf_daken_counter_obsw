@@ -1088,7 +1088,8 @@ class DakenCounter:
                 th.join()
                 self.stop_thread = False
                 running = not running
-                self.window['start'].update("start")
+                if self.mode == 'main':
+                    self.window['start'].update("start")
                 print(f"スコア検出スレッドが異常終了しました。")
             elif ev in ('Y:89', '配信を告知する'):
                 #url = sg.popup_get_text('YoutubeLiveのURL(Studioでも可)を入力してください。', 'Youtube準備用コマンド')
