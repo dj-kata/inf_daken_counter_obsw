@@ -34,7 +34,7 @@
             	max-width:90px;
             }
             table td:nth-child(3) {
-            	width:200px;
+            	width:100px;
             }
             table td:nth-child(4) {
             	width:1px;
@@ -59,6 +59,8 @@
                     var difficulty = $(item).find('difficulty').text();
                     var title = $(item).find('title').text();
                     var score = $(item).find('score').text();
+                    var opt = $(item).find('opt').text();
+                    var bp = $(item).find('bp').text();
                     if (difficulty == "DPN"){
                         title = '<font color="#8888ff">'+title+'</font>'
                     }
@@ -71,7 +73,10 @@
                     if (difficulty == "DPL"){
                         title = '<font color="#ff88ff">'+title+'</font>'
                     }
-                    if (lamp == "A-CLEAR"){
+                    if (lamp == "FAILED"){
+                        lamp = '<font color="#ff0000">x</font>'
+                    }
+                    else if (lamp == "A-CLEAR"){
                         lamp = '<font color="#cc44ff">AC</font>'
                     }
                     else if (lamp == "E-CLEAR"){
@@ -93,7 +98,13 @@
                         lamp = ''
                     }
                     // テーブルに追加
-                    out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+lamp+'</td><td>'+score+'</td></tr>';
+                    if (opt.indexOf("BATTLE") >= 0){ // DBx系オプションの場合、スコアの所にbp250のようにミスカンを入れておく
+                        title = '(DBx) ' + title
+                        out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+lamp+'</td><td>bp'+bp+'</td></tr>';
+                        //out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+lamp+'</td><td>'+score+'</td></tr>';
+                    } else{
+                        out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+lamp+'</td><td>'+score+'</td></tr>';
+                    }
                     if (index == 5){ // 直近の6曲だけ表示としている。曲数はここから変更可能。
                         return false;
                     }

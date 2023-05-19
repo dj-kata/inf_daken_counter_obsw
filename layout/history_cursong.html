@@ -59,8 +59,9 @@
                     var lamp = $(item).find('lamp').text();
                     var score = $(item).find('score').text();
                     var opt = $(item).find('opt').text();
+                    var bp = $(item).find('bp').text();
                     if (lamp == "FAILED"){
-                        lamp = '<font color="#770000">x</font>'
+                        lamp = '<font color="#ff0000">x</font>'
                     }
                     else if (lamp == "A-CLEAR"){
                         lamp = '<font color="#cc44ff">AC</font>'
@@ -84,7 +85,11 @@
                         lamp = ''
                     }
                     // テーブルに追加
-                    out +='<tr><td><font color="#ffffaa">'+date+'</font></td><td>'+lamp+'</td><td>'+score+'</td><td><font color="#aaffaa">'+opt+'</font></td></tr>';
+                    if (opt.indexOf("BATTLE") >= 0){ // DBx系オプションの場合、スコアの所にbp250のようにミスカンを入れておく
+                        out +='<tr><td><font color="#ffffaa">'+date+'</font></td><td>'+lamp+'</td><td>bp'+bp+'</td><td><font color="#aaffaa">'+opt+'</font></td></tr>';
+                    }else{
+                        out +='<tr><td><font color="#ffffaa">'+date+'</font></td><td>'+lamp+'</td><td>'+score+'</td><td><font color="#aaffaa">'+opt+'</font></td></tr>';
+                    }
                     if (index == 19){ // 直近の20プレイだけ表示としている。曲数はここから変更可能。
                         return false;
                     }
