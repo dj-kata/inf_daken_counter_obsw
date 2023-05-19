@@ -38,7 +38,7 @@ class OBSSocket():
     def get_screenshot(self, source, fmt):
         res = self.ws.get_source_screenshot(source, fmt, 1920, 1080, 100)
 
-    def enable_source(self, scenename, sourceid):
+    def enable_source(self, scenename, sourceid): # グループ内のitemはscenenameにグループ名を指定する必要があるので注意
         try:
             res = self.ws.set_scene_item_enabled(scenename, sourceid, enabled=True)
         except Exception as e:
@@ -56,12 +56,18 @@ class OBSSocket():
         self.ev.unsubscribe()
 
     def search_itemid(self, scene, target):
-        ret = None
+        ret = scene, None # グループ名, ID
         try:
             allitem = self.ws.get_scene_item_list(scene).scene_items
             for x in allitem:
                 if x['sourceName'] == target:
-                    ret = x['sceneItemId']
+                    ret = scene, x['sceneItemId']
+                if x['isGroup']:
+                    grp = self.ws.get_group_scene_item_list(x['sourceName']).scene_items
+                    for y in grp:
+                        if y['sourceName'] == target:
+                            ret = x['sourceName'], y['sceneItemId']
+
         except:
             pass
         return ret
