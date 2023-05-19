@@ -293,7 +293,7 @@ class DakenCounter:
             tmp.append(playdata.score.current)
             tmp.append(playdata.miss_count.best)
             if 'BATTLE' in self.playopt:
-                tmp.append(self.judge[3]+self.judge[4])
+                tmp.append(self.tmp_judge[3]+self.tmp_judge[4])
             else:
                 tmp.append(playdata.miss_count.current)
             ts = os.path.getmtime(pic)
@@ -549,7 +549,7 @@ class DakenCounter:
                                 #print(f"len:{len(self.todaylog)}\nlast3:[{self.todaylog[-3:]}]")
                                 self.obs.enable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                         except Exception as e:
-                            #print(e)
+                            print(e)
                             pass
 
                     if tmp_playopt and tmp_gauge:
@@ -585,6 +585,7 @@ class DakenCounter:
             self.obs.disable_source(self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'])
             self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
 
+            pre_success = True # 前の検出サイクルに取得が成功したかどうか
             while True: # 曲中の処理
                 self.obs.save_screenshot()
                 det = self.detect_judge(playside)
@@ -593,18 +594,20 @@ class DakenCounter:
                     self.window.write_event_value('-THREAD-', f"cur {score} {det[0]} {det[1]} {det[2]} {det[3]} {det[4]} {det[5]}")
                     pre_score = score
                     pre_judge = det
-                except ValueError: # intに変換できない数値を検出&暗転の両方を見る
-                    self.obs.save_screenshot()
-                    tmp = Image.open(self.imgpath)
-                    topleft = tmp.crop((0,0,120,120))
-                    #print(np.array(topleft).sum(), np.array(topleft).shape)
-                    if np.array(topleft).sum()==120*120*255: # alpha=255の分を考慮
+                    pre_success = True
+                except Exception:
+                    #self.obs.save_screenshot()
+                    #tmp = Image.open(self.imgpath)
+                    #topleft = tmp.crop((0,0,120,120))
+                    #if np.array(topleft).sum()==120*120*255: # alpha=255の分を考慮
+                    if not pre_success: # 2回連続でスコア取得に失敗したら落とす
                         self.window.write_event_value('-ENDSONG-', f"{pre_score} {self.playopt}")
                         self.window.write_event_value('-THREAD-', f"end {pre_score} {pre_judge[0]} {pre_judge[1]} {pre_judge[2]} {pre_judge[3]} {pre_judge[4]} {pre_judge[5]}")
                         print(f'曲終了を検出しました。 => {pre_score}')
                         self.gen_opt_xml(self.playopt, self.gauge) # 曲中のみデータの削除
                         flg_autosave = False
                         break
+                    pre_success = False
                 if self.stop_thread:
                     stop_local = True
                     break
@@ -712,6 +715,7 @@ class DakenCounter:
             f.write(f'<?xml version="1.0" encoding="utf-8"?>\n')
             f.write("<Results>\n")
             lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
+            print(self.todaylog)
             for s in reversed(self.todaylog):
                 lamp = ''
                 score = ''
@@ -723,7 +727,8 @@ class DakenCounter:
                     if (lamp_table.index(s[7]) > lamp_table.index(s[6])) or self.settings['todaylog_always_push']: # 更新時のみランプを送信
                         lamp = s[7]
                     if (s[9] > s[8]) or self.settings['todaylog_always_push']: # 更新時のみスコアを送信
-                        score = f'+{s[9]-s[8]}'
+                        score = f'{s[9]-s[8]:+}'
+                print('lamp =',lamp, 'score =', score, lamp!='', score!='')
                 if (lamp != '') or (score != ''):
                     f.write('<item>\n')
                     f.write(f'    <lv>{s[0]}</lv>\n')
@@ -934,6 +939,7 @@ class DakenCounter:
                 self.notes_ran = 0
                 self.notes_battle  = 0
                 self.judge = [0,0,0,0,0,0]
+                self.tmp_judge = [0,0,0,0,0,0] # 最後の曲の判定を覚えておく(DBxのBP記録用)
             running = True
             th = threading.Thread(target=self.detect_top, args=(SLEEP_TIME,), daemon=True)
             self.gen_notes_xml(0,self.today_notes,self.today_plays, self.notes_ran, self.notes_battle, self.judge)
@@ -1053,6 +1059,7 @@ class DakenCounter:
                 self.window['today'].update(value=f"{tmp_today_notes}")
                 try:
                     tmp_judge = [self.judge[i]+int(dat[2+i]) for i in range(6)] # 前の曲までの値judge[i]に現在の曲の値dat[2+i]を加算したもの
+                    self.tmp_judge = [int(dat[2+i]) for i in range(6)]
                 except:
                     print(f'error!!! datの値が不正?, dat={dat}')
                     tmp_judge = copy.copy(self.judge)
