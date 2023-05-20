@@ -23,7 +23,8 @@ from pathlib import Path
 from recog import *
 
 ### TODO
-# スコアは差分を送るんじゃなくて、best、cur両方を送ってHTML側で計算させる
+# スコアは差分を送るんじゃなくて、best、cur両方を送ってHTML側で計算させる?
+# loggerの利用
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
@@ -534,7 +535,7 @@ class DakenCounter:
                         self.obs.enable_source(self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'])
                         self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                     else: # 選曲画面じゃなくなった(選曲中レイヤの停止用)
-                        self.obs.disable_source(self.settings['obs_scene'], self.settings['obs_itemid_today_result'])
+                        self.obs.disable_source(self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'])
                     if not is_pushed_to_alllog:
                         try:
                             result = self.ocr(self.imgpath)
@@ -723,14 +724,10 @@ class DakenCounter:
                 lamp = ''
                 score = ''
                 # TODO DBxの過去リザルトがここのindex()でNoneを入れてしまい落ちる
-                if 'BATTLE' in self.playopt:
-                    if not 'BATTLE' in s[-2]:
-                        continue
+                if 'BATTLE' in s[-2]:
                     if (lamp_table.index(s[7]) >= 2) or self.settings['todaylog_dbx_always_push']:
                         lamp = s[7]
                 else:
-                    if 'BATTLE' in s[-2]:
-                        continue
                     if (lamp_table.index(s[7]) > lamp_table.index(s[6])) or self.settings['todaylog_always_push']: # 更新時のみランプを送信
                         lamp = s[7]
                     if (s[9] > s[8]) or self.settings['todaylog_always_push']: # 更新時のみスコアを送信
