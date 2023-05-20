@@ -6,9 +6,9 @@
         <style>
             body { 
             
-            background-color: rgba(0, 0, 50, 0.95);
+            background-color: rgba(0, 0, 0, 0.85);
             margin: 10px;
-            padding: 20px;
+            padding: 10px;
             overflow: hidden;
             font-family:"Meiryo";
             color:#2196F3;   
@@ -19,22 +19,43 @@
                          2px -2px 0 #000,
                          -2px -2px 0 #000;
             }
-            table {
-            	width:100%;
+            table#title {
+                color: #aaddff;
+                background-color: rgba(0, 0, 0, 0.95);
+                font-size: 96px;
+                line-height: 130%;
+                width:100%;
             }
-            table td {
+            table#title td{
             	white-space:nowrap;
             }
-            table td:nth-child(1) {
+            table#title td:nth-child(1){
+                width:200px;
+            }
+            table#title td:nth-child(2){
+            	overflow:hidden;
+            	text-overflow:ellipsis;
+            	max-width:100px;
+            }
+            table#title td:nth-child(3){
+                width:1px;
+            }
+            table#result {
+            	width:100%;
+            }
+            table#result td {
+            	white-space:nowrap;
+            }
+            table#result td:nth-child(1) {
             	width:350px;
             }
-            table td:nth-child(2) {
+            table#result td:nth-child(2) {
             	width:200px;
             }
-            table td:nth-child(3) {
+            table#result td:nth-child(3) {
             	width:250px;
             }
-            table td:nth-child(4) {
+            table#result td:nth-child(4) {
             	max-width:90%;
             }
         </style>
@@ -53,7 +74,7 @@
                 var title = $(xml).find('Results music').text();
                 var lv = $(xml).find('Results lv').text();
                 var difficulty = $(xml).find('Results difficulty').text();
-                $("#hoge").text('☆'+lv+' '+title+' ('+difficulty+')');
+                $("#title tbody").html('<tr><td>☆'+lv+'</td><td>'+title+'</td><td>('+difficulty+')</td></tr>');
                 $(xml).find("Results item").each(function(index, item){
                     var date = $(item).find('date').text();
                     var lamp = $(item).find('lamp').text();
@@ -109,7 +130,10 @@
 </script>
 </head>
 <body>
-  <font color="#88bbff"><p id="hoge">b</p></font>
+  <table id="title">
+    <tbody>
+    </tbody>
+  </table>
   <table id="result">
     <tbody>
     </tbody>
