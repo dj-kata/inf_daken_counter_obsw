@@ -6,7 +6,7 @@
         <style>
             body { 
             
-            background-color: rgba(0, 0, 50, 0.95);
+            background-color: rgba(0, 0, 0, 0.85);
             margin: 10px;
             padding: 20px;
             overflow: hidden;
@@ -19,24 +19,32 @@
                          2px -2px 0 #000,
                          -2px -2px 0 #000;
             }
-            table {
+            table#title {
+                color: #aaddff;
+                background-color: rgba(0, 0, 0, 0.95);
+                font-size: 80px;
+                line-height: 130%;
+                width:100%;
+            }
+            table#result {
             	width:100%;
             }
-            table td {
+            table#result td {
             	white-space:nowrap;
             }
-            table td:nth-child(1) {
+            table#result td:nth-child(1) {
             	width:200px;
+                color: #ffddaa;
             }
-            table td:nth-child(2) {
+            table#result td:nth-child(2) {
             	overflow:hidden;
             	text-overflow:ellipsis;
             	max-width:90px;
             }
-            table td:nth-child(3) {
-            	width:100px;
+            table#result td:nth-child(3) {
+            	width:130px;
             }
-            table td:nth-child(4) {
+            table#result td:nth-child(4) {
             	width:1px;
             }
         </style>
@@ -123,7 +131,9 @@
 </script>
 </head>
 <body>
-  <font color="#88bbff">Recent update</font>
+  <table id="title">
+    <tr><td><font color="#88bbff">Recent update</font></td></tr>
+  </table>
   <table id="result">
     <thead>
       <tr>
