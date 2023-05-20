@@ -503,6 +503,15 @@ class DakenCounter:
         tmp = imagehash.average_hash(img.crop((358,90,358+24,90+24)))
 
         return (hash_target - tmp) < 10
+    
+    ### リザルト画面の終了判定
+    def detect_endresult(self):
+        img = Image.open(self.imgpath)
+        tmp = imagehash.average_hash(img)
+        img = Image.open('layout/endresult.png')
+        hash_target = imagehash.average_hash(img)
+        #print(hash_target - tmp)
+        return (hash_target - tmp) < 10
 
     ### 無限ループにする(終了時は上から止める)
     ### 曲の開始・終了を数字から検出し、境界処理を行う
@@ -530,6 +539,8 @@ class DakenCounter:
                     tmp_playopt, tmp_gauge = self.detect_option()
                     if not flg_autosave:
                         flg_autosave = self.autosave_result()
+                    if self.detect_endresult():
+                        self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                     if self.detect_select() and len(self.todaylog) > 0:
                         is_select = True
                         self.obs.enable_source(self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'])
@@ -553,7 +564,7 @@ class DakenCounter:
                                 #print(f"len:{len(self.todaylog)}\nlast3:[{self.todaylog[-3:]}]")
                                 self.obs.enable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                         except Exception as e:
-                            #print(e)
+                            print(e)
                             pass
 
                     if tmp_playopt and tmp_gauge:

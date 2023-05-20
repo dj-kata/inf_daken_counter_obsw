@@ -6,4 +6,5 @@ inf_daken_counter/*
 build/*
 dist/*
 Makefile
-*.png
+#*.png
+__pycache__/*
