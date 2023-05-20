@@ -22,6 +22,9 @@ import pickle
 from pathlib import Path
 from recog import *
 
+### TODO
+# スコアは差分を送るんじゃなくて、best、cur両方を送ってHTML側で計算させる
+
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
 SWVER  = 'v2.0.8'
@@ -549,7 +552,7 @@ class DakenCounter:
                                 #print(f"len:{len(self.todaylog)}\nlast3:[{self.todaylog[-3:]}]")
                                 self.obs.enable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                         except Exception as e:
-                            print(e)
+                            #print(e)
                             pass
 
                     if tmp_playopt and tmp_gauge:
@@ -686,6 +689,7 @@ class DakenCounter:
             f.write(f'    <music>{result[1]}</music>\n')
             f.write(f'    <difficulty>{result[2]}</difficulty>\n')
             key = f"{result[1]}({result[2]})"
+            #print(f'self.dict_alllog[{key}]=',self.dict_alllog[key])
             for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
                 bp = s[11]
                 if bp == None: # 昔のリザルトに入っていない可能性を考えて一応例外処理している
@@ -715,29 +719,34 @@ class DakenCounter:
             f.write(f'<?xml version="1.0" encoding="utf-8"?>\n')
             f.write("<Results>\n")
             lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
-            print(self.todaylog)
             for s in reversed(self.todaylog):
                 lamp = ''
                 score = ''
-                title = s[1]
-                if 'BATTLE' in self.playopt: # DBxは本体側で曲名を補正している、HTML側に移すかどうか要検討 TODO
+                # TODO DBxの過去リザルトがここのindex()でNoneを入れてしまい落ちる
+                if 'BATTLE' in self.playopt:
+                    if not 'BATTLE' in s[-2]:
+                        continue
                     if (lamp_table.index(s[7]) >= 2) or self.settings['todaylog_dbx_always_push']:
                         lamp = s[7]
                 else:
+                    if 'BATTLE' in s[-2]:
+                        continue
                     if (lamp_table.index(s[7]) > lamp_table.index(s[6])) or self.settings['todaylog_always_push']: # 更新時のみランプを送信
                         lamp = s[7]
                     if (s[9] > s[8]) or self.settings['todaylog_always_push']: # 更新時のみスコアを送信
                         score = f'{s[9]-s[8]:+}'
-                print('lamp =',lamp, 'score =', score, lamp!='', score!='')
+                bp = s[11]
+                if bp == None: # 昔のリザルトに入っていない可能性を考えて一応例外処理している
+                    bp = '?'
                 if (lamp != '') or (score != ''):
                     f.write('<item>\n')
                     f.write(f'    <lv>{s[0]}</lv>\n')
-                    f.write(f'    <title>{title}</title>\n')
+                    f.write(f'    <title>{s[1]}</title>\n')
                     f.write(f'    <difficulty>{s[2]}</difficulty>\n')
                     f.write(f'    <lamp>{lamp}</lamp>\n')
                     f.write(f'    <score>{score}</score>\n')
-                    f.write(f'    <opt>{self.playopt}</opt>\n')
-                    f.write(f'    <bp>{s[11]}</bp>') # DB系で使うためにbpも送っておく
+                    f.write(f'    <opt>{s[-2]}</opt>\n')
+                    f.write(f'    <bp>{bp}</bp>') # DB系で使うためにbpも送っておく
                     f.write('</item>\n')
             f.write('</Results>\n')
 
