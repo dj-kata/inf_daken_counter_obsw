@@ -553,7 +553,6 @@ class DakenCounter:
         self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
         print(f'スコア検出スレッド開始。')
         while True:
-            is_pushed_to_alllog = False
             while True: # 曲開始までを検出
                 try:
                     self.obs.save_screenshot()
@@ -564,6 +563,7 @@ class DakenCounter:
                     if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
                         self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                     if self.detect_select() and len(self.todaylog) > 0: # 選曲画面
+                        is_pushed_to_alllog = True
                         self.obs.enable_source(self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'])
                         self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                     else: # 選曲画面じゃなくなった(選曲中レイヤの停止用)
@@ -631,7 +631,8 @@ class DakenCounter:
                     pre_judge = det
                     pre_success = True
                 except Exception:
-                    if not pre_success: # 2回連続でスコア取得に失敗したら落とす
+                    if not pre_success: # 2回連続でスコア取得に失敗したら曲中モードから出る
+                        is_pushed_to_alllog = False # OCR起動フラグを立てる
                         self.window.write_event_value('-ENDSONG-', f"{pre_score} {self.playopt}")
                         self.window.write_event_value('-THREAD-', f"end {pre_score} {pre_judge[0]} {pre_judge[1]} {pre_judge[2]} {pre_judge[3]} {pre_judge[4]} {pre_judge[5]}")
                         print(f'曲終了を検出しました。 => {pre_score}')
