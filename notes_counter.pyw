@@ -21,6 +21,26 @@ from log_manager import LogManager
 import pickle
 from pathlib import Path
 from recog import *
+import logging, logging.handlers
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+hdl = logging.handlers.RotatingFileHandler(
+    './dbg.log',
+    encoding='utf-8',
+    maxBytes=1024*1024,
+    backupCount=1
+)
+hdl.setLevel(logging.DEBUG)
+hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcName)s() [%(levelname)s] %(message)s')
+hdl.setFormatter(hdl_formatter)
+logger.addHandler(hdl)
+
+#hdl2 = logging.StreamHandler(sys.stdout)
+#hdl2.setLevel(logging.INFO)
+#hdl2_formatter = logging.Formatter('%(message)s')
+#hdl2.setFormatter(hdl2_formatter)
+#logger.addHandler(hdl2)
 
 ### TODO
 # スコアは差分を送るんじゃなくて、best、cur両方を送ってHTML側で計算させる?
@@ -79,7 +99,7 @@ class DakenCounter:
                 ret = json.load(f)
                 print(f"設定をロードしました。\n")
         except Exception as e:
-            #print(e)
+            logger.debug(e)
             print(f"有効な設定ファイルなし。デフォルト値を使います。")
 
         ### 後から追加した値がない場合にもここでケア
@@ -501,8 +521,10 @@ class DakenCounter:
         img = Image.open(self.imgpath)
         hash_target = imagehash.average_hash(Image.open('layout/e4.png'))
         tmp = imagehash.average_hash(img.crop((358,90,358+24,90+24)))
+        ret = (hash_target - tmp) < 10
+        #logger.debug(f"ret = {ret}")
 
-        return (hash_target - tmp) < 10
+        return ret
     
     ### リザルト画面の終了判定
     def detect_endresult(self):
@@ -510,8 +532,9 @@ class DakenCounter:
         tmp = imagehash.average_hash(img)
         img = Image.open('layout/endresult.png')
         hash_target = imagehash.average_hash(img)
-        #print(hash_target - tmp)
-        return (hash_target - tmp) < 10
+        ret = (hash_target - tmp) < 10
+        #logger.debug(f"ret = {ret}")
+        return ret
 
     ### 無限ループにする(終了時は上から止める)
     ### 曲の開始・終了を数字から検出し、境界処理を行う
@@ -531,7 +554,6 @@ class DakenCounter:
         print(f'スコア検出スレッド開始。')
         while True:
             is_pushed_to_alllog = False
-            is_select           = False
             while True: # 曲開始までを検出
                 try:
                     self.obs.save_screenshot()
@@ -539,10 +561,9 @@ class DakenCounter:
                     tmp_playopt, tmp_gauge = self.detect_option()
                     if not flg_autosave:
                         flg_autosave = self.autosave_result()
-                    if self.detect_endresult():
+                    if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
                         self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
-                    if self.detect_select() and len(self.todaylog) > 0:
-                        is_select = True
+                    if self.detect_select() and len(self.todaylog) > 0: # 選曲画面
                         self.obs.enable_source(self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'])
                         self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                     else: # 選曲画面じゃなくなった(選曲中レイヤの停止用)
@@ -559,13 +580,12 @@ class DakenCounter:
                                 self.dict_alllog[key].append(result)
                                 is_pushed_to_alllog = True
                                 print(f"{result[1]}({result[2]}) - {result[7]},score:{result[9]:,},")
+                                logger.debug(f'result = {result}')
                                 self.write_today_update_xml()
                                 self.write_history_cursong_xml(result)
-                                #print(f"len:{len(self.todaylog)}\nlast3:[{self.todaylog[-3:]}]")
                                 self.obs.enable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                         except Exception as e:
-                            print(e)
-                            pass
+                            logger.debug(e)
 
                     if tmp_playopt and tmp_gauge:
                         if self.playopt != tmp_playopt:
@@ -611,10 +631,6 @@ class DakenCounter:
                     pre_judge = det
                     pre_success = True
                 except Exception:
-                    #self.obs.save_screenshot()
-                    #tmp = Image.open(self.imgpath)
-                    #topleft = tmp.crop((0,0,120,120))
-                    #if np.array(topleft).sum()==120*120*255: # alpha=255の分を考慮
                     if not pre_success: # 2回連続でスコア取得に失敗したら落とす
                         self.window.write_event_value('-ENDSONG-', f"{pre_score} {self.playopt}")
                         self.window.write_event_value('-THREAD-', f"end {pre_score} {pre_judge[0]} {pre_judge[1]} {pre_judge[2]} {pre_judge[3]} {pre_judge[4]} {pre_judge[5]}")
@@ -701,8 +717,9 @@ class DakenCounter:
             f.write(f'    <music>{result[1]}</music>\n')
             f.write(f'    <difficulty>{result[2]}</difficulty>\n')
             key = f"{result[1]}({result[2]})"
-            #print(f'self.dict_alllog[{key}]=',self.dict_alllog[key])
+            logger.debug(f"key={key}")
             for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
+                logger.debug(f"s = {s}")
                 bp = s[11]
                 if bp == None: # 昔のリザルトに入っていない可能性を考えて一応例外処理している
                     bp = '?'
@@ -725,6 +742,7 @@ class DakenCounter:
                         f.write(f'        <bp>{bp}</bp>\n')
                         f.write('    </item>\n')
             f.write('</Results>\n')
+            logger.debug(f"end")
 
     def write_today_update_xml(self):
         with open('today_update.xml', 'w', encoding='utf-8') as f:
@@ -732,9 +750,9 @@ class DakenCounter:
             f.write("<Results>\n")
             lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
             for s in reversed(self.todaylog):
+                logger.debug(f"s = {s}")
                 lamp = ''
                 score = ''
-                # TODO DBxの過去リザルトがここのindex()でNoneを入れてしまい落ちる
                 if 'BATTLE' in s[-2]:
                     if (lamp_table.index(s[7]) >= 2) or self.settings['todaylog_dbx_always_push']:
                         lamp = s[7]
@@ -757,6 +775,7 @@ class DakenCounter:
                     f.write(f'    <bp>{bp}</bp>') # DB系で使うためにbpも送っておく
                     f.write('</item>\n')
             f.write('</Results>\n')
+            logger.debug(f"end")
 
     def get_ytinfo(self, url):
         liveid = self.parse_url(url)
@@ -917,7 +936,7 @@ class DakenCounter:
             [sg.Text('PG:',font=FONTs),sg.Text('0',key='judge0',font=FONTs),sg.Text('GR:',font=FONTs),sg.Text('0',key='judge1',font=FONTs),sg.Text('GD:',font=FONTs),sg.Text('0',key='judge2',font=FONTs),sg.Text('BD:',font=FONTs),sg.Text('0',key='judge3',font=FONTs),sg.Text('PR:',font=FONTs),sg.Text('0',key='judge4',font=FONTs),sg.Text('CB:',font=FONTs),sg.Text('0',key='judge5',font=FONTs)],
             [sg.Text("ゲージ:", font=FONT),sg.Text(" ", key='gauge',font=FONT),sg.Text('平均スコアレート:',font=FONT),sg.Text('0 %',key='srate',font=FONT)],
             [sg.Text("option:", font=FONT),sg.Text(" ", key='playopt',font=FONT)],
-            [sg.Output(size=(63,8), key='output', font=('Meiryo',9))] # ここを消すと標準出力になる
+            [sg.Output(size=(63,8), key='output', font=('Meiryo',9))],
             ]
         ico=self.ico_path('icon.ico')
         self.window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']))
@@ -949,6 +968,8 @@ class DakenCounter:
         th = False
 
         if self.settings['run_on_boot']: # 起動後即開始設定の場合
+            logger.info('自動起動設定が有効です。')
+            self.window.refresh()
             print('自動起動設定が有効です。')
             if self.settings['reset_on_boot']:
                 self.today_notes = 0
@@ -1008,6 +1029,7 @@ class DakenCounter:
                     self.save_alllog()
                     self.save_settings()
                     self.save_dakenlog()
+                    logger.info('終了します')
                     break
                 else:
                     if self.mode == 'setting':
@@ -1114,6 +1136,8 @@ class DakenCounter:
                     self.notes_battle += cur
                 elif ('RAN / RAN' in self.playopt) or ('S-RAN / S-RAN' in self.playopt) or ('H-RAN / H-RAN' in self.playopt): # 両乱だけ数えるか片乱だけ数えるか未定
                     self.notes_ran += cur
+                logger.debug(f'self.playopt = {self.playopt},  dat = {dat}')
+                logger.debug(f'self.notes_ran = {self.notes_ran:,}, self.notes_battle = {self.notes_battle:,}')
             elif ev == '-SCRSHOT_ERROR-':
                 self.stop_thread = True
                 th.join()
