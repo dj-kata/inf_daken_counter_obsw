@@ -212,52 +212,39 @@ class DakenCounter:
     def autosave_result(self):
         ret = False
         img = Image.open(self.imgpath)
-        rival_1p = 0
-        rival_2p = 0
-        for y in range(6):
-            sc = img.crop((1215,195+y*80,1255,203+y*80))
-            rival_1p += np.array(sc).sum()
-            sc = img.crop((360,195+y*80,400,203+y*80))
-            rival_2p += np.array(sc).sum()
-        #print(f"sum 1p,2p = {rival_1p:,}, {rival_2p:,}")
-        update_1p = []
-        update_2p = []
-        result_threshold = 542400
         
-        # ライバル欄の画素値合計がしきい値と一致したらリザルト画面
-        if result_threshold in (rival_1p, rival_2p):
-            #ret = True
-            update_area = []
-            hash_target = imagehash.average_hash(Image.open('layout/update.png'))
-            mode = ''
+        update_area = []
+        hash_target = imagehash.average_hash(Image.open('layout/update.png'))
+        mode = ''
+        if ('1p' in self.valid_playside) or (self.valid_playside == 'dp-l'):
+            mode = '1p'
             for i in range(4):
-                if rival_1p == result_threshold:
-                    tmp = imagehash.average_hash(img.crop((355,258+48*i,385,288+48*i)))
-                    update_area.append(hash_target - tmp)
-                    mode = '1p'
+                tmp = imagehash.average_hash(img.crop((355,258+48*i,385,288+48*i)))
+                update_area.append(hash_target - tmp)
 
-                elif rival_2p == result_threshold:
-                    tmp = imagehash.average_hash(img.crop((1235,258+48*i,1265,288+48*i)))
-                    update_area.append(hash_target - tmp)
-                    mode = '2p'
+        else:
+            mode = '2p'
+            for i in range(4):
+                tmp = imagehash.average_hash(img.crop((1235,258+48*i,1265,288+48*i)))
+                update_area.append(hash_target - tmp)
 
-            #print(f"update_area = {update_area}")
-            isAlways  = (self.settings['autosave_always'])
-            isLamp    = (self.settings['autosave_lamp'])    and (update_area[0] < 10)
-            isDjlevel = (self.settings['autosave_djlevel']) and (update_area[1] < 10)
-            isScore   = (self.settings['autosave_score'])   and (update_area[2] < 10)
-            isBp      = (self.settings['autosave_bp'])      and (update_area[3] < 10)
-            # 左上にミッション進捗が出ていないかどうか
-            isMissionEnd = img.getpixel((20,15)) != (44,61,77, 255)
-            # 獲得bitと所持bitのwindowが出ていないかどうか
-            tmp = np.array(img.crop((100,30,180,110)))
-            tmp[:,:][-1] = 0
-            isBitwindowEnd = tmp.sum() != 1914960
+        #print(f"update_area = {update_area}")
+        isAlways  = (self.settings['autosave_always'])
+        isLamp    = (self.settings['autosave_lamp'])    and (update_area[0] < 10)
+        isDjlevel = (self.settings['autosave_djlevel']) and (update_area[1] < 10)
+        isScore   = (self.settings['autosave_score'])   and (update_area[2] < 10)
+        isBp      = (self.settings['autosave_bp'])      and (update_area[3] < 10)
+        # 左上にミッション進捗が出ていないかどうか
+        isMissionEnd = img.getpixel((20,15)) != (44,61,77, 255)
+        # 獲得bitと所持bitのwindowが出ていないかどうか
+        tmp = np.array(img.crop((100,30,180,110)))
+        tmp[:,:][-1] = 0
+        isBitwindowEnd = tmp.sum() != 1914960
 
-            if isLamp or isDjlevel or isScore or isBp or isAlways:
-                if isMissionEnd and isBitwindowEnd:
-                    self.save_result(mode)
-                    ret = True
+        if isLamp or isDjlevel or isScore or isBp or isAlways:
+            if isMissionEnd and isBitwindowEnd:
+                self.save_result(mode)
+                ret = True
 
         return ret
     
@@ -559,7 +546,9 @@ class DakenCounter:
                     playside = self.detect_playside()
                     tmp_playopt, tmp_gauge = self.detect_option()
                     if not flg_autosave:
-                        flg_autosave = self.autosave_result()
+                        result = self.ocr(self.imgpath)
+                        if result != False:
+                            flg_autosave = self.autosave_result()
                     if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
                         self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                     if self.detect_select() and len(self.todaylog) > 0: # 選曲画面
