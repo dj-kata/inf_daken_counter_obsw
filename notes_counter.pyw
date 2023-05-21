@@ -89,8 +89,9 @@ class DakenCounter:
         'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False, 'lx':0, 'ly':0,
         'series_query':'#[number]','judge':[0,0,0,0,0,0], 'playopt':'OFF',
         'host':'localhost', 'port':'4444', 'passwd':'', 'obs_source':'INFINITAS',
-        'autosave_lamp':False,'autosave_djlevel':False,'autosave_score':False,'autosave_bp':False,'autosave_dbx':False,
-        'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False, 'todaylog_always_push':True, 'todaylog_dbx_always_push':True,
+        'autosave_lamp':False,'autosave_djlevel':False,'autosave_score':False,'autosave_bp':False,'autosave_dbx':'no',
+        'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False, 'todaylog_always_push':True,
+        'todaylog_dbx_always_push':True,
         'obs_scene':'', 'obs_itemid_history_cursong':False, 'obs_itemid_today_result':False, 'obs_scenename_history_cursong':'', 'obs_scenename_today_result':''
         }
         ret = {}
@@ -209,42 +210,49 @@ class DakenCounter:
         else:
             self.obs.save_screenshot_dst(dst)
 
-    def autosave_result(self):
+    def autosave_result(self, result):
         ret = False
-        img = Image.open(self.imgpath)
-        
-        update_area = []
-        hash_target = imagehash.average_hash(Image.open('layout/update.png'))
-        mode = ''
-        if ('1p' in self.valid_playside) or (self.valid_playside == 'dp-l'):
-            mode = '1p'
-            for i in range(4):
-                tmp = imagehash.average_hash(img.crop((355,258+48*i,385,288+48*i)))
-                update_area.append(hash_target - tmp)
+        if result != False:
+            img = Image.open(self.imgpath)
 
-        else:
-            mode = '2p'
-            for i in range(4):
-                tmp = imagehash.average_hash(img.crop((1235,258+48*i,1265,288+48*i)))
-                update_area.append(hash_target - tmp)
+            update_area = []
+            hash_target = imagehash.average_hash(Image.open('layout/update.png'))
+            mode = ''
+            if ('1p' in self.valid_playside) or (self.valid_playside == 'dp-l'):
+                mode = '1p'
+                for i in range(4):
+                    tmp = imagehash.average_hash(img.crop((355,258+48*i,385,288+48*i)))
+                    update_area.append(hash_target - tmp)
 
-        #print(f"update_area = {update_area}")
-        isAlways  = (self.settings['autosave_always'])
-        isLamp    = (self.settings['autosave_lamp'])    and (update_area[0] < 10)
-        isDjlevel = (self.settings['autosave_djlevel']) and (update_area[1] < 10)
-        isScore   = (self.settings['autosave_score'])   and (update_area[2] < 10)
-        isBp      = (self.settings['autosave_bp'])      and (update_area[3] < 10)
-        # 左上にミッション進捗が出ていないかどうか
-        isMissionEnd = img.getpixel((20,15)) != (44,61,77, 255)
-        # 獲得bitと所持bitのwindowが出ていないかどうか
-        tmp = np.array(img.crop((100,30,180,110)))
-        tmp[:,:][-1] = 0
-        isBitwindowEnd = tmp.sum() != 1914960
+            else:
+                mode = '2p'
+                for i in range(4):
+                    tmp = imagehash.average_hash(img.crop((1235,258+48*i,1265,288+48*i)))
+                    update_area.append(hash_target - tmp)
 
-        if isLamp or isDjlevel or isScore or isBp or isAlways:
-            if isMissionEnd and isBitwindowEnd:
-                self.save_result(mode)
-                ret = True
+            if not 'BATTLE' in self.playopt:
+                #print(f"update_area = {update_area}")
+                isAlways  = (self.settings['autosave_always'])
+                isLamp    = (self.settings['autosave_lamp'])    and (update_area[0] < 10)
+                isDjlevel = (self.settings['autosave_djlevel']) and (update_area[1] < 10)
+                isScore   = (self.settings['autosave_score'])   and (update_area[2] < 10)
+                isBp      = (self.settings['autosave_bp'])      and (update_area[3] < 10)
+                # 左上にミッション進捗が出ていないかどうか
+                isMissionEnd = img.getpixel((20,15)) != (44,61,77, 255)
+                # 獲得bitと所持bitのwindowが出ていないかどうか
+                tmp = np.array(img.crop((100,30,180,110)))
+                tmp[:,:][-1] = 0
+                isBitwindowEnd = tmp.sum() != 1914960
+
+                if isLamp or isDjlevel or isScore or isBp or isAlways:
+                    if isMissionEnd and isBitwindowEnd:
+                        self.save_result(mode)
+                        ret = True
+            else: # DBM, DBRなど
+                lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
+                if (self.settings['autosave_dbx'] == 'always') or ((self.settings['autosave_dbx'] == 'clear') and (lamp_table.index(result[7]) >= 2)):
+                    self.save_result(mode)
+                    ret = True
 
         return ret
     
@@ -535,6 +543,7 @@ class DakenCounter:
         self.playopt = '' # 曲開始タイミングとオプション検出タイミングは一致しないため、最後の値を覚えておく
         self.gauge   = ''
         flg_autosave = True # その曲で自動保存を使ったかどうか, autosaveが成功したらTrue、曲終了時にリセット
+        is_pushed_to_alllog = True
         self.startdate = datetime.datetime.now().strftime("%Y/%m/%d")
         self.obs.disable_source(self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'])
         self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
@@ -547,8 +556,7 @@ class DakenCounter:
                     tmp_playopt, tmp_gauge = self.detect_option()
                     if not flg_autosave:
                         result = self.ocr(self.imgpath)
-                        if result != False:
-                            flg_autosave = self.autosave_result()
+                        flg_autosave = self.autosave_result(result)
                     if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
                         self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                     if self.detect_select() and len(self.todaylog) > 0: # 選曲画面
@@ -860,6 +868,12 @@ class DakenCounter:
             ,sg.Checkbox('スコア', self.settings['autosave_score'], key='chk_score', enable_events=True)
             ,sg.Checkbox('ミスカウント', self.settings['autosave_bp'], key='chk_bp', enable_events=True)
             ],
+            [sg.Text('DBx系リザルト(DBM,DBR等)自動保存用設定', font=FONT)],
+            [
+                sg.Radio('しない', group_id='dbx', default=(self.settings['autosave_dbx']=='no'), key='radio_dbx_no'),
+                sg.Radio('常時', group_id='dbx', default=(self.settings['autosave_dbx']=='always'), key='radio_dbx_always'),
+                sg.Radio('A-CLEAR以上の場合のみ', group_id='dbx', default=(self.settings['autosave_dbx']=='clear'), key='radio_dbx_clear'),
+            ]
         ]
         layout_ocr = [
             [sg.Text('本日の履歴の更新:', font=FONT), sg.Radio(text='常時', group_id='1', default=self.settings['todaylog_always_push'], font=FONT, key='todaylog_always_push'), sg.Radio(text='更新時のみ', group_id='1', default=not self.settings['todaylog_always_push'], font=FONT)],
@@ -1013,7 +1027,12 @@ class DakenCounter:
                         self.window['chk_djlevel'].update(disabled=False)
                         self.window['chk_score'].update(disabled=False)
                         self.window['chk_bp'].update(disabled=False)
-                    #self.settings['autosave_dbx'] = val['chk_dbx']
+                    if val['radio_dbx_no']:
+                        self.settings['autosave_dbx'] = 'no'
+                    elif val['radio_dbx_always']:
+                        self.settings['autosave_dbx'] = 'always'
+                    else:
+                        self.settings['autosave_dbx'] = 'clear'
             if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-', 'btn_close_info', 'btn_close_setting'):
                 if self.mode == 'main':
                     self.save_alllog()
