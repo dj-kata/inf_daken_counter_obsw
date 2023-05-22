@@ -166,7 +166,7 @@ class DakenCounter:
         now = datetime.datetime.now()
         fmtnow = format(now, "%Y%m%d_%H%M%S")
         dst = f"{self.settings['autosave_dir']}/infinitas_{fmtnow}.png"
-        print(f"自動保存します。 -> {dst} (mode={mode})")
+        print(f"自動保存します。 -> {dst})")
         if self.settings['autosave_mosaic']: # TODO ライバルエリアがあるかどうかを判定する
             rival_1p = 0
             rival_2p = 0
@@ -226,6 +226,7 @@ class DakenCounter:
 
     def autosave_result(self, result):
         ret = False
+        isAlways  = (self.settings['autosave_always'])
         if result != False:
             img = Image.open(self.imgpath)
 
@@ -246,7 +247,6 @@ class DakenCounter:
 
             if not 'BATTLE' in self.playopt:
                 #print(f"update_area = {update_area}")
-                isAlways  = (self.settings['autosave_always'])
                 isLamp    = (self.settings['autosave_lamp'])    and (update_area[0] < 10)
                 isDjlevel = (self.settings['autosave_djlevel']) and (update_area[1] < 10)
                 isScore   = (self.settings['autosave_score'])   and (update_area[2] < 10)
@@ -264,7 +264,7 @@ class DakenCounter:
                         ret = True
             else: # DBM, DBRなど
                 lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
-                if (self.settings['autosave_dbx'] == 'always') or ((self.settings['autosave_dbx'] == 'clear') and (lamp_table.index(result[7]) >= 2)):
+                if (self.settings['autosave_dbx'] == 'always') or ((self.settings['autosave_dbx'] == 'clear') and (lamp_table.index(result[7]) >= 2)) or isAlways:
                     self.save_result()
                     ret = True
 
@@ -919,6 +919,9 @@ class DakenCounter:
             self.window['chk_djlevel'].update(disabled=True)
             self.window['chk_score'].update(disabled=True)
             self.window['chk_bp'].update(disabled=True)
+            self.window['radio_dbx_no'].update(disabled=True)
+            self.window['radio_dbx_always'].update(disabled=True)
+            self.window['radio_dbx_clear'].update(disabled=True)
 
     def gui_graph(self): # グラフ作成用
         self.mode = 'graph'
@@ -1047,11 +1050,17 @@ class DakenCounter:
                         self.window['chk_djlevel'].update(disabled=True)
                         self.window['chk_score'].update(disabled=True)
                         self.window['chk_bp'].update(disabled=True)
+                        self.window['radio_dbx_no'].update(disabled=True)
+                        self.window['radio_dbx_always'].update(disabled=True)
+                        self.window['radio_dbx_clear'].update(disabled=True)
                     else:
                         self.window['chk_lamp'].update(disabled=False)
                         self.window['chk_djlevel'].update(disabled=False)
                         self.window['chk_score'].update(disabled=False)
                         self.window['chk_bp'].update(disabled=False)
+                        self.window['radio_dbx_no'].update(disabled=False)
+                        self.window['radio_dbx_always'].update(disabled=False)
+                        self.window['radio_dbx_clear'].update(disabled=False)
                     if val['radio_dbx_no']:
                         self.settings['autosave_dbx'] = 'no'
                     elif val['radio_dbx_always']:
