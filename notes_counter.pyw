@@ -166,7 +166,7 @@ class DakenCounter:
         fmtnow = format(now, "%Y%m%d_%H%M%S")
         dst = f"{self.settings['autosave_dir']}/infinitas_{fmtnow}.png"
         print(f"自動保存します。 -> {dst} (mode={mode})")
-        if self.settings['autosave_mosaic']:
+        if self.settings['autosave_mosaic']: # TODO DBxでは飛ばす
             # ライバルのモザイク処理
             img = Image.open(self.imgpath)
             img_array = np.array(img)
@@ -309,7 +309,10 @@ class DakenCounter:
             tmp.append(playdata.clear_type.best)
             tmp.append(playdata.clear_type.current)
             tmp.append(playdata.score.best)
-            tmp.append(playdata.score.current)
+            if 'H-RAN' in self.playopt:
+                tmp.append('-')
+            else:
+                tmp.append(playdata.score.current)
             tmp.append(playdata.miss_count.best)
             if 'BATTLE' in self.playopt:
                 tmp.append(self.tmp_judge[3]+self.tmp_judge[4])
@@ -555,8 +558,11 @@ class DakenCounter:
                     playside = self.detect_playside()
                     tmp_playopt, tmp_gauge = self.detect_option()
                     if not flg_autosave:
-                        result = self.ocr(self.imgpath)
-                        flg_autosave = self.autosave_result(result)
+                        try:
+                            result = self.ocr(self.imgpath)
+                            flg_autosave = self.autosave_result(result)
+                        except Exception as e:
+                            logger.debug(e)
                     if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
                         self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                     if self.detect_select() and len(self.todaylog) > 0: # 選曲画面
@@ -596,7 +602,8 @@ class DakenCounter:
                         print(f'曲開始を検出しました。\nEXスコア取得開始。mode={playside.upper()}')
                         self.gen_opt_xml(self.playopt, self.gauge, True) # 常時表示+曲中のみデータの書き出し
                         break
-                except Exception as e:
+                except Exception as e: # 今の構成になってから、このtry文がそもそも不要かもしれない TODO
+                    logger.debug(e)
                     stop_local = True
                     print(f'スクリーンショットに失敗しました。{e}')
                     self.window.write_event_value('-SCRSHOT_ERROR-', " ")
@@ -751,9 +758,13 @@ class DakenCounter:
                 logger.debug(f"s = {s}")
                 lamp = ''
                 score = ''
-                if 'BATTLE' in s[-2]:
+                if ('BATTLE' in s[-2]): # DBx系
                     if (lamp_table.index(s[7]) >= 2) or self.settings['todaylog_dbx_always_push']:
                         lamp = s[7]
+                elif ('H-RAN' in s[-2]):
+                    if self.settings['todaylog_always_push']: # 更新時のみランプを送信
+                        lamp = s[7]
+                        score = s[9]
                 else:
                     if (lamp_table.index(s[7]) > lamp_table.index(s[6])) or self.settings['todaylog_always_push']: # 更新時のみランプを送信
                         lamp = s[7]
@@ -770,7 +781,7 @@ class DakenCounter:
                     f.write(f'    <lamp>{lamp}</lamp>\n')
                     f.write(f'    <score>{score}</score>\n')
                     f.write(f'    <opt>{s[-2]}</opt>\n')
-                    f.write(f'    <bp>{bp}</bp>') # DB系で使うためにbpも送っておく
+                    f.write(f'    <bp>{bp}</bp>\n') # DB系で使うためにbpも送っておく
                     f.write('</item>\n')
             f.write('</Results>\n')
             logger.debug(f"end")
