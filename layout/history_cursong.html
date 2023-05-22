@@ -82,6 +82,7 @@
                     var score = $(item).find('score').text();
                     var opt = $(item).find('opt').text();
                     var bp = $(item).find('bp').text();
+                    var dbflg = false;
                     if (lamp == "FAILED"){
                         lamp = '<font color="#ff0000">x</font>'
                     }
@@ -106,6 +107,9 @@
                     else{ // No playは何も表示しない
                         lamp = ''
                     }
+                    if (opt.indexOf("BATTLE")>=0){
+                        dbflg = true;
+                    }
                     // 長いオプションを省略する(字をデカくするための施策,お好みで消してください)
                     if (opt.indexOf("BATTLE, OFF / MIR")>=0){
                         opt = '(DBM;右M)'
@@ -129,7 +133,7 @@
                         opt = '(全裸)'
                     }
                     // テーブルに追加
-                    if (opt.indexOf("BATTLE") >= 0){ // DBx系オプションの場合、スコアの所にbp250のようにミスカンを入れておく
+                    if (dbflg == true){ // DBx系オプションの場合、スコアの所にbp250のようにミスカンを入れておく
                         out +='<tr><td><font color="#ffffaa">'+date+'</font></td><td>'+lamp+'</td><td>bp'+bp+'</td><td><font color="#aaffaa">'+opt+'</font></td></tr>';
                     }else{
                         out +='<tr><td><font color="#ffffaa">'+date+'</font></td><td>'+lamp+'</td><td>'+score+'</td><td><font color="#aaffaa">'+opt+'</font></td></tr>';
