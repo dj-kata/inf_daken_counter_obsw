@@ -22,7 +22,7 @@
             table#title {
                 color: #aaddff;
                 background-color: rgba(0, 0, 0, 0.95);
-                font-size: 96px;
+                font-size: 130px;
                 line-height: 130%;
                 width:100%;
             }
@@ -30,7 +30,7 @@
             	white-space:nowrap;
             }
             table#title td:nth-child(1){
-                width:200px;
+                width:20%;
             }
             table#title td:nth-child(2){
             	overflow:hidden;
@@ -38,22 +38,23 @@
             	max-width:100px;
             }
             table#title td:nth-child(3){
-                width:1px;
+                width:17%;
             }
             table#result {
+                font-size: 96px;
             	width:100%;
             }
             table#result td {
             	white-space:nowrap;
             }
             table#result td:nth-child(1) {
-            	width:350px;
+            	width:25%;
             }
             table#result td:nth-child(2) {
-            	width:200px;
+            	width:12%;
             }
             table#result td:nth-child(3) {
-            	width:250px;
+            	width:19%;
             }
             table#result td:nth-child(4) {
             	max-width:90%;
@@ -104,6 +105,28 @@
                     }
                     else{ // No playは何も表示しない
                         lamp = ''
+                    }
+                    // 長いオプションを省略する(字をデカくするための施策,お好みで消してください)
+                    if (opt.indexOf("BATTLE, OFF / MIR")>=0){
+                        opt = '(DBM;右M)'
+                    }
+                    else if (opt.indexOf("BATTLE, MIR / OFF")>=0){
+                        opt = '(DBM;左M)'
+                    }
+                    else if (opt.indexOf("BATTLE, OFF / OFF")>=0){
+                        opt = '(DB)'
+                    }
+                    else if (opt.indexOf("BATTLE, RAN / RAN")>=0){
+                        opt = '(DBR)'
+                    }
+                    else if (opt.indexOf("BATTLE, S-RAN / S-RAN")>=0){
+                        opt = '(DBSR)'
+                    }
+                    else if (opt.indexOf("BATTLE, H-RAN / H-RAN")>=0){
+                        opt = '(DBHR)'
+                    }
+                    else if (opt.indexOf("S-RAN / S-RAN, FLIP, LEGACY")>=0){
+                        opt = '(全裸)'
                     }
                     // テーブルに追加
                     if (opt.indexOf("BATTLE") >= 0){ // DBx系オプションの場合、スコアの所にbp250のようにミスカンを入れておく

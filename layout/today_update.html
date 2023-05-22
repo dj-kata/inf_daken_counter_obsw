@@ -40,11 +40,15 @@
             	overflow:hidden;
             	text-overflow:ellipsis;
             	max-width:90px;
+                color: #bbffee;
             }
             table#result td:nth-child(3) {
-            	width:130px;
+            	width:200px;
             }
             table#result td:nth-child(4) {
+            	width:130px;
+            }
+            table#result td:nth-child(5) {
             	width:1px;
             }
         </style>
@@ -69,17 +73,17 @@
                     var score = $(item).find('score').text();
                     var opt = $(item).find('opt').text();
                     var bp = $(item).find('bp').text();
-                    if (difficulty == "DPN"){
-                        title = '<font color="#8888ff">'+title+'</font>'
+                    if (difficulty.slice(-1) == "N"){
+                        difficulty = '<font color="#8888ff">'+difficulty+'</font>'
                     }
-                    if (difficulty == "DPH"){
-                        title = '<font color="#ffff88">'+title+'</font>'
+                    if (difficulty.slice(-1) == "H"){
+                        difficulty = '<font color="#ffff88">'+difficulty+'</font>'
                     }
-                    if (difficulty == "DPA"){
-                        title = '<font color="#ff8888">'+title+'</font>'
+                    if (difficulty.slice(-1) == "A"){
+                        difficulty = '<font color="#ff8888">'+difficulty+'</font>'
                     }
-                    if (difficulty == "DPL"){
-                        title = '<font color="#ff88ff">'+title+'</font>'
+                    if (difficulty.slice(-1) == "L"){
+                        difficulty = '<font color="#ff88ff">'+difficulty+'</font>'
                     }
                     if (lamp == "FAILED"){
                         lamp = '<font color="#ff0000">x</font>'
@@ -107,11 +111,25 @@
                     }
                     // テーブルに追加
                     if (opt.indexOf("BATTLE") >= 0){ // DBx系オプションの場合、スコアの所にbp250のようにミスカンを入れておく
-                        title = '(DBx) ' + title
-                        out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+lamp+'</td><td>bp'+bp+'</td></tr>';
+                        if ((opt.indexOf("MIR / OFF")>=0) || (opt.indexOf("OFF / MIR")>=0)){
+                            title = '(DBM) ' + title
+                        }
+                        else if (opt.indexOf("OFF / OFF")>=0){
+                            title = '(DB) ' + title
+                        }
+                        else if (opt.indexOf("RAN / RAN")>=0){
+                            title = '(DBR) ' + title
+                        }
+                        else if (opt.indexOf("S-RAN / S-RAN")>=0){
+                            title = '(DBSR) ' + title
+                        }
+                        else if (opt.indexOf("H-RAN / H-RAN")>=0){
+                            title = '(DBHR) ' + title
+                        }
+                        out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+difficulty+'</td><td>'+lamp+'</td><td>bp'+bp+'</td></tr>';
                         //out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+lamp+'</td><td>'+score+'</td></tr>';
                     } else{
-                        out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+lamp+'</td><td>'+score+'</td></tr>';
+                        out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+difficulty+'</td><td>'+lamp+'</td><td>'+score+'</td></tr>';
                     }
                     if (index == 5){ // 直近の6曲だけ表示としている。曲数はここから変更可能。
                         return false;
@@ -137,6 +155,7 @@
   <table id="result">
     <thead>
       <tr>
+        <td></td>
         <td></td>
         <td></td>
         <td></td>
