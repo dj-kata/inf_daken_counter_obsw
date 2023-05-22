@@ -161,31 +161,45 @@ class DakenCounter:
         sc = self.obs.save_screenshot_dst(imgpath)
         print(f'-> {imgpath}')
 
-    def save_result(self, mode):
+    def save_result(self):
+        img = Image.open(self.imgpath)
         now = datetime.datetime.now()
         fmtnow = format(now, "%Y%m%d_%H%M%S")
         dst = f"{self.settings['autosave_dir']}/infinitas_{fmtnow}.png"
         print(f"自動保存します。 -> {dst} (mode={mode})")
-        if self.settings['autosave_mosaic']: # TODO DBxでは飛ばす
+        if self.settings['autosave_mosaic']: # TODO ライバルエリアがあるかどうかを判定する
+            rival_1p = 0
+            rival_2p = 0
+            for y in range(6):
+                sc = img.crop((1215,195+y*80,1255,203+y*80))
+                rival_1p += np.array(sc).sum()
+                sc = img.crop((360,195+y*80,400,203+y*80))
+                rival_2p += np.array(sc).sum()
+            logger.debug(f"sum 1p,2p = {rival_1p:,}, {rival_2p:,}")
+            result_threshold = 542400
+        
+            # ライバル欄があるかどうかの判定
+            rival_mode = 'none'
+            if rival_1p == result_threshold:
+                rival_mode = '1p'
+            elif rival_2p == result_threshold:
+                rival_mode = '2p'
+
             # ライバルのモザイク処理
-            img = Image.open(self.imgpath)
             img_array = np.array(img)
             self.obs.save_screenshot_dst(dst)
-            if mode == '1p': # ライバルエリアが右側
+            if rival_mode == '1p': # ライバルエリアが右側
                 rivalarea = img.crop((877,180,1212,655))
                 rivalarea = rivalarea.resize((33,47))
                 rivalarea = rivalarea.resize((335,475))
                 rival_array = np.array(rivalarea)
                 img_array[180:655, 877:1212] = rival_array
-            elif mode == '2p': # ライバルエリアが左側
+            elif rival_mode == '2p': # ライバルエリアが左側
                 rivalarea = img.crop((22,180,357,655))
                 rivalarea = rivalarea.resize((33,47))
                 rivalarea = rivalarea.resize((335,475))
                 rival_array = np.array(rivalarea)
                 img_array[180:655, 22:357] = rival_array
-            else:
-                # ここは絶対に通らないはずだが、一応用意している
-                print('error! リザルトのプレイサイド判別に失敗しています')
             # 挑戦状エリアの処理
             if img.getpixel((540,591)) == (0,0,0,255):
                 mailarea = img.crop((577,513,677,533))
@@ -194,20 +208,20 @@ class DakenCounter:
                 mail_array = np.array(mailarea)
                 img_array[513:533, 577:677] = mail_array
             # ターゲット名も隠す(ライバルの名前が入っている可能性があるため)
-            if mode == '2p':
-                targetarea = img.crop((910,456,1122,476))
-                targetarea = targetarea.resize((21,2))
-                targetarea = targetarea.resize((212,20))
-                img_array[456:476, 910:1122] = targetarea
-            else:
+            if ('1p' in self.valid_playside) or (self.valid_playside == 'dp-l'):
                 targetarea = img.crop((29,456,241,476))
                 targetarea = targetarea.resize((21,2))
                 targetarea = targetarea.resize((212,20))
                 img_array[456:476, 29:241] = targetarea
+            else:
+                targetarea = img.crop((910,456,1122,476))
+                targetarea = targetarea.resize((21,2))
+                targetarea = targetarea.resize((212,20))
+                img_array[456:476, 910:1122] = targetarea
 
             out = Image.fromarray(img_array)
             out.save(dst)
-        else:
+        else: # ライバル欄を隠さない場合
             self.obs.save_screenshot_dst(dst)
 
     def autosave_result(self, result):
@@ -246,12 +260,12 @@ class DakenCounter:
 
                 if isLamp or isDjlevel or isScore or isBp or isAlways:
                     if isMissionEnd and isBitwindowEnd:
-                        self.save_result(mode)
+                        self.save_result()
                         ret = True
             else: # DBM, DBRなど
                 lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
                 if (self.settings['autosave_dbx'] == 'always') or ((self.settings['autosave_dbx'] == 'clear') and (lamp_table.index(result[7]) >= 2)):
-                    self.save_result(mode)
+                    self.save_result()
                     ret = True
 
         return ret
