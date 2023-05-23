@@ -148,9 +148,11 @@ inf-notebookのrecog.py周りを使わせていただいています。(わる�
 https://github.com/kaktuswald/inf-notebook
 
 ### プレーログ表示の設定方法
+**本日のリザルト表示用HTMLのファイル名が意図通りでない問題が発覚しました。。現在同梱のファイル名に対して正しい説明に直しています。5.24中にzip内のHTMLファイル名を修正します。**
+
 1. INFINITASのプレー/配信に使うシーン名を打鍵カウンタに入力する。
 2. 同梱の```layout\history_cursong.html```と```layout\today_update.html```をOBSへブラウザソースとして追加する。
-3. 2.のブラウザソースの名前がHTMLファイル名と一致するように変更する。
+3. 2.のブラウザソースの名前がHTMLファイル名と一致するように変更する。(※暫定対応:today_update.htmlのソース名はtoday_resultとしてください)
 ![image](https://github.com/dj-kata/inf_daken_counter_obsw/assets/61326119/39a70d15-095b-4c0c-b791-521bc0bb2951)
 ![image](https://github.com/dj-kata/inf_daken_counter_obsw/assets/61326119/48e224ff-4cd4-4573-8571-b7a53803848e)
 ![image](https://github.com/dj-kata/inf_daken_counter_obsw/assets/61326119/ae3723bc-49f5-4ce7-ab57-26b4919a1014)
@@ -200,7 +202,7 @@ v.2.0.5以降で1日に叩いたノーツ数のログを保存し、ログを元
 ## OBSへの設定方法
 ### プレーログ表示の設定方法
 上記の機能説明項を参照。以下の設定でちょうどよく見えるように調整しています。  
-- today_update.html(名前:today_update)は幅1500, 高さ1000
+- today_update.html(名前:today_result)は幅1500, 高さ1000
 - history_cursong.html(名前:history_cursong)は幅2200, 高さ2500
 
 その日のログ表示ビュー(today_result)に反映するための条件を設定画面から変更できます。  
