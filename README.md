@@ -203,6 +203,13 @@ v.2.0.5以降で1日に叩いたノーツ数のログを保存し、ログを元
 - today_result.html(名前:today_result)は幅1500, 高さ1000
 - history_cursong.html(名前:history_cursong)は幅2200, 高さ2500
 
+その日のログ表示ビュー(today_result)に反映するための条件を設定画面から変更できます。  
+**本日の履歴の更新: 更新時のみ**とすると、ランプorスコア更新の場合のみ載るようになります。  
+(内部的には全リザルトを保存しています)
+![image](https://github.com/dj-kata/inf_daken_counter_obsw/assets/61326119/5f272b26-9a1f-42ea-8f7d-8555311cc83c)
+
+
+
 ### ノーツ数グラフの表示方法
 1. ソースの追加 -> ブラウザを選択する。好きな名前を付けてOK。  
 ![image](https://user-images.githubusercontent.com/61326119/182008724-44d2711d-fb3e-4e32-b1f1-9fa95b8ed751.png)
