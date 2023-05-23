@@ -1033,8 +1033,9 @@ class DakenCounter:
                     self.settings['host'] = val['input_host']
                     self.settings['port'] = val['input_port']
                     self.settings['obs_scene'] = val['input_obs_scene']
-                    self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'] = self.obs.search_itemid(self.settings['obs_scene'], 'history_cursong')
-                    self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'] = self.obs.search_itemid(self.settings['obs_scene'], 'today_result')
+                    if self.obs != False:
+                        self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'] = self.obs.search_itemid(self.settings['obs_scene'], 'history_cursong')
+                        self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'] = self.obs.search_itemid(self.settings['obs_scene'], 'today_result')
                     self.settings['todaylog_always_push'] = val['todaylog_always_push']
                     self.settings['todaylog_dbx_always_push'] = val['todaylog_dbx_always_push']
                     self.settings['passwd'] = val['input_passwd']
@@ -1198,7 +1199,7 @@ class DakenCounter:
                 log_manager = LogManager(self.settings)
                 log_manager.main()
 
-            elif ev in ("コピー"):
+            elif ev == "コピー":
                 # try - except で弾かれたとき用に、バックアップの値を用意しておく
                 backup = self.window["output"].Widget.clipboard_get()
                 self.window["output"].Widget.clipboard_clear()
@@ -1218,7 +1219,7 @@ class DakenCounter:
                     self.settings['autosave_dir'] = tmp
                     self.window['txt_autosave_dir'].update(tmp)
 
-            elif ev in ('btn_ocr_from_savedir'): # リザルト画像フォルダからスコアを抽出。スコア一覧の初期値生成用
+            elif ev  == 'btn_ocr_from_savedir': # リザルト画像フォルダからスコアを抽出。スコア一覧の初期値生成用
                 th_read_result = threading.Thread(target=self.read_result_from_pic, daemon=True)
                 self.playopt = '?' # 画像からオプションが取得できなさそうなので、不明にしておく
                 pre_len_alllog = len(self.alllog)
