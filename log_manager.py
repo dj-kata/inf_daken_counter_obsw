@@ -1,6 +1,6 @@
 import calendar
 import datetime
-import os
+import os, sys
 import PySimpleGUI as sg
 from daken_logger import DakenLogger
 import webbrowser, urllib, requests
@@ -124,7 +124,7 @@ class LogManager:
             layout_cal.append(inner.copy())
 
         layout = [[sg.Column(layout_cal), sg.Column(layout_edit)],
-                [sg.Text('', key='info', font=(None,16))]]
+                [sg.Text('', key='info', font=(None,9))]]
         return layout
 
     def update_listbox(self):
@@ -208,6 +208,7 @@ class LogManager:
 
             elif event == 'save':
                 self.dakenlog.save()
+                self.window['info'].update(f"打鍵ログを保存しました。")
             elif event == 'btn_range':
                 mode = 'range_st'
             elif event == 'btn_edit':
@@ -252,7 +253,10 @@ class LogManager:
                 self.window['date_start'].update(f"{range_st.year}/{range_st.month:02d}/{range_st.day:02d}")
                 self.window['date_end'].update(f"{range_ed.year}/{range_ed.month:02d}/{range_ed.day:02d}")
                 self.set_allday_color(cal_date, range_st, range_ed)
-                filename = f"log_{range_st}_{range_ed}.png"
+                if self.settings['autosave_dir'] != '':
+                    filename = f"{self.settings['autosave_dir']}/log_{range_st}_{range_ed}.png"
+                else:
+                    filename = f"log_{range_st}_{range_ed}.png"
                 stats = self.dakenlog.gen_graph_with_date(filename, range_st, range_ed, write_sum=True)
                 self.open_twitter(stats, '今週')
                 self.window['info'].update(f"グラフ画像を生成しました -> {filename}")
@@ -263,13 +267,19 @@ class LogManager:
                 self.window['date_start'].update(f"{range_st.year}/{range_st.month:02d}/{range_st.day:02d}")
                 self.window['date_end'].update(f"{range_ed.year}/{range_ed.month:02d}/{range_ed.day:02d}")
                 self.set_allday_color(cal_date, range_st, range_ed)
-                filename = f"log_{range_st.strftime('%Y-%m')}.png"
+                if self.settings['autosave_dir'] != '':
+                    filename = f"{self.settings['autosave_dir']}/log_{range_st.strftime('%Y-%m')}.png"
+                else:
+                    filename = f"log_{range_st.strftime('%Y-%m')}.png"
                 stats = self.dakenlog.gen_graph_with_date(filename, range_st, range_ed)
                 self.open_twitter(stats, range_st.strftime("%Y年%m月"))
                 self.window['info'].update(f"グラフ画像を生成しました -> {filename}")
             elif event == 'generate':
                 if range_st and range_ed:
-                    filename = f"log_{range_st}_{range_ed}.png"
+                    if self.settings['autosave_dir'] != '':
+                        filename = f"{self.settings['autosave_dir']}/log_{range_st}_{range_ed}.png"
+                    else:
+                        filename = f"log_{range_st}_{range_ed}.png"
                     write_sum = (range_ed - range_st).days <= 7
                     stats = self.dakenlog.gen_graph_with_date(filename, range_st, range_ed, write_sum=write_sum)
                     self.open_twitter(stats, f'{range_st.strftime("%Y年%m月%d日")}～{range_ed.strftime("%Y年%m月%d日")}')
