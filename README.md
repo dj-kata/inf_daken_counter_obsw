@@ -143,6 +143,9 @@ v.2.0.8以降で以下のようにプレーログを表示する機能を追加�
 ![image](https://github.com/dj-kata/inf_daken_counter_obsw/assets/61326119/575bb9be-460b-47b8-b2cb-6a100e52ee75)
 ![image](https://github.com/dj-kata/inf_daken_counter_obsw/assets/61326119/a9efd1b9-ca01-4e24-91b1-58a8f875af3d)
 
+リザルト画面の認識処理については、  
+inf-notebookのrecog.py周りを使わせていただいています。(わるとさんに感謝！)  
+https://github.com/kaktuswald/inf-notebook
 
 ### プレーログ表示の設定方法
 1. INFINITASのプレー/配信に使うシーン名を打鍵カウンタに入力する。
