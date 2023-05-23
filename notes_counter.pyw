@@ -1018,7 +1018,7 @@ class DakenCounter:
 
         while True:
             ev, val = self.window.read()
-            #print(f"event='{ev}', values={val}")
+            #logger.debug(f"ev={ev}")
             # 設定を最新化
             if self.settings and val: # 起動後、そのまま何もせずに終了するとvalが拾われないため対策している
                 if self.mode == 'main':
@@ -1212,7 +1212,7 @@ class DakenCounter:
             elif ev in ('btn_setting', '設定'):
                 self.gui_setting()
 
-            elif ev in ('btn_autosave_dir'):
+            elif ev == 'btn_autosave_dir':
                 tmp = filedialog.askdirectory()
                 if tmp != '':
                     self.settings['autosave_dir'] = tmp
