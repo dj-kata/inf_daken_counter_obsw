@@ -11,7 +11,7 @@
             padding: 20px;
             overflow: hidden;
             font-family:"Meiryo";
-            color:#2196F3;   
+            color:#aaddff;   
             font-size: 64px;
             color: #fff;
             text-shadow: 6px 6px 0 #000,
@@ -111,27 +111,31 @@
                     }
                     // テーブルに追加
                     if (opt.indexOf("BATTLE") >= 0){ // DBx系オプションの場合、スコアの所にbp250のようにミスカンを入れておく
+                        var with_scratch = "";
+                        if (opt.indexOf("A-SCR")<0){
+                            with_scratch = "皿あり"; // 皿あり表記を無効にする場合はこの行を消せばOK
+                        }
                         if ((opt.indexOf("MIR / OFF")>=0) || (opt.indexOf("OFF / MIR")>=0)){
-                            title = '(DBM) ' + title
+                            title = '('+with_scratch+'DBM) ' + title
                         }
                         else if (opt.indexOf("OFF / OFF")>=0){
-                            title = '(DB) ' + title
+                            title = '('+with_scratch+'DB) ' + title
                         }
                         else if (opt.indexOf("RAN / RAN")>=0){
-                            title = '(DBR) ' + title
+                            title = '('+with_scratch+'DBR) ' + title
                         }
                         else if (opt.indexOf("S-RAN / S-RAN")>=0){
-                            title = '(DBSR) ' + title
+                            title = '('+with_scratch+'DBSR) ' + title
                         }
                         else if (opt.indexOf("H-RAN / H-RAN")>=0){
-                            title = '(DBHR) ' + title
+                            title = '('+with_scratch+'DBHR) ' + title
                         }
                         out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+difficulty+'</td><td>'+lamp+'</td><td>bp'+bp+'</td></tr>';
                         //out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+lamp+'</td><td>'+score+'</td></tr>';
                     } else{
                         out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+difficulty+'</td><td>'+lamp+'</td><td>'+score+'</td></tr>';
                     }
-                    if (index == 5){ // 直近の6曲だけ表示としている。曲数はここから変更可能。
+                    if (index == 29){ // 直近の30曲だけ表示としている。曲数はここから変更可能。
                         return false;
                     }
                     });

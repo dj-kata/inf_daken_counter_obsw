@@ -22,7 +22,7 @@
             table#title {
                 color: #aaddff;
                 background-color: rgba(0, 0, 0, 0.95);
-                font-size: 130px;
+                font-size: 110px;
                 line-height: 130%;
                 width:100%;
             }
@@ -107,30 +107,34 @@
                     else{ // No playは何も表示しない
                         lamp = ''
                     }
+                    var with_scratch = "";
                     if (opt.indexOf("BATTLE")>=0){
                         dbflg = true;
+                        if (opt.indexOf("A-SCR")<0){
+                            with_scratch = ", 皿あり"; // 皿あり表記を無効にする場合はこの行を消せばOK
+                        }
                     }
                     // 長いオプションを省略する(字をデカくするための施策,お好みで消してください)
                     if (opt.indexOf("BATTLE, OFF / MIR")>=0){
-                        opt = '(DBM;右M)'
+                        opt = '(DBM;右M' + with_scratch + ')'
                     }
                     else if (opt.indexOf("BATTLE, MIR / OFF")>=0){
-                        opt = '(DBM;左M)'
+                        opt = '(DBM;左M' + with_scratch + ')'
                     }
                     else if (opt.indexOf("BATTLE, OFF / OFF")>=0){
-                        opt = '(DB)'
+                        opt = '(DB' + with_scratch + ')'
                     }
                     else if (opt.indexOf("BATTLE, RAN / RAN")>=0){
-                        opt = '(DBR)'
+                        opt = '(DBR' + with_scratch + ')'
                     }
                     else if (opt.indexOf("BATTLE, S-RAN / S-RAN")>=0){
-                        opt = '(DBSR)'
+                        opt = '(DBSR' + with_scratch + ')'
                     }
                     else if (opt.indexOf("BATTLE, H-RAN / H-RAN")>=0){
-                        opt = '(DBHR)'
+                        opt = '(DBHR' + with_scratch + ')'
                     }
                     else if (opt.indexOf("S-RAN / S-RAN, FLIP, LEGACY")>=0){
-                        opt = '(全裸)'
+                        opt = '(全裸' + with_scratch + ')'
                     }
                     // テーブルに追加
                     if (dbflg == true){ // DBx系オプションの場合、スコアの所にbp250のようにミスカンを入れておく
