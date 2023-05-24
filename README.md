@@ -45,13 +45,20 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 |---|---|
 |notes_counter.exe|ツール本体|
 |layout\autoload.html|OBSで読み込むノーツ数表示用HTMLファイル|
-|layout\option.html|OBSで読み込むオプション表示用HTMLファイル|
+|layout\basetitle.html|OBSで読み込む配信のタイトル名表示用HTMLファイル|
 |layout\gauge.html|OBSで読み込むグルーブゲージ情報表示用HTMLファイル|
 |layout\graph.html|OBSで読み込むノーツ数リアルタイム表示用HTMLファイル|
+|layout\history_cursong.html|OBSで読み込む単曲プレー履歴の一覧表示用HTMLファイル|
 |layout\judge.html|OBSで読み込む判定内訳表示用HTMLファイル|
-|data.xml|自動生成されるスコア情報|
-|option.xml|自動生成される設定中のオプション情報|
+|layout\option.html|OBSで読み込むオプション表示用HTMLファイル|
+|layout\series.html|OBSで読み込む配信のシリーズ名(第N回の部分)表示用HTMLファイル|
+|layout\today_result.html|OBSで読み込む本日の成果一覧表示用HTMLファイル|
+|layout\\*.png|各種判定処理に必要な画像ファイル|
+|resources\\ |曲名認識(OCR)機能のために必要な外部入力ファイル|
+|alllog.pkl|自動生成される全打鍵ログの保存用ファイル|
 |dakenlog.pkl|自動生成される過去に起動した日に叩いたノーツ数の情報|
+|*.xml|自動生成される各種データ表示用ファイル。layout内のHTMLファイルから使う。|
+|dbg.log|デバッグ用データ|
 |settings.json|ツール本体の設定ファイル。|
 |README.txt|説明書|
 |LICENSE|ライセンス情報|
@@ -155,11 +162,13 @@ https://github.com/kaktuswald/inf-notebook
 ![image](https://github.com/dj-kata/inf_daken_counter_obsw/assets/61326119/48e224ff-4cd4-4573-8571-b7a53803848e)
 ![image](https://github.com/dj-kata/inf_daken_counter_obsw/assets/61326119/ae3723bc-49f5-4ce7-ab57-26b4919a1014)
 
-
 設定後にノーツ数取得用のスレッドを再起動した方がいいかもしれません。  
 (Startボタンを押す or 打鍵カウンタ本体を再起動)
 
 3.を行わないと、**プレー中に自動でこれらのビューの表示・非表示を切り替える機能が動かない**ので注意です。
+
+プレーログ表示のレイアウトはそれなりに調整していますが、  
+HTMLやCSSを編集することでカスタマイズも可能です。(webデザインに詳しい人向け)
 
 ## 打鍵ログ画像生成機能
 v.2.0.5以降で1日に叩いたノーツ数のログを保存し、ログを元に以下のようなグラフを作成する機能を追加しました。  
