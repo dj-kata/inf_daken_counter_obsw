@@ -154,7 +154,7 @@ v.2.0.8以降で以下のようにプレーログを表示する機能を追加�
 inf-notebookのrecog.py周りを使わせていただいています。(わるとさんに感謝！)  
 https://github.com/kaktuswald/inf-notebook
 
-設定方法は後述。
+設定方法は[後述](https://github.com/dj-kata/inf_daken_counter_obsw#%E3%83%97%E3%83%AC%E3%83%BC%E3%83%AD%E3%82%B0%E8%A1%A8%E7%A4%BA%E3%81%AE%E8%A8%AD%E5%AE%9A%E6%96%B9%E6%B3%95)。
 
 ## 打鍵ログ画像生成機能
 v.2.0.5以降で1日に叩いたノーツ数のログを保存し、ログを元に以下のようなグラフを作成する機能を追加しました。  
