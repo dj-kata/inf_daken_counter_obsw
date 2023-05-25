@@ -173,17 +173,20 @@ class DakenCounter:
             title = f"{title[:120]}_{result[2]}"
             lamp  = result[7].replace('_', '')
             score = result[9]
-            bp    = ""
+            bp    = ''
+            with_scratch = ''
             if result[11] != None:
                 bp = f'_bp{result[11]}'
+            if not 'A-SCR' in self.playopt:
+                with_scratch='皿あり'
             if ('BATTLE, MIR / OFF' in self.playopt) or ('BATTLE, OFF / MIR' in self.playopt):
-                title+='_DBM'
+                title+=f'_{with_scratch}DBM'
             elif ('BATTLE, RAN / RAN' in self.playopt):
-                title+='_DBR'
+                title+=f'_{with_scratch}DBR'
             elif ('BATTLE, S-RAN / S-RAN' in self.playopt):
-                title+='_DBSR'
+                title+=f'_{with_scratch}DBSR'
             elif ('BATTLE' in self.playopt):
-                title+='_DB'
+                title+=f'_{with_scratch}DB'
             dst = f"{self.settings['autosave_dir']}/inf_{title}_{lamp}_{score}{bp}_{fmtnow}.png"
         print(f"自動保存します。 -> {dst})")
         if self.settings['autosave_mosaic']: # TODO ライバルエリアがあるかどうかを判定する
