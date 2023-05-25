@@ -172,7 +172,7 @@ class DakenCounter:
                 title = title.replace(ch, '')
             title = f"{title[:120]}_{result[2]}"
             lamp  = result[7].replace('-', '')
-            score = 'ex' + result[9]
+            score = f'ex{result[9]}'
             bp    = ''
             with_scratch = ''
             if result[11] != None:
