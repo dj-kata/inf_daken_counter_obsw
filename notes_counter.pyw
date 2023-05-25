@@ -48,7 +48,7 @@ logger.addHandler(hdl)
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0.8'
+SWVER  = 'v2.0.9'
 
 width  = 1280
 height = 720
@@ -161,11 +161,30 @@ class DakenCounter:
         sc = self.obs.save_screenshot_dst(imgpath)
         print(f'-> {imgpath}')
 
-    def save_result(self):
+    def save_result(self, result):
         img = Image.open(self.imgpath)
         now = datetime.datetime.now()
         fmtnow = format(now, "%Y%m%d_%H%M%S")
         dst = f"{self.settings['autosave_dir']}/infinitas_{fmtnow}.png"
+        if result != False:
+            title = result[1]
+            for ch in ('\\', '/', ':', '*', '?', '"', '<', '>', '|'):
+                title = title.replace(ch, '')
+            title = f"{title[:120]}_{result[2]}"
+            lamp  = result[7].replace('_', '')
+            score = result[9]
+            bp    = ""
+            if result[11] != None:
+                bp = f'_bp{result[11]}'
+            if ('BATTLE, MIR / OFF' in self.playopt) or ('BATTLE, OFF / MIR' in self.playopt):
+                title+='_DBM'
+            elif ('BATTLE, RAN / RAN' in self.playopt):
+                title+='_DBR'
+            elif ('BATTLE, S-RAN / S-RAN' in self.playopt):
+                title+='_DBSR'
+            elif ('BATTLE' in self.playopt):
+                title+='_DB'
+            dst = f"{self.settings['autosave_dir']}/inf_{title}_{lamp}_{score}{bp}_{fmtnow}.png"
         print(f"自動保存します。 -> {dst})")
         if self.settings['autosave_mosaic']: # TODO ライバルエリアがあるかどうかを判定する
             rival_1p = 0
@@ -232,15 +251,12 @@ class DakenCounter:
 
             update_area = []
             hash_target = imagehash.average_hash(Image.open('layout/update.png'))
-            mode = ''
             if ('1p' in self.valid_playside) or (self.valid_playside == 'dp-l'):
-                mode = '1p'
                 for i in range(4):
                     tmp = imagehash.average_hash(img.crop((355,258+48*i,385,288+48*i)))
                     update_area.append(hash_target - tmp)
 
             else:
-                mode = '2p'
                 for i in range(4):
                     tmp = imagehash.average_hash(img.crop((1235,258+48*i,1265,288+48*i)))
                     update_area.append(hash_target - tmp)
@@ -260,12 +276,12 @@ class DakenCounter:
 
                 if isLamp or isDjlevel or isScore or isBp or isAlways:
                     if isMissionEnd and isBitwindowEnd:
-                        self.save_result()
+                        self.save_result(result)
                         ret = True
             else: # DBM, DBRなど
                 lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
                 if (self.settings['autosave_dbx'] == 'always') or ((self.settings['autosave_dbx'] == 'clear') and (lamp_table.index(result[7]) >= 2)) or isAlways:
-                    self.save_result()
+                    self.save_result(result)
                     ret = True
 
         return ret
@@ -1008,8 +1024,14 @@ class DakenCounter:
                 self.today_plays = 0
                 self.notes_ran = 0
                 self.notes_battle  = 0
+                self.srate = 0
                 self.judge = [0,0,0,0,0,0]
                 self.tmp_judge = [0,0,0,0,0,0] # 最後の曲の判定を覚えておく(DBxのBP記録用)
+                self.window['srate'].update(value=f"{self.srate:.2f} %")
+                self.window['today'].update(value=f"0")
+                self.window['plays'].update(value=f"0")
+                for i in range(6):
+                    self.window[f"judge{i}"].update(value='0')
             running = True
             th = threading.Thread(target=self.detect_top, args=(SLEEP_TIME,), daemon=True)
             self.gen_notes_xml(0,self.today_notes,self.today_plays, self.notes_ran, self.notes_battle, self.judge)
@@ -1095,8 +1117,16 @@ class DakenCounter:
                         self.today_notes = 0
                         self.today_plays = 0
                         self.notes_ran = 0
-                        self.notes_battle = 0
+                        self.notes_battle  = 0
+                        self.srate = 0
                         self.judge = [0,0,0,0,0,0]
+                        self.tmp_judge = [0,0,0,0,0,0] # 最後の曲の判定を覚えておく(DBxのBP記録用)
+                        self.window['srate'].update(value=f"{self.srate:.2f} %")
+                        self.window['today'].update(value=f"0")
+                        self.window['plays'].update(value=f"0")
+                        for i in range(6):
+                            self.window[f"judge{i}"].update(value='0')
+
                     th = threading.Thread(target=self.detect_top, args=(SLEEP_TIME,), daemon=True)
                     self.gen_notes_xml(0,self.today_notes,self.today_plays, self.notes_ran, self.notes_battle, self.judge)
                     th.start()
@@ -1109,10 +1139,14 @@ class DakenCounter:
                     self.window['start'].update("start")
             elif ev.startswith('reset'):
                 print(f'プレイ回数と合計スコアをリセットします。')
-                self.today_plays  = 0
-                self.today_notes  = 0
-                self.notes_ran    = 0
+                self.today_notes = 0
+                self.today_plays = 0
+                self.notes_ran = 0
                 self.notes_battle = 0
+                self.judge = [0,0,0,0,0,0]
+                self.tmp_judge = [0,0,0,0,0,0]
+                self.srate = 0
+                self.window['srate'].update(value=f"{self.srate:.2f} %")
                 self.window['today'].update(value=f"0")
                 self.window['plays'].update(value=f"0")
                 for i in range(6):
