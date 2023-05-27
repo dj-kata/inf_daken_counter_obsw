@@ -31,9 +31,9 @@ def load_collections():
         if os.path.isfile(i_filepath):
             i_image = Image.open(i_filepath).convert('L')
             if i_image.height == 75:
-                i_image = i_image.crop((0, 3, 0, 74))
+                i_image = i_image.crop((0, 3, 460, 74))
             if i_image.height == 78:
-                i_image = i_image.crop((0, 5, 0, 76))
+                i_image = i_image.crop((0, 5, 460, 76))
         else:
             i_image = None
 

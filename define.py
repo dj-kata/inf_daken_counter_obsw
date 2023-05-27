@@ -21,7 +21,7 @@ class Define():
         'background_count': 13,
         'background_key_position':  (641, 410, 1),
         'areas': {
-            "heightline1": (slice(0, 150), 420, 1),
+            "heightline1": (slice(5, 150), 420, 1),
             "heightline2": (slice(235, 630), 420, 1)
         }
     }
@@ -57,29 +57,21 @@ class Define():
     informations_trimpos = (410, 633)
     informations_trimsize = (460, 71)
 
-    informations_recognition_version = '1.0'
+    informations_recognition_version = '2.0'
     informations_trimarea_new = (410, 628, 870, 706)
 
     informations_areas = {
         'play_mode': (82, 55, 102, 65),
         'difficulty': (196, 58, 229, 62),
         'level': (231, 58, 250, 62),
-        'notes': (268, 55, 324, 65)
+        'notes': (268, 59, 324, 61)
     }
 
     music_recognition_vesion = '4.0'
     
-    notes_trimsize = (14, 10)
+    notes_trimareabase = (2, 0, 10, 2)
+    notes_digit = 4
     notes_trimareas = []
-    notes_segments = [
-        (0, 6),
-        (4, 6),
-        (9, 6),
-        (2, 2),
-        (6, 2),
-        (2, 9),
-        (6, 9),
-    ]
     notes_color = 255
 
     option_trimsize = (57, 4)
@@ -193,12 +185,13 @@ class Define():
         self.informations_resourcename = f'informations{self.informations_recognition_version}'
         self.musics_resourcename = f'musics{self.music_recognition_vesion}'
 
-        for i in range(4):
+        notes_trimwidth = self.informations_areas['notes'][2] - self.informations_areas['notes'][0]
+        for i in range(self.notes_digit):
             self.notes_trimareas.append((
-                int(i * self.notes_trimsize[0]),
-                0,
-                int((i + 1) * self.notes_trimsize[0]),
-                self.notes_trimsize[1]
+                self.notes_trimareabase[0] + i * (notes_trimwidth // self.notes_digit),
+                self.notes_trimareabase[1],
+                self.notes_trimareabase[2] + i * (notes_trimwidth // self.notes_digit),
+                self.notes_trimareabase[3]
             ))
 
         self.details_trimarea = {}

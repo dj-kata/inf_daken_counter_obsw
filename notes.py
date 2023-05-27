@@ -22,14 +22,13 @@ def get_notes(image_informations):
     is_number = False
     for trimarea in define.notes_trimareas:
         cropped_number = cropped_image.crop(trimarea)
-        np_value = np.array(cropped_number)
-        segment_values = np.array([np_value[x,y] for x, y in define.notes_segments])
-        picked = np.where(segment_values==color)
-        squared = np.power(2, picked)
-        sum_value = np.sum(squared)
+        np_value = np.array(cropped_number).flatten()
+        bins = np.where(np_value==define.notes_color,1,0)
+        hexs = bins[::4]*8+bins[1::4]*4+bins[2::4]*2+bins[3::4]
+        tablekey = ''.join([format(v, '0x') for v in hexs])
 
-        if sum_value in table.keys():
-            ret = ret * 10 + table[sum_value]
+        if tablekey in table.keys():
+            ret = ret * 10 + table[tablekey]
             is_number = True
     
     return ret if is_number else None
@@ -44,21 +43,20 @@ def larning_notes(targets):
     for key, target in targets.items():
         value = target['value']
         np_value = target['np']
-        segment_values = np.array([np_value[x,y] for x, y in define.notes_segments])
-        picked = np.where(segment_values==color)
-        squared = np.power(2, picked)
-        sum_value = np.sum(squared)
+        bins = np.where(np_value==define.notes_color,1,0)
+        hexs = bins[::4]*8+bins[1::4]*4+bins[2::4]*2+bins[3::4]
+        tablekey = ''.join([format(v, '0x') for v in hexs])
 
-        if sum_value in table.keys():
-            if table[sum_value] != value:
-                print(sum_value)
+        if tablekey in table.keys():
+            if table[tablekey] != value:
+                print(tablekey)
                 print(f'{key}: {value}')
-                print(f'{keys[sum_value]}: {table[sum_value]}')
+                print(f'{keys[tablekey]}: {table[tablekey]}')
                 print("NG")
                 return
         else:
-            table[sum_value] = value
-            keys[sum_value] = key
+            table[tablekey] = value
+            keys[tablekey] = key
 
     values = [*table.values()]
     uniques, counts = np.unique(np.array(values), return_counts=True)
@@ -92,7 +90,7 @@ if __name__ == '__main__':
                     cropped_number = cropped_value.crop(define.notes_trimareas[4-digit])
                     targets[f'{collection.key}_{digit}_{number}'] = {
                         'value': number,
-                        'np': np.array(cropped_number)
+                        'np': np.array(cropped_number).flatten()
                     }
                     value /= 10
                     digit += 1

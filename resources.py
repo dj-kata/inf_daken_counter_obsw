@@ -23,23 +23,8 @@ sounds_dirpath = os.path.join(resources_dirname, sounds_dirname)
 
 recog_musics_filename = f'musics{define.music_recognition_vesion}.json'
 recog_musics_filepath = os.path.join(resources_dirname, recog_musics_filename)
-recog_musics_timestamp_filepath = os.path.join(resources_dirname, 'musics_timestamp.txt')
 
-sound_find_filepath = os.path.join(sounds_dirpath, 'find.wav')
 sound_result_filepath = os.path.join(sounds_dirpath, 'result.wav')
-
-class MusicsTimestamp():
-    def get_timestamp(self):
-        if not os.path.exists(recog_musics_timestamp_filepath):
-            return None
-        with open(recog_musics_timestamp_filepath, 'r') as f:
-            timestamp = f.read()
-
-        return timestamp
-
-    def write_timestamp(self, timestamp):
-        with open(recog_musics_timestamp_filepath, 'w') as f:
-            f.write(timestamp)
 
 class ResourceTimestamp():
     def __init__(self, resourcename):

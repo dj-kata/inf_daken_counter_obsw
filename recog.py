@@ -2,6 +2,7 @@ import numpy as np
 import json
 from logging import getLogger
 from os.path import exists
+
 logger_child_name = 'recog'
 
 logger = getLogger().getChild(logger_child_name)
@@ -90,11 +91,17 @@ class Recognition():
 
     def get_has_dead(self, np_value, play_side):
         trimmed = np_value[define.areas_np['dead'][play_side]]
-        return np.all((self.dead==0)|(trimmed==self.dead))
+        if np.all((self.dead==0)|(trimmed==self.dead)):
+            return True
+        else:
+            return False
     
     def get_has_rival(self, np_value):
         trimmed = np_value[define.areas_np['rival']]
-        return np.all((self.rival==0)|(trimmed==self.rival))
+        if np.all((self.rival==0)|(trimmed==self.rival)):
+            return True
+        else:
+            return False
     
     def get_level(self, image_level):
         crop_difficulty = image_level.crop(define.areas['difficulty'])
@@ -252,19 +259,21 @@ class Recognition():
 
     def get_music_new(self, np_value_informations):
         trimmed = np_value_informations[self.informations['music']['trim']]
-        background_key = trimmed[self.informations['music']['background_key_position']]
-        if not background_key in self.informations['music']['backgrounds'].keys():
-            return None
+
+        blue = np.where(trimmed[:,:,2]==self.informations['music']['bluevalue'],trimmed[:,:,2],0)
+        gray1 = np.where((trimmed[:,:,0]==trimmed[:,:,1])&(trimmed[:,:,0]==trimmed[:,:,2]),trimmed[:,:,0],0)
+        gray = np.where((gray1!=255)&(gray1>self.informations['music']['gray_threshold']),gray1,0)
+
+        if np.count_nonzero(gray) > np.count_nonzero(blue):
+            masked = np.where(self.informations['music']['mask']['gray']==1,gray,0)
+            targettable = self.informations['music']['table']['gray']
+        else:
+            masked = np.where(self.informations['music']['mask']['blue']==1,blue,0)
+            targettable = self.informations['music']['table']['blue']
         
-        filtered_background = np.where(trimmed!=self.informations['music']['backgrounds'][background_key], trimmed, 0)
-        filtered_mask = np.where(self.informations['music']['mask']==1, filtered_background, 0)
-
-        maptrimmed = filtered_mask[self.informations['music']['maptrim']]
-        filtered_brightness = np.where(maptrimmed>=self.music_brightness_filter, maptrimmed, 0)
-
         maxcounts = []
         maxcount_values = []
-        for line in filtered_brightness:
+        for line in masked:
             unique, counts = np.unique(line, return_counts=True)
             if len(counts) != 1:
                 index = -np.argmax(np.flip(counts[1:])) - 1
@@ -274,21 +283,20 @@ class Recognition():
                 maxcounts.append(0)
                 maxcount_values.append(0)
 
-        target = self.informations['music']['table']
         for y in np.argsort(maxcounts)[::-1]:
             color = int(maxcount_values[y])
-            bins = np.where(filtered_brightness[y]==color, 1, 0)
+            bins = np.where(masked[y]==color, 1, 0)
             hexs=bins[::4]*8+bins[1::4]*4+bins[2::4]*2+bins[3::4]
-            mapkey = f"{y:02d}{''.join([format(v, '0x') for v in hexs])}"
-            if not mapkey in target:
+            mapkey = f"{y:02d}{color:02x}{''.join([format(v, '0x') for v in hexs])}"
+            if not mapkey in targettable:
                 return None
-            if type(target[mapkey]) == str:
-                return target[mapkey]
-            target = target[mapkey]
+            if type(targettable[mapkey]) == str:
+                return targettable[mapkey]
+            targettable = targettable[mapkey]
         
         return None
 
-    def check_newrecognition(self, np_value):
+    def check_newrecognition(self, result, np_value):
         if self.informations is None:
             return True
         
@@ -298,28 +306,50 @@ class Recognition():
         notes = self.get_notes_new(np_value_informations)
         music = self.get_music_new(np_value_informations)
         
-        if None in [play_mode, difficulty, level, notes, music]:
+        if result.informations.play_mode != play_mode:
             return False
+        if result.informations.difficulty != difficulty:
+            return False
+        if result.informations.level != level:
+            return False
+        if result.informations.notes != notes:
+            return False
+        if result.informations.music != music:
+            return False
+
         return True
 
-    def get_informations(self, image_informations):
-        crop_play_mode = image_informations.crop(define.informations_areas['play_mode'])
-        play_mode = self.play_mode.find(crop_play_mode)
-
-        crop_difficulty = image_informations.crop(define.informations_areas['difficulty'])
-        difficulty = self.difficulty.find(crop_difficulty)
-        if difficulty is not None:
-            crop_level = image_informations.crop(define.informations_areas['level'])
-            difficulty_level = self.level[difficulty].find(crop_level)
-            if difficulty_level is not None:
-                difficulty, level = difficulty_level.split('-')
-            else:
-                difficulty, level = None, None
+    def get_informations(self, image_informations=None, sliced_informations_np=None):
+        if sliced_informations_np is not None:
+            play_mode = self.get_play_mode_new(sliced_informations_np)
+            difficulty, level = self.get_difficulty_new(sliced_informations_np)
+            notes = self.get_notes_new(sliced_informations_np)
+            music = self.get_music_new(sliced_informations_np)
         else:
-            level = None
-        notes = get_notes(image_informations)
+            play_mode, difficulty, level, notes, music = None, None, None, None, None
 
-        music = self.get_music(image_informations)
+        if play_mode is None and image_informations is not None:
+            crop_play_mode = image_informations.crop(define.informations_areas['play_mode'])
+            play_mode = self.play_mode.find(crop_play_mode)
+
+        if (difficulty is None or level is None) and image_informations is not None:
+            crop_difficulty = image_informations.crop(define.informations_areas['difficulty'])
+            difficulty = self.difficulty.find(crop_difficulty)
+            if difficulty is not None:
+                crop_level = image_informations.crop(define.informations_areas['level'])
+                difficulty_level = self.level[difficulty].find(crop_level)
+                if difficulty_level is not None:
+                    difficulty, level = difficulty_level.split('-')
+                else:
+                    difficulty, level = None, None
+            else:
+                level = None
+        
+        if notes is None and image_informations is not None:
+            notes = get_notes(image_informations)
+
+        if music is None and image_informations is not None:
+            music = self.get_music(image_informations)
 
         return ResultInformations(play_mode, difficulty, level, notes, music)
 
@@ -361,9 +391,11 @@ class Recognition():
         trim_informations = screen.monochrome.crop(define.informations_trimarea)
         trim_details = screen.monochrome.crop(define.details_trimarea[play_side])
 
+        np_informations = screen.np_value[define.areas_np['informations']]
+
         return Result(
             screen.original,
-            self.get_informations(trim_informations),
+            self.get_informations(image_informations=trim_informations, sliced_informations_np=np_informations),
             play_side,
             self.get_has_rival(screen.np_value),
             self.get_has_dead(screen.np_value, play_side),
@@ -398,10 +430,5 @@ class Recognition():
         resourcename = f'informations{define.informations_recognition_version}'
         
         self.informations = load_resource_serialized(resourcename)
-        if self.informations is None:
-            return
-
-        music_trim_width = self.informations['music']['trim'][1].stop - self.informations['music']['trim'][1].start
-        self.music_brightness_filter = np.tile(np.array(self.informations['music']['brightness_thresholds']), (music_trim_width, 1)).T
 
 recog = Recognition()
