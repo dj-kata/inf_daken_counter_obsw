@@ -747,12 +747,15 @@ class DakenCounter:
 </Items>''')
         f.close()
 
+    def escape_for_xml(self, input):
+        return input.replace('&', '&amp;').replace('<','&lt;').replace('>','&gt;').replace('"','&quot;').replace("'",'&apos;')
+
     def write_history_cursong_xml(self, result):
         with open('history_cursong.xml', 'w', encoding='utf-8') as f:
             f.write(f'<?xml version="1.0" encoding="utf-8"?>\n')
             f.write("<Results>\n")
             f.write(f'    <lv>{result[0]}</lv>\n')
-            f.write(f'    <music>{result[1]}</music>\n')
+            f.write(f'    <music>{self.escape_for_xml(result[1])}</music>\n')
             f.write(f'    <difficulty>{result[2]}</difficulty>\n')
             key = f"{result[1]}({result[2]})"
             logger.debug(f"key={key}")
@@ -809,7 +812,7 @@ class DakenCounter:
                 if (lamp != '') or (score != ''):
                     f.write('<item>\n')
                     f.write(f'    <lv>{s[0]}</lv>\n')
-                    f.write(f'    <title>{s[1]}</title>\n')
+                    f.write(f'    <title>{self.escape_for_xml(s[1])}</title>\n')
                     f.write(f'    <difficulty>{s[2]}</difficulty>\n')
                     f.write(f'    <lamp>{lamp}</lamp>\n')
                     f.write(f'    <score>{score}</score>\n')
