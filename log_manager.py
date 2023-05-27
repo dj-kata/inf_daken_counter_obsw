@@ -262,7 +262,7 @@ class LogManager:
                 self.window['info'].update(f"グラフ画像を生成しました -> {filename}")
             elif event == 'thismonth':
                 range_st = datetime.date(today.year,today.month,1)
-                ed_tmp = datetime.date(today.year,today.month,27) + datetime.timedelta(days=4)
+                ed_tmp = datetime.date(today.year,today.month,28) + datetime.timedelta(days=4)
                 range_ed = datetime.date(ed_tmp.year, ed_tmp.month, 1) - datetime.timedelta(days=1)
                 self.window['date_start'].update(f"{range_st.year}/{range_st.month:02d}/{range_st.day:02d}")
                 self.window['date_end'].update(f"{range_ed.year}/{range_ed.month:02d}/{range_ed.day:02d}")
@@ -288,5 +288,5 @@ class LogManager:
         self.window.close()
 
 if __name__ == '__main__':
-    a = LogManager({'lx':-1000, 'ly':500})
+    a = LogManager({'lx':-1000, 'ly':500, 'autosave_dir':'.'})
     a.main()
