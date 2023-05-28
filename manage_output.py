@@ -21,9 +21,10 @@ class ManageStats:
             if (self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5]) > 0:
                 self.srate = (self.judge[0]*2+self.judge[1])/(self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5])*50
 
-        self.lv_hist =defaultdict(lambda:0)
+        self.lv_hist = defaultdict(lambda:0)
         self.sp      = defaultdict(lambda:0)
         self.dp      = defaultdict(lambda:0)
+        self.dbx     = defaultdict(lambda:0)
         # 後回ししてるけど、一応DBMとかのカウンタも用意
         self.lv_dbm  =defaultdict(lambda:0)
         self.lv_dbr  =defaultdict(lambda:0)
@@ -38,12 +39,15 @@ class ManageStats:
 
     def calc_lv_histogram(self):
         for s in self.todaylog:
-            if s[9] != None:
+            if s[9] != None: # スコアが存在
                 self.lv_hist[s[0]] += s[9]
                 if 'SP' in s[2]:
                     self.sp[s[0]] += s[9]
                 else:
-                    self.dp[s[0]] += s[9]
+                    if 'BATTLE' in s[-2]:
+                        self.dbx[s[0]] += s[9]
+                    else:
+                        self.dp[s[0]] += s[9]
 
     def get_notes_last5days(self):
         tmp_date = list(map(int, self.date.split('/')))
@@ -70,6 +74,11 @@ class ManageStats:
         self.log_last5days = tmp
 
     def update(self, todaylog, judge, plays):
+        # TODO リザルト画面に来るたびに実行するが、差分実行にできないか？
+        self.lv_hist = defaultdict(lambda:0)
+        self.sp      = defaultdict(lambda:0)
+        self.dp      = defaultdict(lambda:0)
+        self.dbx     = defaultdict(lambda:0)
         self.todaylog = todaylog
         self.judge    = judge
         self.plays    = plays
@@ -96,6 +105,9 @@ class ManageStats:
                 f.write(f"        <Lv>\n")
                 f.write(f"            <difficulty>{i}</difficulty>\n")
                 f.write(f"            <total>{self.lv_hist[str(i)]}</total>\n")
+                f.write(f"            <sp>{self.sp[str(i)]}</sp>\n")
+                f.write(f"            <dp>{self.dp[str(i)]}</dp>\n")
+                f.write(f"            <dbx>{self.dbx[str(i)]}</dbx>\n")
                 f.write(f"        </Lv>\n")
 
             f.write(f"    </PerLv>\n\n")
