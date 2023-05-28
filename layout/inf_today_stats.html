@@ -1,0 +1,303 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>hoge</title>
+        <style>
+            iframe{
+                overflow: hidden;
+            }
+            .base-frame {
+                overflow: hidden;
+                display: flex;
+                flex-direction: row;
+                width: 97vw;
+                height: 97vh;
+                overflow: hidden;
+            }
+            .left-frame {
+                margin: 0px;
+                padding: 0px;
+                width: 40%;
+                overflow: hidden;
+            }
+            .right-frame {
+                border: 4px white solid;
+                margin: 0px;
+                padding: 0px;
+                width: 60%;
+                font-size:32px;
+                height:98%;
+                overflow: hidden;
+            }
+            .left-1{
+                margin-top: 0.3%;
+                margin-bottom:0%;
+                margin-left: 1%;
+                margin-right: 1%;
+                height: 19.5%;
+                overflow: hidden;
+            }
+            table#info{
+                font-size: 70px;
+                width:75%;
+                text-align:right;
+                overflow: hidden;
+            }
+            .playdate{
+                font-size: 196px;
+                text-align: center;
+                overflow: hidden;
+            }
+            .otherinfo{
+                margin-left:8%;
+                font-size: 80px;
+                overflow: hidden;
+            }
+            .otherinfo td{
+                padding-left:20%;
+                width:70%;
+                text-align: right;
+                overflow: hidden;
+            }
+            .left-2{
+                margin-top: 3%;
+                margin-left: 3%;
+                margin-right: 3%;
+                margin-bottom:7%;
+                border: 8px white solid;
+                height: 30%;
+                overflow:hidden ;
+            }
+            .left-3{
+                margin-top: 0%;
+                margin-left: 3%;
+                margin-right: 3%;
+                border: 8px white solid;
+                height: 42%;
+                overflow: hidden;
+            }
+            body { 
+                padding-top:1%;
+                padding-left:1%;
+                background-color: rgba(0, 0, 0, 0.85);
+                overflow: hidden;
+                font-family:"Meiryo";
+                color:#2196F3;   
+                font-size: 64px;
+                color: #fff;
+                text-shadow: 6px 6px 0 #000,
+                             -2px 2px 0 #000,
+                             2px -2px 0 #000,
+                             -2px -2px 0 #000;
+            }
+        </style>
+    <body>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+        <script>
+        var data_histogram;
+        var chart_histogram;
+        var options_histogram;
+        var data_notes;
+        var chart_notes;
+        var options_notes;
+        google.charts.load('current', { 'packages': ['corechart', 'bar'], 'language': 'ja' });
+        google.charts.setOnLoadCallback(drawChartHistogram);
+        function drawChartHistogram() {
+            data_histogram = google.visualization.arrayToDataTable([
+                ['lv', 'notes', { role: 'annotation' }],
+                ['',0,""],
+                ['☆1', 0, ""],
+                ['☆2', 0, ""],
+                ['☆3', 0, ""],
+                ['☆4', 0, ""],
+                ['☆5', 0, ""],
+                ['☆6', 0, ""],
+                ['☆7', 0, ""],
+                ['☆8', 0, ""],
+                ['☆9', 0, ""],
+                ['☆10', 0, ""],
+                ['☆11', 0, ""],
+                ['☆12', 0, ""],
+                //['僧', 0, 0],
+            ]);
+            options_histogram = {
+                width: 3200,
+                chartArea:{left:'10%',right:0,top:0,width:'70%',height:'100%'},
+                height: 1100,
+                legend: { position: 'none' },
+                bar: { groupWidth: '80%' },
+                isStacked: true,
+                backgroundColor: { color: "#000000", fill: 'transparent' },
+                series: {
+                    0: { color: '#DD4445' },
+                    1: { color: '#77FF00' },
+                    2: { color: '#FFBB00' },
+                    3: { color: '#00AAFF' }
+                },
+                annotations: {
+                    textStyle: {
+                        color: 'white',
+                        fontSize: 64,
+                    },
+                    alwaysOutside: true
+                },
+                hAxis: {
+                    textStyle: { fontSize: 32, color: '#FFFFFF', maxTextLines:1},
+                    format: '#,###', minValue: 0
+                    ,maxValue: 60000
+                    ,gridlines: { count: 4 }
+                    ,ticks: []
+                },
+                vAxis: {
+                    width: 400,
+                    textStyle: { fontSize: 64, color: '#FFFFFF' , fontName:'Meiryo', maxTextLines:1},
+                },
+            };
+            // Instantiate and draw our chart, passing in some options.
+            chart_histogram = new google.visualization.BarChart(document.getElementById('chart_histogram'));
+            chart_histogram.draw(data_histogram, options_histogram);
+        }
+        google.charts.setOnLoadCallback(drawChartNotes);
+        function drawChartNotes() {
+            data_notes = google.visualization.arrayToDataTable([
+                ['date', 'gd', 'gr', 'pg', { role: 'annotation' }],
+                ['',0,0,0,""],
+                ['',0,0,0,""],
+                ['',0,0,0,""],
+                ['',0,0,0,""],
+                ['',0,0,0,""],
+            ]);
+            options_notes = {
+                width: 1400,
+                height:1000,
+                //chartArea:{left:0,right:0,top:0,width:100,height:700},
+                chartArea:{left:100,right:100,top:100},
+                legend: { position: 'none' },
+                bar: { groupWidth: '40%' },
+                isStacked: true,
+                backgroundColor: { color: "#000000", fill: 'transparent' },
+                series: {
+                    0: { color: '#77FF00' },
+                    1: { color: '#FFBB00' },
+                    2: { color: '#00AAFF' },
+                },
+                annotations: {
+                    textStyle: {
+                        color: 'white',
+                        fontSize: 64,
+                    },
+                    alwaysOutside: true
+                },
+                hAxis: {
+                    textStyle: { fontSize: 64, color: '#FFFFFF', maxTextLines:1},
+                    format: '#,###',
+                    minValue: 0,
+                    ticks: []
+                },
+                vAxis: {
+                    width: 0,
+                    format: '',
+                    textPosition: "none",
+                    maxValue: 62000,
+                    gridlines: { count: 0 },
+                },
+            };
+            // Instantiate and draw our chart, passing in some options.
+            chart_notes = new google.visualization.ColumnChart(document.getElementById('chart_notes'));
+            chart_notes.draw(data_notes, options_notes);
+        }
+        function loadXml() {
+            var getxml = $.ajax({
+                url: '../stats.xml',
+                type: 'GET',
+                dataType: 'xml',
+                cache: false
+            });
+            getxml.done(function(xml){
+                // xmlデータからほしいデータをfindで探し処理
+                var out = "";
+                var date = $(xml).find("playdate").text();
+                var plays = $(xml).find("plays").text();
+                var srate = $(xml).find("score_rate").text();
+                var total_notes = $(xml).find("total").text();
+                $('playdate').text(date);
+                var infotable="<table>";
+                infotable+="<tr><td>playcount</td><td>"+plays+"</td></tr>";
+                infotable+="<tr><td>score rate</td><td>"+srate+"%</td></tr>";
+                $('table#info').html(infotable);
+                var vmax=0
+                var sum=0
+                $(xml).find("PerLv Lv").each(function(index, item){
+                    var total = Number($(item).find('total').text());
+                    data_histogram.setValue(index+1, 1, total);
+                    sum += total;
+                    if (total > vmax){
+                        vmax = total
+                    }
+                });
+                $(xml).find("PerLv Lv").each(function(index, item){
+                    var total = Number($(item).find('total').text());
+                    var portion = '';
+                    if (total > 0){
+                        portion = (total*100.0/sum).toFixed(1).toString()+'%'
+                    }
+                    data_histogram.setValue(index+1, 2, portion);
+                });
+                var max_notes = 0;
+                $(xml).find("Notes day").each(function(index, item){
+                    var date = $(item).find('date').text();
+                    var pg = Number($(item).find('pg').text());
+                    var gr = Number($(item).find('gr').text());
+                    var gd = Number($(item).find('gd').text());
+                    data_notes.setValue(index, 0, date);
+                    data_notes.setValue(index, 1, gd);
+                    data_notes.setValue(index, 2, gr);
+                    data_notes.setValue(index, 3, pg);
+                    if (pg+gr+gd>0){
+                        data_notes.setValue(index, 4, (pg+gr+gd).toLocaleString());
+                    }
+                    if (pg+gr+gd > max_notes){
+                        max_notes = pg+gr+gd;
+                    }
+                });
+                options_histogram.hAxis.maxValue=vmax+vmax+vmax;
+                options_notes.vAxis.maxValue=max_notes*11/10;
+                //options.hAxis.maxValue=100000;
+                chart_histogram.draw(data_histogram, options_histogram);
+                chart_notes.draw(data_notes, options_notes);
+
+            });
+            getxml.fail(function(err) {
+                //alert('failed');
+            });
+        }
+        window.addEventListener('DOMContentLoaded', function () {
+            var roopTimer = setInterval(loadXml, 300);
+        });
+
+</script>
+</head>
+<body>
+    <div class="base-frame">
+        <div class="left-frame">
+            <div class="left-1">
+                <div class="playdate"><playdate></playdate></div>
+                <table id="info">
+                    <trdata></trdata>
+                </table>
+            </div>
+            <div class="left-2">
+                <div id="chart_notes"></div>
+            </div>
+            <div class="left-3">
+                <div id="chart_histogram"></div>
+            </div>
+        </div>
+        <div class="right-frame">
+            <iframe src="today_result.html" width="100%" height="100%"></iframe>
+        </div>
+    </div>
+</body>
+</html>

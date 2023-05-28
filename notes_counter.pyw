@@ -21,6 +21,7 @@ from log_manager import LogManager
 import pickle
 from pathlib import Path
 from recog import *
+from manage_output import *
 import logging, logging.handlers
 
 logger = logging.getLogger(__name__)
@@ -583,6 +584,7 @@ class DakenCounter:
         self.startdate = datetime.datetime.now().strftime("%Y/%m/%d")
         self.obs.disable_source(self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'])
         self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
+        tmp_stats = ManageStats(date=self.startdate, todaylog=self.todaylog, judge=self.judge, plays=self.today_plays)
         print(f'スコア検出スレッド開始。')
         while True:
             while True: # 曲開始までを検出
@@ -620,6 +622,11 @@ class DakenCounter:
                                 self.write_today_update_xml()
                                 self.write_history_cursong_xml(result)
                                 self.obs.enable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
+                                logger.debug('')
+                                tmp_stats.update(self.todaylog, self.judge, self.today_plays)
+                                logger.debug('')
+                                tmp_stats.write_stats_to_xml()
+                                logger.debug('')
                         except Exception as e:
                             logger.debug(e)
 
@@ -762,6 +769,8 @@ class DakenCounter:
             for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
                 logger.debug(f"s = {s}")
                 bp = s[11]
+                if len(s) != 14: # フォーマットがおかしい場合は飛ばす
+                    continue
                 if bp == None: # 昔のリザルトに入っていない可能性を考えて一応例外処理している
                     bp = '?'
                 if 'BATTLE' in self.playopt: # 現在DBx系オプションの場合、単曲履歴もDBxのリザルトのみを表示
