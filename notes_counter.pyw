@@ -23,6 +23,7 @@ from pathlib import Path
 from recog import *
 from manage_output import *
 import logging, logging.handlers
+import traceback
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -101,7 +102,7 @@ class DakenCounter:
                 ret = json.load(f)
                 print(f"設定をロードしました。\n")
         except Exception as e:
-            logger.debug(e)
+            logger.debug(traceback.format_exc())
             print(f"有効な設定ファイルなし。デフォルト値を使います。")
 
         ### 後から追加した値がない場合にもここでケア
@@ -291,6 +292,7 @@ class DakenCounter:
         return ret
     
     ### 自動保存用ディレクトリ内の画像からDBを作成する
+    # TODO 検索用キー配列を作成してから、
     def read_result_from_pic(self):
         paths = list(Path(self.settings['autosave_dir']).glob(r'*.png'))
         for f in paths:
@@ -321,13 +323,12 @@ class DakenCounter:
         ret = False
         tmp = []
         img = Image.open(pic)
-        img_mono = img.convert('L')
-        pic_info = img_mono.crop((410,633,870,704))
+        pic_info = np.array(img.crop((410,633,870,704)))
         info = recog.get_informations(pic_info)
         if ('2p' in self.valid_playside) or (self.valid_playside == 'dp-r'):
-            pic_playdata = img_mono.crop((905,192,905+350,192+293))
+            pic_playdata = np.array(img.crop((905,192,905+350,192+293)))
         else:
-            pic_playdata = img_mono.crop((25,192,25+350,192+293))
+            pic_playdata = np.array(img.crop((25,192,25+350,192+293)))
         playdata     = recog.get_details(pic_playdata)
         is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
         if is_valid:
@@ -344,7 +345,8 @@ class DakenCounter:
             tmp.append(playdata.clear_type.current)
             tmp.append(playdata.score.best)
             if 'H-RAN' in self.playopt:
-                tmp.append('-')
+                # H乱の場合もEXスコアを出しておく(本日のノーツ数加算の都合)
+                tmp.append(self.tmp_judge[0]*2+self.tmp_judge[1]) 
             else:
                 tmp.append(playdata.score.current)
             tmp.append(playdata.miss_count.best)
@@ -597,7 +599,7 @@ class DakenCounter:
                             result = self.ocr(self.imgpath)
                             flg_autosave = self.autosave_result(result)
                         except Exception as e:
-                            logger.debug(e)
+                            logger.debug(traceback.format_exc())
                     if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
                         self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                     if self.detect_select() and len(self.todaylog) > 0: # 選曲画面
@@ -628,7 +630,7 @@ class DakenCounter:
                                 tmp_stats.write_stats_to_xml()
                                 logger.debug('')
                         except Exception as e:
-                            logger.debug(e)
+                            logger.debug(traceback.format_exc())
 
                     if tmp_playopt and tmp_gauge:
                         if self.playopt != tmp_playopt:
@@ -643,7 +645,7 @@ class DakenCounter:
                         self.gen_opt_xml(self.playopt, self.gauge, True) # 常時表示+曲中のみデータの書き出し
                         break
                 except Exception as e: # 今の構成になってから、このtry文がそもそも不要かもしれない TODO
-                    logger.debug(e)
+                    logger.debug(traceback.format_exc())
                     stop_local = True
                     print(f'スクリーンショットに失敗しました。{e}')
                     self.window.write_event_value('-SCRSHOT_ERROR-', " ")
