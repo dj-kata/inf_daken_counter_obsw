@@ -29,7 +29,8 @@ class ResultValues():
         self.new = new
 
 class ResultDetails():
-    def __init__(self, options, clear_type, dj_level, score, miss_count, graphtarget):
+    def __init__(self, graphtype, options, clear_type, dj_level, score, miss_count, graphtarget):
+        self.graphtype = graphtype
         self.options = options
         self.clear_type = clear_type
         self.dj_level = dj_level

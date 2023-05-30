@@ -295,15 +295,32 @@ class DakenCounter:
     # TODO 検索用キー配列を作成してから、
     def read_result_from_pic(self):
         paths = list(Path(self.settings['autosave_dir']).glob(r'*.png'))
+        keys  = [self.alllog[i][1]+'___'+self.alllog[i][-1] for i in range(len(self.alllog))]
+        cnt_add = 0
+        cnt_edit = 0
+        list_added = []
         for f in paths:
-            if 'infinitas' in str(f).lower():
+            if ('infinitas' in str(f).lower()) or ('inf_' in str(f)):
                 try:
-                    result = self.ocr(f)
-                    if not result in self.alllog:
+                    logger.debug(f)
+                    result = self.ocr(f, onplay=False)
+                    if result:
+                        tmp_key = result[1]+'___'+result[-1]
+                        judge = tmp_key in keys
                         print(f"{result[-1]} {result[1]}({result[2]}) - {result[7]}, {result[9]-result[8]:+,}")
-                        self.alllog.append(result)
+                        #logger.debug(f"judge:{judge}, file={f}, result={result}")
+                        if not judge:
+                            self.alllog.append(result)
+                            logger.debug(f'===> added! ({f})')
+                            cnt_add += 1
+                            list_added.append(result)
+                        else: # 同一リザルトが存在する場合、上書き
+                            if self.alllog[keys.index(tmp_key)] != result:
+                                self.alllog[keys.index(tmp_key)] = result
+                                cnt_edit += 1
                 except Exception:
-                    pass
+                    logger.debug(traceback.format_exc())
+        print(f"過去リザルトの登録完了。{cnt_add:,}件追加、{cnt_edit:,}件修正 -> 全{len(self.alllog):,}件")
         self.window.write_event_value('-OCR_FROM_IMG_END-', " ")
 
     ### プレイサイド検出を行う
@@ -317,20 +334,47 @@ class DakenCounter:
         if ret:
             self.valid_playside = ret # 最後に検出した有効なプレイサイドを覚えておく
         return ret
+    
+    def convert_option(self, opt, fumen):
+        ret = '?'
+        if opt != None:
+            if opt.arrange == None:
+                if fumen.startswith('SP'):
+                    ret = 'OFF'
+                elif fumen.startswith('DP'):
+                    ret = 'OFF / OFF' 
+            else:
+                ret = opt.arrange
+            if opt.battle:
+                ret = f"BATTLE, {ret}"
+            if opt.flip != None:
+                ret = f"{ret}, FLIP"
+            if opt.assist != None:
+                ret = f"{ret}, {opt.assist}"
+            logger.debug(f"arrange:{opt.arrange}, battle:{opt.battle}, flip:{opt.flip}, assist:{opt.assist}, fumen:{fumen} ===> ret:{ret}")
+        return ret
 
     # リザルト画像pngを受け取って、スコアツールの1entryとして返す
-    def ocr(self, pic):
+    def ocr(self, pic, onplay=True):
         ret = False
         tmp = []
         img = Image.open(pic)
-        pic_info = np.array(img.crop((410,633,870,704)))
+        pic_info = np.array(img.crop((410,628,870,706)))
         info = recog.get_informations(pic_info)
-        if ('2p' in self.valid_playside) or (self.valid_playside == 'dp-r'):
-            pic_playdata = np.array(img.crop((905,192,905+350,192+293)))
-        else:
-            pic_playdata = np.array(img.crop((25,192,25+350,192+293)))
+        if onplay:
+            if ('2p' in self.valid_playside) or (self.valid_playside == 'dp-r'):
+                pic_playdata = np.array(img.crop((905,192,905+350,192+293)))
+            else:
+                pic_playdata = np.array(img.crop((25,192,25+350,192+293)))
+        else: # 過去の画像から抽出している場合はrecogの機能で抽出しておく
+            play_side = recog.get_play_side(np.array(img))
+            if '2P' == play_side:
+                pic_playdata = np.array(img.crop((905,192,905+350,192+293)))
+            else:
+                pic_playdata = np.array(img.crop((25,192,25+350,192+293)))
         playdata     = recog.get_details(pic_playdata)
         is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
+        #logger.debug(info.music, info.level, info.play_mode, info.difficulty, playdata.clear_type.current, playdata.dj_level.current, playdata.score.current)
         if is_valid:
             tmp.append(info.level)
             tmp.append(info.music)
@@ -356,7 +400,12 @@ class DakenCounter:
                 tmp.append(playdata.miss_count.current)
             ts = os.path.getmtime(pic)
             dt = datetime.datetime.fromtimestamp(ts)
-            tmp.append(self.playopt)
+            if onplay:
+                tmp.append(self.playopt)
+            else:
+                tmp.append(self.convert_option(playdata.options, tmp[2]))
+            # タイムスタンプはpngの作成日時を使っている。
+            # こうすると、過去のリザルトから読む場合もプレー中に読む場合も共通化できる
             tmp.append(dt.strftime('%Y-%m-%d-%H-%M'))
             ret = tmp
         return ret

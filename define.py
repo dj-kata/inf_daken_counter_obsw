@@ -19,7 +19,7 @@ class Define():
 
     result_check = {
         'background_count': 13,
-        'background_key_position':  (641, 410, 1),
+        'background_key_position': (641, 410, 1),
         'areas': {
             "heightline1": (slice(5, 150), 420, 1),
             "heightline2": (slice(235, 630), 420, 1)
@@ -51,8 +51,11 @@ class Define():
             '1P': (slice(168, 178), slice(406, 412), 0),
             '2P': (slice(168, 178), slice(822, 828), 0)
         },
-        'informations': (slice(628, 706), slice(410, 870))
-    }
+        'informations': (slice(628, 706), slice(410, 870)),
+        'details': {
+            '1P': (slice(192, 485), slice(25, 375)),
+            '2P': (slice(192, 485), slice(905, 1255))
+        }    }
 
     informations_trimpos = (410, 633)
     informations_trimsize = (460, 71)
@@ -69,34 +72,7 @@ class Define():
 
     music_recognition_vesion = '4.0'
     
-    notes_trimareabase = (2, 0, 10, 2)
-    notes_digit = 4
-    notes_trimareas = []
-    notes_color = 255
-
-    option_trimsize = (57, 4)
-
-    option_widths = {
-        'RANDOM': 0,
-        'S-RANDOM': 0,
-        'R-RANDOM': 94,
-        'MIRROR': 68,
-        'H-RANDOM': 94,
-        'OFF': 35,
-        'RAN': 37,
-        'S-RAN': 55,
-        'R-RAN': 55,
-        'MIR': 31,
-        'H-RAN': 55,
-        'SYNC-RAN': 91,
-        'SYMM-RAN': 95,
-        'FLIP': 38,
-        'A-SCR': 0,
-        'LEGACY': 0,
-        'BATTLE': 68,
-        ',': 5,
-        '/': 9
-    }
+    details_recognition_version = '1.0'
 
     details_trimpos = {
         '1P': (25, 192),
@@ -104,63 +80,8 @@ class Define():
     }
 
     details_trimsize = (350, 293)
-    details_areas = {
-        'graph_lanes': (182, 19, 185, 20),
-        'graph_measures': (5, 0, 7, 3),
-        'option': (10, 12, 337, 16),
-        'clear_type': {
-            'best': (140, 81, 170, 82),
-            'current': (250, 81, 280, 82),
-            'new': (318, 65, 335, 100)
-        },
-        'dj_level': {
-            'best': (117, 120, 198, 139),
-            'current': (227, 120, 308, 139),
-            'new': (318, 113, 335, 148)
-        },
-        'score': {
-            'best': (120, 172, 196, 184),
-            'current': (220, 170, 316, 186),
-            'new': (318, 161, 335, 196)
-        },
-        'miss_count': {
-            'best': (120, 220, 196, 232),
-            'current': (220, 218, 316, 234),
-            'new': (318, 209, 335, 244)
-        },
-        'graphtarget': {
-            'label': (5, 268, 100, 280),
-            'name': (121, 265, 196, 283)
-        }
-    }
 
-    dj_level_pick_color = 255
-
-    number_best_trimsize = (19, 12)
-    number_best_trimareas = []
-    number_best_segments = (
-        (0, 9),
-        (5, 9),
-        (10, 9),
-        (3, 3),
-        (8, 3),
-        (3, 15),
-        (8, 15),
-    )
-    number_pick_color_best = 255
-
-    number_current_trimsize = (24, 16)
-    number_current_trimareas = []
-    number_current_segments = (
-        (0, 11),
-        (7, 11),
-        (14, 11),
-        (4, 3),
-        (10, 3),
-        (4, 19),
-        (10, 19),
-    )
-    number_pick_color_current = 205
+    details_graphtarget_name_area = (121, 265, 196, 283)
 
     filter_ranking_size = (386, 504)
     filter_ranking_position = {
@@ -182,17 +103,10 @@ class Define():
             self.informations_trimpos[1] + self.informations_trimsize[1]
         )
 
-        self.informations_resourcename = f'informations{self.informations_recognition_version}'
         self.musics_resourcename = f'musics{self.music_recognition_vesion}'
 
-        notes_trimwidth = self.informations_areas['notes'][2] - self.informations_areas['notes'][0]
-        for i in range(self.notes_digit):
-            self.notes_trimareas.append((
-                self.notes_trimareabase[0] + i * (notes_trimwidth // self.notes_digit),
-                self.notes_trimareabase[1],
-                self.notes_trimareabase[2] + i * (notes_trimwidth // self.notes_digit),
-                self.notes_trimareabase[3]
-            ))
+        self.informations_resourcename = f'informations{self.informations_recognition_version}'
+        self.details_resourcename = f'details{self.details_recognition_version}'
 
         self.details_trimarea = {}
         for play_side in self.details_trimpos.keys():
@@ -203,20 +117,6 @@ class Define():
                 self.details_trimpos[play_side][1] + self.details_trimsize[1]
             )
 
-        for i in range(4):
-            self.number_best_trimareas.append((
-                int(i * self.number_best_trimsize[0]),
-                0,
-                int((i + 1) * self.number_best_trimsize[0]),
-                self.number_best_trimsize[1]
-            ))
-            self.number_current_trimareas.append((
-                int(i * self.number_current_trimsize[0]),
-                0,
-                int((i + 1) * self.number_current_trimsize[0]),
-                self.number_current_trimsize[1]
-            ))
-        
         for key in self.filter_ranking_position.keys():
             self.filter_areas['ranking'][key] = (
                 self.filter_ranking_position[key][0],
@@ -227,10 +127,10 @@ class Define():
 
         for key in self.details_trimpos.keys():
             self.filter_areas['graphtarget_name'][key] = (
-                self.details_trimpos[key][0] + self.details_areas['graphtarget']['name'][0],
-                self.details_trimpos[key][1] + self.details_areas['graphtarget']['name'][1],
-                self.details_trimpos[key][0] + self.details_areas['graphtarget']['name'][2],
-                self.details_trimpos[key][1] + self.details_areas['graphtarget']['name'][3]
+                self.details_trimpos[key][0] + self.details_graphtarget_name_area[0],
+                self.details_trimpos[key][1] + self.details_graphtarget_name_area[1],
+                self.details_trimpos[key][0] + self.details_graphtarget_name_area[2],
+                self.details_trimpos[key][1] + self.details_graphtarget_name_area[3]
             )
 
 define = Define()

@@ -11,14 +11,11 @@ logger = getLogger().getChild(logger_child_name)
 logger.debug(f'loaded resources.py')
 
 from define import define
-from mask import Mask
 
 resources_dirname = 'resources'
 
-masks_dirname = 'masks'
 sounds_dirname = 'sounds'
 
-masks_dirpath = os.path.join(resources_dirname, masks_dirname)
 sounds_dirpath = os.path.join(resources_dirname, sounds_dirname)
 
 recog_musics_filename = f'musics{define.music_recognition_vesion}.json'
@@ -79,9 +76,3 @@ def check_latest(storage, filename):
     if storage.download_resource(filename, filepath):
         timestamp.write_timestamp(latest_timestamp)
         return True
-
-masks = {}
-for filename in os.listdir(masks_dirpath):
-    key = filename.split('.')[0]
-    filepath = os.path.join(masks_dirpath, filename)
-    masks[key] = Mask(key, np.load(filepath))
