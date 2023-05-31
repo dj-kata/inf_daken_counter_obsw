@@ -344,7 +344,7 @@ class DakenCounter:
                 elif fumen.startswith('DP'):
                     ret = 'OFF / OFF' 
             else:
-                ret = opt.arrange
+                ret = opt.arrange.replace('/', ' / ')
             if opt.battle:
                 ret = f"BATTLE, {ret}"
             if opt.flip != None:
@@ -373,6 +373,11 @@ class DakenCounter:
             else:
                 pic_playdata = np.array(img.crop((25,192,25+350,192+293)))
         playdata     = recog.get_details(pic_playdata)
+        # 新方式がNGの場合、旧方式で曲名認識
+        if info.music == None:
+            img_mono   = img.convert('L')
+            pic_info   = img_mono.crop((410,633,870,704))
+            info.music = recog.get_music(pic_info)
         is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
         #logger.debug(info.music, info.level, info.play_mode, info.difficulty, playdata.clear_type.current, playdata.dj_level.current, playdata.score.current)
         if is_valid:

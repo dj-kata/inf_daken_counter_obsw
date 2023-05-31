@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 from logging import getLogger
 from PIL import Image
+import re
 
 logger_child_name = 'result'
 
@@ -13,6 +14,8 @@ from gui.general import get_imagevalue
 
 results_basepath = 'results'
 filtereds_basepath = 'filtered'
+
+adjust_length = 94
 
 class ResultInformations():
     def __init__(self, play_mode, difficulty, level, notes, music):
@@ -59,6 +62,7 @@ class Result():
 
         now = datetime.now()
         self.timestamp = f"{now.strftime('%Y%m%d-%H%M%S')}"
+        self.filename = generate_resultfilename(self.informations.music, self.timestamp)
     
     def has_new_record(self):
         return any([
@@ -72,7 +76,7 @@ class Result():
         if not os.path.exists(results_basepath):
             os.mkdir(results_basepath)
 
-        filepath = os.path.join(results_basepath, f'{self.timestamp}.jpg')
+        filepath = os.path.join(results_basepath, self.filename)
         if os.path.exists(filepath):
             return False
         
@@ -88,7 +92,7 @@ class Result():
         if not os.path.exists(filtereds_basepath):
             os.mkdir(filtereds_basepath)
 
-        filepath = os.path.join(filtereds_basepath, f'{self.timestamp}.jpg')
+        filepath = os.path.join(filtereds_basepath, self.filename)
         if os.path.exists(filepath):
             return False
 
@@ -96,19 +100,31 @@ class Result():
 
         return True
 
-def get_resultimagevalue(timestamp):
-    filepath = os.path.join(results_basepath, f'{timestamp}.jpg')
+def generate_resultfilename(music, timestamp):
+    if music is None:
+        return f"{timestamp}.jpg"
+
+    music_convert=re.sub(r'[\\|/|:|*|?|.|"|<|>|/|]', '', music)
+    adjustmented = music_convert if len(music_convert) < adjust_length else f'{music_convert[:adjust_length]}..'
+    return f"{adjustmented}_{timestamp}.jpg"
+
+def get_resultimagevalue(music, timestamp):
+    filepath = os.path.join(results_basepath, generate_resultfilename(music, timestamp))
     if not os.path.exists(filepath):
-        return None
+        filepath = os.path.join(results_basepath, generate_resultfilename(None, timestamp))
+        if not os.path.exists(filepath):
+            return None
     
     image = Image.open(filepath)
 
     return get_imagevalue(image)
 
-def get_filteredimagevalue(timestamp):
-    filepath = os.path.join(filtereds_basepath, f'{timestamp}.jpg')
+def get_filteredimagevalue(music, timestamp):
+    filepath = os.path.join(filtereds_basepath, generate_resultfilename(music, timestamp))
     if not os.path.exists(filepath):
-        return None
+        filepath = os.path.join(filtereds_basepath, generate_resultfilename(None, timestamp))
+        if not os.path.exists(filepath):
+            return None
     
     image = Image.open(filepath)
 
