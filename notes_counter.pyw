@@ -307,8 +307,8 @@ class DakenCounter:
                     if result:
                         tmp_key = result[1]+'___'+result[-1]
                         judge = tmp_key in keys
-                        print(f"{result[-1]} {result[1]}({result[2]}) - {result[7]}, {result[9]-result[8]:+,}")
-                        #logger.debug(f"judge:{judge}, file={f}, result={result}")
+                        print(f"{result[-1]} {result[1]}({result[2]}) - {result[7]}, score:{result[9]:,}, bp:{result[11]}")
+                        logger.debug(f"judge:{judge}, file={f}, result={result}")
                         if not judge:
                             self.alllog.append(result)
                             logger.debug(f'===> added! ({f})')
