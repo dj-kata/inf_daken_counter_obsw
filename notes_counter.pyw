@@ -423,7 +423,7 @@ class DakenCounter:
                 if tmp[2] != None:
                     notes = self.noteslist[info.music][self.difflist.index(tmp[2])]
                     if 'BATTLE' in tmp[-2]:
-                        notes *= 2
+                        notes = 2 * self.noteslist[info.music][self.difflist.index(tmp[2].replace('DP','SP'))]
                     if tmp[3] != notes:
                         logger.debug(f"ノーツ数不一致エラー。判定失敗とみなします。notes={notes:,}, tmp[3]={tmp[3]:,}")
                         ret = False
