@@ -68,6 +68,12 @@ class DakenCounter:
     ### グローバル変数
         self.stop_thread = False # メインスレッドを強制停止するために使う
         self.window      = False
+        try:
+            with open('noteslist.pkl', 'rb') as f:
+                self.noteslist = pickle.load(f)
+        except:
+            self.noteslist   = False
+        self.difflist = ['SPB', 'SPN', 'SPH', 'SPA', 'DPN', 'DPH', 'DPA']
         self.savefile    = savefile
         self.alllogfile  = './alllog.pkl'
         self.alllog      = []
@@ -413,6 +419,14 @@ class DakenCounter:
             # こうすると、過去のリザルトから読む場合もプレー中に読む場合も共通化できる
             tmp.append(dt.strftime('%Y-%m-%d-%H-%M'))
             ret = tmp
+            if self.noteslist != False: # ノーツリストがある場合
+                if tmp[2] != None:
+                    notes = self.noteslist[info.music][self.difflist.index(tmp[2])]
+                    if 'BATTLE' in tmp[-2]:
+                        notes *= 2
+                    if tmp[3] != notes:
+                        logger.debug(f"ノーツ数不一致エラー。判定失敗とみなします。notes={notes:,}, tmp[3]={tmp[3]:,}")
+                        ret = False
         return ret
 
     ### オプション検出を行う
