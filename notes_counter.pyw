@@ -30,8 +30,7 @@ logger.setLevel(logging.DEBUG)
 hdl = logging.handlers.RotatingFileHandler(
     './dbg.log',
     encoding='utf-8',
-    maxBytes=1024*1024,
-    backupCount=1
+    maxBytes=1024*1024*20,
 )
 hdl.setLevel(logging.DEBUG)
 hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcName)s() [%(levelname)s] %(message)s')
