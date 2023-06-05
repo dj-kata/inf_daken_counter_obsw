@@ -44,17 +44,20 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 |ファイル名|説明|
 |---|---|
 |notes_counter.exe|ツール本体|
+|manage_score.exe|スコアビューワ|
 |layout\autoload.html|OBSで読み込むノーツ数表示用HTMLファイル|
 |layout\basetitle.html|OBSで読み込む配信のタイトル名表示用HTMLファイル|
 |layout\gauge.html|OBSで読み込むグルーブゲージ情報表示用HTMLファイル|
 |layout\graph.html|OBSで読み込むノーツ数リアルタイム表示用HTMLファイル|
 |layout\history_cursong.html|OBSで読み込む単曲プレー履歴の一覧表示用HTMLファイル|
+|layout\inf_today_stats.html|OBSで読み込む1日の統計情報表示用HTMLファイル|
 |layout\judge.html|OBSで読み込む判定内訳表示用HTMLファイル|
 |layout\option.html|OBSで読み込むオプション表示用HTMLファイル|
 |layout\series.html|OBSで読み込む配信のシリーズ名(第N回の部分)表示用HTMLファイル|
 |layout\today_result.html|OBSで読み込む本日の成果一覧表示用HTMLファイル|
 |layout\\*.png|各種判定処理に必要な画像ファイル|
 |resources\\ |曲名認識(OCR)機能のために必要な外部入力ファイル|
+|noteslist.pkl|全収録曲のノーツ数一覧が記録されたファイル。|
 |alllog.pkl|自動生成される全打鍵ログの保存用ファイル|
 |dakenlog.pkl|自動生成される過去に起動した日に叩いたノーツ数の情報|
 |*.xml|自動生成される各種データ表示用ファイル。layout内のHTMLファイルから使う。|
