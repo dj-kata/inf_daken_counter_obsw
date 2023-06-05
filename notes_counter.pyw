@@ -49,7 +49,7 @@ logger.addHandler(hdl)
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0.10'
+SWVER  = 'v2.0.11'
 
 width  = 1280
 height = 720
