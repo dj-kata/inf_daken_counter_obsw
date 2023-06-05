@@ -18,7 +18,7 @@ df = pd.read_html(url)
 songs = defaultdict(list)
 for tr in soup.find_all('tr'):
     numtd = len(tr.find_all('td'))
-    if numtd == 11:
+    if numtd in (11,9):
         tmp = tr.find_all('td')
         title = tmp[0].text
         for sc in tmp[1:8]:
@@ -135,5 +135,11 @@ for c in to_change:
 not_found = sorted(sorted([k for k in songs.keys() if not k in ocr_title]), key=str.lower)
 not_found_from_ocr = sorted(sorted([k for k in ocr_title if not k in songs.keys()]), key=str.lower)
 
+print('見つからなかった曲')
+for s in not_found_from_ocr:
+    print(s)
+
 with open('noteslist.pkl', 'wb') as f:
     pickle.dump(songs, f)
+
+print('\n->noteslist.pkl updated!')
