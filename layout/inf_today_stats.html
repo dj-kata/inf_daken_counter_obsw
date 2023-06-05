@@ -64,7 +64,7 @@
                 margin-top: 3%;
                 margin-left: 3%;
                 margin-right: 3%;
-                margin-bottom:7%;
+                margin-bottom:3%;
                 border: 8px white solid;
                 height: 30%;
                 overflow:hidden ;
@@ -74,8 +74,11 @@
                 margin-left: 3%;
                 margin-right: 3%;
                 border: 8px white solid;
-                height: 42%;
+                height: 44%;
                 overflow: hidden;
+            }
+            div#chart_histogram{
+                margin-top:3%;
             }
             body { 
                 padding-top:1%;
@@ -106,34 +109,37 @@
         google.charts.setOnLoadCallback(drawChartHistogram);
         function drawChartHistogram() {
             data_histogram = google.visualization.arrayToDataTable([
-                ['lv', 'notes', { role: 'annotation' }],
-                ['',0,""],
-                ['☆1', 0, ""],
-                ['☆2', 0, ""],
-                ['☆3', 0, ""],
-                ['☆4', 0, ""],
-                ['☆5', 0, ""],
-                ['☆6', 0, ""],
-                ['☆7', 0, ""],
-                ['☆8', 0, ""],
-                ['☆9', 0, ""],
-                ['☆10', 0, ""],
-                ['☆11', 0, ""],
-                ['☆12', 0, ""],
+                ['lv', 'SP', 'DBx', 'DP',{ role: 'annotation' }],
+                ['',0,0,0,""],
+                ['☆1', 0,0,0,""],
+                ['☆2', 0,0,0,""],
+                ['☆3', 0,0,0,""],
+                ['☆4', 0,0,0,""],
+                ['☆5', 0,0,0,""],
+                ['☆6', 0,0,0,""],
+                ['☆7', 0,0,0,""],
+                ['☆8', 0,0,0,""],
+                ['☆9', 0,0,0,""],
+                ['☆10', 0,0,0,""],
+                ['☆11', 0,0,0,""],
+                ['☆12', 0,0,0,""],
                 //['僧', 0, 0],
             ]);
             options_histogram = {
                 width: 3200,
-                chartArea:{left:'10%',right:0,top:0,width:'70%',height:'100%'},
-                height: 1100,
-                legend: { position: 'none' },
+                chartArea:{left:'8%',right:'5%',top:'7%',width:'70%',height:'90%'},
+                height: 1200,
+                legend: {
+                    position: 'top'
+                    ,maxLines:1
+                    ,textStyle : { color:'#FFFFFF',fontSize : 64},},
                 bar: { groupWidth: '80%' },
                 isStacked: true,
                 backgroundColor: { color: "#000000", fill: 'transparent' },
                 series: {
                     0: { color: '#DD4445' },
-                    1: { color: '#77FF00' },
-                    2: { color: '#FFBB00' },
+                    1: { color: '#33DD44' },
+                    2: { color: '#4444DD' },
                     3: { color: '#00AAFF' }
                 },
                 annotations: {
@@ -231,7 +237,12 @@
                 var sum=0
                 $(xml).find("PerLv Lv").each(function(index, item){
                     var total = Number($(item).find('total').text());
-                    data_histogram.setValue(index+1, 1, total);
+                    var sp = Number($(item).find('sp').text());
+                    var dp = Number($(item).find('dp').text());
+                    var dbx = Number($(item).find('dbx').text());
+                    data_histogram.setValue(index+1, 1, sp);
+                    data_histogram.setValue(index+1, 2, dbx);
+                    data_histogram.setValue(index+1, 3, dp);
                     sum += total;
                     if (total > vmax){
                         vmax = total
@@ -243,7 +254,7 @@
                     if (total > 0){
                         portion = (total*100.0/sum).toFixed(1).toString()+'%'
                     }
-                    data_histogram.setValue(index+1, 2, portion);
+                    data_histogram.setValue(index+1, 4, portion);
                 });
                 var max_notes = 0;
                 $(xml).find("Notes day").each(function(index, item){
@@ -257,13 +268,15 @@
                     data_notes.setValue(index, 3, pg);
                     if (pg+gr+gd>0){
                         data_notes.setValue(index, 4, (pg+gr+gd).toLocaleString());
+                    }else{
+                        data_notes.setValue(index, 4, "");
                     }
                     if (pg+gr+gd > max_notes){
                         max_notes = pg+gr+gd;
                     }
                 });
                 options_histogram.hAxis.maxValue=vmax+vmax+vmax;
-                options_notes.vAxis.maxValue=max_notes*11/10;
+                options_notes.vAxis.maxValue=max_notes*12/10;
                 //options.hAxis.maxValue=100000;
                 chart_histogram.draw(data_histogram, options_histogram);
                 chart_notes.draw(data_notes, options_notes);
