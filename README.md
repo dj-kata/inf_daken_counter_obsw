@@ -13,7 +13,7 @@ SP,DPのどちらにも対応しています。
 # 動作環境
 下記の環境で確認しています。
 ```
-OS: Windows10 64bit(2H2)
+OS: Windows10 64bit(22H2)
 CPU: Intel系(i7-12700F)
 GPU: NVIDIA系(RTX3050)
 ウイルス対策ソフト: Windows Defender
