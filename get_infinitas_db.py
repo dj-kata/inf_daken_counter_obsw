@@ -1,11 +1,9 @@
 #!/usr/bin/python3
-# bemaniwikiの曲一覧から、各楽曲パックに含まれるSP12/DP12の曲数を算出
 import pandas as pd
 import pickle
 from bs4 import BeautifulSoup
 import requests
 from collections import defaultdict
-#url = 'http://bemaniwiki.com/index.php?beatmania%20IIDX%20INFINITAS/%C1%B4%B6%CA%A5%EA%A5%B9%A5%C8'
 url = 'https://bemaniwiki.com/index.php?beatmania+IIDX+INFINITAS/%C1%ED%A5%CE%A1%BC%A5%C4%BF%F4%A5%EA%A5%B9%A5%C8'
 
 req = requests.get(url)
@@ -26,7 +24,7 @@ for tr in soup.find_all('tr'):
             except:
                 songs[title].append(0)
 
-# music4.0.jsonとの整合性確認
+# 整合性確認
 # AETHERやMacho Monkyなどが表記ゆれの関係になっている。
 with open('resources/informations2.0.res', 'rb') as f:
     js = pickle.load(f)
