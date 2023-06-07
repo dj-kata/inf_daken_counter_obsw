@@ -117,8 +117,6 @@ conv ={
     'かげぬい 〜 Ver.BENIBOTAN 〜':'かげぬい ～ Ver.BENIBOTAN ～',
     'クルクル☆ラブ〜Opioid Peptide MIX〜':'クルクル☆ラブ～Opioid Peptide MIX～',
     'フェティッシュペイパー〜脇の汗回転ガール〜':'フェティッシュペイパー ～脇の汗回転ガール～',
-    #'GIGA VOLTAGE':'GIGA VIOLATE',
-    #'Lords Of The Roundtable':'Loads Of THe Roundtable',
 }
 
 # 一度置換候補を抽出
@@ -137,9 +135,6 @@ not_found = sorted(sorted([k for k in songs.keys() if not k in ocr_title]), key=
 not_found_from_ocr = sorted(sorted([k for k in ocr_title if not k in songs.keys()]), key=str.lower)
 
 print('見つからなかった曲')
-for s in not_found:
-    print(s)
-print()
 for s in not_found_from_ocr:
     print(s)
 
