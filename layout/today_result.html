@@ -51,6 +51,19 @@
             table#result td:nth-child(5) {
             	width:1px;
             }
+            .fullcombotxt{
+                animation-name: flashfc;
+                animation-duration: 0.5s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashfc {
+                0%   { color: #ff2828; }
+                20%  { color: #d5ff28; }
+                40%  { color: #28ff7e; }
+                60%  { color: #2872ff; }
+                80%  { color: #d528ff; }
+                100% { color: #ff2828; }
+            }
         </style>
     <body>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
@@ -104,7 +117,7 @@
                         lamp = '<font color="#ffff22">EXH</font>'
                     }
                     else if (lamp == "F-COMBO"){
-                        lamp = '<font color="#ff22ff">FC</font>'
+                        lamp = '<font color="#ff22ff"><span class="fullcombotxt">FC</span></font>'
                     }
                     else{ // Failed, No playは何も表示しない
                         lamp = ''
@@ -147,7 +160,7 @@
         }
 
         window.addEventListener('DOMContentLoaded', function() {
-            var roopTimer = setInterval(loadXml, 50);
+            var roopTimer = setInterval(loadXml, 1000);
         });
 
 </script>

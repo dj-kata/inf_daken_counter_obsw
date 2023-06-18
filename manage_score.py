@@ -8,6 +8,7 @@ import sys, os
 from collections import defaultdict
 import PySimpleGUI as sg
 from tkinter import filedialog
+import numpy as np
 
 class ScoreManager:
     def __init__(self):
@@ -218,9 +219,19 @@ class ScoreViewer:
         layout_lv = [sg.Checkbox('ALL', key='chk_lvall', enable_events=True, default=True)]
         for i in range(1, 13):
             layout_lv.append(sg.Checkbox(f'☆{i}', key=f"chk_lv{i}", enable_events=True, default=True))
+        layout_sort = []
+        layout_sort.append(sg.Radio('昇順', key='sort_ascend', group_id='sort_mode', default=True, enable_events=True))
+        layout_sort.append(sg.Radio('降順', key='sort_descend', group_id='sort_mode', default=False, enable_events=True))
+        layout_sort.append(sg.Text('ソート対象列:'))
+        layout_sort.append(sg.Radio('曲名', key='sortkey_title', group_id='sortkey', default=True, enable_events=True))
+        layout_sort.append(sg.Radio('クリアランプ', key='sortkey_lamp', group_id='sortkey', default=False, enable_events=True))
+        layout_sort.append(sg.Radio('スコアレート', key='sortkey_srate', group_id='sortkey', default=False, enable_events=True))
+        layout_sort.append(sg.Radio('BP', key='sortkey_bp', group_id='sortkey', default=False, enable_events=True))
+        layout_sort.append(sg.Radio('最終プレー日', key='sortkey_date', group_id='sortkey', default=False, enable_events=True))
         layout = [
             layout_mode,
             layout_lv,
+            layout_sort,
             [sg.Text('search:'), sg.Input('', key='txt_search', enable_events=True), sg.Button('CSVにエクスポート', key='btn_export', enable_events=True, tooltip='プレーデータをcsvに保存します。\nSP/DP/DoubleBattleのデータを全て1ファイルに書き出します。')],
             [sg.Table([], key='table', headings=header
                       , font=(None, 16)
@@ -229,7 +240,10 @@ class ScoreViewer:
                       , col_widths=[4, 40, 4, 10, 5, 5, 5, 20, 20, 14]
                       ,background_color='#ffffff'
                       ,alternating_row_color='#eeeeee'
-                      , justification='left', size=(1,10))
+                      , justification='left'
+                      ,enable_events=True
+                      , size=(1,10)
+                    )
             ],
         ]
         ico=self.ico_path('icon.ico')
@@ -265,7 +279,25 @@ class ScoreViewer:
                                 to_push = False
                     if to_push:
                         dat.append(tmp)
-        self.window['table'].update(dat)
+        dat_np = np.array(dat)
+        #dat_np = np.array(dat, dtype='object') # 数値として扱う
+        if len(dat_np.shape) > 1:
+            sort_row = 1
+            if self.window['sortkey_lamp'].get():
+                sort_row = 3
+            if self.window['sortkey_srate'].get():
+                sort_row = 5
+            if self.window['sortkey_bp'].get():
+                sort_row = 6
+            if self.window['sortkey_date'].get():
+                sort_row = 9
+            dat_np = dat_np[dat_np[:,sort_row].argsort()]
+            if self.window['sort_descend'].get():
+                dat_np = dat_np[::-1]
+            # ソート処理
+            self.window['table'].update(dat_np.tolist())
+        else:
+            self.window['table'].update(dat)
 
 
     def main(self):
