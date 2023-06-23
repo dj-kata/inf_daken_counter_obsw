@@ -72,6 +72,11 @@ class DakenCounter:
                 self.noteslist = pickle.load(f)
         except:
             self.noteslist   = False
+        try:
+            with open('dp_unofficial.pkl', 'rb') as f:
+                self.dp_unofficial = pickle.load(f)
+        except:
+            self.dp_unofficial   = False
         self.difflist = ['SPB', 'SPN', 'SPH', 'SPA', 'DPN', 'DPH', 'DPA']
         self.savefile    = savefile
         self.alllogfile  = './alllog.pkl'
@@ -835,6 +840,20 @@ class DakenCounter:
             f.write(f'    <difficulty>{result[2]}</difficulty>\n')
             key = f"{result[1]}({result[2]})"
             logger.debug(f"key={key}")
+
+            # 非公式難易度
+            dpunoff_key = f"{result[1]}"
+            dp_unofficial_lv = ''
+            if dpunoff_key in self.dp_unofficial.keys():
+                tmp = self.dp_unofficial[dpunoff_key]
+                if result[2] == 'DPA':
+                    dp_unofficial_lv = tmp[6]
+                elif result[2] == 'DPH':
+                    dp_unofficial_lv = tmp[5]
+            if 'BATTLE' in result[-2]:
+                dp_unofficial_lv = ''
+            f.write(f'    <dp_unofficial_lv>{dp_unofficial_lv}</dp_unofficial_lv>\n')
+
             for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
                 logger.debug(f"s = {s}")
                 bp = s[11]
@@ -842,7 +861,7 @@ class DakenCounter:
                     continue
                 if bp == None: # 昔のリザルトに入っていない可能性を考えて一応例外処理している
                     bp = '?'
-                if 'BATTLE' in self.playopt: # 現在DBx系オプションの場合、単曲履歴もDBxのリザルトのみを表示
+                if 'BATTLE' in result[-2]: # 現在DBx系オプションの場合、単曲履歴もDBxのリザルトのみを表示
                     if 'BATTLE' in s[-2]: # DBxのリザルトのみ抽出
                         f.write('    <item>\n')
                         f.write(f'        <date>{s[-1][2:10]}</date>\n')
@@ -872,7 +891,16 @@ class DakenCounter:
                 logger.debug(f"s = {s}")
                 lamp = ''
                 score = ''
+                dpunoff_key = f"{s[1]}"
+                dp_unofficial_lv = ''
+                if dpunoff_key in self.dp_unofficial.keys():
+                    tmp = self.dp_unofficial[dpunoff_key]
+                    if s[2] == 'DPA':
+                        dp_unofficial_lv = tmp[6]
+                    elif s[2] == 'DPH':
+                        dp_unofficial_lv = tmp[5]
                 if ('BATTLE' in s[-2]): # DBx系
+                    dp_unofficial_lv = ''
                     if (lamp_table.index(s[7]) >= 2) or self.settings['todaylog_dbx_always_push']:
                         lamp = s[7]
                 elif ('H-RAN' in s[-2]):
@@ -892,6 +920,7 @@ class DakenCounter:
                     f.write(f'    <lv>{s[0]}</lv>\n')
                     f.write(f'    <title>{self.escape_for_xml(s[1])}</title>\n')
                     f.write(f'    <difficulty>{s[2]}</difficulty>\n')
+                    f.write(f'    <dp_unofficial_lv>{dp_unofficial_lv}</dp_unofficial_lv>\n')
                     f.write(f'    <lamp>{lamp}</lamp>\n')
                     f.write(f'    <score>{score}</score>\n')
                     f.write(f'    <opt>{s[-2]}</opt>\n')
