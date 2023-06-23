@@ -37,19 +37,9 @@ hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcNa
 hdl.setFormatter(hdl_formatter)
 logger.addHandler(hdl)
 
-#hdl2 = logging.StreamHandler(sys.stdout)
-#hdl2.setLevel(logging.INFO)
-#hdl2_formatter = logging.Formatter('%(message)s')
-#hdl2.setFormatter(hdl2_formatter)
-#logger.addHandler(hdl2)
-
-### TODO
-# スコアは差分を送るんじゃなくて、best、cur両方を送ってHTML側で計算させる?
-# loggerの利用
-
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0.11'
+SWVER  = 'v2.0.13'
 
 width  = 1280
 height = 720
