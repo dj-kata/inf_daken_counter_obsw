@@ -10,6 +10,7 @@ req = requests.get(url)
 soup = BeautifulSoup(req.text, 'html.parser')
 
 df = pd.read_html(url)
+session = requests.session()
 
 # bemaniwikiの表の曲名をsongsに登録
 songs = defaultdict(list)
@@ -116,6 +117,58 @@ conv ={
     'クルクル☆ラブ〜Opioid Peptide MIX〜':'クルクル☆ラブ～Opioid Peptide MIX～',
     'フェティッシュペイパー〜脇の汗回転ガール〜':'フェティッシュペイパー ～脇の汗回転ガール～',
 }
+
+x = ''
+def parse_lv_table(res):
+    ret = {}
+    soup = BeautifulSoup(res, features='html.parser')
+    div = soup.find_all('div')[8:-1]
+    for i,d in enumerate(div):
+        dat = d.text.split('\n')
+        if dat[0] == '曲情報なし':
+            continue
+        unofficial_lv = dat[1].strip()
+        for l in dat[2:-1]:
+            if l[:-4] in conv.keys():
+                tmp = conv[l[:-4]]
+                title = tmp + '___DP' + l[-2]
+            else:
+                title = l[:-4] + '___DP' + l[-2]
+            ret[title] = unofficial_lv
+    return ret
+
+def update_songlist():
+    url = 'https://zasa.sakura.ne.jp/dp/rank.php'
+    songdb = {}
+    # 古い順に実行すればOK。同じkeyが即上書きとすれば最新の難易度だけ残る。
+    for ver in list(range(1,31)):
+        print(f"ver = {ver}")
+        data={'env':f'a{ver:02d}0', 'submit':'表示', 'cat':'0', 'mode':'m1', 'offi':'0'}
+        r = session.post(url, data=data)
+        dic = parse_lv_table(r.text)
+        songdb.update(dic)
+    return songdb
+
+def convert_unofficial_songs(songs):
+    ret = {}
+    for s in songs.keys():
+        title = s[:-6]
+        diff = s[-1]
+        if not title in ret.keys():
+            ret[title] = ['','','','','','','']
+        if diff == 'N':
+            ret[title][4] = songs[s]
+        elif diff == 'H':
+            ret[title][5] = songs[s]
+        elif diff == 'A':
+            ret[title][6] = songs[s]
+    return ret
+
+a = update_songlist()
+b = convert_unofficial_songs(a)
+
+with open('dp_unofficial.pkl', 'wb') as f:
+    pickle.dump(b, f)
 
 # 一度置換候補を抽出
 to_change = []
