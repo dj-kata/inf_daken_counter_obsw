@@ -10,6 +10,7 @@ import PySimpleGUI as sg
 from tkinter import filedialog
 import numpy as np
 
+lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
 class ScoreManager:
     def __init__(self):
         # 全ての認識結果ログ
@@ -48,7 +49,6 @@ class ScoreManager:
             #    print(s)
 
     def get_scores_best(self):
-        lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
         for key in self.score.keys():
             # ランプ、スコア、BP、notes, best_opt_score, best_opt_bp、最終プレー日
             best_reg = ['NO PLAY', 0, 9999, 0, '?', '?', '2000-01-01'] 
@@ -172,6 +172,11 @@ class ScoreViewer:
         self.score_manager = ScoreManager()
         #with open('settings.json') as f:
         #    self.settings = json.load(f)
+        try:
+            with open('dp_unofficial.pkl', 'rb') as f:
+                self.dp_unofficial = pickle.load(f)
+        except:
+            self.dp_unofficial   = False
 
     def ico_path(self, relative_path):
         try:
@@ -212,7 +217,7 @@ class ScoreViewer:
     
     def gui(self):
         sg.theme('SystemDefault')
-        header = ['LV', 'Title', 'mode', 'Lamp', 'Score', '(rate)', 'BP', 'Opt(best score)', 'Opt(min bp)', 'Last Played']
+        header = ['LV', 'Title', 'mode', 'Lamp', 'Score', '(rate)', 'BP', 'Opt(best score)', 'Opt(min bp)', 'Last Played', ' ']
         layout_mode = []
         for mode in ('sp', 'dp', 'dbx'):
             layout_mode.append(sg.Radio(mode.upper(), key=f"radio_mode_{mode}", group_id="mode", default=mode=='sp', enable_events=True))
@@ -228,6 +233,7 @@ class ScoreViewer:
         layout_sort.append(sg.Radio('スコアレート', key='sortkey_srate', group_id='sortkey', default=False, enable_events=True))
         layout_sort.append(sg.Radio('BP', key='sortkey_bp', group_id='sortkey', default=False, enable_events=True))
         layout_sort.append(sg.Radio('最終プレー日', key='sortkey_date', group_id='sortkey', default=False, enable_events=True))
+        layout_sort.append(sg.Radio('非公式難易度', key='sortkey_unofficial', group_id='sortkey', default=False, enable_events=True))
         layout = [
             layout_mode,
             layout_lv,
@@ -237,7 +243,7 @@ class ScoreViewer:
                       , font=(None, 16)
                       , vertical_scroll_only=False
                       , auto_size_columns=False
-                      , col_widths=[4, 40, 4, 10, 5, 5, 5, 20, 20, 14]
+                      , col_widths=[4, 40, 4, 10, 5, 5, 5, 20, 20, 14, 4]
                       ,background_color='#ffffff'
                       ,alternating_row_color='#eeeeee'
                       , justification='left'
@@ -258,6 +264,7 @@ class ScoreViewer:
         elif self.window['radio_mode_dbx'].get():
             mode = 'DB'
         dat = []
+        row_colors = []
         for i in range(1, 13):
             if self.window[f"chk_lv{i}"].get():
                 lvs = self.score_manager.get_diff_best(f"{mode}{i}")
@@ -272,12 +279,22 @@ class ScoreViewer:
                     tmp[6] = bp
                     date = tmp[-1].split('-')
                     tmp[-1] = f"{date[0]}/{date[1]}/{date[2]} {date[3]}:{date[4]}"
+                    # 非公式難易度
+                    if mode == 'DP' and self.dp_unofficial != False:
+                        if tmp[1] in self.dp_unofficial.keys():
+                            if tmp[2][-1] == 'H':
+                                tmp.append(self.dp_unofficial[tmp[1]][-2])
+                            elif tmp[2][-1] == 'A':
+                                tmp.append(self.dp_unofficial[tmp[1]][-1])
+                    if len(tmp) == 10:
+                        tmp.append('')
+                    # フィルタ処理
                     to_push = True
                     if self.window['txt_search'].get().strip() != '':
                         for search_word in self.window['txt_search'].get().strip().split(' '):
                             if search_word.lower() not in tmp[1].lower():
                                 to_push = False
-                    if to_push:
+                    if to_push: # 表示するデータを追加
                         dat.append(tmp)
         dat_np = np.array(dat)
         #dat_np = np.array(dat, dtype='object') # 数値として扱う
@@ -285,27 +302,52 @@ class ScoreViewer:
             sort_row = 1
             if self.window['sortkey_lamp'].get():
                 sort_row = 3
+                for y in range(dat_np.shape[0]):
+                    dat_np[y][3] = lamp_table.index(dat_np[y][3])
             if self.window['sortkey_srate'].get():
                 sort_row = 5
             if self.window['sortkey_bp'].get():
                 sort_row = 6
             if self.window['sortkey_date'].get():
                 sort_row = 9
+            if self.window['sortkey_unofficial'].get():
+                sort_row = 10
             dat_np = dat_np[dat_np[:,sort_row].argsort()]
             if self.window['sort_descend'].get():
                 dat_np = dat_np[::-1]
+            if self.window['sortkey_lamp'].get():
+                for y in range(dat_np.shape[0]):
+                    dat_np[y][3] = lamp_table[int(dat_np[y][3])]
             # ソート処理
-            self.window['table'].update(dat_np.tolist())
-        else:
-            self.window['table'].update(dat)
-
+            dat = dat_np.tolist()
+        self.window['table'].update(dat)
+        for d in dat:
+            lamp = d[3]
+            if lamp == 'FAILED':
+                bgc = '#aaaaaa'
+            elif lamp == 'A-CLEAR':
+                bgc = '#ffaaff'
+            elif lamp == 'E-CLEAR':
+                bgc = '#aaffaa'
+            elif lamp == 'CLEAR':
+                bgc = '#77aaff'
+            elif lamp == 'H-CLEAR':
+                bgc = '#ffaa77'
+            elif lamp == 'EXH-CLEAR':
+                bgc = '#ffff44'
+            elif lamp == 'F-COMBO':
+                bgc = '#00ffff'
+            else:
+                bgc = '#ffffff'
+            row_colors.append([len(row_colors), '#000000', bgc])
+        self.window['table'].update(row_colors=row_colors)
 
     def main(self):
         self.gui()
 
         while True:
             ev, val = self.window.read()
-            print(ev, val)
+            #print(ev, val)
             if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-', 'btn_close_setting', 'btn_close_info'): # 終了処理
                 break
             elif ev == 'chk_lvall': # ALLボタンの処理
