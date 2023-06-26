@@ -238,7 +238,10 @@ class ScoreViewer:
             layout_mode,
             layout_lv,
             layout_sort,
-            [sg.Text('search:'), sg.Input('', key='txt_search', enable_events=True), sg.Button('CSVにエクスポート', key='btn_export', enable_events=True, tooltip='プレーデータをcsvに保存します。\nSP/DP/DoubleBattleのデータを全て1ファイルに書き出します。')],
+            [sg.Text('search:'), sg.Input('', key='txt_search', enable_events=True)
+             ,sg.Button('CSVにエクスポート', key='btn_export', enable_events=True, tooltip='プレーデータをcsvに保存します。\nSP/DP/DoubleBattleのデータを全て1ファイルに書き出します。')
+             ,sg.Button('再読み込み', key='reload')
+            ],
             [sg.Table([], key='table', headings=header
                       , font=(None, 16)
                       , vertical_scroll_only=False
@@ -355,6 +358,11 @@ class ScoreViewer:
                     self.window[f"chk_lv{i}"].update(val['chk_lvall'])
             elif ev == 'btn_export':
                 self.export_csv()
+            elif ev == 'reload':
+                self.score_manager.load()
+                self.score_manager.get_scores_from_log()
+                self.score_manager.get_scores_best()
+                self.score_manager.get_musiclist_with_difficulty()
             self.update_table()
 
 if __name__ == '__main__':
