@@ -685,6 +685,9 @@ class DakenCounter:
                                 logger.debug(f'result = {result}')
                                 self.write_today_update_xml()
                                 self.write_history_cursong_xml(result)
+                                # OBS側を変更していてもいいように、曲終了時点でもソースIDを取得しなおしておく
+                                self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'] = self.obs.search_itemid(self.settings['obs_scene'], 'history_cursong')
+                                self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'] = self.obs.search_itemid(self.settings['obs_scene'], 'today_result')
                                 self.obs.enable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                                 logger.debug('')
                                 tmp_stats.update(self.todaylog, self.judge, self.today_plays)
