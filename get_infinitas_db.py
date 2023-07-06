@@ -189,6 +189,8 @@ print('見つからなかった曲')
 for s in not_found_from_ocr:
     print(s)
 
+songs['never let you down'] = [0, 408,575,581, 465,577,0] # bemaniwikiのノーツ数が空欄なので直接書く
+
 with open('noteslist.pkl', 'wb') as f:
     pickle.dump(songs, f)
 
