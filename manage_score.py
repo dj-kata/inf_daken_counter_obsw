@@ -251,6 +251,7 @@ class ScoreViewer:
                       ,alternating_row_color='#eeeeee'
                       , justification='left'
                       ,enable_events=True
+                      ,select_mode = sg.TABLE_SELECT_MODE_BROWSE
                       , size=(1,10)
                     )
             ],
@@ -300,11 +301,13 @@ class ScoreViewer:
                     if to_push: # 表示するデータを追加
                         dat.append(tmp)
         dat_np = np.array(dat)
+        #dat_np = dat_np[dat_np[:,1].argsort()]
         #dat_np = np.array(dat, dtype='object') # 数値として扱う
         if len(dat_np.shape) > 1:
             sort_row = 1
             if self.window['sortkey_lamp'].get():
                 sort_row = 3
+                # ランプソートの場合、一旦各ランプを数値に置き換える
                 for y in range(dat_np.shape[0]):
                     dat_np[y][3] = lamp_table.index(dat_np[y][3])
             if self.window['sortkey_srate'].get():
@@ -315,9 +318,16 @@ class ScoreViewer:
                 sort_row = 9
             if self.window['sortkey_unofficial'].get():
                 sort_row = 10
+                #for y in range(dat_np.shape[0]):
+                #    unof = dat_np[y][-1]
+                #    if unof == '':
+                #        dat_np[y][-1] = 0.0
+                #    else:
+                #        dat_np[y][-1] = float(unof)
             dat_np = dat_np[dat_np[:,sort_row].argsort()]
             if self.window['sort_descend'].get():
                 dat_np = dat_np[::-1]
+            # ランプソートの場合、数値に置き換えたランプをもとに戻す
             if self.window['sortkey_lamp'].get():
                 for y in range(dat_np.shape[0]):
                     dat_np[y][3] = lamp_table[int(dat_np[y][3])]
