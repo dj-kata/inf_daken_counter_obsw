@@ -33,36 +33,60 @@
             	white-space:nowrap;
             }
             table#result td:nth-child(1) {
-            	width:200px;
+            	width:170px;
                 color: #ffddaa;
             }
-            table#result td:nth-child(2) {
+            table#result td:nth-child(3) {
             	overflow:hidden;
             	text-overflow:ellipsis;
             	max-width:90px;
                 color: #bbffee;
             }
-            table#result td:nth-child(3) {
-            	width:200px;
-            }
             table#result td:nth-child(4) {
-            	width:130px;
+            	width:170px;
+            }
+            table#result td:nth-child(2) {
+            	width:40px;
             }
             table#result td:nth-child(5) {
             	width:1px;
             }
-            .fullcombotxt{
+            .fc{
                 animation-name: flashfc;
-                animation-duration: 0.5s;
+                animation-duration: 0.2s;
                 animation-iteration-count: infinite;
             }
             @keyframes flashfc {
-                0%   { color: #ff2828; }
-                20%  { color: #d5ff28; }
-                40%  { color: #28ff7e; }
-                60%  { color: #2872ff; }
-                80%  { color: #d528ff; }
-                100% { color: #ff2828; }
+                0%   { background-color: #ff2828; }
+                20%  { background-color: #d5ff28; }
+                40%  { background-color: #28ff7e; }
+                60%  { background-color: #2872ff; }
+                80%  { background-color: #d528ff; }
+                100% { background-color: #ff2828; }
+            }
+            .failed{
+                animation-name: flashfailed;
+                animation-duration: 0.08s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashfailed {
+                0%   { background-color: #ff2828; }
+                50%  { background-color: #282828; }
+                100% { background-color: #ff2828; }
+            }
+            .ac{background-color: #ff66ff;}
+            .ec{background-color: #22ff22;}
+            .nc{background-color: #22ccff;}
+            .hc{background-color: #ffffff;}
+            .exh{
+                animation-name: flashexh;
+                animation-duration: 0.08s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashexh {
+                0%   { background-color: #ff2828; }
+                50%  { background-color: #ffff28; }
+                100% { background-color: #ff2828; }
             }
         </style>
     <body>
@@ -79,9 +103,14 @@
                 // xmlデータからほしいデータをfindで探し処理
                 var out = "";
                 $(xml).find("Results item").each(function(index, item){
-                    var lv = $(item).find('lv').text();
+                    var lv = "☆"+$(item).find('lv').text();
                     var lamp = $(item).find('lamp').text();
                     var difficulty = $(item).find('difficulty').text();
+                    if($(item).find('dp_unofficial_lv').text().length){
+                        // DPで非公式難易度がある場合はそちらを表示
+                        // 不要なら次の行は消してください
+                        lv = $(item).find('dp_unofficial_lv').text();
+                    }
                     var title = $(item).find('title').text();
                     var score = $(item).find('score').text();
                     var opt = $(item).find('opt').text();
@@ -98,26 +127,27 @@
                     if (difficulty.slice(-1) == "L"){
                         difficulty = '<font color="#ff88ff">'+difficulty+'</font>'
                     }
+                    //// クリアランプ 新形式(ACっぽいアニメーション)
                     if (lamp == "FAILED"){
-                        lamp = '<font color="#ff0000">x</font>'
+                        lamp = '<span class="failed">　</span>'
                     }
                     else if (lamp == "A-CLEAR"){
-                        lamp = '<font color="#cc44ff">AC</font>'
+                        lamp = '<span class="ac">　</span>'
                     }
                     else if (lamp == "E-CLEAR"){
-                        lamp = '<font color="#00ff22">EC</font>'
+                        lamp = '<span class="ec">　</span>'
                     }
                     else if (lamp == "CLEAR"){
-                        lamp = '<font color="#22aaff">NC</font>'
+                        lamp = '<span class="nc">　</span>'
                     }
                     else if (lamp == "H-CLEAR"){
-                        lamp = '<font color="#ff2222">HC</font>'
+                        lamp = '<span class="hc">　</span>'
                     }
                     else if (lamp == "EXH-CLEAR"){
-                        lamp = '<font color="#ffff22">EXH</font>'
+                        lamp = '<span class="exh">　</span>'
                     }
                     else if (lamp == "F-COMBO"){
-                        lamp = '<font color="#ff22ff"><span class="fullcombotxt">FC</span></font>'
+                        lamp = '<span class="fc">　</span>'
                     }
                     else{ // Failed, No playは何も表示しない
                         lamp = ''
@@ -143,12 +173,12 @@
                         else if (opt.indexOf("H-RAN / H-RAN")>=0){
                             title = '('+with_scratch+'DBHR) ' + title
                         }
-                        out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+difficulty+'</td><td>'+lamp+'</td><td>bp'+bp+'</td></tr>';
+                        out +='<tr><td>'+lv+'</td><td>'+lamp+'</td><td>'+title+'</td><td>'+difficulty+'</td><td>bp'+bp+'</td></tr>';
                         //out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+lamp+'</td><td>'+score+'</td></tr>';
                     } else{
-                        out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+difficulty+'</td><td>'+lamp+'</td><td>'+score+'</td></tr>';
+                        out +='<tr><td>'+lv+'</td><td>'+lamp+'</td><td>'+title+'</td><td>'+difficulty+'</td><td>'+score+'</td></tr>';
                     }
-                    if (index == 29){ // 直近の30曲だけ表示としている。曲数はここから変更可能。
+                    if (index == 26){ // 直近の27曲だけ表示としている。曲数はここから変更可能。
                         return false;
                     }
                     });
@@ -167,7 +197,7 @@
 </head>
 <body>
   <table id="title">
-    <tr><td><font color="#88bbff">Recent update</font></td></tr>
+    <tr><td>Recent update</td></tr>
   </table>
   <table id="result">
     <thead>
