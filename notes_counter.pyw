@@ -645,7 +645,12 @@ class DakenCounter:
         self.gauge   = ''
         flg_autosave = True # その曲で自動保存を使ったかどうか, autosaveが成功したらTrue、曲終了時にリセット
         is_pushed_to_alllog = True
-        self.startdate = datetime.datetime.now().strftime("%Y/%m/%d")
+        for i in range(30):
+            self.startdate = datetime.datetime.today().strftime("%Y/%m/%d")
+            if self.startdate != False:
+                break
+        logger.debug(f'startdate = {self.startdate}')
+
         self.obs.disable_source(self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'])
         self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
         tmp_stats = ManageStats(date=self.startdate, todaylog=self.todaylog, judge=self.judge, plays=self.today_plays)
