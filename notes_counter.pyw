@@ -48,6 +48,7 @@ mdigit_vals = [10965,3570,9945,8925,8160,9945,12240,7140,11730,12495]
 savefile   = 'settings.json'
 FONT = ('Meiryo',12)
 FONTs = ('Meiryo',8)
+spjiriki_list = ['地力S+', '個人差S+', '地力S', '個人差S', '地力A+', '個人差A+', '地力A', '個人差A', '地力B+', '個人差B+', '地力B', '個人差B', '地力C', '個人差C', '地力D', '個人差D', '地力E', '個人差E', '地力F', '難易度未定']
 
 if len(sys.argv) > 1:
     savefile = sys.argv[1]
@@ -66,7 +67,12 @@ class DakenCounter:
             with open('dp_unofficial.pkl', 'rb') as f:
                 self.dp_unofficial = pickle.load(f)
         except:
-            self.dp_unofficial   = False
+            self.dp_unofficial   = {}
+        try:
+            with open('sp_12jiriki.pkl', 'rb') as f:
+                self.sp_jiriki = pickle.load(f)
+        except:
+            self.sp_jiriki   = {}
         self.difflist = ['SPB', 'SPN', 'SPH', 'SPA', 'DPN', 'DPH', 'DPA']
         self.savefile    = savefile
         self.alllogfile  = './alllog.pkl'
@@ -851,6 +857,17 @@ class DakenCounter:
             if 'BATTLE' in result[-2]:
                 dp_unofficial_lv = ''
             f.write(f'    <dp_unofficial_lv>{dp_unofficial_lv}</dp_unofficial_lv>\n')
+            # SP地力表
+            spjiriki_key = f"{result[1]}___{result[2]}"
+            sp_12hard = ''
+            sp_12clear = ''
+            if spjiriki_key in self.sp_jiriki['hard'].keys():
+                sp_12hard = spjiriki_list[self.sp_jiriki['hard'][spjiriki_key]]
+            if spjiriki_key in self.sp_jiriki['clear'].keys():
+                sp_12clear = spjiriki_list[self.sp_jiriki['clear'][spjiriki_key]]
+            f.write(f'    <dp_unofficial_lv>{dp_unofficial_lv}</dp_unofficial_lv>\n')
+            f.write(f'    <sp_12hard>{sp_12hard}</sp_12hard>\n')
+            f.write(f'    <sp_12clear>{sp_12clear}</sp_12clear>\n')
 
             for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
                 logger.debug(f"s = {s}")
@@ -891,12 +908,21 @@ class DakenCounter:
                 score = ''
                 dpunoff_key = f"{s[1]}"
                 dp_unofficial_lv = ''
+                spjiriki_key = f"{s[1]}___{s[2]}"
+                sp_12hard = ''
+                sp_12clear = ''
                 if dpunoff_key in self.dp_unofficial.keys():
                     tmp = self.dp_unofficial[dpunoff_key]
                     if s[2] == 'DPA':
                         dp_unofficial_lv = tmp[6]
                     elif s[2] == 'DPH':
                         dp_unofficial_lv = tmp[5]
+                # SP12地力表
+                if spjiriki_key in self.sp_jiriki['hard'].keys():
+                    sp_12hard = spjiriki_list[self.sp_jiriki['hard'][spjiriki_key]]
+                if spjiriki_key in self.sp_jiriki['clear'].keys():
+                    sp_12clear = spjiriki_list[self.sp_jiriki['clear'][spjiriki_key]]
+
                 if ('BATTLE' in s[-2]): # DBx系
                     dp_unofficial_lv = ''
                     if (lamp_table.index(s[7]) >= 2) or self.settings['todaylog_dbx_always_push']:
@@ -919,6 +945,8 @@ class DakenCounter:
                     f.write(f'    <title>{self.escape_for_xml(s[1])}</title>\n')
                     f.write(f'    <difficulty>{s[2]}</difficulty>\n')
                     f.write(f'    <dp_unofficial_lv>{dp_unofficial_lv}</dp_unofficial_lv>\n')
+                    f.write(f'    <sp_12hard>{sp_12hard}</sp_12hard>\n')
+                    f.write(f'    <sp_12clear>{sp_12clear}</sp_12clear>\n')
                     f.write(f'    <lamp>{lamp}</lamp>\n')
                     f.write(f'    <score>{score}</score>\n')
                     f.write(f'    <opt>{s[-2]}</opt>\n')
