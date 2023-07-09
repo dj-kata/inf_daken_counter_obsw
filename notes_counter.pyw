@@ -865,7 +865,6 @@ class DakenCounter:
                 sp_12hard = spjiriki_list[self.sp_jiriki['hard'][spjiriki_key]]
             if spjiriki_key in self.sp_jiriki['clear'].keys():
                 sp_12clear = spjiriki_list[self.sp_jiriki['clear'][spjiriki_key]]
-            f.write(f'    <dp_unofficial_lv>{dp_unofficial_lv}</dp_unofficial_lv>\n')
             f.write(f'    <sp_12hard>{sp_12hard}</sp_12hard>\n')
             f.write(f'    <sp_12clear>{sp_12clear}</sp_12clear>\n')
 
