@@ -116,6 +116,16 @@
                     var unoff_lv = $(xml).find('Results dp_unofficial_lv').text();
                     lv = lv + "(" + unoff_lv + ") ";
                 }
+                // SP☆12で地力表にある曲はハード難易度を表示
+                if($(xml).find('Results sp_12hard').text().length){
+                    var sp_12hard = $(xml).find('Results sp_12hard').text();
+                    lv = lv + "(" + sp_12hard + ") ";
+                }
+                //// ノマゲ難易度表も出せます
+                //if($(xml).find('Results sp_12clear').text().length){
+                //    var sp_12clear = $(xml).find('Results sp_12clear').text();
+                //    lv = lv + "(" + sp_12clear + ") ";
+                //}
                 var difficulty = $(xml).find('Results difficulty').text();
                 $("#title tbody").html('<tr><td>☆'+lv+'</td><td>'+title+'</td><td>('+difficulty+')</td></tr>');
                 $(xml).find("Results item").each(function(index, item){

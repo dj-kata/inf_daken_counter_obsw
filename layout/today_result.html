@@ -6,7 +6,7 @@
         <style>
             body { 
             
-            background-color: rgba(0, 0, 0, 0.85);
+            background-color: rgba(0, 0, 0, 0.99);
             margin: 10px;
             padding: 20px;
             overflow: hidden;
@@ -35,6 +35,8 @@
             table#result td:nth-child(1) {
             	width:170px;
                 color: #ffddaa;
+                text-align: right;
+                padding-right:20px;
             }
             table#result td:nth-child(3) {
             	overflow:hidden;
@@ -47,6 +49,7 @@
             }
             table#result td:nth-child(2) {
             	width:40px;
+                padding-right:20px;
             }
             table#result td:nth-child(5) {
             	width:1px;
@@ -107,10 +110,16 @@
                     var lamp = $(item).find('lamp').text();
                     var difficulty = $(item).find('difficulty').text();
                     if($(item).find('dp_unofficial_lv').text().length){
-                        // DPで非公式難易度がある場合はそちらを表示
-                        // 不要なら次の行は消してください
                         lv = $(item).find('dp_unofficial_lv').text();
                     }
+                    // SP☆12で地力表にある曲はハード難易度を表示
+                    if($(item).find('sp_12hard').text().length){
+                        lv = $(item).find('sp_12hard').text();
+                    }
+                    // ノマゲ難易度も出せます
+                    //if($(item).find('sp_12clear').text().length){
+                    //    lv = $(item).find('sp_12clear').text();
+                    //}
                     var title = $(item).find('title').text();
                     var score = $(item).find('score').text();
                     var opt = $(item).find('opt').text();
@@ -127,7 +136,6 @@
                     if (difficulty.slice(-1) == "L"){
                         difficulty = '<font color="#ff88ff">'+difficulty+'</font>'
                     }
-                    //// クリアランプ 新形式(ACっぽいアニメーション)
                     if (lamp == "FAILED"){
                         lamp = '<span class="failed">　</span>'
                     }
@@ -176,7 +184,7 @@
                         out +='<tr><td>'+lv+'</td><td>'+lamp+'</td><td>'+title+'</td><td>'+difficulty+'</td><td>bp'+bp+'</td></tr>';
                         //out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+lamp+'</td><td>'+score+'</td></tr>';
                     } else{
-                        out +='<tr><td>'+lv+'</td><td>'+lamp+'</td><td>'+title+'</td><td>'+difficulty+'</td><td>'+score+'</td></tr>';
+                        out +='<tr><td>'+lv+'</td><td>'+lamp+'</td><td>'+title+'</td><td>'+difficulty+'</td><td><font color="#ffccff">'+score+'</font></td></tr>';
                     }
                     if (index == 26){ // 直近の27曲だけ表示としている。曲数はここから変更可能。
                         return false;
