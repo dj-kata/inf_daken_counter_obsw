@@ -97,9 +97,19 @@
                 50%  { background-color: #ffff28; }
                 100% { background-color: #ff2828; }
             }
+            sp12hard{
+                color:#ff86b4;
+                padding: 0px;
+            }
+            sp12clear{
+                color:#9ee7ff;
+                padding: 0px;
+                display: none;
+            }
         </style>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
         <script>
+        var isHard = 1;
         function loadXml() {
             var getxml = $.ajax({
                 url: '../history_cursong.xml',
@@ -116,15 +126,10 @@
                     var unoff_lv = $(xml).find('Results dp_unofficial_lv').text();
                     lv = lv + "(" + unoff_lv + ") ";
                 }
-                // SP☆12で地力表にある曲はハード難易度を表示
-                if($(xml).find('Results sp_12hard').text().length){
-                    var sp_12hard = $(xml).find('Results sp_12hard').text();
-                    lv = lv + "(" + sp_12hard + ") ";
-                }
-                //// ノマゲ難易度表も出せます
-                //if($(xml).find('Results sp_12clear').text().length){
-                //    var sp_12clear = $(xml).find('Results sp_12clear').text();
-                //    lv = lv + "(" + sp_12clear + ") ";
+                //// today_resultと同様のアニメーション、いまいちなのでコメントアウトしている
+                //if($(xml).find('Results sp_12hard').text().length){
+                //    lv = lv+' <sp12hard>('+$(xml).find('Results sp_12hard').text()+')</sp12hard>';
+                //    lv += '<sp12clear>('+$(xml).find('Results sp_12clear').text()+')</sp12clear>';
                 //}
                 var difficulty = $(xml).find('Results difficulty').text();
                 $("#title tbody").html('<tr><td>☆'+lv+'</td><td>'+title+'</td><td>('+difficulty+')</td></tr>');
@@ -199,6 +204,14 @@
                     }
                     });
                 $('#result tbody').html(out);
+                if (isHard == 1){
+                    $('sp12hard').css('display', 'none');
+                    $('sp12clear').css('display', 'block');
+                }else{
+                    $('sp12clear').css('display', 'none');
+                    $('sp12hard').css('display', 'block');
+                }
+                isHard = 1 - isHard;
             });
             getxml.fail(function(err) {
                 $(songtitle).text("ERROR!!!"+err);

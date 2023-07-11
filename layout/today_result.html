@@ -33,9 +33,9 @@
             	white-space:nowrap;
             }
             table#result td:nth-child(1) {
-            	width:170px;
+            	width:225px;
                 color: #ffddaa;
-                text-align: right;
+                text-align: center;
                 padding-right:20px;
             }
             table#result td:nth-child(3) {
@@ -91,10 +91,23 @@
                 50%  { background-color: #ffff28; }
                 100% { background-color: #ff2828; }
             }
+            /* SP☆12地力表用のスタイル */
+            sp12hard{
+                color:#ff86b4;
+                padding: 0px;
+                font-size: 50px;
+            }
+            sp12clear{
+                color:#9ee7ff;
+                padding: 0px;
+                display: none;
+                font-size: 50px;
+            }
         </style>
     <body>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
         <script>
+        var isHard = 1;
         function loadXml() {
             var getxml = $.ajax({
                 url: '../today_update.xml',
@@ -112,14 +125,12 @@
                     if($(item).find('dp_unofficial_lv').text().length){
                         lv = $(item).find('dp_unofficial_lv').text();
                     }
-                    // SP☆12で地力表にある曲はハード難易度を表示
+                    // SP☆12で地力表の難易度を表示(H/Cを時間で切り替える)
                     if($(item).find('sp_12hard').text().length){
                         lv = $(item).find('sp_12hard').text();
+                        lv = '<sp12hard>'+$(item).find('sp_12hard').text()+'</sp12hard>';
+                        lv += '<sp12clear>'+$(item).find('sp_12clear').text()+'</sp12clear>';
                     }
-                    // ノマゲ難易度も出せます
-                    //if($(item).find('sp_12clear').text().length){
-                    //    lv = $(item).find('sp_12clear').text();
-                    //}
                     var title = $(item).find('title').text();
                     var score = $(item).find('score').text();
                     var opt = $(item).find('opt').text();
@@ -191,6 +202,14 @@
                     }
                     });
                 $('#result tbody').html(out);
+                if (isHard == 1){
+                    $('sp12hard').css('display', 'none');
+                    $('sp12clear').css('display', 'block');
+                }else{
+                    $('sp12clear').css('display', 'none');
+                    $('sp12hard').css('display', 'block');
+                }
+                isHard = 1 - isHard;
             });
             getxml.fail(function(err) {
                 // alert('failed');
