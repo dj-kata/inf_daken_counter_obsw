@@ -78,18 +78,19 @@ class ScoreManager:
                     date_best = datetime.date(tmp[0], tmp[1], tmp[2])
                     if date_cur > date_best:
                         best_reg[-1] = s[-1]
-                    if s[9] != None:
-                        if best_reg[1] < s[9]: # スコア
-                            best_reg[1] = s[9]
-                            best_reg[4] = s[-2]
-                            best_reg[3] = s[3]
-                    if s[11] != None:
-                        if best_reg[2] > s[11]: # bp
-                            best_reg[2] = s[11]
-                            best_reg[5] = s[-2]
-                    if s[7] != None:
-                        if lamp_table.index(best_reg[0]) < lamp_table.index(s[7]):
-                            best_reg[0] = s[7]
+                    if 'H-RAN' not in s[-2]:
+                        if s[9] != None:
+                            if best_reg[1] < s[9]: # スコア
+                                best_reg[1] = s[9]
+                                best_reg[4] = s[-2]
+                                best_reg[3] = s[3]
+                        if s[11] != None:
+                            if best_reg[2] > s[11]: # bp
+                                best_reg[2] = s[11]
+                                best_reg[5] = s[-2]
+                        if s[7] != None:
+                            if lamp_table.index(best_reg[0]) < lamp_table.index(s[7]):
+                                best_reg[0] = s[7]
             # 2ループ目: リザルトは残っていないが自己べのほうが高いものを検出(ルーチンがゴチャ付きそうなので一応分ける)
             for s in self.score[key]: # その曲の全ログを確認
                 if 'BATTLE' in s[-2]:
@@ -250,7 +251,6 @@ class ScoreViewer:
                       ,background_color='#ffffff'
                       ,alternating_row_color='#eeeeee'
                       , justification='left'
-                      ,enable_events=True
                       ,select_mode = sg.TABLE_SELECT_MODE_BROWSE
                       , size=(1,10)
                     )
