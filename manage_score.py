@@ -44,7 +44,8 @@ class ScoreManager:
             if s[3] == notes:
                 self.score[key].append(s)
             else:
-                print(f'error! ノーツ数が不一致 ({s}), notes={notes}')
+                pass
+                #print(f'error! ノーツ数が不一致 ({s}), notes={notes}')
             #if 'GAMBOL' in key:
             #    print(s)
 
@@ -290,6 +291,8 @@ class ScoreViewer:
                                 tmp.append(self.dp_unofficial[tmp[1]][-2])
                             elif tmp[2][-1] == 'A':
                                 tmp.append(self.dp_unofficial[tmp[1]][-1])
+                        else:
+                            print(tmp[1],'is not found!!!')
                     if len(tmp) == 10:
                         tmp.append('')
                     # フィルタ処理

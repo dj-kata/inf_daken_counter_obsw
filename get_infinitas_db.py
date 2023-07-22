@@ -116,7 +116,20 @@ conv ={
     'かげぬい 〜 Ver.BENIBOTAN 〜':'かげぬい ～ Ver.BENIBOTAN ～',
     'クルクル☆ラブ〜Opioid Peptide MIX〜':'クルクル☆ラブ～Opioid Peptide MIX～',
     'フェティッシュペイパー〜脇の汗回転ガール〜':'フェティッシュペイパー ～脇の汗回転ガール～',
+    'L.F.O.':'L.F.O',
+    "Raison d'être～交差する宿命～":"Raison d'etre～交差する宿命～",
+    'カゴノトリ ～弐式～':'カゴノトリ～弐式～',
+    'ZETA ～素数の世界と超越者～':'ZETA～素数の世界と超越者～',
+    'era (nostal mix)':'era (nostalmix)',
+    'DISAPPEAR feat. Koyomin':'DISAPPEAR feat. koyomin',
+    'Χ-DEN':'X-DEN',
+    'Anisakis -somatic mutation type "Forza"-':'Anisakis -somatic mutation type"Forza"-'
 }
+# DPの難易度リストを変換(左:b内の登録名)
+
+vers = ['RA', 'ROOT', 'SINO', 'CB', 'DJT', 'sub', 'HERO', 'HSKY', 'CH', '4th'
+        , 'PEN', 'SIR', '1st', '2nd', '5th', '6th', '7th', '8th', '9th', '10th'
+        , 'GOLD', 'RED', 'COP', 'EMP', 'BIS',  'TRI', 'LC', 'DD', 'RDT', 'SPD']
 
 x = ''
 def parse_lv_table(res):
@@ -131,9 +144,18 @@ def parse_lv_table(res):
         for l in dat[2:-1]:
             if l[:-4] in conv.keys():
                 tmp = conv[l[:-4]]
+                # (DD)とかを消す処理
+                for v in vers:
+                    if tmp[-len(v)-3:] == f" ({v})":
+                        tmp = tmp[:-len(v)-3]
                 title = tmp + '___DP' + l[-2]
             else:
-                title = l[:-4] + '___DP' + l[-2]
+                tmp = l[:-4]
+                # (DD)とかを消す処理
+                for v in vers:
+                    if tmp[-len(v)-3:] == f" ({v})":
+                        tmp = tmp[:-len(v)-3]
+                title = tmp + '___DP' + l[-2]
             ret[title] = unofficial_lv
     return ret
 
