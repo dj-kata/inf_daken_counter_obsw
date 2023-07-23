@@ -4,6 +4,7 @@
 import pickle
 from collections import defaultdict
 from daken_logger import DakenLogger
+from lib_score_manager import ScoreManager
 import datetime
 
 class ManageStats:
@@ -13,6 +14,7 @@ class ManageStats:
         self.judge    = judge
         self.dakenlog = []
         tmp = DakenLogger()
+        self.score_manager = ScoreManager()
         self.log_last5days = []
         self.dakenlog = tmp.log
         self.plays    = plays
@@ -75,18 +77,19 @@ class ManageStats:
 
     def update(self, todaylog, judge, plays):
         # TODO リザルト画面に来るたびに実行するが、差分実行にできないか？
-        self.lv_hist = defaultdict(lambda:0)
-        self.sp      = defaultdict(lambda:0)
-        self.dp      = defaultdict(lambda:0)
-        self.dbx     = defaultdict(lambda:0)
-        self.todaylog = todaylog
-        self.judge    = judge
-        self.plays    = plays
+        self.lv_hist    = defaultdict(lambda:0)
+        self.sp         = defaultdict(lambda:0)
+        self.dp         = defaultdict(lambda:0)
+        self.dbx        = defaultdict(lambda:0)
+        self.todaylog   = todaylog
+        self.judge      = judge
+        self.plays      = plays
         if len(self.judge):
             if (self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5]) > 0:
                 self.srate = (self.judge[0]*2+self.judge[1])/(self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5])*50
         self.calc_lv_histogram()
         self.get_notes_last5days()
+        self.score_manager.load()
 
     def disp(self):
         for i in range(1,13):
@@ -121,6 +124,19 @@ class ManageStats:
                 f.write(f"            <gd>{tmp[4]}</gd>\n")
                 f.write(f"        </day>\n")
             f.write(f"    </Notes>\n")
+
+            d = self.score_manager.stat_perlv
+            f.write(f"    <Stats>\n")
+            for k in d.keys():
+                stat_lamp  = d[k][0]
+                stat_score = d[k][1]
+                f.write(f"        <{k}>\n")
+                for ii, val in enumerate(('noplay', 'failed', 'assist', 'easy', 'clear', 'hard', 'exh', 'fc')):
+                    f.write(f"            <{val}>{stat_lamp[ii]}</{val}>\n")
+                for ii, val in enumerate(('under_b', 'a', 'aa', 'aaa', 'max_minus', 'max')):
+                    f.write(f"            <{val}>{stat_score[ii]}</{val}>\n")
+                f.write(f"        </{k}>\n")
+            f.write(f"    </Stats>\n")
 
             f.write("</Items>\n")
 

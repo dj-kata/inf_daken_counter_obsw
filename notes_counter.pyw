@@ -24,6 +24,7 @@ from recog import *
 from manage_output import *
 import logging, logging.handlers
 import traceback
+from lib_score_manager import ScoreManager
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -82,6 +83,8 @@ class DakenCounter:
         self.write_today_update_xml()
         self.load_alllog()
         self.load_settings()
+        self.score_manager = ScoreManager()
+        self.init_stat = self.score_manager.stat_perlv.copy() # 起動時の統計情報(本日更新分の計算用)
         self.valid_playside = ''
         self.startdate = False # 最後にスレッドを開始した日付を記録。打鍵ログ保存用
         self.imgpath = os.path.dirname(__file__) + '\\tmp.png'
@@ -701,6 +704,7 @@ class DakenCounter:
                                 self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'] = self.obs.search_itemid(self.settings['obs_scene'], 'today_result')
                                 self.obs.enable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
                                 logger.debug('')
+                                self.save_alllog() # ランプ内訳グラフ更新のため、alllogも保存する
                                 tmp_stats.update(self.todaylog, self.judge, self.today_plays)
                                 logger.debug('')
                                 tmp_stats.write_stats_to_xml()

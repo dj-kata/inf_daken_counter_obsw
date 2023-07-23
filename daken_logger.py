@@ -3,7 +3,7 @@ import os, datetime, pickle
 from matplotlib import pyplot as plt
 import numpy as np
 
-### 打鍵ログ保存用クラス
+### 打鍵ログ(ノーツ数)保存用クラス
 class DakenLogger:
     def __init__(self):
         self.log = []
