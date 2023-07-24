@@ -130,12 +130,13 @@ class ManageStats:
             for k in d.keys():
                 stat_lamp  = d[k][0]
                 stat_score = d[k][1]
-                f.write(f"        <{k}>\n")
+                f.write(f"        <lv>\n")
+                f.write(f"            <difficulty>{k.lower()}</difficulty>\n")
                 for ii, val in enumerate(('noplay', 'failed', 'assist', 'easy', 'clear', 'hard', 'exh', 'fc')):
                     f.write(f"            <{val}>{stat_lamp[ii]}</{val}>\n")
                 for ii, val in enumerate(('under_b', 'a', 'aa', 'aaa', 'max_minus', 'max')):
                     f.write(f"            <{val}>{stat_score[ii]}</{val}>\n")
-                f.write(f"        </{k}>\n")
+                f.write(f"        </lv>\n")
             f.write(f"    </Stats>\n")
 
             f.write("</Items>\n")
