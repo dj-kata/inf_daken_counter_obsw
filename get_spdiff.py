@@ -32,19 +32,18 @@ conv ={
 
 for song in diffs:
     title = song['title']
-    if title[-1] == '†': # レジェンダリアはスキップ
-        print(title, 'skip')
+    if title[-3:] == '[H]':
+        title = title[:-3] + '___SPH'
+    elif title[-3:] == '[A]':
+        title = title[:-3] + '___SPA'
+    elif title[-1] == '†':
+        title = title[:-1] + '___SPL'
     else:
-        if title[-3:] == '[H]':
-            title = title[:-3] + '___SPH'
-        elif title[-3:] == '[A]':
-            title = title[:-3] + '___SPA'
-        else:
-            if title in conv.keys():
-                title = conv[title]
-            title = title + '___SPA'
-        diff_hard[title] = song['hard']
-        diff_clear[title] = song['n_clear']
+        if title in conv.keys():
+            title = conv[title]
+        title = title + '___SPA'
+    diff_hard[title] = song['hard']
+    diff_clear[title] = song['n_clear']
 
 with open('resources/informations2.0.res', 'rb') as f:
     js = pickle.load(f)

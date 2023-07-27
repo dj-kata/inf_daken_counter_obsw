@@ -74,6 +74,7 @@ class DakenCounter:
                 self.sp_jiriki = pickle.load(f)
         except:
             self.sp_jiriki   = {}
+        #self.difflist = ['SPB', 'SPN', 'SPH', 'SPA', 'SPL', 'DPN', 'DPH', 'DPA', 'DPL']
         self.difflist = ['SPB', 'SPN', 'SPH', 'SPA', 'DPN', 'DPH', 'DPA']
         self.savefile    = savefile
         self.alllogfile  = './alllog.pkl'
@@ -424,12 +425,13 @@ class DakenCounter:
             ret = tmp
             if self.noteslist != False: # ノーツリストがある場合
                 if tmp[2] != None:
-                    notes = self.noteslist[info.music][self.difflist.index(tmp[2])]
-                    if 'BATTLE' in tmp[-2]:
-                        notes = 2 * self.noteslist[info.music][self.difflist.index(tmp[2].replace('DP','SP'))]
-                    if tmp[3] != notes:
-                        logger.debug(f"ノーツ数不一致エラー。判定失敗とみなします。notes={notes:,}, tmp[3]={tmp[3]:,}")
-                        ret = False
+                    if tmp[2][-1] != "L": # TODO 墓譜面はノーツ数一覧がないため除外しておく、そのうち直したい
+                        notes = self.noteslist[info.music][self.difflist.index(tmp[2])]
+                        if 'BATTLE' in tmp[-2]:
+                            notes = 2 * self.noteslist[info.music][self.difflist.index(tmp[2].replace('DP','SP'))]
+                        if tmp[3] != notes:
+                            logger.debug(f"ノーツ数不一致エラー。判定失敗とみなします。notes={notes:,}, tmp[3]={tmp[3]:,}")
+                            ret = False
         return ret
 
     ### オプション検出を行う
@@ -858,6 +860,8 @@ class DakenCounter:
                     dp_unofficial_lv = tmp[6]
                 elif result[2] == 'DPH':
                     dp_unofficial_lv = tmp[5]
+                elif result[2] == 'DPL':
+                    dp_unofficial_lv = tmp[8]
             if 'BATTLE' in result[-2]:
                 dp_unofficial_lv = ''
             f.write(f'    <dp_unofficial_lv>{dp_unofficial_lv}</dp_unofficial_lv>\n')
@@ -920,6 +924,8 @@ class DakenCounter:
                         dp_unofficial_lv = tmp[6]
                     elif s[2] == 'DPH':
                         dp_unofficial_lv = tmp[5]
+                    elif s[2] == 'DPL':
+                        dp_unofficial_lv = tmp[8]
                 # SP12地力表
                 if spjiriki_key in self.sp_jiriki['hard'].keys():
                     sp_12hard = spjiriki_list[self.sp_jiriki['hard'][spjiriki_key]]

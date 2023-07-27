@@ -177,13 +177,15 @@ def convert_unofficial_songs(songs):
         title = s[:-6]
         diff = s[-1]
         if not title in ret.keys():
-            ret[title] = ['','','','','','','']
+            ret[title] = ['','','','','','','', '', '']
         if diff == 'N':
             ret[title][4] = songs[s]
         elif diff == 'H':
             ret[title][5] = songs[s]
         elif diff == 'A':
             ret[title][6] = songs[s]
+        elif diff == 'L':
+            ret[title][8] = songs[s]
     return ret
 
 a = update_songlist()
