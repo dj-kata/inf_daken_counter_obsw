@@ -416,10 +416,11 @@ class DakenCounter:
                 tmp.append(playdata.miss_count.current)
             ts = os.path.getmtime(pic)
             dt = datetime.datetime.fromtimestamp(ts)
-            if onplay:
-                tmp.append(self.playopt)
-            else:
-                tmp.append(self.convert_option(playdata.options, tmp[2]))
+            #if onplay:
+            #    tmp.append(self.playopt)
+            #else:
+            #    tmp.append(self.convert_option(playdata.options, tmp[2]))
+            tmp.append(self.convert_option(playdata.options, tmp[2]))
             # タイムスタンプはpngの作成日時を使っている。
             # こうすると、過去のリザルトから読む場合もプレー中に読む場合も共通化できる
             tmp.append(dt.strftime('%Y-%m-%d-%H-%M'))
