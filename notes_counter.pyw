@@ -331,6 +331,7 @@ class DakenCounter:
                 except Exception:
                     logger.debug(traceback.format_exc())
         print(f"過去リザルトの登録完了。{cnt_add:,}件追加、{cnt_edit:,}件修正 -> 全{len(self.alllog):,}件")
+        logger.debug(f"過去リザルトの登録完了。{cnt_add:,}件追加、{cnt_edit:,}件修正 -> 全{len(self.alllog):,}件")
         self.window.write_event_value('-OCR_FROM_IMG_END-', " ")
 
     ### プレイサイド検出を行う
