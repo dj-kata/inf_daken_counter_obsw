@@ -1,0 +1,175 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>hoge</title>
+<link rel="stylesheet" type="text/css" href="folder_stat.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script>
+	
+function loadXml()
+{
+	var getxml = $.ajax({
+		url: "../stats.xml",
+		type: 'GET',
+		dataType: 'xml',
+		cache: false
+		});
+	
+	getxml.done(function(xml){
+        var date = $(xml).find("playdate").text();
+        $('playdate').text(date);
+        $(xml).find("Stats lv").each(function(index, item){
+            var difficulty =  $(item).find("difficulty").text();
+            var noplay   = Number($(item).find("noplay").text());
+            var failed   = Number($(item).find("failed").text());
+            var ac       = Number($(item).find("assist").text());
+            var ec       = Number($(item).find("easy").text());
+            var nc       = Number($(item).find("clear").text());
+            var hc       = Number($(item).find("hard").text());
+            var exhc     = Number($(item).find("exh").text());
+            var fc       = Number($(item).find("fc").text());
+            var a        = Number($(item).find("a").text());
+            var aa       = Number($(item).find("aa").text());
+            var aaa      = Number($(item).find("aaa").text());
+            var under_b  = Number($(item).find("under_b").text());
+            var total    = noplay+failed+ac+ec+nc+hc+exhc+fc;
+            var total_sc = a+aa+aaa+under_b;
+
+    		$('.'+difficulty).find('noplay').text(                   noplay);
+    		$('.'+difficulty).find('failed').text(                   failed);
+    		$('.'+difficulty).find('ac').text(                       ac);
+    		$('.'+difficulty).find('ec').text(                       ec);
+    		$('.'+difficulty).find('nc').text(                       nc);
+    		$('.'+difficulty).find('hc').text(                       hc);
+    		$('.'+difficulty).find('exhc').text(                     exhc);
+    		$('.'+difficulty).find('fc').text(                       fc);
+    		$('.'+difficulty).find('under_b').text(                  under_b);
+    		$('.'+difficulty).find('a').text(                        a);
+    		$('.'+difficulty).find('aa').text(                       aa);
+    		$('.'+difficulty).find('aaa').text(                      aaa);
+    		$('.' + difficulty +'lamp').find('.noplay').css('width',   100*noplay  / total+'%');
+    		$('.' + difficulty +'lamp').find('.failed').css('width',   100*failed  / total+'%');
+    		$('.' + difficulty +'lamp').find('.ac').css('width',       100*ac      / total+'%');
+    		$('.' + difficulty +'lamp').find('.ec').css('width',       100*ec      / total+'%');
+    		$('.' + difficulty +'lamp').find('.nc').css('width',       100*nc      / total+'%');
+    		$('.' + difficulty +'lamp').find('.hc').css('width',       100*hc      / total+'%');
+    		$('.' + difficulty +'lamp').find('.exhc').css('width',     100*exhc    / total+'%');
+    		$('.' + difficulty +'lamp').find('.fc').css('width',       100*fc      / total+'%');
+    		$('.' + difficulty +'score').find('.aaa').css('width',     100*aaa     / total_sc+'%');
+    		$('.' + difficulty +'score').find('.aa').css('width',      100*aa      / total_sc+'%');
+    		$('.' + difficulty +'score').find('.a').css('width',       100*a       / total_sc+'%');
+    		$('.' + difficulty +'score').find('.under_b').css('width', 100*under_b / total_sc+'%');
+        });
+	});
+	
+	getxml.fail(function(error){
+		//alert("読み込み失敗");
+	});
+	
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+	var roopTimer = setInterval(loadXml, 1000);
+});
+
+
+</script>
+</head>
+
+<body>
+    <div class="top">
+        <div class="left">
+            <div class="dp10">
+                <font color="#ffccff">Lv10</font>
+                &nbsp;&nbsp;&nbsp;
+                &nbsp;&nbsp;&nbsp;
+                <font color="#99ddff">FC:</font><fc></fc>,&nbsp; 
+                <font color="#ffffaa">EXH:</font><exhc></exhc>,&nbsp; 
+                <font color="#ffaaaa">H:</font><hc></hc>,&nbsp; 
+                <font color="#aaaaff">N:</font><nc></nc>,&nbsp; 
+                <font color="#aaffcb">E:</font><ec></ec>,&nbsp; 
+            </div>
+            <div class="dp10lamp">
+                <div class="fc"></div>
+                <div class="exhc"></div>
+                <div class="hc"></div>
+                <div class="nc"></div>
+                <div class="ec"></div>
+                <div class="ac"></div>
+                <div class="failed"></div>
+                <div class="noplay"></div>
+            </div>
+            <div class="dp11">
+                <font color="#ffccff">Lv11</font>
+                &nbsp;&nbsp;&nbsp;
+                &nbsp;&nbsp;&nbsp;
+                <font color="#99ddff">FC:</font><fc></fc>,&nbsp; 
+                <font color="#ffffaa">EXH:</font><exhc></exhc>,&nbsp; 
+                <font color="#ffaaaa">H:</font><hc></hc>,&nbsp; 
+                <font color="#aaaaff">N:</font><nc></nc>,&nbsp; 
+                <font color="#aaffcb">E:</font><ec></ec>, 
+            </div>
+            <div class="dp11lamp">
+                <div class="fc"></div>
+                <div class="exhc"></div>
+                <div class="hc"></div>
+                <div class="nc"></div>
+                <div class="ec"></div>
+                <div class="ac"></div>
+                <div class="failed"></div>
+                <div class="noplay"></div>
+            </div>
+            <div class="dp12">
+                <font color="#ffccff">Lv12</font>
+                &nbsp;&nbsp;&nbsp;
+                &nbsp;&nbsp;&nbsp;
+                <font color="#99ddff">FC:</font><fc></fc>,&nbsp; 
+                <font color="#ffffaa">EXH:</font><exhc></exhc>,&nbsp; 
+                <font color="#ffaaaa">H:</font><hc></hc>,&nbsp; 
+                <font color="#aaaaff">N:</font><nc></nc>,&nbsp; 
+                <font color="#aaffcb">E:</font><ec></ec>,&nbsp; 
+            </div>
+            <div class="dp12lamp">
+                <div class="fc"></div>
+                <div class="exhc"></div>
+                <div class="hc"></div>
+                <div class="nc"></div>
+                <div class="ec"></div>
+                <div class="ac"></div>
+                <div class="failed"></div>
+                <div class="noplay"></div>
+            </div>
+        </div>
+        <div class="right">
+            <div class="dp10">
+                <font color="#ffffaa">AAA:</font><aaa></aaa>, 
+            </div>
+            <div class="dp10score">
+                <div class="aaa"></div>
+                <div class="aa"></div>
+                <div class="a"></div>
+                <div class="under_b"></div>
+            </div>
+            <div class="dp11">
+                <font color="#ffffaa">AAA:</font><aaa></aaa>, 
+            </div>
+            <div class="dp11score">
+                <div class="aaa"></div>
+                <div class="aa"></div>
+                <div class="a"></div>
+                <div class="under_b"></div>
+            </div>
+            <div class="dp12">
+                <font color="#ffffaa">AAA:</font><aaa></aaa>, 
+            </div>
+            <div class="dp12score">
+                <div class="aaa"></div>
+                <div class="aa"></div>
+                <div class="a"></div>
+                <div class="under_b"></div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
