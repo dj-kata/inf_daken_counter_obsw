@@ -131,9 +131,9 @@ class ScoreViewer:
                     if mode == 'DP' and self.dp_unofficial != False:
                         if tmp[1] in self.dp_unofficial.keys():
                             if tmp[2][-1] == 'H':
-                                tmp.append(self.dp_unofficial[tmp[1]][-2])
+                                tmp.append(self.dp_unofficial[tmp[1]][5])
                             elif tmp[2][-1] == 'A':
-                                tmp.append(self.dp_unofficial[tmp[1]][-1])
+                                tmp.append(self.dp_unofficial[tmp[1]][6])
                         #else:
                         #    print(tmp[1],'is not found!!!')
                     if len(tmp) == 10:
