@@ -24,6 +24,7 @@ from recog import *
 from manage_output import *
 import logging, logging.handlers
 import traceback
+from functools import partial
 from lib_score_manager import ScoreManager
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,7 @@ savefile   = 'settings.json'
 FONT = ('Meiryo',12)
 FONTs = ('Meiryo',8)
 spjiriki_list = ['地力S+', '個人差S+', '地力S', '個人差S', '地力A+', '個人差A+', '地力A', '個人差A', '地力B+', '個人差B+', '地力B', '個人差B', '地力C', '個人差C', '地力D', '個人差D', '地力E', '個人差E', '地力F', '難易度未定']
+par_text = partial(sg.Text, font=FONT)
 
 if len(sys.argv) > 1:
     savefile = sys.argv[1]
@@ -992,9 +994,9 @@ class DakenCounter:
         ico=self.ico_path('icon.ico')
         right_click_menu = ['&Right', ['貼り付け']]
         layout = [
-            [sg.Text("YoutubeLive URL(配信、スタジオ等)", font=FONT)],
+            [par_text("YoutubeLive URL(配信、スタジオ等)")],
             [sg.Input("", font=FONT, key='youtube_url', size=(50,1),right_click_menu=right_click_menu)],
-            [sg.Text("シリーズ文字列の検索クエリ(例: #[number] [number]日目等)", font=FONT)],
+            [par_text("シリーズ文字列の検索クエリ(例: #[number] [number]日目等)")],
             [sg.Input(default_query, font=FONT, key='series_query', size=(20,1))],
             [sg.Button('go', size=(10,1))]
         ]
@@ -1040,26 +1042,26 @@ class DakenCounter:
             self.window.close()
         #print(self.settings)
         layout_obs = [
-            [sg.Text('OBS host: ', font=FONT), sg.Input(self.settings['host'], font=FONT, key='input_host', size=(20,20))],
-            [sg.Text('OBS websocket port: ', font=FONT), sg.Input(self.settings['port'], font=FONT, key='input_port', size=(10,20))],
-            [sg.Text('OBS websocket password', font=FONT), sg.Input(self.settings['passwd'], font=FONT, key='input_passwd', size=(20,20), password_char='*')],
+            [par_text('OBS host: '), sg.Input(self.settings['host'], font=FONT, key='input_host', size=(20,20))],
+            [par_text('OBS websocket port: '), sg.Input(self.settings['port'], font=FONT, key='input_port', size=(10,20))],
+            [par_text('OBS websocket password'), sg.Input(self.settings['passwd'], font=FONT, key='input_passwd', size=(20,20), password_char='*')],
             #[sg.Text('OBS websocket password: ', font=FONT), sg.Input(self.settings['passwd'], font=FONT, key='input_passwd', size=(20,20))],
-            [sg.Text('INFINITAS用ソース名: ', font=FONT, tooltip='OBSでINFINITASを表示するのに使っているゲームソースの名前を入力してください。'), sg.Input(self.settings['obs_source'], font=FONT, key='input_obs_source', size=(20,20))],
+            [par_text('INFINITAS用ソース名: ', tooltip='OBSでINFINITASを表示するのに使っているゲームソースの名前を入力してください。'), sg.Input(self.settings['obs_source'], font=FONT, key='input_obs_source', size=(20,20))],
         ]
         layout_autosave = [
-            [sg.Text('リザルト自動保存先フォルダ', font=FONT), sg.Button('変更', key='btn_autosave_dir')],
+            [par_text('リザルト自動保存先フォルダ'), sg.Button('変更', key='btn_autosave_dir')],
             [sg.Text(self.settings['autosave_dir'], key='txt_autosave_dir')],
             [
                 sg.Checkbox('更新に関係なく常時保存する',self.settings['autosave_always'],key='chk_always', enable_events=True),
                 sg.Checkbox('ライバルの名前を隠す',self.settings['autosave_mosaic'],key='chk_mosaic', enable_events=True)
             ],
-            [sg.Text('リザルト自動保存用設定 (onになっている項目の更新時に保存)', font=FONT)],
+            [par_text('リザルト自動保存用設定 (onになっている項目の更新時に保存)')],
             [sg.Checkbox('クリアランプ',self.settings['autosave_lamp'],key='chk_lamp', enable_events=True)
             ,sg.Checkbox('DJ Level',self.settings['autosave_djlevel'], key='chk_djlevel', enable_events=True)
             ,sg.Checkbox('スコア', self.settings['autosave_score'], key='chk_score', enable_events=True)
             ,sg.Checkbox('ミスカウント', self.settings['autosave_bp'], key='chk_bp', enable_events=True)
             ],
-            [sg.Text('DBx系リザルト(DBM,DBR等)自動保存用設定', font=FONT)],
+            [par_text('DBx系リザルト(DBM,DBR等)自動保存用設定')],
             [
                 sg.Radio('しない', group_id='dbx', default=(self.settings['autosave_dbx']=='no'), key='radio_dbx_no'),
                 sg.Radio('常時', group_id='dbx', default=(self.settings['autosave_dbx']=='always'), key='radio_dbx_always'),
@@ -1067,15 +1069,27 @@ class DakenCounter:
             ]
         ]
         layout_ocr = [
-            [sg.Text('本日の履歴の更新:', font=FONT), sg.Radio(text='常時', group_id='1', default=self.settings['todaylog_always_push'], font=FONT, key='todaylog_always_push'), sg.Radio(text='更新時のみ', group_id='1', default=not self.settings['todaylog_always_push'], font=FONT)],
-            [sg.Text('DBx系の履歴の更新:', font=FONT),sg.Radio(text='常時', group_id='2', default=self.settings['todaylog_dbx_always_push'], font=FONT, key='todaylog_dbx_always_push'), sg.Radio(text='クリア時のみ', group_id='2', default=not self.settings['todaylog_dbx_always_push'], font=FONT)],
-            [sg.Text('INFINITAS用シーン名:', font=FONT), sg.Input(self.settings['obs_scene'], font=FONT, key="input_obs_scene", size=(20,1))],
+            [par_text('本日の履歴の更新:'), sg.Radio(text='常時', group_id='1', default=self.settings['todaylog_always_push'], font=FONT, key='todaylog_always_push'), sg.Radio(text='更新時のみ', group_id='1', default=not self.settings['todaylog_always_push'], font=FONT)],
+            [par_text('DBx系の履歴の更新:'),sg.Radio(text='常時', group_id='2', default=self.settings['todaylog_dbx_always_push'], font=FONT, key='todaylog_dbx_always_push'), sg.Radio(text='クリア時のみ', group_id='2', default=not self.settings['todaylog_dbx_always_push'], font=FONT)],
+            [par_text('INFINITAS用シーン名:'), sg.Input(self.settings['obs_scene'], font=FONT, key="input_obs_scene", size=(20,1))],
             [sg.Button('保存したリザルト画像からスコアデータに反映する', key='btn_ocr_from_savedir', tooltip='リザルト画像の数によってはかなり時間がかかります。')],
         ]
-        layout = [
+        col_l = sg.Column([
             [sg.Frame('OBS設定', layout=layout_obs, title_color='#000044')],
             [sg.Frame('リザルト自動保存設定', layout=layout_autosave, title_color='#000044')],
             [sg.Frame('OCR(リザルト文字認識)設定', layout=layout_ocr, title_color='#000044')],
+        ])
+        # OBSソース制御用
+        layout_obs = [
+            [par_text('')]
+        ]
+        col_r = sg.Column(
+            [
+                [sg.Text('')],
+            ]
+        )
+        layout = [
+            [col_l, col_r],
             [sg.Button('close', key='btn_close_setting', font=FONT)],
             ]
         ico=self.ico_path('icon.ico')
@@ -1105,11 +1119,11 @@ class DakenCounter:
         if self.window:
             self.window.close()
         layout = [
-            [sg.Text(f'{SWNAME}', font=FONT)],
-            [sg.Text(f'version: {SWVER}', font=FONT)],
-            [sg.Text(f'')],
-            [sg.Text(f'author: かたさん (@cold_planet_)')],
-            [sg.Text(f'https://github.com/dj-kata/inf_daken_counter_obsw', enable_events=True, key="URL https://github.com/dj-kata/inf_daken_counter_obsw", font=('Meiryo', 10, 'underline'))],
+            [par_text(f'{SWNAME}')],
+            [par_text(f'version: {SWVER}')],
+            [par_text(f'')],
+            [par_text(f'author: かたさん (@cold_planet_)')],
+            [par_text(f'https://github.com/dj-kata/inf_daken_counter_obsw', enable_events=True, key="URL https://github.com/dj-kata/inf_daken_counter_obsw", font=('Meiryo', 10, 'underline'))],
             [sg.Button('OK', key='btn_close_info', font=FONT)],
         ]
         ico=self.ico_path('icon.ico')
@@ -1125,15 +1139,15 @@ class DakenCounter:
         layout = [
             [sg.Menubar(menuitems, key='menu')],
             [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('test', key='test_screenshot', font=FONT)],
-            [sg.Text('plays:', font=FONT), sg.Text('0', key='plays', font=FONT)
-            ,sg.Text(' ', font=FONT, size=(5,1))
+            [par_text('plays:'), par_text('0', key='plays')
+            ,par_text(' ', size=(5,1))
             ,sg.Checkbox("起動時に即start", default=False, font=FONT, key='run_on_boot')
             ,sg.Checkbox("start時にreset", default=False, font=FONT, key='reset_on_boot')
             ],
-            [sg.Text("ノーツ数 ", font=FONT),sg.Text("cur:", font=FONT),sg.Text("0", key='cur',font=FONT, size=(7,1)),sg.Text("Total:", font=FONT),sg.Text("0", key='today',font=FONT)],
-            [sg.Text('PG:',font=FONTs),sg.Text('0',key='judge0',font=FONTs),sg.Text('GR:',font=FONTs),sg.Text('0',key='judge1',font=FONTs),sg.Text('GD:',font=FONTs),sg.Text('0',key='judge2',font=FONTs),sg.Text('BD:',font=FONTs),sg.Text('0',key='judge3',font=FONTs),sg.Text('PR:',font=FONTs),sg.Text('0',key='judge4',font=FONTs),sg.Text('CB:',font=FONTs),sg.Text('0',key='judge5',font=FONTs)],
-            [sg.Text("ゲージ:", font=FONT),sg.Text(" ", key='gauge',font=FONT),sg.Text('平均スコアレート:',font=FONT),sg.Text('0 %',key='srate',font=FONT)],
-            [sg.Text("option:", font=FONT),sg.Text(" ", key='playopt',font=FONT)],
+            [par_text("ノーツ数 "),par_text("cur:"),par_text("0", key='cur', size=(7,1)),par_text("Total:"),sg.Text("0", key='today',font=FONT)],
+            [par_text('PG:',font=FONTs),par_text('0',key='judge0',font=FONTs),par_text('GR:',font=FONTs),sg.Text('0',key='judge1',font=FONTs),sg.Text('GD:',font=FONTs),sg.Text('0',key='judge2',font=FONTs),sg.Text('BD:',font=FONTs),sg.Text('0',key='judge3',font=FONTs),sg.Text('PR:',font=FONTs),sg.Text('0',key='judge4',font=FONTs),sg.Text('CB:',font=FONTs),sg.Text('0',key='judge5',font=FONTs)],
+            [par_text("ゲージ:"),par_text(" ", key='gauge'),par_text('平均スコアレート:'),par_text('0 %',key='srate')],
+            [par_text("option:"),par_text(" ", key='playopt')],
             [sg.Output(size=(63,8), key='output', font=('Meiryo',9))],
             ]
         ico=self.ico_path('icon.ico')
