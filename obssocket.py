@@ -24,7 +24,23 @@ class OBSSocket():
 
     def get_scenes(self):
         res = self.ws.get_scene_list()
-        print(res.scenes)
+        return res.scenes
+
+    def get_sources(self, scene):
+        ret = []
+        try:
+            allitem = self.ws.get_scene_item_list(scene).scene_items
+            for x in allitem:
+                if x['isGroup']:
+                    grp = self.ws.get_group_scene_item_list(x['sourceName']).scene_items
+                    for y in grp:
+                        ret.append(y['sourceName'])
+                else:
+                    ret.append(x['sourceName'])
+        except Exception:
+            pass
+        ret.reverse()
+        return ret
 
     def change_text(self, source, text):
         res = self.ws.set_input_settings(source, {'text':text}, True)
