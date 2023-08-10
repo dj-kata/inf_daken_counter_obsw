@@ -41,7 +41,7 @@ logger.addHandler(hdl)
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0.15'
+SWVER  = 'v2.0.16'
 
 width  = 1280
 height = 720
@@ -1082,55 +1082,55 @@ class DakenCounter:
             [sg.Frame('OCR(リザルト文字認識)設定', layout=layout_ocr, title_color='#000044')],
         ])
         # OBSソース制御用
-        obs_scenes = []
-        obs_sources = []
-        if self.obs != False:
-            tmp = self.obs.get_scenes()
-            tmp.reverse()
-            for s in tmp:
-                obs_scenes.append(s['sceneName'])
-        layout_select = [
-            [
-                par_text('シーン:')
-                ,par_text(self.settings['obs_scene_select'], size=(15, 1), key='obs_scene_select')
-                ,par_btn('set', key='set_scene_select')
-            ],
-            [
-                sg.Column([[par_text('表示する')],[sg.Listbox([], key='obs_enable_select', size=(15,3))], [par_btn('add', key='add_enable_select'),par_btn('del', key='del_enable_select')]]),
-                sg.Column([[par_text('消す')],[sg.Listbox([], key='obs_enable_select', size=(15,3))], [par_btn('add', key='add_enable_select'),par_btn('del', key='del_enable_select')]]),
-            ]
-        ]
-        layout_play = [
-            [
-                par_text('シーン:')
-                ,par_text(self.settings['obs_scene_play'], size=(15, 1), key='obs_scene_play')
-                ,par_btn('set', key='set_scene_play')
-            ],
-            [
-                sg.Column([[par_text('表示する')],[sg.Listbox([], key='obs_enable_play', size=(15,3))], [par_btn('add', key='add_enable_play'),par_btn('del', key='del_enable_play')]]),
-                sg.Column([[par_text('消す')],[sg.Listbox([], key='obs_enable_play', size=(15,3))], [par_btn('add', key='add_enable_play'),par_btn('del', key='del_enable_play')]]),
-            ]
-        ]
-        layout_result = [
-            [
-                par_text('シーン:')
-                ,par_text(self.settings['obs_scene_result'], size=(15, 1), key='obs_scene_result')
-                ,par_btn('set', key='set_scene_result')
-            ],
-            [
-                sg.Column([[par_text('表示する')],[sg.Listbox([], key='obs_enable_result', size=(15,3))], [par_btn('add', key='add_enable_result'),par_btn('del', key='del_enable_result')]]),
-                sg.Column([[par_text('消す')],[sg.Listbox([], key='obs_enable_result', size=(15,3))], [par_btn('add', key='add_enable_result'),par_btn('del', key='del_enable_result')]]),
-            ]
-        ]
-        layout_obs2 = [
-            [par_text('シーン:'), sg.Combo(obs_scenes, key='combo_scene', size=(15,1), enable_events=True), sg.Button('reload', key='obs_reload')],
-            [par_text('ソース:'),sg.Combo(obs_sources, key='combo_source', size=(15,1))],
-            [sg.Frame('選曲画面',layout=layout_select, title_color='#000044')],
-            [sg.Frame('プレー中',layout=layout_play, title_color='#000044')],
-            [sg.Frame('リザルト画面',layout=layout_result, title_color='#000044')],
-        ]
+        #obs_scenes = []
+        #obs_sources = []
+        #if self.obs != False:
+        #    tmp = self.obs.get_scenes()
+        #    tmp.reverse()
+        #    for s in tmp:
+        #        obs_scenes.append(s['sceneName'])
+        #layout_select = [
+        #    [
+        #        par_text('シーン:')
+        #        ,par_text(self.settings['obs_scene_select'], size=(15, 1), key='obs_scene_select')
+        #        ,par_btn('set', key='set_scene_select')
+        #    ],
+        #    [
+        #        sg.Column([[par_text('表示する')],[sg.Listbox([], key='obs_enable_select', size=(15,3))], [par_btn('add', key='add_enable_select'),par_btn('del', key='del_enable_select')]]),
+        #        sg.Column([[par_text('消す')],[sg.Listbox([], key='obs_enable_select', size=(15,3))], [par_btn('add', key='add_enable_select'),par_btn('del', key='del_enable_select')]]),
+        #    ]
+        #]
+        #layout_play = [
+        #    [
+        #        par_text('シーン:')
+        #        ,par_text(self.settings['obs_scene_play'], size=(15, 1), key='obs_scene_play')
+        #        ,par_btn('set', key='set_scene_play')
+        #    ],
+        #    [
+        #        sg.Column([[par_text('表示する')],[sg.Listbox([], key='obs_enable_play', size=(15,3))], [par_btn('add', key='add_enable_play'),par_btn('del', key='del_enable_play')]]),
+        #        sg.Column([[par_text('消す')],[sg.Listbox([], key='obs_enable_play', size=(15,3))], [par_btn('add', key='add_enable_play'),par_btn('del', key='del_enable_play')]]),
+        #    ]
+        #]
+        #layout_result = [
+        #    [
+        #        par_text('シーン:')
+        #        ,par_text(self.settings['obs_scene_result'], size=(15, 1), key='obs_scene_result')
+        #        ,par_btn('set', key='set_scene_result')
+        #    ],
+        #    [
+        #        sg.Column([[par_text('表示する')],[sg.Listbox([], key='obs_enable_result', size=(15,3))], [par_btn('add', key='add_enable_result'),par_btn('del', key='del_enable_result')]]),
+        #        sg.Column([[par_text('消す')],[sg.Listbox([], key='obs_enable_result', size=(15,3))], [par_btn('add', key='add_enable_result'),par_btn('del', key='del_enable_result')]]),
+        #    ]
+        #]
+        #layout_obs2 = [
+        #    [par_text('シーン:'), sg.Combo(obs_scenes, key='combo_scene', size=(15,1), enable_events=True), sg.Button('reload', key='obs_reload')],
+        #    [par_text('ソース:'),sg.Combo(obs_sources, key='combo_source', size=(15,1))],
+        #    [sg.Frame('選曲画面',layout=layout_select, title_color='#000044')],
+        #    [sg.Frame('プレー中',layout=layout_play, title_color='#000044')],
+        #    [sg.Frame('リザルト画面',layout=layout_result, title_color='#000044')],
+        #]
 
-        col_r = sg.Column(layout_obs2)
+        #col_r = sg.Column(layout_obs2)
         layout = [
             #[col_l, col_r],
             [col_l],
