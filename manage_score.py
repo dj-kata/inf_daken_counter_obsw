@@ -134,6 +134,8 @@ class ScoreViewer:
                                 tmp.append(self.dp_unofficial[tmp[1]][5])
                             elif tmp[2][-1] == 'A':
                                 tmp.append(self.dp_unofficial[tmp[1]][6])
+                            elif tmp[2][-1] == 'L':
+                                tmp.append(self.dp_unofficial[tmp[1]][8])
                         #else:
                         #    print(tmp[1],'is not found!!!')
                     if len(tmp) == 10:

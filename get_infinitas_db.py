@@ -16,10 +16,10 @@ session = requests.session()
 songs = defaultdict(list)
 for tr in soup.find_all('tr'):
     numtd = len(tr.find_all('td'))
-    if numtd in (11,9):
+    if numtd in (13,11):
         tmp = tr.find_all('td')
         title = tmp[0].text
-        for sc in tmp[1:8]:
+        for sc in tmp[1:10]:
             try:
                 songs[title].append(int(sc.text))
             except:
@@ -71,6 +71,11 @@ conv ={
     'CaptivAte〜裁き〜':'CaptivAte～裁き～',
     'CaptivAte〜裁き〜(SUBLIME TECHNO MIX)':'CaptivAte～裁き～(SUBLIME TECHNO MIX)',
     'CaptivAte〜誓い〜':'CaptivAte～誓い～',
+    'CaptivAte2 〜覚醒〜':'CaptivAte2～覚醒～',
+    'CaptivAte 〜浄化〜':'CaptivAte～浄化～',
+    'CaptivAte 〜裁き〜':'CaptivAte～裁き～',
+    'CaptivAte 〜裁き〜(SUBLIME TECHNO MIX)':'CaptivAte～裁き～(SUBLIME TECHNO MIX)',
+    'CaptivAte 〜誓い〜':'CaptivAte～誓い～',
     'City Never Sleeps (IIDX EDITION)':'City Never Sleeps (IIDX Edition)',
     'CODE:Ø':'CODE:0',
     'CROSSROAD 〜Left Story〜':'CROSSROAD ～Left Story～',

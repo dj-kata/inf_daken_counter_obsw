@@ -52,6 +52,7 @@ FONT = ('Meiryo',12)
 FONTs = ('Meiryo',8)
 spjiriki_list = ['地力S+', '個人差S+', '地力S', '個人差S', '地力A+', '個人差A+', '地力A', '個人差A', '地力B+', '個人差B+', '地力B', '個人差B', '地力C', '個人差C', '地力D', '個人差D', '地力E', '個人差E', '地力F', '難易度未定']
 par_text = partial(sg.Text, font=FONT)
+par_btn = partial(sg.Button, font=FONT, enable_events=True)
 
 if len(sys.argv) > 1:
     savefile = sys.argv[1]
@@ -76,8 +77,7 @@ class DakenCounter:
                 self.sp_jiriki = pickle.load(f)
         except:
             self.sp_jiriki   = {}
-        #self.difflist = ['SPB', 'SPN', 'SPH', 'SPA', 'SPL', 'DPN', 'DPH', 'DPA', 'DPL']
-        self.difflist = ['SPB', 'SPN', 'SPH', 'SPA', 'DPN', 'DPH', 'DPA']
+        self.difflist = ['SPB', 'SPN', 'SPH', 'SPA', 'SPL', 'DPN', 'DPH', 'DPA', 'DPL']
         self.savefile    = savefile
         self.alllogfile  = './alllog.pkl'
         self.alllog      = []
@@ -106,7 +106,10 @@ class DakenCounter:
         'autosave_lamp':False,'autosave_djlevel':False,'autosave_score':False,'autosave_bp':False,'autosave_dbx':'no',
         'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False, 'todaylog_always_push':True,
         'todaylog_dbx_always_push':True,
-        'obs_scene':'', 'obs_itemid_history_cursong':False, 'obs_itemid_today_result':False, 'obs_scenename_history_cursong':'', 'obs_scenename_today_result':''
+        'obs_scene':'', 'obs_itemid_history_cursong':False, 'obs_itemid_today_result':False, 'obs_scenename_history_cursong':'', 'obs_scenename_today_result':'',
+        #'obs_enable_select':[],'obs_disable_select':[],'obs_scene_select':'',
+        #'obs_enable_play':[],'obs_disable_play':[],'obs_scene_play':'',
+        #'obs_enable_result':[],'obs_disable_result':[],'obs_scene_result':'',
         }
         ret = {}
         try:
@@ -429,13 +432,12 @@ class DakenCounter:
             ret = tmp
             if self.noteslist != False: # ノーツリストがある場合
                 if tmp[2] != None:
-                    if tmp[2][-1] != "L": # TODO 墓譜面はノーツ数一覧がないため除外しておく、そのうち直したい
-                        notes = self.noteslist[info.music][self.difflist.index(tmp[2])]
-                        if 'BATTLE' in tmp[-2]:
-                            notes = 2 * self.noteslist[info.music][self.difflist.index(tmp[2].replace('DP','SP'))]
-                        if tmp[3] != notes:
-                            logger.debug(f"ノーツ数不一致エラー。判定失敗とみなします。notes={notes:,}, tmp[3]={tmp[3]:,}")
-                            ret = False
+                    notes = self.noteslist[info.music][self.difflist.index(tmp[2])]
+                    if 'BATTLE' in tmp[-2]:
+                        notes = 2 * self.noteslist[info.music][self.difflist.index(tmp[2].replace('DP','SP'))]
+                    if tmp[3] != notes:
+                        logger.debug(f"ノーツ数不一致エラー。判定失敗とみなします。notes={notes:,}, tmp[3]={tmp[3]:,}")
+                        ret = False
         return ret
 
     ### オプション検出を行う
@@ -1080,16 +1082,58 @@ class DakenCounter:
             [sg.Frame('OCR(リザルト文字認識)設定', layout=layout_ocr, title_color='#000044')],
         ])
         # OBSソース制御用
-        layout_obs = [
-            [par_text('')]
-        ]
-        col_r = sg.Column(
+        obs_scenes = []
+        obs_sources = []
+        if self.obs != False:
+            tmp = self.obs.get_scenes()
+            tmp.reverse()
+            for s in tmp:
+                obs_scenes.append(s['sceneName'])
+        layout_select = [
             [
-                [sg.Text('')],
+                par_text('シーン:')
+                ,par_text(self.settings['obs_scene_select'], size=(15, 1), key='obs_scene_select')
+                ,par_btn('set', key='set_scene_select')
+            ],
+            [
+                sg.Column([[par_text('表示する')],[sg.Listbox([], key='obs_enable_select', size=(15,3))], [par_btn('add', key='add_enable_select'),par_btn('del', key='del_enable_select')]]),
+                sg.Column([[par_text('消す')],[sg.Listbox([], key='obs_enable_select', size=(15,3))], [par_btn('add', key='add_enable_select'),par_btn('del', key='del_enable_select')]]),
             ]
-        )
+        ]
+        layout_play = [
+            [
+                par_text('シーン:')
+                ,par_text(self.settings['obs_scene_play'], size=(15, 1), key='obs_scene_play')
+                ,par_btn('set', key='set_scene_play')
+            ],
+            [
+                sg.Column([[par_text('表示する')],[sg.Listbox([], key='obs_enable_play', size=(15,3))], [par_btn('add', key='add_enable_play'),par_btn('del', key='del_enable_play')]]),
+                sg.Column([[par_text('消す')],[sg.Listbox([], key='obs_enable_play', size=(15,3))], [par_btn('add', key='add_enable_play'),par_btn('del', key='del_enable_play')]]),
+            ]
+        ]
+        layout_result = [
+            [
+                par_text('シーン:')
+                ,par_text(self.settings['obs_scene_result'], size=(15, 1), key='obs_scene_result')
+                ,par_btn('set', key='set_scene_result')
+            ],
+            [
+                sg.Column([[par_text('表示する')],[sg.Listbox([], key='obs_enable_result', size=(15,3))], [par_btn('add', key='add_enable_result'),par_btn('del', key='del_enable_result')]]),
+                sg.Column([[par_text('消す')],[sg.Listbox([], key='obs_enable_result', size=(15,3))], [par_btn('add', key='add_enable_result'),par_btn('del', key='del_enable_result')]]),
+            ]
+        ]
+        layout_obs2 = [
+            [par_text('シーン:'), sg.Combo(obs_scenes, key='combo_scene', size=(15,1), enable_events=True), sg.Button('reload', key='obs_reload')],
+            [par_text('ソース:'),sg.Combo(obs_sources, key='combo_source', size=(15,1))],
+            [sg.Frame('選曲画面',layout=layout_select, title_color='#000044')],
+            [sg.Frame('プレー中',layout=layout_play, title_color='#000044')],
+            [sg.Frame('リザルト画面',layout=layout_result, title_color='#000044')],
+        ]
+
+        col_r = sg.Column(layout_obs2)
         layout = [
-            [col_l, col_r],
+            #[col_l, col_r],
+            [col_l],
             [sg.Button('close', key='btn_close_setting', font=FONT)],
             ]
         ico=self.ico_path('icon.ico')
@@ -1434,6 +1478,22 @@ class DakenCounter:
                 url = ev.split(' ')[1]
                 webbrowser.open(url)
 
+            elif ev == 'combo_scene':
+                if self.obs != False:
+                    sources = self.obs.get_sources(val['combo_scene'])
+                    self.window['combo_source'].update(values=sources)
+            elif ev.startswith('set_scene_'):
+                tmp = val['combo_scene'].strip()
+                self.settings[ev.replace('set_scene', 'obs_scene')] = tmp
+                self.window[ev.replace('set_scene', 'obs_scene')].update(tmp)
 if __name__ == '__main__':
     a = DakenCounter()
     a.main()
+
+"""
+memo
+選曲画面中と、選曲画面を抜けるときでまた扱いが変わる
+オプションの設定方法はちょっと考え直さないとダメかな。
+関数化とかして共通化する方法はあるので、IFだけ先にキメたほうがよい。
+
+"""
