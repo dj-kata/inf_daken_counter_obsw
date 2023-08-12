@@ -51,7 +51,7 @@ FONT = ('Meiryo',12)
 FONTs = ('Meiryo',8)
 spjiriki_list = ['地力S+', '個人差S+', '地力S', '個人差S', '地力A+', '個人差A+', '地力A', '個人差A', '地力B+', '個人差B+', '地力B', '個人差B', '地力C', '個人差C', '地力D', '個人差D', '地力E', '個人差E', '地力F', '難易度未定']
 par_text = partial(sg.Text, font=FONT)
-par_btn = partial(sg.Button, font=FONT, enable_events=True)
+par_btn = partial(sg.Button, pad=(3,0), font=FONT, enable_events=True, border_width=0)
 
 if len(sys.argv) > 1:
     savefile = sys.argv[1]
@@ -98,17 +98,27 @@ class DakenCounter:
             pass
 
     def load_settings(self):
-        default_val = {'target_srate':'72%', 'sleep_time':'1.0',
-        'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False, 'lx':0, 'ly':0,
-        'series_query':'#[number]','judge':[0,0,0,0,0,0], 'playopt':'OFF',
-        'host':'localhost', 'port':'4444', 'passwd':'', 'obs_source':'INFINITAS',
-        'autosave_lamp':False,'autosave_djlevel':False,'autosave_score':False,'autosave_bp':False,'autosave_dbx':'no',
-        'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False, 'todaylog_always_push':True,
-        'todaylog_dbx_always_push':True,
-        'obs_scene':'', 'obs_itemid_history_cursong':False, 'obs_itemid_today_result':False, 'obs_scenename_history_cursong':'', 'obs_scenename_today_result':'',
-        #'obs_enable_select':[],'obs_disable_select':[],'obs_scene_select':'',
-        #'obs_enable_play':[],'obs_disable_play':[],'obs_scene_play':'',
-        #'obs_enable_result':[],'obs_disable_result':[],'obs_scene_result':'',
+        default_val = {
+            'target_srate':'72%', 'sleep_time':'1.0',
+            'plays':'0','total_score':'0', 'run_on_boot':False, 'reset_on_boot':False, 'lx':0, 'ly':0,
+            'series_query':'#[number]','judge':[0,0,0,0,0,0], 'playopt':'OFF',
+            'host':'localhost', 'port':'4444', 'passwd':'', 'obs_source':'INFINITAS',
+            'autosave_lamp':False,'autosave_djlevel':False,'autosave_score':False,'autosave_bp':False,'autosave_dbx':'no',
+            'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False, 'todaylog_always_push':True,
+            'todaylog_dbx_always_push':True,
+            'obs_scene':'', 'obs_itemid_history_cursong':False, 'obs_itemid_today_result':False, 'obs_scenename_history_cursong':'', 'obs_scenename_today_result':'',
+            # スレッド起動時の設定
+            'obs_enable_boot':[],'obs_disable_boot':[],'obs_scene_boot':'',
+            # 0: シーン開始時
+            'obs_enable_select0':[],'obs_disable_select0':[],'obs_scene_select':'',
+            'obs_enable_play0':[],'obs_disable_play0':[],'obs_scene_play':'',
+            'obs_enable_result0':[],'obs_disable_result0':[],'obs_scene_result':'',
+            # 1: シーン終了時
+            'obs_enable_select1':[],'obs_disable_select1':[],
+            'obs_enable_play1':[],'obs_disable_play1':[],
+            'obs_enable_result1':[],'obs_disable_result1':[],
+            # スレッド終了時時の設定
+            'obs_enable_quit':[],'obs_disable_quit':[],'obs_scene_quit':'',
         }
         ret = {}
         try:
@@ -176,6 +186,25 @@ class DakenCounter:
         imgpath = os.path.dirname(__file__) + '\\test.png'
         sc = self.obs.save_screenshot_dst(imgpath)
         print(f'-> {imgpath}')
+
+    # OBSソースの表示・非表示及びシーン切り替えを行う
+    # nameで適切なシーン名を指定する必要がある。
+    def control_obs_sources(self, name):
+        #logger.debug(name)
+        name_common = name
+        if name[-1] in ('0','1'):
+            name_common = name[:-1]
+        scene = self.settings[f'obs_scene_{name_common}']
+        # TODO 前のシーンと同じなら変えないようにしたい
+        #self.change_scene(self.settings[f'obs_scene_{name}'])
+        # 非表示の制御
+        for s in self.settings[f"obs_disable_{name}"]:
+            tmps, tmpid = self.obs.search_itemid(scene, s)
+            self.obs.disable_source(tmps,tmpid)
+        # 表示の制御
+        for s in self.settings[f"obs_enable_{name}"]:
+            tmps, tmpid = self.obs.search_itemid(scene, s)
+            self.obs.enable_source(tmps,tmpid)
 
     def save_result(self, result):
         img = Image.open(self.imgpath)
@@ -652,6 +681,7 @@ class DakenCounter:
     ### 曲の開始・終了を数字から検出し、境界処理を行う
     ### 曲中は検出したスコアをprintする
     def detect_top(self, sleep_time):
+        self.control_obs_sources('boot')
         pre_det = ''
         pre_judge = ['0','0','0','0','0','0']
         pre_score = 0
@@ -667,8 +697,6 @@ class DakenCounter:
                 break
         logger.debug(f'startdate = {self.startdate}')
 
-        self.obs.disable_source(self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'])
-        self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
         tmp_stats = ManageStats(date=self.startdate, todaylog=self.todaylog, judge=self.judge, plays=self.today_plays)
         print(f'スコア検出スレッド開始。')
         while True:
@@ -684,13 +712,12 @@ class DakenCounter:
                         except Exception as e:
                             logger.debug(traceback.format_exc())
                     if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
-                        self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
+                        self.control_obs_sources('result1')
                     if self.detect_select() and len(self.todaylog) > 0: # 選曲画面
                         is_pushed_to_alllog = True
-                        self.obs.enable_source(self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'])
-                        self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
+                        self.control_obs_sources('select0')
                     else: # 選曲画面じゃなくなった(選曲中レイヤの停止用)
-                        self.obs.disable_source(self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'])
+                        self.control_obs_sources('select1')
                     if not is_pushed_to_alllog:
                         try:
                             result = self.ocr(self.imgpath)
@@ -709,7 +736,7 @@ class DakenCounter:
                                 # OBS側を変更していてもいいように、曲終了時点でもソースIDを取得しなおしておく
                                 self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'] = self.obs.search_itemid(self.settings['obs_scene'], 'history_cursong')
                                 self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'] = self.obs.search_itemid(self.settings['obs_scene'], 'today_result')
-                                self.obs.enable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
+                                self.control_obs_sources('result0')
                                 logger.debug('')
                                 self.save_alllog() # ランプ内訳グラフ更新のため、alllogも保存する
                                 tmp_stats.update(self.todaylog, self.judge, self.today_plays)
@@ -728,6 +755,7 @@ class DakenCounter:
                         self.gauge = tmp_gauge
                         self.gen_opt_xml(self.playopt, self.gauge) # 常時表示オプションを書き出す
                     if playside: # 曲頭を検出
+                        self.control_obs_sources('play0')
                         print(f'曲開始を検出しました。\nEXスコア取得開始。mode={playside.upper()}')
                         self.gen_opt_xml(self.playopt, self.gauge, True) # 常時表示+曲中のみデータの書き出し
                         break
@@ -750,9 +778,6 @@ class DakenCounter:
             if stop_local:
                 break
             
-            self.obs.disable_source(self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'])
-            self.obs.disable_source(self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'])
-
             pre_success = True # 前の検出サイクルに取得が成功したかどうか
             while True: # 曲中の処理
                 self.obs.save_screenshot()
@@ -771,6 +796,7 @@ class DakenCounter:
                         print(f'曲終了を検出しました。 => {pre_score}')
                         self.gen_opt_xml(self.playopt, self.gauge) # 曲中のみデータの削除
                         flg_autosave = False
+                        self.control_obs_sources('play1')
                         break
                     pre_success = False
                 if self.stop_thread:
@@ -781,6 +807,7 @@ class DakenCounter:
             if stop_local:
                 break
 
+        self.control_obs_sources('quit')
         print('detect_top end')
 
     def gen_notes_xml(self, cur,today, plays, notes_ran, notes_battle, judge):
@@ -1080,56 +1107,6 @@ class DakenCounter:
             [sg.Frame('リザルト自動保存設定', layout=layout_autosave, title_color='#000044')],
             [sg.Frame('OCR(リザルト文字認識)設定', layout=layout_ocr, title_color='#000044')],
         ])
-        # OBSソース制御用
-        #obs_scenes = []
-        #obs_sources = []
-        #if self.obs != False:
-        #    tmp = self.obs.get_scenes()
-        #    tmp.reverse()
-        #    for s in tmp:
-        #        obs_scenes.append(s['sceneName'])
-        #layout_select = [
-        #    [
-        #        par_text('シーン:')
-        #        ,par_text(self.settings['obs_scene_select'], size=(15, 1), key='obs_scene_select')
-        #        ,par_btn('set', key='set_scene_select')
-        #    ],
-        #    [
-        #        sg.Column([[par_text('表示する')],[sg.Listbox([], key='obs_enable_select', size=(15,3))], [par_btn('add', key='add_enable_select'),par_btn('del', key='del_enable_select')]]),
-        #        sg.Column([[par_text('消す')],[sg.Listbox([], key='obs_enable_select', size=(15,3))], [par_btn('add', key='add_enable_select'),par_btn('del', key='del_enable_select')]]),
-        #    ]
-        #]
-        #layout_play = [
-        #    [
-        #        par_text('シーン:')
-        #        ,par_text(self.settings['obs_scene_play'], size=(15, 1), key='obs_scene_play')
-        #        ,par_btn('set', key='set_scene_play')
-        #    ],
-        #    [
-        #        sg.Column([[par_text('表示する')],[sg.Listbox([], key='obs_enable_play', size=(15,3))], [par_btn('add', key='add_enable_play'),par_btn('del', key='del_enable_play')]]),
-        #        sg.Column([[par_text('消す')],[sg.Listbox([], key='obs_enable_play', size=(15,3))], [par_btn('add', key='add_enable_play'),par_btn('del', key='del_enable_play')]]),
-        #    ]
-        #]
-        #layout_result = [
-        #    [
-        #        par_text('シーン:')
-        #        ,par_text(self.settings['obs_scene_result'], size=(15, 1), key='obs_scene_result')
-        #        ,par_btn('set', key='set_scene_result')
-        #    ],
-        #    [
-        #        sg.Column([[par_text('表示する')],[sg.Listbox([], key='obs_enable_result', size=(15,3))], [par_btn('add', key='add_enable_result'),par_btn('del', key='del_enable_result')]]),
-        #        sg.Column([[par_text('消す')],[sg.Listbox([], key='obs_enable_result', size=(15,3))], [par_btn('add', key='add_enable_result'),par_btn('del', key='del_enable_result')]]),
-        #    ]
-        #]
-        #layout_obs2 = [
-        #    [par_text('シーン:'), sg.Combo(obs_scenes, key='combo_scene', size=(15,1), enable_events=True), sg.Button('reload', key='obs_reload')],
-        #    [par_text('ソース:'),sg.Combo(obs_sources, key='combo_source', size=(15,1))],
-        #    [sg.Frame('選曲画面',layout=layout_select, title_color='#000044')],
-        #    [sg.Frame('プレー中',layout=layout_play, title_color='#000044')],
-        #    [sg.Frame('リザルト画面',layout=layout_result, title_color='#000044')],
-        #]
-
-        #col_r = sg.Column(layout_obs2)
         layout = [
             #[col_l, col_r],
             [col_l],
@@ -1172,13 +1149,79 @@ class DakenCounter:
         ico=self.ico_path('icon.ico')
         self.window = sg.Window(f"{SWNAME}について", layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']), size=(400,220))
 
+    def build_layout_one_scene(self, name, LR=None):
+        if LR == None:
+            sc = [
+                    sg.Column([[par_text('表示する')],[sg.Listbox(self.settings[f'obs_enable_{name}'], key=f'obs_enable_{name}', size=(20,4))], [par_btn('add', key=f'add_enable_{name}'),par_btn('del', key=f'del_enable_{name}')]]),
+                    sg.Column([[par_text('消す')],[sg.Listbox(self.settings[f'obs_disable_{name}'], key=f'obs_disable_{name}', size=(20,4))], [par_btn('add', key=f'add_disable_{name}'),par_btn('del', key=f'del_disable_{name}')]]),
+                ]
+        else:
+            scL = [[
+                    sg.Column([[par_text('表示する')],[sg.Listbox(self.settings[f'obs_enable_{name}0'], key=f'obs_enable_{name}0', size=(20,4))], [par_btn('add', key=f'add_enable_{name}0'),par_btn('del', key=f'del_enable_{name}0')]]),
+                    sg.Column([[par_text('消す')],[sg.Listbox(self.settings[f'obs_disable_{name}0'], key=f'obs_disable_{name}0', size=(20,4))], [par_btn('add', key=f'add_disable_{name}0'),par_btn('del', key=f'del_disable_{name}0')]]),
+                ]]
+            scR = [[
+                    sg.Column([[par_text('表示する')],[sg.Listbox(self.settings[f'obs_enable_{name}1'], key=f'obs_enable_{name}1', size=(20,4))], [par_btn('add', key=f'add_enable_{name}1'),par_btn('del', key=f'del_enable_{name}1')]]),
+                    sg.Column([[par_text('消す')],[sg.Listbox(self.settings[f'obs_disable_{name}1'], key=f'obs_disable_{name}1', size=(20,4))], [par_btn('add', key=f'add_disable_{name}1'),par_btn('del', key=f'del_disable_{name}1')]]),
+                ]]
+            sc = [
+                sg.Frame('開始時', scL, title_color='#440000'),sg.Frame('終了時', scR, title_color='#440000')
+            ]
+        ret = [
+            [
+                par_text('シーン:')
+                ,par_text(self.settings[f'obs_scene_{name}'], size=(20, 1), key=f'obs_scene_{name}')
+                ,par_btn('set', key=f'set_scene_{name}')
+            ],
+            sc
+        ]
+        return ret
+
+    def gui_obs_control(self):
+        self.mode = 'obs_control'
+        if self.window:
+            self.window.close()
+        obs_scenes = []
+        obs_sources = []
+        if self.obs != False:
+            tmp = self.obs.get_scenes()
+            tmp.reverse()
+            for s in tmp:
+                obs_scenes.append(s['sceneName'])
+        layout_select = self.build_layout_one_scene('select', 0)
+        layout_play = self.build_layout_one_scene('play', 0)
+        layout_result = self.build_layout_one_scene('result', 0)
+        layout_boot = self.build_layout_one_scene('boot')
+        layout_quit = self.build_layout_one_scene('quit')
+        layout_obs2 = [
+            [par_text('シーン:'), sg.Combo(obs_scenes, key='combo_scene', size=(40,1), enable_events=True), sg.Button('reload', key='obs_reload')],
+            [par_text('ソース:'),sg.Combo(obs_sources, key='combo_source', size=(40,1))],
+            [sg.Frame('選曲画面',layout=layout_select, title_color='#000044')],
+            [sg.Frame('プレー中',layout=layout_play, title_color='#000044')],
+            [sg.Frame('リザルト画面',layout=layout_result, title_color='#000044')],
+        ]
+        layout_r = [
+            [sg.Frame('打鍵カウンタ起動時', layout=layout_boot, title_color='#000044')],
+            [sg.Frame('打鍵カウンタ終了時', layout=layout_quit, title_color='#000044')],
+        ]
+
+        col_l = sg.Column(layout_r)
+        col_r = sg.Column(layout_obs2)
+
+        layout = [
+            [col_l, col_r],
+            [sg.Text('', key='info', font=(None,9))]
+        ]
+        ico=self.ico_path('icon.ico')
+        self.window = sg.Window(f"INFINITAS打鍵カウンタ - OBS制御設定", layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']))
+
     def gui_main(self): # GUI設定
         self.mode = 'main'
         if self.window:
             self.window.close()
 
         sg.theme('SystemDefault')
-        menuitems = [['ファイル',['設定','配信を告知する','グラフ作成','スコアビューワ起動']],['ヘルプ',[f'{SWNAME}について']]]
+        menuitems = [['ファイル',['設定','OBS制御設定','配信を告知する','グラフ作成','スコアビューワ起動']],['ヘルプ',[f'{SWNAME}について']]]
         layout = [
             [sg.Menubar(menuitems, key='menu')],
             [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('test', key='test_screenshot', font=FONT)],
@@ -1205,6 +1248,7 @@ class DakenCounter:
         self.window['playopt'].update(value=self.settings['playopt'])
 
     def main(self):
+        obs_manager = None
         # 設定をもとにGUIの値を変更
         SLEEP_TIME = float(self.settings['sleep_time'])
 
@@ -1302,6 +1346,7 @@ class DakenCounter:
                     self.save_alllog()
                     self.save_settings()
                     self.save_dakenlog()
+                    self.control_obs_sources('quit')
                     logger.info('終了します')
                     break
                 else:
@@ -1481,15 +1526,33 @@ class DakenCounter:
             elif ev.startswith('URL '): # URLをブラウザで開く;info用
                 url = ev.split(' ')[1]
                 webbrowser.open(url)
-
-            elif ev == 'combo_scene':
+            # OBSソース制御用
+            elif ev == 'OBS制御設定':
+                self.gui_obs_control()
+            elif ev == 'combo_scene': # シーン選択時にソース一覧を更新
                 if self.obs != False:
                     sources = self.obs.get_sources(val['combo_scene'])
                     self.window['combo_source'].update(values=sources)
-            elif ev.startswith('set_scene_'):
+            elif ev.startswith('set_scene_'): # 各画面のシーンsetボタン押下時
                 tmp = val['combo_scene'].strip()
                 self.settings[ev.replace('set_scene', 'obs_scene')] = tmp
                 self.window[ev.replace('set_scene', 'obs_scene')].update(tmp)
+            elif ev.startswith('add_enable_') or ev.startswith('add_disable_'):
+                tmp = val['combo_source'].strip()
+                key = ev.replace('add', 'obs')
+                if tmp != "":
+                    if tmp not in self.settings[key]:
+                        self.settings[key].append(tmp)
+                        self.window[key].update(self.settings[key])
+            elif ev.startswith('del_enable_') or ev.startswith('del_disable_'):
+                key = ev.replace('del', 'obs')
+                if len(val[key]) > 0:
+                    tmp = val[key][0]
+                    if tmp != "":
+                        if tmp in self.settings[key]:
+                            self.settings[key].pop(self.settings[key].index(tmp))
+                            self.window[key].update(self.settings[key])
+
 if __name__ == '__main__':
     a = DakenCounter()
     a.main()
@@ -1497,7 +1560,9 @@ if __name__ == '__main__':
 """
 memo
 選曲画面中と、選曲画面を抜けるときでまた扱いが変わる
+あと、アプリ起動時・終了時もほしい。
 オプションの設定方法はちょっと考え直さないとダメかな。
 関数化とかして共通化する方法はあるので、IFだけ先にキメたほうがよい。
+-> 設定画面からボタンで飛べるようにして？別ウィンドウかな
 
 """
