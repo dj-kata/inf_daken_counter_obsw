@@ -108,15 +108,15 @@ class DakenCounter:
             'todaylog_dbx_always_push':True,
             'obs_scene':'', 'obs_itemid_history_cursong':False, 'obs_itemid_today_result':False, 'obs_scenename_history_cursong':'', 'obs_scenename_today_result':'',
             # スレッド起動時の設定
-            'obs_enable_boot':[],'obs_disable_boot':[],'obs_scene_boot':'',
+            'obs_enable_boot':[],'obs_disable_boot':['history_cursong', 'today_result'],'obs_scene_boot':'',
             # 0: シーン開始時
-            'obs_enable_select0':[],'obs_disable_select0':[],'obs_scene_select':'',
+            'obs_enable_select0':['today_result'],'obs_disable_select0':[],'obs_scene_select':'',
             'obs_enable_play0':[],'obs_disable_play0':[],'obs_scene_play':'',
-            'obs_enable_result0':[],'obs_disable_result0':[],'obs_scene_result':'',
+            'obs_enable_result0':['history_cursong'],'obs_disable_result0':[],'obs_scene_result':'',
             # 1: シーン終了時
-            'obs_enable_select1':[],'obs_disable_select1':[],
+            'obs_enable_select1':[],'obs_disable_select1':['today_result'],
             'obs_enable_play1':[],'obs_disable_play1':[],
-            'obs_enable_result1':[],'obs_disable_result1':[],
+            'obs_enable_result1':[],'obs_disable_result1':['history_cursong'],
             # スレッド終了時時の設定
             'obs_enable_quit':[],'obs_disable_quit':[],'obs_scene_quit':'',
         }
@@ -195,6 +195,8 @@ class DakenCounter:
         if name[-1] in ('0','1'):
             name_common = name[:-1]
         scene = self.settings[f'obs_scene_{name_common}']
+        if scene == '': # 2.0.16以前の設定そのままでも動くようにする
+            scene = self.settings['obs_scene']
         # TODO 前のシーンと同じなら変えないようにしたい
         #self.change_scene(self.settings[f'obs_scene_{name}'])
         # 非表示の制御
