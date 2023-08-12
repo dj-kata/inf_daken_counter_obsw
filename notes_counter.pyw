@@ -3,9 +3,8 @@ import PySimpleGUI as sg
 import numpy as np
 import os, sys, re
 import time
-import keyboard
 import threading
-import math
+import subprocess
 import codecs
 import json
 import webbrowser, urllib, requests
@@ -41,7 +40,7 @@ logger.addHandler(hdl)
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0.16'
+SWVER  = 'v2.0.17'
 
 width  = 1280
 height = 720
@@ -1179,7 +1178,7 @@ class DakenCounter:
             self.window.close()
 
         sg.theme('SystemDefault')
-        menuitems = [['ファイル',['設定','配信を告知する','グラフ作成']],['ヘルプ',[f'{SWNAME}について']]]
+        menuitems = [['ファイル',['設定','配信を告知する','グラフ作成','スコアビューワ起動']],['ヘルプ',[f'{SWNAME}について']]]
         layout = [
             [sg.Menubar(menuitems, key='menu')],
             [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('test', key='test_screenshot', font=FONT)],
@@ -1440,6 +1439,11 @@ class DakenCounter:
             elif ev == 'グラフ作成':
                 log_manager = LogManager(self.settings)
                 log_manager.main()
+            elif ev == 'スコアビューワ起動':
+                if os.path.exists('manage_score.exe'):
+                    res = subprocess.Popen('manage_score.exe')
+                else:
+                    sg.popup_error('manage_score.exeがありません')
 
             elif ev == "コピー":
                 # try - except で弾かれたとき用に、バックアップの値を用意しておく
