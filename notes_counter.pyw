@@ -198,7 +198,7 @@ class DakenCounter:
         if scene == '': # 2.0.16以前の設定そのままでも動くようにする
             scene = self.settings['obs_scene']
         # TODO 前のシーンと同じなら変えないようにしたい
-        self.change_scene(self.settings[f'obs_scene_{name}'])
+        self.obs.change_scene(self.settings[f'obs_scene_{name_common}'])
         # 非表示の制御
         for s in self.settings[f"obs_disable_{name}"]:
             tmps, tmpid = self.obs.search_itemid(scene, s)
