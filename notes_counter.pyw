@@ -25,6 +25,7 @@ import logging, logging.handlers
 import traceback
 from functools import partial
 from lib_score_manager import ScoreManager
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -52,6 +53,18 @@ FONTs = ('Meiryo',8)
 spjiriki_list = ['地力S+', '個人差S+', '地力S', '個人差S', '地力A+', '個人差A+', '地力A', '個人差A', '地力B+', '個人差B+', '地力B', '個人差B', '地力C', '個人差C', '地力D', '個人差D', '地力E', '個人差E', '地力F', '難易度未定']
 par_text = partial(sg.Text, font=FONT)
 par_btn = partial(sg.Button, pad=(3,0), font=FONT, enable_events=True, border_width=0)
+
+class gui_mode(Enum):
+    main = 0
+    setting = 1
+    graph = 2
+    info = 3
+    obs_control = 4
+class detect_mode(Enum):
+    init = 0
+    select = 1
+    play = 2
+    result = 3
 
 if len(sys.argv) > 1:
     savefile = sys.argv[1]
@@ -89,6 +102,7 @@ class DakenCounter:
         self.init_stat = self.score_manager.stat_perlv.copy() # 起動時の統計情報(本日更新分の計算用)
         self.valid_playside = ''
         self.startdate = False # 最後にスレッドを開始した日付を記録。打鍵ログ保存用
+        self.detect_mode = detect_mode.init
         self.imgpath = os.path.dirname(__file__) + '\\tmp.png'
         try:
             self.obs = OBSSocket(self.settings['host'], self.settings['port'], self.settings['passwd'], self.settings['obs_source'], self.imgpath)
@@ -718,8 +732,10 @@ class DakenCounter:
                     if self.detect_select() and len(self.todaylog) > 0: # 選曲画面
                         is_pushed_to_alllog = True
                         self.control_obs_sources('select0')
+                        self.detect_mode = detect_mode.select
                     else: # 選曲画面じゃなくなった(選曲中レイヤの停止用)
-                        self.control_obs_sources('select1')
+                        if self.detect_mode == detect_mode.select:
+                            self.control_obs_sources('select1')
                     if not is_pushed_to_alllog:
                         try:
                             result = self.ocr(self.imgpath)
@@ -739,6 +755,7 @@ class DakenCounter:
                                 self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'] = self.obs.search_itemid(self.settings['obs_scene'], 'history_cursong')
                                 self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'] = self.obs.search_itemid(self.settings['obs_scene'], 'today_result')
                                 self.control_obs_sources('result0')
+                                self.detect_mode = detect_mode.result
                                 logger.debug('')
                                 self.save_alllog() # ランプ内訳グラフ更新のため、alllogも保存する
                                 tmp_stats.update(self.todaylog, self.judge, self.today_plays)
@@ -758,6 +775,7 @@ class DakenCounter:
                         self.gen_opt_xml(self.playopt, self.gauge) # 常時表示オプションを書き出す
                     if playside: # 曲頭を検出
                         self.control_obs_sources('play0')
+                        self.detect_mode = detect_mode.play
                         print(f'曲開始を検出しました。\nEXスコア取得開始。mode={playside.upper()}')
                         self.gen_opt_xml(self.playopt, self.gauge, True) # 常時表示+曲中のみデータの書き出し
                         break
@@ -1067,7 +1085,7 @@ class DakenCounter:
         return default_query
 
     def gui_setting(self):
-        self.mode = 'setting'
+        self.gui_mode = gui_mode.setting
         if self.window:
             self.window.close()
         #print(self.settings)
@@ -1126,7 +1144,7 @@ class DakenCounter:
             self.window['radio_dbx_clear'].update(disabled=True)
 
     def gui_graph(self): # グラフ作成用
-        self.mode = 'graph'
+        self.gui_mode = gui_mode.graph
         if self.window:
             self.window.close()
         layout = [
@@ -1137,7 +1155,7 @@ class DakenCounter:
         self.window = sg.Window(f"{SWNAME}", layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']), size=(400,220))
 
     def gui_info(self): #情報表示用
-        self.mode = 'info'
+        self.gui_mode = gui_mode.info
         if self.window:
             self.window.close()
         layout = [
@@ -1180,7 +1198,7 @@ class DakenCounter:
         return ret
 
     def gui_obs_control(self):
-        self.mode = 'obs_control'
+        self.gui_mode = gui_mode.obs_control
         if self.window:
             self.window.close()
         obs_scenes = []
@@ -1218,7 +1236,7 @@ class DakenCounter:
         self.window = sg.Window(f"INFINITAS打鍵カウンタ - OBS制御設定", layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']))
 
     def gui_main(self): # GUI設定
-        self.mode = 'main'
+        self.gui_mode = gui_mode.main
         if self.window:
             self.window.close()
 
@@ -1296,13 +1314,13 @@ class DakenCounter:
             #logger.debug(f"ev={ev}")
             # 設定を最新化
             if self.settings and val: # 起動後、そのまま何もせずに終了するとvalが拾われないため対策している
-                if self.mode == 'main':
+                if self.gui_mode == gui_mode.main:
                     # 今日のノーツ数とか今日の回数とかはここに記述しないこと(resetボタンを押すと即反映されてしまうため)
                     self.settings['lx'] = self.window.current_location()[0]
                     self.settings['ly'] = self.window.current_location()[1]
                     self.settings['run_on_boot'] = val['run_on_boot']
                     self.settings['reset_on_boot'] = val['reset_on_boot']
-                elif self.mode == 'setting':
+                elif self.gui_mode == gui_mode.setting:
                     #self.settings['lx'] = self.window.current_location()[0]
                     #self.settings['ly'] = self.window.current_location()[1]
                     self.settings['host'] = val['input_host']
@@ -1344,7 +1362,7 @@ class DakenCounter:
                     else:
                         self.settings['autosave_dbx'] = 'clear'
             if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-', 'btn_close_info', 'btn_close_setting'):
-                if self.mode == 'main':
+                if self.gui_mode == gui_mode.main:
                     self.save_alllog()
                     self.save_settings()
                     self.save_dakenlog()
@@ -1352,7 +1370,7 @@ class DakenCounter:
                     logger.info('終了します')
                     break
                 else:
-                    if self.mode == 'setting':
+                    if self.gui_mode == gui_mode.setting:
                         if self.obs:
                             self.obs.close()
                         del self.obs
@@ -1475,7 +1493,7 @@ class DakenCounter:
                 th.join()
                 self.stop_thread = False
                 running = not running
-                if self.mode == 'main':
+                if self.gui_mode == gui_mode.main:
                     self.window['start'].update("start")
                 print(f"スコア検出スレッドが異常終了しました。")
             elif ev in ('Y:89', '配信を告知する'):
