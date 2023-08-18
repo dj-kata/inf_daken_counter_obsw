@@ -38,7 +38,7 @@ class ManageStats:
         self.lv_dbsr_with_scratch =defaultdict(lambda:0)
         self.lv_db_with_scratch   =defaultdict(lambda:0)
         self.calc_lv_histogram()
-        self.score_manager.update()
+        self.score_manager.load()
         self.stat_on_start = self.score_manager.stat_perlv.copy()
 
     def calc_lv_histogram(self):
@@ -127,20 +127,6 @@ class ManageStats:
                 f.write(f"        </day>\n")
             f.write(f"    </Notes>\n")
 
-            d = self.stat_on_start
-            f.write(f"    <PreStats>\n")
-            for k in d.keys():
-                stat_lamp  = d[k][0]
-                stat_score = d[k][1]
-                f.write(f"        <lv>\n")
-                f.write(f"            <difficulty>{k.lower()}</difficulty>\n")
-                for ii, val in enumerate(('noplay', 'failed', 'assist', 'easy', 'clear', 'hard', 'exh', 'fc')):
-                    f.write(f"            <{val}>{stat_lamp[ii]}</{val}>\n")
-                for ii, val in enumerate(('under_b', 'a', 'aa', 'aaa', 'max_minus', 'max')):
-                    f.write(f"            <{val}>{stat_score[ii]}</{val}>\n")
-                f.write(f"        </lv>\n")
-            f.write(f"    </PreStats>\n")
-
             d = self.score_manager.stat_perlv
             f.write(f"    <Stats>\n")
             for k in d.keys():
@@ -152,6 +138,13 @@ class ManageStats:
                     f.write(f"            <{val}>{stat_lamp[ii]}</{val}>\n")
                 for ii, val in enumerate(('under_b', 'a', 'aa', 'aaa', 'max_minus', 'max')):
                     f.write(f"            <{val}>{stat_score[ii]}</{val}>\n")
+                # 本日の更新分の埋め込み
+                pre_lamp = self.stat_on_start[k][0]
+                pre_score = self.stat_on_start[k][1]
+                for ii, val in enumerate(('noplay', 'failed', 'assist', 'easy', 'clear', 'hard', 'exh', 'fc')):
+                    f.write(f"            <{val}_diff>{stat_lamp[ii]-pre_lamp[ii]:+}</{val}_diff>\n")
+                for ii, val in enumerate(('under_b', 'a', 'aa', 'aaa', 'max_minus', 'max')):
+                    f.write(f"            <{val}_diff>{stat_score[ii]-pre_score[ii]:+}</{val}_diff>\n")
                 f.write(f"        </lv>\n")
             f.write(f"    </Stats>\n")
 
