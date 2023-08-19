@@ -204,7 +204,7 @@ class DakenCounter:
     # OBSソースの表示・非表示及びシーン切り替えを行う
     # nameで適切なシーン名を指定する必要がある。
     def control_obs_sources(self, name):
-        #logger.debug(name)
+        logger.debug(f"name={name} (detect_mode={self.detect_mode.name})")
         name_common = name
         if name[-1] in ('0','1'):
             name_common = name[:-1]
@@ -683,6 +683,15 @@ class DakenCounter:
 
         return ret
     
+    ### 選曲画面の終了判定
+    def detect_endselect(self):
+        img = Image.open(self.imgpath).crop((550,1,750,85))
+        tmp = imagehash.average_hash(img)
+        img = Image.open('layout/endselect.png').crop((550,1,750,85))
+        hash_target = imagehash.average_hash(img)
+        ret = (hash_target - tmp) < 10
+        return ret
+
     ### リザルト画面の終了判定
     def detect_endresult(self):
         img = Image.open(self.imgpath)
@@ -727,16 +736,22 @@ class DakenCounter:
                             flg_autosave = self.autosave_result(result)
                         except Exception as e:
                             logger.debug(traceback.format_exc())
-                    if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
-                        self.control_obs_sources('result1')
-                    if self.detect_select() and len(self.todaylog) > 0: # 選曲画面
-                        is_pushed_to_alllog = True
-                        self.control_obs_sources('select0')
-                        self.detect_mode = detect_mode.select
-                    else: # 選曲画面じゃなくなった(選曲中レイヤの停止用)
-                        if self.detect_mode == detect_mode.select:
+                    if self.detect_mode == detect_mode.result:
+                        if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
+                            self.control_obs_sources('result1')
+                            self.detect_mode = detect_mode.init # 遷移中はinitにしておく
+                    # 選曲画面モードなら終了判定 (何度もselect0に入らない)
+                    if self.detect_mode == detect_mode.select:
+                        if self.detect_endselect():
                             self.control_obs_sources('select1')
-                    if not is_pushed_to_alllog:
+                            self.detect_mode = detect_mode.init # 遷移中はinitにしておく
+                    else: # 選曲画面モードでない場合は選曲画面に入ったかどうかの判定
+                        if self.detect_select(): # 選曲画面
+                            if len(self.todaylog) > 0:
+                                is_pushed_to_alllog = True
+                                self.control_obs_sources('select0')
+                                self.detect_mode = detect_mode.select
+                    if not is_pushed_to_alllog: # 曲ルーチンを1回抜けないとOCR起動フラグが立たない
                         try:
                             result = self.ocr(self.imgpath)
                             if result != False:
@@ -749,11 +764,9 @@ class DakenCounter:
                                 is_pushed_to_alllog = True
                                 print(f"{result[1]}({result[2]}) - {result[7]},score:{result[9]:,},")
                                 logger.debug(f'result = {result}')
+                                # xml更新
                                 self.write_today_update_xml()
                                 self.write_history_cursong_xml(result)
-                                # OBS側を変更していてもいいように、曲終了時点でもソースIDを取得しなおしておく
-                                self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'] = self.obs.search_itemid(self.settings['obs_scene'], 'history_cursong')
-                                self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'] = self.obs.search_itemid(self.settings['obs_scene'], 'today_result')
                                 self.control_obs_sources('result0')
                                 self.detect_mode = detect_mode.result
                                 logger.debug('')
