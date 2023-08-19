@@ -125,7 +125,7 @@ class DakenCounter:
             'obs_enable_boot':[],'obs_disable_boot':['history_cursong', 'today_result'],'obs_scene_boot':'',
             # 0: シーン開始時
             'obs_enable_select0':['today_result'],'obs_disable_select0':[],'obs_scene_select':'',
-            'obs_enable_play0':[],'obs_disable_play0':[],'obs_scene_play':'',
+            'obs_enable_play0':[],'obs_disable_play0':['today_result', 'history_cursong'],'obs_scene_play':'',
             'obs_enable_result0':['history_cursong'],'obs_disable_result0':[],'obs_scene_result':'',
             # 1: シーン終了時
             'obs_enable_select1':[],'obs_disable_select1':['today_result'],
@@ -1537,6 +1537,13 @@ class DakenCounter:
                     pass
 
             elif ev in ('btn_setting', '設定'):
+                print(f'スコア検出スレッドを終了します。')
+                self.window['start'].update("(終了処理中)")
+                self.stop_thread = True
+                th.join()
+                self.stop_thread = False
+                self.window['start'].update("start")
+                running = not running
                 self.gui_setting()
 
             elif ev == 'btn_autosave_dir':
@@ -1563,6 +1570,13 @@ class DakenCounter:
                 webbrowser.open(url)
             # OBSソース制御用
             elif ev == 'OBS制御設定':
+                print(f'スコア検出スレッドを終了します。')
+                self.window['start'].update("(終了処理中)")
+                self.stop_thread = True
+                th.join()
+                self.stop_thread = False
+                self.window['start'].update("start")
+                running = not running
                 self.gui_obs_control()
             elif ev == 'combo_scene': # シーン選択時にソース一覧を更新
                 if self.obs != False:
