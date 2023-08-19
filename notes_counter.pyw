@@ -32,7 +32,7 @@ logger.setLevel(logging.DEBUG)
 hdl = logging.handlers.RotatingFileHandler(
     './dbg.log',
     encoding='utf-8',
-    maxBytes=1024*1024*20,
+    maxBytes=1024*1024*2,
 )
 hdl.setLevel(logging.DEBUG)
 hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcName)s() [%(levelname)s] %(message)s')
@@ -411,7 +411,7 @@ class DakenCounter:
                 ret = f"{ret}, FLIP"
             if opt.assist != None:
                 ret = f"{ret}, {opt.assist}"
-            logger.debug(f"arrange:{opt.arrange}, battle:{opt.battle}, flip:{opt.flip}, assist:{opt.assist}, fumen:{fumen} ===> ret:{ret}")
+            #logger.debug(f"arrange:{opt.arrange}, battle:{opt.battle}, flip:{opt.flip}, assist:{opt.assist}, fumen:{fumen} ===> ret:{ret}")
         return ret
 
     # リザルト画像pngを受け取って、スコアツールの1entryとして返す
@@ -942,7 +942,7 @@ class DakenCounter:
             f.write(f'    <sp_12clear>{sp_12clear}</sp_12clear>\n')
 
             for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
-                logger.debug(f"s = {s}")
+                #logger.debug(f"s = {s}")
                 bp = s[11]
                 if len(s) != 14: # フォーマットがおかしい場合は飛ばす
                     continue
@@ -975,7 +975,7 @@ class DakenCounter:
             f.write("<Results>\n")
             lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
             for s in reversed(self.todaylog):
-                logger.debug(f"s = {s}")
+                #logger.debug(f"s = {s}")
                 lamp = ''
                 score = ''
                 dpunoff_key = f"{s[1]}"
