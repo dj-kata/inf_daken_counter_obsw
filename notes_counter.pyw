@@ -739,18 +739,16 @@ class DakenCounter:
                     if self.detect_mode == detect_mode.result:
                         if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
                             self.control_obs_sources('result1')
-                            self.detect_mode = detect_mode.init # 遷移中はinitにしておく
+                        if self.detect_select(): # 選曲画面を検出
+                            if len(self.todaylog) > 0:
+                                is_pushed_to_alllog = True
+                                self.control_obs_sources('select0')
+                                self.detect_mode = detect_mode.select
                     # 選曲画面モードなら終了判定 (何度もselect0に入らない)
                     if self.detect_mode == detect_mode.select:
                         if self.detect_endselect():
                             self.control_obs_sources('select1')
                             self.detect_mode = detect_mode.init # 遷移中はinitにしておく
-                    else: # 選曲画面モードでない場合は選曲画面に入ったかどうかの判定
-                        if self.detect_select(): # 選曲画面
-                            if len(self.todaylog) > 0:
-                                is_pushed_to_alllog = True
-                                self.control_obs_sources('select0')
-                                self.detect_mode = detect_mode.select
                     if not is_pushed_to_alllog: # 曲ルーチンを1回抜けないとOCR起動フラグが立たない
                         try:
                             result = self.ocr(self.imgpath)
