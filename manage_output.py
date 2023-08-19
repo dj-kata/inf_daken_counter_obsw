@@ -142,9 +142,15 @@ class ManageStats:
                 pre_lamp = self.stat_on_start[k][0]
                 pre_score = self.stat_on_start[k][1]
                 for ii, val in enumerate(('noplay', 'failed', 'assist', 'easy', 'clear', 'hard', 'exh', 'fc')):
-                    f.write(f"            <{val}_diff>{stat_lamp[ii]-pre_lamp[ii]:+}</{val}_diff>\n")
+                    if stat_lamp[ii] == pre_lamp[ii]:
+                        f.write(f"            <{val}_diff>±0</{val}_diff>\n")
+                    else:
+                        f.write(f"            <{val}_diff>{stat_lamp[ii]-pre_lamp[ii]:+}</{val}_diff>\n")
                 for ii, val in enumerate(('under_b', 'a', 'aa', 'aaa', 'max_minus', 'max')):
-                    f.write(f"            <{val}_diff>{stat_score[ii]-pre_score[ii]:+}</{val}_diff>\n")
+                    if stat_score[ii] == pre_score[ii]:
+                        f.write(f"            <{val}_diff>±0</{val}_diff>\n")
+                    else:
+                        f.write(f"            <{val}_diff>{stat_score[ii]-pre_score[ii]:+}</{val}_diff>\n")
                 f.write(f"        </lv>\n")
             f.write(f"    </Stats>\n")
 
