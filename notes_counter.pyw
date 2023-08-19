@@ -685,9 +685,9 @@ class DakenCounter:
     
     ### 選曲画面の終了判定
     def detect_endselect(self):
-        img = Image.open(self.imgpath).crop((550,1,750,85))
+        img = Image.open(self.imgpath) #.crop((550,1,750,85))
         tmp = imagehash.average_hash(img)
-        img = Image.open('layout/endselect.png').crop((550,1,750,85))
+        img = Image.open('layout/endselect.png') #.crop((550,1,750,85))
         hash_target = imagehash.average_hash(img)
         ret = (hash_target - tmp) < 10
         return ret
@@ -715,6 +715,7 @@ class DakenCounter:
         self.playopt = '' # 曲開始タイミングとオプション検出タイミングは一致しないため、最後の値を覚えておく
         self.gauge   = ''
         flg_autosave = True # その曲で自動保存を使ったかどうか, autosaveが成功したらTrue、曲終了時にリセット
+        flg_result1  = False # result1のobs操作を行ったら立てる(result画面に戻ったら下げる)
         is_pushed_to_alllog = True
         for i in range(30):
             self.startdate = datetime.datetime.today().strftime("%Y/%m/%d")
@@ -737,8 +738,10 @@ class DakenCounter:
                         except Exception as e:
                             logger.debug(traceback.format_exc())
                     if self.detect_mode == detect_mode.result:
-                        if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
-                            self.control_obs_sources('result1')
+                        if not flg_result1: # リザルト画面終了時のOBS操作をしたかどうか
+                            if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
+                                self.control_obs_sources('result1')
+                                flg_result1 = True
                         if self.detect_select(): # 選曲画面を検出
                             if len(self.todaylog) > 0:
                                 is_pushed_to_alllog = True
@@ -766,6 +769,7 @@ class DakenCounter:
                                 self.write_today_update_xml()
                                 self.write_history_cursong_xml(result)
                                 self.control_obs_sources('result0')
+                                flg_result1 = False
                                 self.detect_mode = detect_mode.result
                                 logger.debug('')
                                 self.save_alllog() # ランプ内訳グラフ更新のため、alllogも保存する
