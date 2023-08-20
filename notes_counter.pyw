@@ -146,8 +146,12 @@ class DakenCounter:
         ### 後から追加した値がない場合にもここでケア
         for k in default_val.keys():
             if not k in ret.keys():
-                print(f"{k}が設定ファイル内に存在しません。デフォルト値({default_val[k]}を登録します。)")
-                ret[k] = default_val[k]
+                if k.startswith('obs_scene_'):
+                    print(f"{k}が設定ファイル内に存在しません。obs_scene({ret['obs_scene']})をコピーします。")
+                    ret[k] = ret['obs_scene']
+                else:
+                    print(f"{k}が設定ファイル内に存在しません。デフォルト値({default_val[k]}を登録します。)")
+                    ret[k] = default_val[k]
         self.settings = ret
         return ret
 
