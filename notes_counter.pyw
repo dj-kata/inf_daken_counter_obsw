@@ -216,7 +216,8 @@ class DakenCounter:
         if scene == '': # 2.0.16以前の設定そのままでも動くようにする
             scene = self.settings['obs_scene']
         # TODO 前のシーンと同じなら変えないようにしたい
-        self.obs.change_scene(self.settings[f'obs_scene_{name_common}'])
+        if scene != '':
+            self.obs.change_scene(scene)
         # 非表示の制御
         for s in self.settings[f"obs_disable_{name}"]:
             tmps, tmpid = self.obs.search_itemid(scene, s)
@@ -1112,7 +1113,6 @@ class DakenCounter:
             [par_text('OBS host: '), sg.Input(self.settings['host'], font=FONT, key='input_host', size=(20,20))],
             [par_text('OBS websocket port: '), sg.Input(self.settings['port'], font=FONT, key='input_port', size=(10,20))],
             [par_text('OBS websocket password'), sg.Input(self.settings['passwd'], font=FONT, key='input_passwd', size=(20,20), password_char='*')],
-            #[sg.Text('OBS websocket password: ', font=FONT), sg.Input(self.settings['passwd'], font=FONT, key='input_passwd', size=(20,20))],
             [par_text('INFINITAS用ソース名: ', tooltip='OBSでINFINITASを表示するのに使っているゲームソースの名前を入力してください。'), sg.Input(self.settings['obs_source'], font=FONT, key='input_obs_source', size=(20,20))],
         ]
         layout_autosave = [
@@ -1138,7 +1138,6 @@ class DakenCounter:
         layout_ocr = [
             [par_text('本日の履歴の更新:'), sg.Radio(text='常時', group_id='1', default=self.settings['todaylog_always_push'], font=FONT, key='todaylog_always_push'), sg.Radio(text='更新時のみ', group_id='1', default=not self.settings['todaylog_always_push'], font=FONT)],
             [par_text('DBx系の履歴の更新:'),sg.Radio(text='常時', group_id='2', default=self.settings['todaylog_dbx_always_push'], font=FONT, key='todaylog_dbx_always_push'), sg.Radio(text='クリア時のみ', group_id='2', default=not self.settings['todaylog_dbx_always_push'], font=FONT)],
-            [par_text('INFINITAS用シーン名:'), sg.Input(self.settings['obs_scene'], font=FONT, key="input_obs_scene", size=(20,1))],
             [sg.Button('保存したリザルト画像からスコアデータに反映する', key='btn_ocr_from_savedir', tooltip='リザルト画像の数によってはかなり時間がかかります。')],
         ]
         col_l = sg.Column([
@@ -1233,8 +1232,9 @@ class DakenCounter:
         layout_boot = self.build_layout_one_scene('boot')
         layout_quit = self.build_layout_one_scene('quit')
         layout_obs2 = [
-            [par_text('シーン:'), sg.Combo(obs_scenes, key='combo_scene', size=(40,1), enable_events=True), sg.Button('reload', key='obs_reload')],
+            [par_text('シーン:'), sg.Combo(obs_scenes, key='combo_scene', size=(40,1), enable_events=True)],
             [par_text('ソース:'),sg.Combo(obs_sources, key='combo_source', size=(40,1))],
+            [par_text('INFINITAS画面:'), par_text(self.settings['obs_source'], size=(20,1), key='obs_source'), par_btn('set', key='set_obs_source')],
             [sg.Frame('選曲画面',layout=layout_select, title_color='#000044')],
             [sg.Frame('プレー中',layout=layout_play, title_color='#000044')],
             [sg.Frame('リザルト画面',layout=layout_result, title_color='#000044')],
@@ -1344,7 +1344,6 @@ class DakenCounter:
                     #self.settings['ly'] = self.window.current_location()[1]
                     self.settings['host'] = val['input_host']
                     self.settings['port'] = val['input_port']
-                    self.settings['obs_scene'] = val['input_obs_scene']
                     if self.obs != False:
                         self.settings['obs_scenename_history_cursong'], self.settings['obs_itemid_history_cursong'] = self.obs.search_itemid(self.settings['obs_scene'], 'history_cursong')
                         self.settings['obs_scenename_today_result'], self.settings['obs_itemid_today_result'] = self.obs.search_itemid(self.settings['obs_scene'], 'today_result')
@@ -1541,13 +1540,14 @@ class DakenCounter:
                     pass
 
             elif ev in ('btn_setting', '設定'):
-                print(f'スコア検出スレッドを終了します。')
-                self.window['start'].update("(終了処理中)")
-                self.stop_thread = True
-                th.join()
-                self.stop_thread = False
-                self.window['start'].update("start")
-                running = not running
+                if running:
+                    print(f'スコア検出スレッドを終了します。')
+                    self.window['start'].update("(終了処理中)")
+                    self.stop_thread = True
+                    th.join()
+                    self.stop_thread = False
+                    self.window['start'].update("start")
+                    running = not running
                 self.gui_setting()
 
             elif ev == 'btn_autosave_dir':
@@ -1574,18 +1574,25 @@ class DakenCounter:
                 webbrowser.open(url)
             # OBSソース制御用
             elif ev == 'OBS制御設定':
-                print(f'スコア検出スレッドを終了します。')
-                self.window['start'].update("(終了処理中)")
-                self.stop_thread = True
-                th.join()
-                self.stop_thread = False
-                self.window['start'].update("start")
-                running = not running
+                if running:
+                    print(f'スコア検出スレッドを終了します。')
+                    self.window['start'].update("(終了処理中)")
+                    self.stop_thread = True
+                    th.join()
+                    self.stop_thread = False
+                    self.window['start'].update("start")
+                    running = not running
                 self.gui_obs_control()
             elif ev == 'combo_scene': # シーン選択時にソース一覧を更新
                 if self.obs != False:
                     sources = self.obs.get_sources(val['combo_scene'])
                     self.window['combo_source'].update(values=sources)
+            elif ev == 'set_obs_source':
+                tmp = val['combo_source'].strip()
+                if tmp != "":
+                    self.settings['obs_source'] = tmp
+                    self.window['obs_source'].update(tmp)
+
             elif ev.startswith('set_scene_'): # 各画面のシーンsetボタン押下時
                 tmp = val['combo_scene'].strip()
                 self.settings[ev.replace('set_scene', 'obs_scene')] = tmp
