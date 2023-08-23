@@ -35,8 +35,7 @@ class OBSSocket():
                     grp = self.ws.get_group_scene_item_list(x['sourceName']).scene_items
                     for y in grp:
                         ret.append(y['sourceName'])
-                else:
-                    ret.append(x['sourceName'])
+                ret.append(x['sourceName'])
         except Exception:
             pass
         ret.reverse()
