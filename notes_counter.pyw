@@ -41,7 +41,7 @@ logger.addHandler(hdl)
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0.17'
+SWVER  = 'v2.0.18'
 
 width  = 1280
 height = 720
@@ -891,6 +891,9 @@ class DakenCounter:
         {gauge_dyn}
     </Items>''')
         f.close()
+        # 固定の名前にしたOBSテキストソースを書き換える
+        self.obs.change_text('infdc_opt', 'opt: '+opt)
+        self.obs.change_text('infdc_opt_dyn', opt_dyn)
 
     def parse_url(self, url):
         ret = False
