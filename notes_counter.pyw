@@ -45,7 +45,6 @@ SWNAME = 'INFINITAS打鍵カウンタ'
 SWVER  = 'v2.0.18'
 ### TODO 
 ### スコアビューワの100%のソートがおかしいのを直す
-### スコアレート、AA→AAA等の更新フラグ、MAX-10みたいなrate表記をタグとして作成
 
 width  = 1280
 height = 720

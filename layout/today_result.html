@@ -44,15 +44,43 @@
             	max-width:90px;
                 color: #bbffee;
             }
-            table#result td:nth-child(4) {
-            	width:170px;
-            }
             table#result td:nth-child(2) {
             	width:40px;
                 padding-right:20px;
             }
+            table#result td:nth-child(4) {
+            	width:170px;
+            }
             table#result td:nth-child(5) {
             	width:1px;
+            }
+            table#result td:nth-child(6) {
+                text-align:center;
+            	width:170px;
+            }
+            .MAX{
+                animation-name: flashmax;
+                animation-duration: 0.4s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashmax {
+                0%   { color: #ff2828; }
+                20%  { color: #d5ff28; }
+                40%  { color: #28ff7e; }
+                60%  { color: #2872ff; }
+                80%  { color: #d528ff; }
+                100% { color: #ff2828; }
+            }
+            .AAA{
+                color:#ffff28;
+            }
+            .AA{
+                color:#c3c3c3;
+                font-size: 0px; /* この行を消せば初AAも表示 */
+            }
+            .A{
+                color:#2ddf71;
+                font-size: 0px; /* この行を消せば初Aも表示 */
             }
             .fc{
                 animation-name: flashfc;
@@ -133,6 +161,18 @@
                     }
                     var title = $(item).find('title').text();
                     var score = $(item).find('score').text();
+                    var score_pre = $(item).find('score_pre').text();
+                    var score_cur = $(item).find('score_cur').text();
+                    var rank = $(item).find('rank').text();
+                    var rank_pre = $(item).find('rank_pre').text();
+                    var rankdiff = $(item).find('rankdiff').text();
+                    var rank_update = '';
+                    if ((score_cur > score_pre) && (rank != rank_pre)){ // スコア伸び&ランク初到達
+                        rank_update = '<span class="' + rank +'">'+rank+'</span>';
+                    }
+                    if ((score_cur > score_pre) && (rankdiff == "MAX+0")){
+                        rank_update = '<span class="MAX">MAX</span>';
+                    }
                     var opt = $(item).find('opt').text();
                     var bp = $(item).find('bp').text();
                     if (difficulty.slice(-1) == "N"){
@@ -192,10 +232,10 @@
                         else if (opt.indexOf("H-RAN / H-RAN")>=0){
                             title = '('+with_scratch+'DBHR) ' + title
                         }
-                        out +='<tr><td>'+lv+'</td><td>'+lamp+'</td><td>'+title+'</td><td>'+difficulty+'</td><td>bp'+bp+'</td></tr>';
+                        out +='<tr><td>'+lv+'</td><td>'+lamp+'</td><td>'+title+'</td><td>'+difficulty+'</td><td>bp'+bp+'</td><td></td></tr>';
                         //out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+lamp+'</td><td>'+score+'</td></tr>';
                     } else{
-                        out +='<tr><td>'+lv+'</td><td>'+lamp+'</td><td>'+title+'</td><td>'+difficulty+'</td><td><font color="#ffccff">'+score+'</font></td></tr>';
+                        out +='<tr><td>'+lv+'</td><td>'+lamp+'</td><td>'+title+'</td><td>'+difficulty+'</td><td><font color="#ffccff">'+score+'</font></td><td>'+rank_update+'</td></tr>';
                     }
                     if (index == 26){ // 直近の27曲だけ表示としている。曲数はここから変更可能。
                         return false;
