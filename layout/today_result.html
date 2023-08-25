@@ -82,6 +82,26 @@
                 color:#2ddf71;
                 font-size: 0px; /* この行を消せば初Aも表示 */
             }
+            .B{
+                color:#cccccc;
+                font-size: 0px; /* この行を消せば初Bも表示 */
+            }
+            .C{
+                color:#cccccc;
+                font-size: 0px; /* この行を消せば初Cも表示 */
+            }
+            .D{
+                color:#cccccc;
+                font-size: 0px; /* この行を消せば初Dも表示 */
+            }
+            .E{
+                color:#cccccc;
+                font-size: 0px; /* この行を消せば初Eも表示 */
+            }
+            .F{
+                color:#cccccc;
+                font-size: 0px; /* この行を消せば初Fも表示 */
+            }
             .fc{
                 animation-name: flashfc;
                 animation-duration: 0.2s;
@@ -165,7 +185,7 @@
                     var score_cur = $(item).find('score_cur').text();
                     var rank = $(item).find('rank').text();
                     var rank_pre = $(item).find('rank_pre').text();
-                    var rankdiff = $(item).find('rankdiff').text();
+                    var rankdiff = $(item).find('rankdiff').text(); // AAA+10のような表記
                     var rank_update = '';
                     if ((score_cur > score_pre) && (rank != rank_pre)){ // スコア伸び&ランク初到達
                         rank_update = '<span class="' + rank +'">'+rank+'</span>';
@@ -232,10 +252,19 @@
                         else if (opt.indexOf("H-RAN / H-RAN")>=0){
                             title = '('+with_scratch+'DBHR) ' + title
                         }
-                        out +='<tr><td>'+lv+'</td><td>'+lamp+'</td><td>'+title+'</td><td>'+difficulty+'</td><td>bp'+bp+'</td><td></td></tr>';
-                        //out +='<tr><td>☆'+lv+'</td><td>'+title+'</td><td>'+lamp+'</td><td>'+score+'</td></tr>';
+                        out += '<tr><td>'+lv+'</td>';
+                        out += '<td>'+lamp+'</td>';
+                        out += '<td>'+title+'</td>';
+                        out += '<td>'+difficulty+'</td>';
+                        out += '<td>bp'+bp+'</td>';
+                        out += '<td></td></tr>';
                     } else{
-                        out +='<tr><td>'+lv+'</td><td>'+lamp+'</td><td>'+title+'</td><td>'+difficulty+'</td><td><font color="#ffccff">'+score+'</font></td><td>'+rank_update+'</td></tr>';
+                        out += '<tr><td>'+lv+'</td>';
+                        out += '<td>'+lamp+'</td>';
+                        out += '<td>'+title+'</td>';
+                        out += '<td>'+difficulty+'</td>';
+                        out += '<td><font color="#ffccff">'+score+'</font></td>';
+                        out += '<td>'+rank_update+'</td></tr>';
                     }
                     if (index == 26){ // 直近の27曲だけ表示としている。曲数はここから変更可能。
                         return false;
