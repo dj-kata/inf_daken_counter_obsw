@@ -159,20 +159,40 @@ class ScoreViewer:
                 for y in range(dat_np.shape[0]):
                     dat_np[y][3] = lamp_table.index(dat_np[y][3])
             if self.window['sortkey_srate'].get():
-                sort_row = 5
+                tmp = []
+                for i,y in enumerate(range(dat_np.shape[0])):
+                    tmp.append([float(i), float(dat_np[y][5])])
+                tmp = np.array(tmp)
+                tmp = tmp[tmp[:,1].argsort()] # IDX, srateだけのfloat型のnp.arrayを作ってソート
+                idxlist = [int(tmp[i][0]) for i in range(tmp.shape[0])]
             if self.window['sortkey_bp'].get():
-                sort_row = 6
+                tmp = []
+                for i,y in enumerate(range(dat_np.shape[0])):
+                    if dat_np[y][6] == '':
+                        tmp.append([i, 9999])
+                    else:
+                        tmp.append([i, int(dat_np[y][6])])
+                tmp = np.array(tmp)
+                tmp = tmp[tmp[:,1].argsort()] # IDX, BPだけのint型のnp.arrayを作ってソート
+                idxlist = [int(tmp[i][0]) for i in range(tmp.shape[0])]
             if self.window['sortkey_date'].get():
                 sort_row = 9
             if self.window['sortkey_unofficial'].get():
-                sort_row = 10
-                #for y in range(dat_np.shape[0]):
-                #    unof = dat_np[y][-1]
-                #    if unof == '':
-                #        dat_np[y][-1] = 0.0
-                #    else:
-                #        dat_np[y][-1] = float(unof)
-            dat_np = dat_np[dat_np[:,sort_row].argsort()]
+                tmp = []
+                for i,y in enumerate(range(dat_np.shape[0])):
+                    if dat_np[y][10] == '':
+                        tmp.append([float(i), 0.0])
+                    else:
+                        tmp.append([float(i), float(dat_np[y][10])])
+                tmp = np.array(tmp)
+                tmp = tmp[tmp[:,1].argsort()] # IDX, 非公式難易度だけのfloat型のnp.arrayを作ってソート
+                idxlist = [int(tmp[i][0]) for i in range(tmp.shape[0])]
+            # srate, BPソートの場合数値として求めたidxlistでソート
+            if self.window['sortkey_srate'].get() or self.window['sortkey_bp'].get() or self.window['sortkey_unofficial'].get():
+                dat_np = dat_np[idxlist, :]
+            else: # それ以外の場合、文字列としてソート
+                dat_np = dat_np[dat_np[:,sort_row].argsort()]
+            # 降順の処理
             if self.window['sort_descend'].get():
                 dat_np = dat_np[::-1]
             # ランプソートの場合、数値に置き換えたランプをもとに戻す
