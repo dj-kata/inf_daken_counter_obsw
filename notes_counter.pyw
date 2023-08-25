@@ -26,6 +26,7 @@ import traceback
 from functools import partial
 from lib_score_manager import ScoreManager
 from enum import Enum
+import math
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -42,6 +43,9 @@ logger.addHandler(hdl)
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
 SWVER  = 'v2.0.18'
+### TODO 
+### スコアビューワの100%のソートがおかしいのを直す
+### スコアレート、AA→AAA等の更新フラグ、MAX-10みたいなrate表記をタグとして作成
 
 width  = 1280
 height = 720
@@ -916,6 +920,42 @@ class DakenCounter:
     def escape_for_xml(self, input):
         return input.replace('&', '&amp;').replace('<','&lt;').replace('>','&gt;').replace('"','&quot;').replace("'",'&apos;')
 
+    # ノーツ数とスコアを受け取ってAAA+50みたいな表記にして返す。タプルで返す
+    def calc_rankdiff(self, notes, score):
+        target,diff = ('', '') # AAA, -50 みたいな結果を返す
+        smax = notes*2
+        if score == smax:
+            target,diff = ('MAX', '+0')
+        elif score >= math.ceil(17*smax/18):
+            target,diff = ('MAX', f"{score-smax:+}")
+        elif score >= math.ceil(15*smax/18):
+            aaa = math.ceil(smax*16/18)
+            target,diff = ('AAA', f'{score - aaa:+}')
+        elif score >= math.ceil(13*smax/18):
+            aa = math.ceil(smax*14/18)
+            target,diff = ('AA', f'{score - aa:+}')
+        elif score >= math.ceil(11*smax/18):
+            a = math.ceil(smax*12/18)
+            target,diff = ('A', f'{score - a:+}')
+        elif score >= math.ceil(9*smax/18):
+            tmp = math.ceil(smax*10/18)
+            target,diff = ('B', f'{score - tmp:+}')
+        elif score >= math.ceil(7*smax/18):
+            tmp = math.ceil(smax*8/18)
+            target,diff = ('C', f'{score - tmp:+}')
+        elif score >= math.ceil(5*smax/18):
+            tmp = math.ceil(smax*6/18)
+            target,diff = ('D', f'{score - tmp:+}')
+        elif score >= math.ceil(3*smax/18):
+            tmp = math.ceil(smax*4/18)
+            target,diff = ('E', f'{score - tmp:+}')
+        else:
+            target,diff = ('F', f'{score:+}')
+        if diff == '-0':
+            diff = '+0'
+
+        return target,diff
+
     def write_history_cursong_xml(self, result):
         with open('history_cursong.xml', 'w', encoding='utf-8') as f:
             f.write(f'<?xml version="1.0" encoding="utf-8"?>\n')
@@ -966,6 +1006,12 @@ class DakenCounter:
                         f.write(f'        <score>{s[9]}</score>\n')
                         f.write(f'        <opt>{s[-2]}</opt>\n')
                         f.write(f'        <bp>{bp}</bp>\n')
+                        f.write(f'        <notes>{s[3]*2}</notes>\n')
+                        f.write(f'        <rank>{s[5]}</rank>\n')
+                        tmp0,tmp1 = self.calc_rankdiff(s[3]*2, s[9])
+                        f.write(f'        <rankdiff>{tmp0}{tmp1}</rankdiff>\n')
+                        srate = f"{25*s[9]/s[3]:.2f}"
+                        f.write(f'        <scorerate>{srate}</scorerate>\n')
                         f.write('    </item>\n')
                 else: # 現在のオプションがDBx系ではない
                     if not 'BATTLE' in s[-2]: # DBx''以外''のリザルトのみ抽出
@@ -975,6 +1021,13 @@ class DakenCounter:
                         f.write(f'        <score>{s[9]}</score>\n')
                         f.write(f'        <opt>{s[-2]}</opt>\n')
                         f.write(f'        <bp>{bp}</bp>\n')
+                        f.write(f'        <notes>{s[3]}</notes>\n')
+                        f.write(f'        <rank_pre>{s[4]}</rank_pre>\n')
+                        f.write(f'        <rank>{s[5]}</rank>\n')
+                        tmp0,tmp1 = self.calc_rankdiff(s[3], s[9])
+                        f.write(f'        <rankdiff>{tmp0}{tmp1}</rankdiff>\n')
+                        srate = f"{50*s[9]/s[3]:.2f}"
+                        f.write(f'        <scorerate>{srate}</scorerate>\n')
                         f.write('    </item>\n')
             f.write('</Results>\n')
             logger.debug(f"end")
@@ -1007,7 +1060,10 @@ class DakenCounter:
                 if spjiriki_key in self.sp_jiriki['clear'].keys():
                     sp_12clear = spjiriki_list[self.sp_jiriki['clear'][spjiriki_key]]
 
+                notes = s[3]
+
                 if ('BATTLE' in s[-2]): # DBx系
+                    notes = s[3]*2
                     dp_unofficial_lv = ''
                     if (lamp_table.index(s[7]) >= 2) or self.settings['todaylog_dbx_always_push']:
                         lamp = s[7]
@@ -1023,6 +1079,7 @@ class DakenCounter:
                 bp = s[11]
                 if bp == None: # 昔のリザルトに入っていない可能性を考えて一応例外処理している
                     bp = '?'
+# ['11', 'ABSOLUTE', 'DPL', 1488, 'B', 'B', 'E-CLEAR', 'FAILED', 1864, 1764, 141, 210, 'RAN / RAN', '2023-08-25-00-34']
                 if (lamp != '') or (score != ''):
                     f.write('<item>\n')
                     f.write(f'    <lv>{s[0]}</lv>\n')
@@ -1035,6 +1092,18 @@ class DakenCounter:
                     f.write(f'    <score>{score}</score>\n')
                     f.write(f'    <opt>{s[-2]}</opt>\n')
                     f.write(f'    <bp>{bp}</bp>\n') # DB系で使うためにbpも送っておく
+                    f.write(f'    <notes>{notes}</notes>\n')
+                    f.write(f'    <score_cur>{s[9]}</score_cur>\n')
+                    if 'BATTLE' not in s[-2]: # DBx系
+                        f.write(f'    <score_pre>{s[8]}</score_pre>\n')
+                        f.write(f'    <lamp_pre>{s[6]}</lamp_pre>\n')
+                        f.write(f'    <bp_pre>{s[10]}</bp_pre>\n')
+                        f.write(f'    <rank_pre>{s[4]}</rank_pre>\n')
+                    f.write(f'    <rank>{s[5]}</rank>\n')
+                    tmp0,tmp1 = self.calc_rankdiff(notes, s[9])
+                    f.write(f'    <rankdiff>{tmp0}{tmp1}</rankdiff>\n')
+                    srate = f"{50*s[9]/notes:.2f}"
+                    f.write(f'    <scorerate>{srate}</scorerate>\n')
                     f.write('</item>\n')
             f.write('</Results>\n')
             logger.debug(f"end")
