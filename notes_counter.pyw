@@ -1009,6 +1009,8 @@ class DakenCounter:
                         f.write(f'        <rank>{s[5]}</rank>\n')
                         tmp0,tmp1 = self.calc_rankdiff(s[3]*2, s[9])
                         f.write(f'        <rankdiff>{tmp0}{tmp1}</rankdiff>\n')
+                        f.write(f'        <rankdiff0>{tmp0}</rankdiff0\n')
+                        f.write(f'        <rankdiff1>{tmp1}</rankdiff1\n')
                         srate = f"{25*s[9]/s[3]:.2f}"
                         f.write(f'        <scorerate>{srate}</scorerate>\n')
                         f.write('    </item>\n')
@@ -1017,6 +1019,7 @@ class DakenCounter:
                         f.write('    <item>\n')
                         f.write(f'        <date>{s[-1][2:10]}</date>\n')
                         f.write(f'        <lamp>{s[7]}</lamp>\n')
+                        f.write(f'        <score_pre>{s[8]}</score_pre>\n')
                         f.write(f'        <score>{s[9]}</score>\n')
                         f.write(f'        <opt>{s[-2]}</opt>\n')
                         f.write(f'        <bp>{bp}</bp>\n')
@@ -1025,6 +1028,8 @@ class DakenCounter:
                         f.write(f'        <rank>{s[5]}</rank>\n')
                         tmp0,tmp1 = self.calc_rankdiff(s[3], s[9])
                         f.write(f'        <rankdiff>{tmp0}{tmp1}</rankdiff>\n')
+                        f.write(f'        <rankdiff0>{tmp0}</rankdiff0\n')
+                        f.write(f'        <rankdiff1>{tmp1}</rankdiff1\n')
                         srate = f"{50*s[9]/s[3]:.2f}"
                         f.write(f'        <scorerate>{srate}</scorerate>\n')
                         f.write('    </item>\n')
