@@ -5,7 +5,6 @@
         <title>hoge</title>
         <style>
             body { 
-            
             background-color: rgba(0, 0, 0, 0.85);
             margin: 10px;
             padding: 10px;
@@ -30,16 +29,18 @@
             	white-space:nowrap;
             }
             table#title td:nth-child(1){
+                width:13%;
                 margin-right:1%;
                 padding-right:1%;
             }
             table#title td:nth-child(2){
+                max-width: 10px;
             	overflow:hidden;
             	text-overflow:ellipsis;
-            	max-width:1000px;
             }
             table#title td:nth-child(3){
-                width:17%;
+                text-align: right;
+                width:10%;
             }
             table#result {
                 font-size: 96px;
@@ -49,16 +50,46 @@
             	white-space:nowrap;
             }
             table#result td:nth-child(1) {
-            	width:25%;
+            	width:20%;
             }
             table#result td:nth-child(2) {
-            	width:8%;
+            	width:5%;
+            	margin-right:1%;
             }
             table#result td:nth-child(3) {
-            	width:19%;
+            	width:10%;
+                text-align:right;
             }
             table#result td:nth-child(4) {
-            	max-width:90%;
+            	width:12%;
+                text-align:center;
+            }
+            table#result td:nth-child(5) {
+            	max-width:10px;
+            	overflow:hidden;
+            	text-overflow:ellipsis;
+            }
+            .MAX{
+                animation-name: flashmax;
+                animation-duration: 0.4s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashmax {
+                0%   { color: #ff2828; }
+                20%  { color: #d5ff28; }
+                40%  { color: #28ff7e; }
+                60%  { color: #2872ff; }
+                80%  { color: #d528ff; }
+                100% { color: #ff2828; }
+            }
+            .AAA{
+                color:#ffff28;
+            }
+            .AA{
+                color:#c3c3c3;
+            }
+            .A{
+                color:#2ddf71;
             }
             .fc{
                 animation-name: flashfc;
@@ -139,6 +170,24 @@
                     var score = $(item).find('score').text();
                     var opt = $(item).find('opt').text();
                     var bp = $(item).find('bp').text();
+                    var score_pre = $(item).find('score_pre').text();
+                    var rank = $(item).find('rank').text();
+                    var rank_pre = $(item).find('rank_pre').text();
+                    var rankdiff = $(item).find('rankdiff').text(); // AAA+10
+                    var rankdiff0 = $(item).find('rankdiff0').text(); // AAA
+                    var rankdiff1 = $(item).find('rankdiff1').text(); // +10
+                    // 初AAAなどの達成時のみ表示する変数
+                    var rank_update = '<span class="' + rank +'">'+rank+'</span>';
+                    if ((score > score_pre) && (rank != rank_pre)){ // スコア伸び&ランク初到達
+                        rank_update = '<span class="' + rank +'">'+rank+'</span>';
+                    }
+                    if ((score > score_pre) && (rankdiff == "MAX+0")){
+                        rank_update = '<span class="MAX">MAX</span>';
+                        rankdiff = '<span class="MAX">MAX</span>'
+                    }
+                    // 毎回表示する場合の変数
+                    rank = '<span class="' + rank +'">'+rank+'</span>';
+
                     var dbflg = false;
                     if (lamp == "FAILED"){
                         lamp = '<span class="failed">　</span>'
@@ -195,9 +244,19 @@
                     }
                     // テーブルに追加
                     if (dbflg == true){ // DBx系オプションの場合、スコアの所にbp250のようにミスカンを入れておく
-                        out +='<tr><td><font color="#ffffaa">'+date+'</font></td><td>'+lamp+'</td><td>bp'+bp+'</td><td><font color="#aaffaa">'+opt+'</font></td></tr>';
+                        out += '<tr><td><font color="#ffffaa">'+date+'</font></td>';
+                        out += '<td>'+lamp+'</td>';
+                        out += '<td>bp'+bp+'</td>';
+                        out += '<td></td>';
+                        out += '<td><font color="#aaffaa">'+opt+'</font></td>';
+                        out += '</tr>'
                     }else{
-                        out +='<tr><td><font color="#ffffaa">'+date+'</font></td><td>'+lamp+'</td><td>'+score+'</td><td><font color="#aaffaa">'+opt+'</font></td></tr>';
+                        out += '<tr><td><font color="#ffffaa">'+date+'</font></td>';
+                        out += '<td>'+lamp+'</td>';
+                        out += '<td>'+score+'</td>';
+                        out += '<td>' + rank + '</td>';
+                        out += '<td><font color="#aaffaa">'+opt+'</font></td>';
+                        out += '</tr>'
                     }
                     if (index == 19){ // 直近の20プレイだけ表示としている。曲数はここから変更可能。
                         return false;
