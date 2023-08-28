@@ -232,7 +232,8 @@ class DakenCounter:
 
     def save_result(self, result):
         img = Image.open(self.imgpath)
-        now = datetime.datetime.now()
+        ts = os.path.getmtime(self.imgpath)
+        now = datetime.datetime.fromtimestamp(ts)
         fmtnow = format(now, "%Y%m%d_%H%M%S")
         dst = f"{self.settings['autosave_dir']}/infinitas_{fmtnow}.png"
         if result != False:
@@ -725,11 +726,11 @@ class DakenCounter:
         flg_autosave = True # その曲で自動保存を使ったかどうか, autosaveが成功したらTrue、曲終了時にリセット
         flg_result1  = False # result1のobs操作を行ったら立てる(result画面に戻ったら下げる)
         is_pushed_to_alllog = True
-        for i in range(30):
-            self.startdate = datetime.datetime.today().strftime("%Y/%m/%d")
-            if self.startdate != False:
-                break
-        logger.debug(f'startdate = {self.startdate}')
+        self.obs.save_screenshot()
+        ts = os.path.getmtime(self.imgpath)
+        self.startdate = datetime.datetime.fromtimestamp(ts).strftime("%Y/%m/%d")
+
+        logger.debug(f'startdate = {self.startdate} (imgpath:{self.imgpath})')
 
         tmp_stats = ManageStats(date=self.startdate, todaylog=self.todaylog, judge=self.judge, plays=self.today_plays)
         print(f'スコア検出スレッド開始。')
