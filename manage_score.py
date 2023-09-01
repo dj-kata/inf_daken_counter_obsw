@@ -152,7 +152,11 @@ class ScoreViewer:
         #dat_np = dat_np[dat_np[:,1].argsort()]
         #dat_np = np.array(dat, dtype='object') # 数値として扱う
         if len(dat_np.shape) > 1:
-            sort_row = 1
+            if self.window['sortkey_title'].get():
+                sort_row = 1
+                titles = [dat_np[i][1] for i in range(dat_np.shape[0])]
+                sorted_title = sorted(titles, key=str.lower)
+                idxlist = [titles.index(sorted_title[i]) for i in range(len(sorted_title))]
             if self.window['sortkey_lamp'].get():
                 sort_row = 3
                 # ランプソートの場合、一旦各ランプを数値に置き換える
@@ -188,7 +192,7 @@ class ScoreViewer:
                 tmp = tmp[tmp[:,1].argsort()] # IDX, 非公式難易度だけのfloat型のnp.arrayを作ってソート
                 idxlist = [int(tmp[i][0]) for i in range(tmp.shape[0])]
             # srate, BPソートの場合数値として求めたidxlistでソート
-            if self.window['sortkey_srate'].get() or self.window['sortkey_bp'].get() or self.window['sortkey_unofficial'].get():
+            if self.window['sortkey_srate'].get() or self.window['sortkey_bp'].get() or self.window['sortkey_unofficial'].get() or self.window['sortkey_title'].get():
                 dat_np = dat_np[idxlist, :]
             else: # それ以外の場合、文字列としてソート
                 dat_np = dat_np[dat_np[:,sort_row].argsort()]
