@@ -34,6 +34,7 @@ hdl = logging.handlers.RotatingFileHandler(
     './dbg.log',
     encoding='utf-8',
     maxBytes=1024*1024*2,
+    backupCount=1,
 )
 hdl.setLevel(logging.DEBUG)
 hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcName)s() [%(levelname)s] %(message)s')
@@ -42,7 +43,7 @@ logger.addHandler(hdl)
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0.18'
+SWVER  = 'v2.0.19'
 ### TODO 
 ### スコアビューワの100%のソートがおかしいのを直す
 
