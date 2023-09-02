@@ -717,6 +717,7 @@ class DakenCounter:
     ### 曲中は検出したスコアをprintする
     def detect_top(self, sleep_time):
         self.control_obs_sources('boot')
+        logger.debug(f'OBSver:{self.obs.ws.get_version().obs_version}, RPCver:{self.obs.ws.get_version().rpc_version}, OBSWSver:{self.obs.ws.get_version().obs_web_socket_version}')
         pre_det = ''
         pre_judge = ['0','0','0','0','0','0']
         pre_score = 0
