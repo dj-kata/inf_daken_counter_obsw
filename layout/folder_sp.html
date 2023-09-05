@@ -21,20 +21,24 @@ function loadXml()
         $('playdate').text(date);
         $(xml).find("Stats lv").each(function(index, item){
             var difficulty =  $(item).find("difficulty").text();
-            var noplay   = Number($(item).find("noplay").text());
-            var failed   = Number($(item).find("failed").text());
-            var ac       = Number($(item).find("assist").text());
-            var ec       = Number($(item).find("easy").text());
-            var nc       = Number($(item).find("clear").text());
-            var hc       = Number($(item).find("hard").text());
-            var exhc     = Number($(item).find("exh").text());
-            var fc       = Number($(item).find("fc").text());
-            var a        = Number($(item).find("a").text());
-            var aa       = Number($(item).find("aa").text());
-            var aaa      = Number($(item).find("aaa").text());
-            var under_b  = Number($(item).find("under_b").text());
-            var total    = noplay+failed+ac+ec+nc+hc+exhc+fc;
-            var total_sc = a+aa+aaa+under_b;
+            var noplay     = Number($(item).find("noplay").text());
+            var failed     = Number($(item).find("failed").text());
+            var ac         = Number($(item).find("assist").text());
+            var ec         = Number($(item).find("easy").text());
+            var nc         = Number($(item).find("clear").text());
+            var hc         = Number($(item).find("hard").text());
+            var hc_diff    = Number($(item).find("hard_diff").text());
+            var exhc       = Number($(item).find("exh").text());
+            var exhc_diff  = Number($(item).find("exh_diff").text());
+            var fc         = Number($(item).find("fc").text());
+            var fc_diff    = Number($(item).find("fc_diff").text());
+            var a          = Number($(item).find("a").text());
+            var aa         = Number($(item).find("aa").text());
+            var aaa        = Number($(item).find("aaa").text());
+            var aaa        = Number($(item).find("aaa_diff").text());
+            var under_b    = Number($(item).find("under_b").text());
+            var total      = noplay+failed+ac+ec+nc+hc+exhc+fc;
+            var total_sc   = a+aa+aaa+under_b;
 
     		$('.'+difficulty).find('noplay').text(                   noplay);
     		$('.'+difficulty).find('failed').text(                   failed);
