@@ -3,6 +3,21 @@ import obsws_python as obsws
 #import base64
 import numpy as np
 from PIL import Image
+import traceback
+import logging, logging.handlers
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+hdl = logging.handlers.RotatingFileHandler(
+    './dbg.log',
+    encoding='utf-8',
+    maxBytes=1024*1024*2,
+    backupCount=1,
+)
+hdl.setLevel(logging.DEBUG)
+hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcName)s() [%(levelname)s] %(message)s')
+hdl.setFormatter(hdl_formatter)
+logger.addHandler(hdl)
 
 class OBSSocket():
     def __init__(self,hostIP,portNum,passWord,inf_source,dst_screenshot):
@@ -15,9 +30,15 @@ class OBSSocket():
         self.active = True
         self.ev = obsws.EventClient(host=self.host,port=self.port,password=self.passwd)
         self.ev.callback.register([self.on_exit_started,])
+        logger.debug(f'host:{self.host}, port:{self.port}, pass:{self.passwd}')
 
     def close(self):
-        del self.ws
+        try:
+            del self.ws
+            return True
+        except Exception:
+            logger.debug(traceback.format_exc())
+            return False
 
     def change_scene(self,name:str):
         self.ws.set_current_program_scene(name)
@@ -37,7 +58,7 @@ class OBSSocket():
                         ret.append(y['sourceName'])
                 ret.append(x['sourceName'])
         except Exception:
-            pass
+            logger.debug(traceback.format_exc())
         ret.reverse()
         return ret
 
@@ -45,7 +66,7 @@ class OBSSocket():
         try:
             res = self.ws.set_input_settings(source, {'text':text}, True)
         except Exception:
-            pass
+            logger.debug(traceback.format_exc())
 
     def save_screenshot(self):
         res = self.ws.save_source_screenshot(self.inf_source, 'png', self.dst_screenshot, 1280, 720, 100)
