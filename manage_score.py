@@ -149,14 +149,31 @@ class ScoreViewer:
                     if to_push: # 表示するデータを追加
                         dat.append(tmp)
         dat_np = np.array(dat)
-        #dat_np = dat_np[dat_np[:,1].argsort()]
-        #dat_np = np.array(dat, dtype='object') # 数値として扱う
         if len(dat_np.shape) > 1:
+            # 曲名ソート用の処理
+            # 同じ曲が並ぶ場合にlist.index()だと先頭の要素しか引けないため、
+            # 全譜面が表示されるように補正している。表示順は特に考えていないので、N,H,Aなどの順に揃えるなら更に修正が必要
             if self.window['sortkey_title'].get():
                 sort_row = 1
                 titles = [dat_np[i][1] for i in range(dat_np.shape[0])]
                 sorted_title = sorted(titles, key=str.lower)
                 idxlist = [titles.index(sorted_title[i]) for i in range(len(sorted_title))]
+
+                for ii in range(len(sorted_title)):
+                    if ii > 0:
+                        if sorted_title[ii] == sorted_title[ii-1]:
+                            num_dup = 2
+                            if ii > 1:
+                                if sorted_title[ii] == sorted_title[ii-2]: # 3つ同じものが続いた場合
+                                    num_dup = 3
+                            tmp_chk = 0
+                            for j in range(len(dat_np)):
+                                if dat_np[j][1] == sorted_title[ii]:
+                                    if tmp_chk < num_dup:
+                                        idxlist[ii-num_dup+1+tmp_chk] = j
+                                    else:
+                                        break
+                                    tmp_chk += 1
             if self.window['sortkey_lamp'].get():
                 sort_row = 3
                 # ランプソートの場合、一旦各ランプを数値に置き換える
@@ -242,7 +259,8 @@ class ScoreViewer:
                 self.export_csv()
             elif ev == 'reload':
                 self.score_manager.load()
-            self.update_table()
+            if ev.startswith('sortkey_') or ev.startswith('radio_mode_') or ev.startswith('sort_') or (ev=='txt_search') or ev.startswith('chk_'):
+                self.update_table()
 
 if __name__ == '__main__':
     c = ScoreManager()
