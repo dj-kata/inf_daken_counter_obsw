@@ -43,9 +43,11 @@ logger.addHandler(hdl)
 
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
-SWVER  = 'v2.0.19'
-### TODO 
-### スコアビューワの100%のソートがおかしいのを直す
+try:
+    with open('version.txt', 'r') as f:
+        SWVER = f.readline().strip()
+except Exception:
+    SWVER = "v0.0.0"
 
 width  = 1280
 height = 720
