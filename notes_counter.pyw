@@ -27,6 +27,7 @@ from functools import partial
 from lib_score_manager import ScoreManager
 from enum import Enum
 import math
+import keyboard
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -213,6 +214,20 @@ class DakenCounter:
                 ret = tag['href'].split('/')[-1]
                 break # 1番上が最新なので即break
         return ret
+
+    # スクショを撮って保存する。OCR結果が返ってきた場合は曲名を入れる、それ以外の場合は時刻のみ
+    def save_screenshot_general(self):
+        self.obs.save_screenshot()
+        result = self.ocr(self.imgpath)
+        if result:
+            self.save_result(result)
+        else:
+            ts = os.path.getmtime(self.imgpath)
+            now = datetime.datetime.fromtimestamp(ts)
+            fmtnow = format(now, "%Y%m%d_%H%M%S")
+            dst = f"{self.settings['autosave_dir']}/infinitas_{fmtnow}.png"
+            self.obs.save_screenshot_dst(dst)
+            print(f'スクリーンショットを保存しました -> {dst}')
 
     # デバッグ用、現在設定している座標の画像を切り出してファイルに保存。
     def get_screen_all(self): 
@@ -461,7 +476,7 @@ class DakenCounter:
         if info.music == None:
             img_mono   = img.convert('L')
             pic_info   = img_mono.crop((410,633,870,704))
-            info.music = recog.get_music(pic_info)
+            info.music = recog.get_music(np.array(pic_info))
         is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
         #logger.debug(info.music, info.level, info.play_mode, info.difficulty, playdata.clear_type.current, playdata.dj_level.current, playdata.score.current)
         if is_valid:
@@ -504,7 +519,7 @@ class DakenCounter:
                     if 'BATTLE' in tmp[-2]:
                         notes = 2 * self.noteslist[info.music][self.difflist.index(tmp[2].replace('DP','SP'))]
                     if tmp[3] != notes:
-                        logger.debug(f"ノーツ数不一致エラー。判定失敗とみなします。notes={notes:,}, tmp[3]={tmp[3]:,}")
+                        logger.debug(f"ノーツ数不一致エラー。判定失敗とみなします。music={info.music}, notes={notes:,}, tmp[3]={tmp[3]:,}")
                         ret = False
         return ret
 
@@ -1351,7 +1366,7 @@ class DakenCounter:
         menuitems = [['ファイル',['設定','OBS制御設定','配信を告知する','グラフ作成','スコアビューワ起動']],['ヘルプ',[f'{SWNAME}について', 'アップデートを確認']]]
         layout = [
             [sg.Menubar(menuitems, key='menu')],
-            [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('test', key='test_screenshot', font=FONT)],
+            [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('save', key='save_screenshot', font=FONT, tooltip='スクリーンショットを保存します。\n(Ctrl+F6でも撮れます)')],
             [par_text('plays:'), par_text('0', key='plays')
             ,par_text(' ', size=(5,1))
             ,sg.Checkbox("起動時に即start", default=False, font=FONT, key='run_on_boot')
@@ -1391,6 +1406,7 @@ class DakenCounter:
         pre_cur = 0
         running = self.settings['run_on_boot'] # 実行中かどうかの区別に使う。スレッド停止用のstop_threadとは役割が違うので注意
         th = False
+        keyboard.add_hotkey('ctrl+F6', self.save_screenshot_general)
 
         ver = self.get_latest_version()
         if ver != SWVER:
@@ -1543,8 +1559,8 @@ class DakenCounter:
                 self.window['plays'].update(value=f"0")
                 for i in range(6):
                     self.window[f"judge{i}"].update(value='0')
-            elif ev.startswith('test_screenshot'):
-                th_scshot = threading.Thread(target=self.get_screen_all, daemon=True)
+            elif ev.startswith('save_screenshot'):
+                th_scshot = threading.Thread(target=self.save_screenshot_general, daemon=True)
                 th_scshot.start()
             elif ev.startswith('tweet'):
                 srate = 0.0
