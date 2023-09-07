@@ -7,6 +7,7 @@ import shutil
 from glob import glob
 from bs4 import BeautifulSoup
 import urllib, requests
+import threading
 
 sg.theme('SystemDefault1')
 try:
@@ -53,7 +54,7 @@ class Updater:
                     print(f, '->', target_dir+'/'+base)
                     shutil.move(f, target_dir+'/'+base)
         shutil.rmtree('tmp/inf_daken_counter')
-
+        self.window.write_event_value('-FINISH-', '')
 
     # icon用
     def ico_path(self, relative_path):
@@ -73,8 +74,17 @@ class Updater:
 
     def main(self, url):
         self.gui()
-        self.update_from_url(url)
-        sg.popup_ok('アップデート完了！')
+        th = threading.Thread(target=self.update_from_url, args=(url,), daemon=True)
+        th.start()
+        while True:
+            ev,val = self.window.read()
+            if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-'):
+                value = sg.popup_yes_no(f'アップデートをキャンセルしますか？')
+                if value == 'Yes':
+                    break
+            elif ev == '-FINISH-':
+                sg.popup_ok('アップデート完了！')
+                break
 
 if __name__ == '__main__':
     app = Updater()
