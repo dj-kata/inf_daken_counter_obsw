@@ -18,6 +18,7 @@ except Exception:
 
 class Updater:
     def get_latest_version(self):
+        self.ico=self.ico_path('icon.ico')
         ret = None
         url = 'https://github.com/dj-kata/inf_daken_counter_obsw/tags'
         r = requests.get(url)
@@ -69,8 +70,7 @@ class Updater:
             [sg.Text('', key='txt_info')],
             [sg.ProgressBar(100, key='prog', size=(30, 15))],
         ]
-        ico=self.ico_path('icon.ico')
-        self.window = sg.Window('infdc update manager', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico)
+        self.window = sg.Window('infdc update manager', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=self.ico)
 
     def main(self, url):
         self.gui()
@@ -79,11 +79,11 @@ class Updater:
         while True:
             ev,val = self.window.read()
             if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-'):
-                value = sg.popup_yes_no(f'アップデートをキャンセルしますか？')
+                value = sg.popup_yes_no(f'アップデートをキャンセルしますか？', icon=self.ico)
                 if value == 'Yes':
                     break
             elif ev == '-FINISH-':
-                sg.popup_ok('アップデート完了！')
+                sg.popup_ok('アップデート完了！', icon=self.ico)
                 break
 
 if __name__ == '__main__':
@@ -92,9 +92,9 @@ if __name__ == '__main__':
     url = f'https://github.com/dj-kata/inf_daken_counter_obsw/releases/download/{ver}/inf_daken_counter.zip'
     if re.findall('\d+', SWVER) == re.findall('\d+', ver):
         print('最新版がインストールされています。')
-        sg.popup_ok('最新版がインストールされています。')
+        sg.popup_ok('最新版がインストールされています。',icon=app.ico)
     else:
-        value = sg.popup_ok_cancel(f'利用可能なアップデートがあります。\n\n{SWVER} -> {ver}\n\n更新しますか？')
+        value = sg.popup_ok_cancel(f'利用可能なアップデートがあります。\n\n{SWVER} -> {ver}\n\n更新しますか？',icon=app.ico)
         if value == 'OK':
             app.main(url)
 

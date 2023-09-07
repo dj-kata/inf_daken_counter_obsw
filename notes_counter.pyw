@@ -95,6 +95,7 @@ class DakenCounter:
                 self.sp_jiriki = pickle.load(f)
         except:
             self.sp_jiriki   = {}
+        self.ico=self.ico_path('icon.ico')
         self.difflist = ['SPB', 'SPN', 'SPH', 'SPA', 'SPL', 'DPN', 'DPH', 'DPA', 'DPL']
         self.savefile    = savefile
         self.alllogfile  = './alllog.pkl'
@@ -1151,7 +1152,6 @@ class DakenCounter:
     def gui_ytinfo(self, default_query='#[number]'):
         sg.theme('SystemDefault')
         FONT = ('Meiryo',12)
-        ico=self.ico_path('icon.ico')
         right_click_menu = ['&Right', ['貼り付け']]
         layout = [
             [par_text("YoutubeLive URL(配信、スタジオ等)")],
@@ -1160,7 +1160,7 @@ class DakenCounter:
             [sg.Input(default_query, font=FONT, key='series_query', size=(20,1))],
             [sg.Button('go', size=(10,1))]
         ]
-        window = sg.Window('YoutubeLive準備用ツール', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico)
+        window = sg.Window('YoutubeLive準備用ツール', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=self.ico)
         window['youtube_url'].bind('<Return>', '_Enter')
         window['series_query'].bind('<Return>', '_Enter')
         while True:
@@ -1242,8 +1242,7 @@ class DakenCounter:
             [col_l],
             [sg.Button('close', key='btn_close_setting', font=FONT)],
             ]
-        ico=self.ico_path('icon.ico')
-        self.window = sg.Window(f'{SWNAME} - 設定', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']))
+        self.window = sg.Window(f'{SWNAME} - 設定', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=self.ico,location=(self.settings['lx'], self.settings['ly']))
         if self.settings['autosave_always']:
             self.window['chk_lamp'].update(disabled=True)
             self.window['chk_djlevel'].update(disabled=True)
@@ -1261,8 +1260,7 @@ class DakenCounter:
             [sg.Text(f'')],
             [sg.Button('OK', key='btn_close_graph', font=FONT)],
         ]
-        ico=self.ico_path('icon.ico')
-        self.window = sg.Window(f"{SWNAME}", layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']), size=(400,220))
+        self.window = sg.Window(f"{SWNAME}", layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=self.ico,location=(self.settings['lx'], self.settings['ly']), size=(400,220))
 
     def gui_info(self): #情報表示用
         self.gui_mode = gui_mode.info
@@ -1276,8 +1274,7 @@ class DakenCounter:
             [par_text(f'https://github.com/dj-kata/inf_daken_counter_obsw', enable_events=True, key="URL https://github.com/dj-kata/inf_daken_counter_obsw", font=('Meiryo', 10, 'underline'))],
             [sg.Button('OK', key='btn_close_info', font=FONT)],
         ]
-        ico=self.ico_path('icon.ico')
-        self.window = sg.Window(f"{SWNAME}について", layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']), size=(400,220))
+        self.window = sg.Window(f"{SWNAME}について", layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=self.ico,location=(self.settings['lx'], self.settings['ly']), size=(400,220))
 
     def build_layout_one_scene(self, name, LR=None):
         if LR == None:
@@ -1343,8 +1340,7 @@ class DakenCounter:
             [col_l, col_r],
             [sg.Text('', key='info', font=(None,9))]
         ]
-        ico=self.ico_path('icon.ico')
-        self.window = sg.Window(f"INFINITAS打鍵カウンタ - OBS制御設定", layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']))
+        self.window = sg.Window(f"INFINITAS打鍵カウンタ - OBS制御設定", layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=self.ico,location=(self.settings['lx'], self.settings['ly']))
 
     def gui_main(self): # GUI設定
         self.gui_mode = gui_mode.main
@@ -1367,8 +1363,7 @@ class DakenCounter:
             [par_text("option:"),par_text(" ", key='playopt')],
             [sg.Output(size=(63,8), key='output', font=('Meiryo',9))],
             ]
-        ico=self.ico_path('icon.ico')
-        self.window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=ico,location=(self.settings['lx'], self.settings['ly']))
+        self.window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=self.ico,location=(self.settings['lx'], self.settings['ly']))
         self.window['run_on_boot'].update(self.settings['run_on_boot'])
         self.window['reset_on_boot'].update(self.settings['reset_on_boot'])
         self.window['today'].update(value=f"{self.today_notes}")
@@ -1400,7 +1395,7 @@ class DakenCounter:
         ver = self.get_latest_version()
         if ver != SWVER:
             print(f'現在のバージョン: {SWVER}, 最新版:{ver}')
-            ans = sg.popup_yes_no(f'アップデートが見つかりました。\n\n{SWVER} -> {ver}\n\nアプリを終了して更新します。')
+            ans = sg.popup_yes_no(f'アップデートが見つかりました。\n\n{SWVER} -> {ver}\n\nアプリを終了して更新します。', icon=self.ico)
             if ans == "Yes":
                 self.save_alllog()
                 self.save_settings()
@@ -1411,7 +1406,7 @@ class DakenCounter:
                     res = subprocess.Popen('update.exe')
                     return
                 else:
-                    sg.popup_error('update.exeがありません')
+                    sg.popup_error('update.exeがありません', icon=self.ico)
         if self.settings['run_on_boot']: # 起動後即開始設定の場合
             logger.info('自動起動設定が有効です。')
             self.window.refresh()
@@ -1633,13 +1628,13 @@ class DakenCounter:
                 if os.path.exists('manage_score.exe'):
                     res = subprocess.Popen('manage_score.exe')
                 else:
-                    sg.popup_error('manage_score.exeがありません')
+                    sg.popup_error('manage_score.exeがありません', icon=self.ico)
 
             elif ev == 'アップデートを確認':
                 ver = self.get_latest_version()
                 if ver != SWVER:
                     print(f'現在のバージョン: {SWVER}, 最新版:{ver}')
-                    ans = sg.popup_yes_no(f'アップデートが見つかりました。\n\n{SWVER} -> {ver}\n\nアプリを終了して更新します。')
+                    ans = sg.popup_yes_no(f'アップデートが見つかりました。\n\n{SWVER} -> {ver}\n\nアプリを終了して更新します。', icon=self.ico)
                     if ans == "Yes":
                         self.save_alllog()
                         self.save_settings()
@@ -1650,7 +1645,7 @@ class DakenCounter:
                             res = subprocess.Popen('update.exe')
                             break
                         else:
-                            sg.popup_error('update.exeがありません')
+                            sg.popup_error('update.exeがありません', icon=self.ico)
                 else:
                     print(f'お使いのバージョンは最新です({SWVER})')
             elif ev == "コピー":
