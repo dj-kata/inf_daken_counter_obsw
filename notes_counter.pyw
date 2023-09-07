@@ -47,7 +47,7 @@ try:
     with open('version.txt', 'r') as f:
         SWVER = f.readline().strip()
 except Exception:
-    SWVER = "v0.0.0"
+    SWVER = "v?.?.?"
 
 width  = 1280
 height = 720
@@ -201,6 +201,17 @@ class DakenCounter:
         except Exception:
             base_path = os.path.abspath(".")
         return os.path.join(base_path, relative_path)
+
+    def get_latest_version(self):
+        ret = None
+        url = 'https://github.com/dj-kata/inf_daken_counter_obsw/tags'
+        r = requests.get(url)
+        soup = BeautifulSoup(r.text,features="html.parser")
+        for tag in soup.find_all('a'):
+            if 'releases/tag/v.' in tag['href']:
+                ret = tag['href'].split('/')[-1]
+                break # 1番上が最新なので即break
+        return ret
 
     # デバッグ用、現在設定している座標の画像を切り出してファイルに保存。
     def get_screen_all(self): 
@@ -1341,7 +1352,7 @@ class DakenCounter:
             self.window.close()
 
         sg.theme('SystemDefault')
-        menuitems = [['ファイル',['設定','OBS制御設定','配信を告知する','グラフ作成','スコアビューワ起動']],['ヘルプ',[f'{SWNAME}について']]]
+        menuitems = [['ファイル',['設定','OBS制御設定','配信を告知する','グラフ作成','スコアビューワ起動']],['ヘルプ',[f'{SWNAME}について', 'アップデートを確認']]]
         layout = [
             [sg.Menubar(menuitems, key='menu')],
             [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('test', key='test_screenshot', font=FONT)],
@@ -1386,6 +1397,21 @@ class DakenCounter:
         running = self.settings['run_on_boot'] # 実行中かどうかの区別に使う。スレッド停止用のstop_threadとは役割が違うので注意
         th = False
 
+        ver = self.get_latest_version()
+        if ver != SWVER:
+            print(f'現在のバージョン: {SWVER}, 最新版:{ver}')
+            ans = sg.popup_yes_no(f'アップデートが見つかりました。\n\n{SWVER} -> {ver}\n\nアプリを終了して更新します。')
+            if ans == "Yes":
+                self.save_alllog()
+                self.save_settings()
+                self.save_dakenlog()
+                self.control_obs_sources('quit')
+                if os.path.exists('update.exe'):
+                    logger.info('アップデート確認のため終了します')
+                    res = subprocess.Popen('update.exe')
+                    return
+                else:
+                    sg.popup_error('update.exeがありません')
         if self.settings['run_on_boot']: # 起動後即開始設定の場合
             logger.info('自動起動設定が有効です。')
             self.window.refresh()
@@ -1609,6 +1635,24 @@ class DakenCounter:
                 else:
                     sg.popup_error('manage_score.exeがありません')
 
+            elif ev == 'アップデートを確認':
+                ver = self.get_latest_version()
+                if ver != SWVER:
+                    print(f'現在のバージョン: {SWVER}, 最新版:{ver}')
+                    ans = sg.popup_yes_no(f'アップデートが見つかりました。\n\n{SWVER} -> {ver}\n\nアプリを終了して更新します。')
+                    if ans == "Yes":
+                        self.save_alllog()
+                        self.save_settings()
+                        self.save_dakenlog()
+                        self.control_obs_sources('quit')
+                        if os.path.exists('update.exe'):
+                            logger.info('アップデート確認のため終了します')
+                            res = subprocess.Popen('update.exe')
+                            break
+                        else:
+                            sg.popup_error('update.exeがありません')
+                else:
+                    print(f'お使いのバージョンは最新です({SWVER})')
             elif ev == "コピー":
                 # try - except で弾かれたとき用に、バックアップの値を用意しておく
                 backup = self.window["output"].Widget.clipboard_get()
