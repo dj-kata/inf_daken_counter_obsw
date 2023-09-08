@@ -110,6 +110,7 @@ class DakenCounter:
         self.init_stat = self.score_manager.stat_perlv.copy() # 起動時の統計情報(本日更新分の計算用)
         self.valid_playside = ''
         self.startdate = False # 最後にスレッドを開始した日付を記録。打鍵ログ保存用
+        self.running = False # メインスレッドが実行中かどうか
         self.detect_mode = detect_mode.init
         self.imgpath = os.path.dirname(__file__) + '\\tmp.png'
         try:
@@ -218,10 +219,14 @@ class DakenCounter:
     # スクショを撮って保存する。OCR結果が返ってきた場合は曲名を入れる、それ以外の場合は時刻のみ
     def save_screenshot_general(self):
         try:
-            self.obs.save_screenshot()
+            if self.running:
+                time.sleep(0.4)
+            else:
+                self.obs.save_screenshot()
             result = self.ocr(self.imgpath)
             if result:
-                self.save_result(result)
+                dst = self.save_result(result)
+                print(f'スクリーンショットを保存しました -> {dst}')
             else:
                 ts = os.path.getmtime(self.imgpath)
                 now = datetime.datetime.fromtimestamp(ts)
@@ -350,6 +355,7 @@ class DakenCounter:
             out.save(dst)
         else: # ライバル欄を隠さない場合
             self.obs.save_screenshot_dst(dst)
+        return dst
 
     def autosave_result(self, result):
         ret = False
@@ -1371,7 +1377,7 @@ class DakenCounter:
         menuitems = [['ファイル',['設定','OBS制御設定','配信を告知する','グラフ作成','スコアビューワ起動']],['ヘルプ',[f'{SWNAME}について', 'アップデートを確認']]]
         layout = [
             [sg.Menubar(menuitems, key='menu')],
-            [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('save', key='save_screenshot', font=FONT, tooltip='スクリーンショットを保存します。\n(Ctrl+F6でも撮れます)')],
+            [sg.Button('start', key='start', font=FONT, size=(27,1)), sg.Button('reset', key='reset', font=FONT), sg.Button('tweet', key='tweet', font=FONT), sg.Button('save', key='save_screenshot', font=FONT, tooltip='スクリーンショットを保存します。\n(F6でも撮れます)')],
             [par_text('plays:'), par_text('0', key='plays')
             ,par_text(' ', size=(5,1))
             ,sg.Checkbox("起動時に即start", default=False, font=FONT, key='run_on_boot')
@@ -1409,9 +1415,10 @@ class DakenCounter:
         self.notes_ran = 0
         self.notes_battle  = 0
         pre_cur = 0
-        running = self.settings['run_on_boot'] # 実行中かどうかの区別に使う。スレッド停止用のstop_threadとは役割が違うので注意
+        self.running = self.settings['run_on_boot'] # 実行中かどうかの区別に使う。スレッド停止用のstop_threadとは役割が違うので注意
         th = False
-        keyboard.add_hotkey('ctrl+F6', self.save_screenshot_general)
+        #keyboard.add_hotkey('ctrl+F6', self.save_screenshot_general)
+        keyboard.add_hotkey('F6', self.save_screenshot_general)
 
         ver = self.get_latest_version()
         if ver != SWVER:
@@ -1445,7 +1452,7 @@ class DakenCounter:
                 self.window['plays'].update(value=f"0")
                 for i in range(6):
                     self.window[f"judge{i}"].update(value='0')
-            running = True
+            self.running = True
             th = threading.Thread(target=self.detect_top, args=(SLEEP_TIME,), daemon=True)
             self.gen_notes_xml(0,self.today_notes,self.today_plays, self.notes_ran, self.notes_battle, self.judge)
             th.start()
@@ -1523,8 +1530,8 @@ class DakenCounter:
                             pass
                     self.gui_main()
             elif ev.startswith('start'):
-                running = not running
-                if running:
+                self.running = not self.running
+                if self.running:
                     if self.settings['reset_on_boot']:
                         print('自動リセット設定が有効です。')
                         self.today_notes = 0
@@ -1550,6 +1557,7 @@ class DakenCounter:
                     self.stop_thread = False
                     print(f'スコア検出スレッド終了。')
                     self.window['start'].update("start")
+                    self.running = not self.running
             elif ev.startswith('reset'):
                 print(f'プレイ回数と合計スコアをリセットします。')
                 self.today_notes = 0
@@ -1633,7 +1641,7 @@ class DakenCounter:
                 self.stop_thread = True
                 th.join()
                 self.stop_thread = False
-                running = not running
+                self.running = not self.running
                 if self.gui_mode == gui_mode.main:
                     self.window['start'].update("start")
                 print(f"スコア検出スレッドが異常終了しました。")
@@ -1681,14 +1689,14 @@ class DakenCounter:
                     pass
 
             elif ev in ('btn_setting', '設定'):
-                if running:
+                if self.running:
                     print(f'スコア検出スレッドを終了します。')
                     self.window['start'].update("(終了処理中)")
                     self.stop_thread = True
                     th.join()
                     self.stop_thread = False
                     self.window['start'].update("start")
-                    running = not running
+                    self.running = not self.running
                 self.gui_setting()
 
             elif ev == 'btn_autosave_dir':
@@ -1715,14 +1723,14 @@ class DakenCounter:
                 webbrowser.open(url)
             # OBSソース制御用
             elif ev == 'OBS制御設定':
-                if running:
+                if self.running:
                     print(f'スコア検出スレッドを終了します。')
                     self.window['start'].update("(終了処理中)")
                     self.stop_thread = True
                     th.join()
                     self.stop_thread = False
                     self.window['start'].update("start")
-                    running = not running
+                    self.running = not self.running
                 self.gui_obs_control()
             elif ev == 'combo_scene': # シーン選択時にソース一覧を更新
                 if self.obs != False:
