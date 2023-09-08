@@ -217,17 +217,22 @@ class DakenCounter:
 
     # スクショを撮って保存する。OCR結果が返ってきた場合は曲名を入れる、それ以外の場合は時刻のみ
     def save_screenshot_general(self):
-        self.obs.save_screenshot()
-        result = self.ocr(self.imgpath)
-        if result:
-            self.save_result(result)
-        else:
-            ts = os.path.getmtime(self.imgpath)
-            now = datetime.datetime.fromtimestamp(ts)
-            fmtnow = format(now, "%Y%m%d_%H%M%S")
-            dst = f"{self.settings['autosave_dir']}/infinitas_{fmtnow}.png"
-            self.obs.save_screenshot_dst(dst)
-            print(f'スクリーンショットを保存しました -> {dst}')
+        try:
+            self.obs.save_screenshot()
+            result = self.ocr(self.imgpath)
+            if result:
+                self.save_result(result)
+            else:
+                ts = os.path.getmtime(self.imgpath)
+                now = datetime.datetime.fromtimestamp(ts)
+                fmtnow = format(now, "%Y%m%d_%H%M%S")
+                dst = f"{self.settings['autosave_dir']}/infinitas_{fmtnow}.png"
+                self.obs.save_screenshot_dst(dst)
+                print(f'スクリーンショットを保存しました -> {dst}')
+        except Exception:
+            logger.debug(traceback.format_exc())
+            print(f'error!! スクリーンショット保存に失敗しました')
+
 
     # デバッグ用、現在設定している座標の画像を切り出してファイルに保存。
     def get_screen_all(self): 
