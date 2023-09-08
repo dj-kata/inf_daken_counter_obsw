@@ -111,10 +111,8 @@ OBSwebsocket関連の情報を入力してください。
 ![image](https://user-images.githubusercontent.com/61326119/225539830-22796190-d969-4866-932c-1e220f3e1ae4.png)
 
 websocket設定及びINFINITAS用ソース名が正しく設定されていれば、  
-testボタンを押した時にキャプチャ画像の保存が行われます。  
+saveボタン(またはF6)を押した時にキャプチャ画像の保存が行われます。
 うまく動かない場合は確認してみてください。  
-![image](https://user-images.githubusercontent.com/61326119/225552625-a7ff3dc4-5500-4ed4-9353-6615c8afd113.png)
-
 (プレーオプション画面を開いて、乱・ミラーなどのオプション情報が正しく取得できることを確認する、の方が早いかもしれません)
 
 # 使い方
@@ -126,7 +124,7 @@ testボタンを押した時にキャプチャ画像の保存が行われます�
 resetをクリックするとカウンタ(プレー回数・ノーツ数・各判定値)をリセットできます。  
 また、```start時にreset```にチェックしておくと、start後にカウンタを自動でリセットします。  
 (resetを押しても即座に設定ファイルから消えるようにはしていません。間違えて押してしまった場合は、すぐにnotes_counter.exeを終了すればカウント値を元に戻せます。)  
-![image](https://user-images.githubusercontent.com/61326119/225540137-a724ec95-3642-4031-b9de-b5b4403fbb08.png)
+![image](https://github.com/dj-kata/inf_daken_counter_obsw/assets/61326119/b5672eb8-bffc-44f2-b60b-baaec010d4d3)
 
 tweetをクリックすると、その時点でのプレー曲数・ノーツ数をTwitterに投稿できます。  
 (ブラウザが開きます)
@@ -235,7 +233,6 @@ v.2.0.18以降で設定方法が変わっています。
 以下の設定でちょうどよく見えるように調整しています。  
 - today_result.html(名前:today_result)は幅1800, 高さ960
 - history_cursong.html(名前:history_cursong)は幅2600, 高さ1400
-5. ブラウザソースをダブルクリックした時に出るカスタムCSSについて、```rgba(0, 0, 0, 0.0)```の部分を```rgba(0,0,0,0.95)```のようにすると背景に色をつけることができます。4つ目の値がアルファ値(透明度)となります。
 
 各HTMLのソース名については、好きな名前に設定してそのソースに対する表示・非表示設定を自分で登録してもよいです。デフォルトではtoday_result, history_cursongとして登録しています。
 
