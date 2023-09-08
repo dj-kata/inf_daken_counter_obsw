@@ -7,5 +7,5 @@ cp noteslist.pkl inf_daken_counter/
 cp dp_unofficial.pkl inf_daken_counter/
 cp sp_12jiriki.pkl inf_daken_counter/
 cp -a layout inf_daken_counter/
-cp -a resouces inf_daken_counter/
+cp -a resources inf_daken_counter/
 zip inf_daken_counter.zip inf_daken_counter/* inf_daken_counter/*/* inf_daken_counter/*/*/*
