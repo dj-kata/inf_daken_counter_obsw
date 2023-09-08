@@ -8,6 +8,21 @@ from glob import glob
 from bs4 import BeautifulSoup
 import urllib, requests
 import threading
+import logging, logging.handlers
+import traceback
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+hdl = logging.handlers.RotatingFileHandler(
+    './dbg.log',
+    encoding='utf-8',
+    maxBytes=1024*1024*2,
+    backupCount=1,
+)
+hdl.setLevel(logging.DEBUG)
+hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcName)s() [%(levelname)s] %(message)s')
+hdl.setFormatter(hdl_formatter)
+logger.addHandler(hdl)
 
 sg.theme('SystemDefault1')
 try:
@@ -48,13 +63,16 @@ class Updater:
         zp = zipfile.ZipFile(filename, 'r')
 
         target_dir = '.'
-        for query in ('*', '*/*', '*/*/*'):
-            for f in glob('tmp/inf_daken_counter/'+query):
-                if os.path.isfile(f):
-                    base = re.sub('.*inf_daken_counter.', '', f)
-                    print(f, '->', target_dir+'/'+base)
-                    shutil.move(f, target_dir+'/'+base)
-        shutil.rmtree('tmp/inf_daken_counter')
+        try:
+            for query in ('*', '*/*', '*/*/*'):
+                for f in glob('tmp/inf_daken_counter/'+query):
+                    if os.path.isfile(f):
+                            base = re.sub('.*inf_daken_counter.', '', f)
+                            print(f, '->', target_dir+'/'+base)
+                            shutil.move(f, target_dir+'/'+base)
+            shutil.rmtree('tmp/inf_daken_counter')
+        except:
+            logger.debug(traceback.format_exc())
         self.window.write_event_value('-FINISH-', '')
 
     # icon用
