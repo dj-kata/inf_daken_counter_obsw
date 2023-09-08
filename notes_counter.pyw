@@ -230,14 +230,13 @@ class DakenCounter:
         try:
             if result:
                 dst = self.save_result(result)
-                print(f'スクリーンショットを保存しました -> {dst}')
             else:
                 ts = os.path.getmtime(self.imgpath)
                 now = datetime.datetime.fromtimestamp(ts)
                 fmtnow = format(now, "%Y%m%d_%H%M%S")
                 dst = f"{self.settings['autosave_dir']}/infinitas_{fmtnow}.png"
                 self.obs.save_screenshot_dst(dst)
-                print(f'スクリーンショットを保存しました -> {dst}')
+            print(f'スクリーンショットを保存しました -> {dst}')
         except Exception:
             logger.debug(traceback.format_exc())
             print(f'error!! スクリーンショット保存に失敗しました')
