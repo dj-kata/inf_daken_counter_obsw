@@ -1557,7 +1557,6 @@ class DakenCounter:
                     self.stop_thread = False
                     print(f'スコア検出スレッド終了。')
                     self.window['start'].update("start")
-                    self.running = not self.running
             elif ev.startswith('reset'):
                 print(f'プレイ回数と合計スコアをリセットします。')
                 self.today_notes = 0
