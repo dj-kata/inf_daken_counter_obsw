@@ -218,12 +218,16 @@ class DakenCounter:
 
     # スクショを撮って保存する。OCR結果が返ってきた場合は曲名を入れる、それ以外の場合は時刻のみ
     def save_screenshot_general(self):
+        if self.running:
+            time.sleep(0.4)
+        else:
+            self.obs.save_screenshot()
         try:
-            if self.running:
-                time.sleep(0.4)
-            else:
-                self.obs.save_screenshot()
             result = self.ocr(self.imgpath)
+        except Exception:
+            logger.debug(traceback.format_exc())
+            result = False
+        try:
             if result:
                 dst = self.save_result(result)
                 print(f'スクリーンショットを保存しました -> {dst}')
