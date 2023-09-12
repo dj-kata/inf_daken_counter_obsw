@@ -15,6 +15,8 @@ lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EX
 class ScoreViewer:
     def __init__(self):
         self.score_manager = ScoreManager()
+        self.mode = 'SP'
+        self.flg_save = False
         #with open('settings.json') as f:
         #    self.settings = json.load(f)
         try:
@@ -79,7 +81,7 @@ class ScoreViewer:
         layout_sort.append(sg.Radio('BP', key='sortkey_bp', group_id='sortkey', default=False, enable_events=True))
         layout_sort.append(sg.Radio('最終プレー日', key='sortkey_date', group_id='sortkey', default=False, enable_events=True))
         layout_sort.append(sg.Radio('非公式難易度', key='sortkey_unofficial', group_id='sortkey', default=False, enable_events=True))
-        layout = [
+        layout_left = [
             layout_mode,
             layout_lv,
             layout_sort,
@@ -87,6 +89,22 @@ class ScoreViewer:
              ,sg.Button('CSVにエクスポート', key='btn_export', enable_events=True, tooltip='プレーデータをcsvに保存します。\nSP/DP/DoubleBattleのデータを全て1ファイルに書き出します。')
              ,sg.Button('再読み込み', key='reload')
             ],
+        ]
+        layout_right = [
+            [sg.Text('', key='txt_title')],
+            [
+                sg.Button('OBSで表示(TBD)', key='disp_obs'),
+                sg.Button('削除', key='delete'),
+                sg.Button('保存', key='save'),
+            ],
+            [
+                sg.Listbox([], size=(80,4), key='list_details')
+            ]
+        ]
+        layout = [
+            [sg.Column([
+                [sg.Frame('filter', layout=layout_left),sg.Frame('details', layout=layout_right)],
+            ])],
             [sg.Table([], key='table', headings=header
                       , font=(None, 16)
                       , vertical_scroll_only=False
@@ -97,6 +115,7 @@ class ScoreViewer:
                       , justification='left'
                       ,select_mode = sg.TABLE_SELECT_MODE_BROWSE
                       , size=(1,10)
+                      ,enable_events=True
                     )
             ],
         ]
@@ -105,12 +124,37 @@ class ScoreViewer:
         self.window['table'].expand(expand_x=True, expand_y=True)
         self.update_table()
 
+    def gui_detals(self, rowdata):
+        details = []
+        for d in self.score_manager.score[rowdata[1]+"___"+rowdata[2]]:
+            tmp = f"{d[13]}, {d[7]}, ex:{d[9]}, bp:{d[11]} opt:{d[12]}"
+            details.append(tmp)
+        self.window['list_details'].update(details)
+        self.window['txt_title'].update(rowdata[1])
+
+    def delete_playdata(self, tabledata, detaildata):
+        details = detaildata[0].split(', ')
+        for i,d in enumerate(self.score_manager.log):
+            flg_title = (d[1] == tabledata[1])
+            flg_diff = (d[2][0] == tabledata[2][0]) and (d[2][2] == tabledata[2][2])
+            flg_date  = (details[0] == d[13])
+            flg_score = (d[9] == int(details[2][3:]))
+            #flg_bp = (d[11] == int(details[3][4:])) # Noneになることがある
+            if flg_title and flg_diff and flg_date and flg_score:
+                print(i, d)
+                self.score_manager.log.pop(i)
+                self.score_manager.reload_tmp()
+                self.gui_detals(tabledata)
+                self.flg_save = True
+                break # 1つだけ削除
+
     def update_table(self):
         mode = 'SP'
         if self.window['radio_mode_dp'].get():
             mode = 'DP'
         elif self.window['radio_mode_dbx'].get():
             mode = 'DB'
+        self.mode = mode
         dat = []
         row_colors = []
         for i in range(1, 13):
@@ -251,6 +295,11 @@ class ScoreViewer:
             ev, val = self.window.read()
             #print(ev, val)
             if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-', 'btn_close_setting', 'btn_close_info'): # 終了処理
+                if self.flg_save:
+                    ico=self.ico_path('icon.ico')
+                    ans = sg.popup_yes_no('プレーデータが変更されています。\nプレーデータを保存しますか?', icon=ico)
+                    if ans == 'Yes':
+                        self.score_manager.save()
                 break
             elif ev == 'chk_lvall': # ALLボタンの処理
                 for i in range(1,13):
@@ -259,7 +308,19 @@ class ScoreViewer:
                 self.export_csv()
             elif ev == 'reload':
                 self.score_manager.load()
-            if ev.startswith('sortkey_') or ev.startswith('radio_mode_') or ev.startswith('sort_') or (ev=='txt_search') or ev.startswith('chk_'):
+            elif ev == 'table':
+                if len(val['table']) > 0:
+                    self.gui_detals(self.window['table'].get()[val['table'][0]])
+            elif ev == 'delete':
+                if len(val['list_details']) > 0:
+                    self.delete_playdata(self.window['table'].get()[val['table'][0]],val['list_details'])
+            elif ev == 'save':
+                ico=self.ico_path('icon.ico')
+                ans = sg.popup_yes_no('プレーデータを保存しますか?', icon=ico)
+                if ans == 'Yes':
+                    self.score_manager.save()
+                    self.flg_save = False
+            if ev.startswith('sortkey_') or ev.startswith('radio_mode_') or ev.startswith('sort_') or (ev=='txt_search') or ev.startswith('chk_') or (ev=='reload') or (ev=='delete'):
                 self.update_table()
 
 if __name__ == '__main__':

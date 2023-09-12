@@ -19,8 +19,25 @@ class ScoreManager:
         self.load()
 
     def load(self):
+        self.log = []
+        self.score = defaultdict(lambda: list())
+        self.score_best = defaultdict(lambda: list())
+        self.list_diff = defaultdict(lambda: list())
         with open('alllog.pkl', 'rb') as f:
             self.log = pickle.load(f)
+        self.get_scores_from_log()
+        self.get_scores_best()
+        self.get_musiclist_with_difficulty()
+        self.get_stat()
+
+    def save(self):
+        with open('alllog.pkl', 'wb') as f:
+            pickle.dump(self.log, f)
+
+    def reload_tmp(self):
+        self.score = defaultdict(lambda: list())
+        self.score_best = defaultdict(lambda: list())
+        self.list_diff = defaultdict(lambda: list())
         self.get_scores_from_log()
         self.get_scores_best()
         self.get_musiclist_with_difficulty()
@@ -32,6 +49,7 @@ class ScoreManager:
             key = f"{s[1]}___{s[2]}"
             notes = self.noteslist[s[1]][self.difflist.index(s[2])]
             if 'BATTLE' in s[-2]:
+                key = f"{s[1]}___DB{s[2][-1]}"
                 notes = 2 * self.noteslist[s[1]][self.difflist.index(s[2].replace('DP','SP'))]
             if s[3] == notes:
                 self.score[key].append(s)
