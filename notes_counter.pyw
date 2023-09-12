@@ -42,6 +42,12 @@ hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcNa
 hdl.setFormatter(hdl_formatter)
 logger.addHandler(hdl)
 
+"""
+    TODO
+    スコアビューワで選択中の曲を表示
+    today_updateでもdiff表示
+"""
+
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
 try:
@@ -532,6 +538,8 @@ class DakenCounter:
                     notes = self.noteslist[info.music][self.difflist.index(tmp[2])]
                     if 'BATTLE' in tmp[-2]:
                         notes = 2 * self.noteslist[info.music][self.difflist.index(tmp[2].replace('DP','SP'))]
+                        if onplay: # プレー中の場合、残りノーツ数を加算
+                            ret[11] += notes-(self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5])
                     if tmp[3] != notes:
                         logger.debug(f"ノーツ数不一致エラー。判定失敗とみなします。music={info.music}, notes={notes:,}, tmp[3]={tmp[3]:,}")
                         ret = False
