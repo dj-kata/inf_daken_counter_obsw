@@ -4,7 +4,7 @@ import pickle
 import datetime
 import json
 import csv
-import sys, os
+import sys, os, math
 from collections import defaultdict
 import PySimpleGUI as sg
 from tkinter import filedialog
@@ -24,6 +24,11 @@ class ScoreViewer:
                 self.dp_unofficial = pickle.load(f)
         except:
             self.dp_unofficial   = False
+        try:
+            with open('sp_12jiriki.pkl', 'rb') as f:
+                self.sp_jiriki = pickle.load(f)
+        except:
+            self.sp_jiriki   = {}
 
     def ico_path(self, relative_path):
         try:
@@ -86,6 +91,7 @@ class ScoreViewer:
             layout_lv,
             layout_sort,
             [sg.Text('search:'), sg.Input('', key='txt_search', enable_events=True)
+             ,sg.Button('クリア', key='clear')
              ,sg.Button('CSVにエクスポート', key='btn_export', enable_events=True, tooltip='プレーデータをcsvに保存します。\nSP/DP/DoubleBattleのデータを全て1ファイルに書き出します。')
              ,sg.Button('再読み込み', key='reload')
             ],
@@ -93,7 +99,7 @@ class ScoreViewer:
         layout_right = [
             [sg.Text('', key='txt_title')],
             [
-                sg.Button('OBSで表示(TBD)', key='disp_obs'),
+                sg.Button('OBSで表示', key='disp_obs'),
                 sg.Button('削除', key='delete'),
                 sg.Button('保存', key='save'),
             ],
@@ -130,7 +136,7 @@ class ScoreViewer:
             tmp = f"{d[13]}, {d[7]}, ex:{d[9]}, bp:{d[11]} opt:{d[12]}"
             details.append(tmp)
         self.window['list_details'].update(details)
-        self.window['txt_title'].update(rowdata[1])
+        self.window['txt_title'].update(f"{rowdata[1]} (playcount:{len(self.score_manager.score[rowdata[1]+'___'+rowdata[2]])})")
 
     def delete_playdata(self, tabledata, detaildata):
         details = detaildata[0].split(', ')
@@ -147,6 +153,128 @@ class ScoreViewer:
                 self.gui_detals(tabledata)
                 self.flg_save = True
                 break # 1つだけ削除
+
+    def escape_for_xml(self, input):
+        return input.replace('&', '&amp;').replace('<','&lt;').replace('>','&gt;').replace('"','&quot;').replace("'",'&apos;')
+
+    # ノーツ数とスコアを受け取ってAAA+50みたいな表記にして返す。タプルで返す
+    def calc_rankdiff(self, notes, score):
+        target,diff = ('', '') # AAA, -50 みたいな結果を返す
+        smax = notes*2
+        if score == smax:
+            target,diff = ('MAX', '+0')
+        elif score >= math.ceil(17*smax/18):
+            target,diff = ('MAX', f"{score-smax:+}")
+        elif score >= math.ceil(15*smax/18):
+            aaa = math.ceil(smax*16/18)
+            target,diff = ('AAA', f'{score - aaa:+}')
+        elif score >= math.ceil(13*smax/18):
+            aa = math.ceil(smax*14/18)
+            target,diff = ('AA', f'{score - aa:+}')
+        elif score >= math.ceil(11*smax/18):
+            a = math.ceil(smax*12/18)
+            target,diff = ('A', f'{score - a:+}')
+        elif score >= math.ceil(9*smax/18):
+            tmp = math.ceil(smax*10/18)
+            target,diff = ('B', f'{score - tmp:+}')
+        elif score >= math.ceil(7*smax/18):
+            tmp = math.ceil(smax*8/18)
+            target,diff = ('C', f'{score - tmp:+}')
+        elif score >= math.ceil(5*smax/18):
+            tmp = math.ceil(smax*6/18)
+            target,diff = ('D', f'{score - tmp:+}')
+        elif score >= math.ceil(3*smax/18):
+            tmp = math.ceil(smax*4/18)
+            target,diff = ('E', f'{score - tmp:+}')
+        else:
+            target,diff = ('F', f'{score:+}')
+        if diff == '-0':
+            diff = '+0'
+
+        return target,diff
+
+    def write_history_cursong_xml(self, result):
+        lv = result[0][1:]
+        title = result[1]
+        difficulty = result[2][0]+'P'+result[2][2]
+        spjiriki_list = ['地力S+', '個人差S+', '地力S', '個人差S', '地力A+', '個人差A+', '地力A', '個人差A', '地力B+', '個人差B+', '地力B', '個人差B', '地力C', '個人差C', '地力D', '個人差D', '地力E', '個人差E', '地力F', '難易度未定']
+        with open('history_cursong.xml', 'w', encoding='utf-8') as f:
+            f.write(f'<?xml version="1.0" encoding="utf-8"?>\n')
+            f.write("<Results>\n")
+            f.write(f'    <lv>{lv}</lv>\n')
+            f.write(f'    <music>{self.escape_for_xml(result[1])}</music>\n')
+            f.write(f'    <difficulty>{result[2]}</difficulty>\n')
+            key = f"{title}({difficulty})"
+
+            # 非公式難易度
+            dpunoff_key = f"{result[1]}"
+            dp_unofficial_lv = ''
+            if dpunoff_key in self.dp_unofficial.keys():
+                tmp = self.dp_unofficial[dpunoff_key]
+                if result[2] == 'DPA':
+                    dp_unofficial_lv = tmp[6]
+                elif result[2] == 'DPH':
+                    dp_unofficial_lv = tmp[5]
+                elif result[2] == 'DPL':
+                    dp_unofficial_lv = tmp[8]
+            if 'BATTLE' in result[-2]:
+                dp_unofficial_lv = ''
+            f.write(f'    <dp_unofficial_lv>{dp_unofficial_lv}</dp_unofficial_lv>\n')
+            # SP地力表
+            spjiriki_key = f"{result[1]}___{result[2]}"
+            sp_12hard = ''
+            sp_12clear = ''
+            if spjiriki_key in self.sp_jiriki['hard'].keys():
+                sp_12hard = spjiriki_list[self.sp_jiriki['hard'][spjiriki_key]]
+            if spjiriki_key in self.sp_jiriki['clear'].keys():
+                sp_12clear = spjiriki_list[self.sp_jiriki['clear'][spjiriki_key]]
+            f.write(f'    <sp_12hard>{sp_12hard}</sp_12hard>\n')
+            f.write(f'    <sp_12clear>{sp_12clear}</sp_12clear>\n')
+
+            for s in reversed(self.score_manager.score[f"{result[1]}___{result[2]}"]): # 過去のプレー履歴のループ,sが1つのresultに相当
+                #logger.debug(f"s = {s}")
+                bp = s[11]
+                if len(s) != 14: # フォーマットがおかしい場合は飛ばす
+                    continue
+                if bp == None: # 昔のリザルトに入っていない可能性を考えて一応例外処理している
+                    bp = '?'
+                if 'DB' in result[2]: # 現在DBx系オプションの場合、単曲履歴もDBxのリザルトのみを表示
+                    if 'BATTLE' in s[-2]: # DBxのリザルトのみ抽出
+                        f.write('    <item>\n')
+                        f.write(f'        <date>{s[-1][2:10]}</date>\n')
+                        f.write(f'        <lamp>{s[7]}</lamp>\n')
+                        f.write(f'        <score>{s[9]}</score>\n')
+                        f.write(f'        <opt>{s[-2]}</opt>\n')
+                        f.write(f'        <bp>{bp}</bp>\n')
+                        f.write(f'        <notes>{s[3]*2}</notes>\n')
+                        f.write(f'        <rank>{s[5]}</rank>\n')
+                        tmp0,tmp1 = self.calc_rankdiff(s[3]*2, s[9])
+                        f.write(f'        <rankdiff>{tmp0}{tmp1}</rankdiff>\n')
+                        f.write(f'        <rankdiff0>{tmp0}</rankdiff0>\n')
+                        f.write(f'        <rankdiff1>{tmp1}</rankdiff1>\n')
+                        srate = f"{25*s[9]/s[3]:.2f}"
+                        f.write(f'        <scorerate>{srate}</scorerate>\n')
+                        f.write('    </item>\n')
+                else: # 現在のオプションがDBx系ではない
+                    if not 'BATTLE' in s[-2]: # DBx''以外''のリザルトのみ抽出
+                        f.write('    <item>\n')
+                        f.write(f'        <date>{s[-1][2:10]}</date>\n')
+                        f.write(f'        <lamp>{s[7]}</lamp>\n')
+                        f.write(f'        <score_pre>{s[8]}</score_pre>\n')
+                        f.write(f'        <score>{s[9]}</score>\n')
+                        f.write(f'        <opt>{s[-2]}</opt>\n')
+                        f.write(f'        <bp>{bp}</bp>\n')
+                        f.write(f'        <notes>{s[3]}</notes>\n')
+                        f.write(f'        <rank_pre>{s[4]}</rank_pre>\n')
+                        f.write(f'        <rank>{s[5]}</rank>\n')
+                        tmp0,tmp1 = self.calc_rankdiff(s[3], s[9])
+                        f.write(f'        <rankdiff>{tmp0}{tmp1}</rankdiff>\n')
+                        f.write(f'        <rankdiff0>{tmp0}</rankdiff0>\n')
+                        f.write(f'        <rankdiff1>{tmp1}</rankdiff1>\n')
+                        srate = f"{50*s[9]/s[3]:.2f}"
+                        f.write(f'        <scorerate>{srate}</scorerate>\n')
+                        f.write('    </item>\n')
+            f.write('</Results>\n')
 
     def update_table(self):
         mode = 'SP'
@@ -311,6 +439,11 @@ class ScoreViewer:
             elif ev == 'table':
                 if len(val['table']) > 0:
                     self.gui_detals(self.window['table'].get()[val['table'][0]])
+            elif ev == 'disp_obs':
+                if len(val['table']) > 0:
+                    self.write_history_cursong_xml(self.window['table'].get()[val['table'][0]])
+            elif ev == 'clear':
+                self.window['txt_search'].update('')
             elif ev == 'delete':
                 if len(val['list_details']) > 0:
                     self.delete_playdata(self.window['table'].get()[val['table'][0]],val['list_details'])
@@ -320,7 +453,7 @@ class ScoreViewer:
                 if ans == 'Yes':
                     self.score_manager.save()
                     self.flg_save = False
-            if ev.startswith('sortkey_') or ev.startswith('radio_mode_') or ev.startswith('sort_') or (ev=='txt_search') or ev.startswith('chk_') or (ev=='reload') or (ev=='delete'):
+            if ev.startswith('sortkey_') or ev.startswith('radio_mode_') or ev.startswith('sort_') or (ev=='txt_search') or ev.startswith('chk_') or (ev=='reload') or (ev=='delete') or (ev=='clear'):
                 self.update_table()
 
 if __name__ == '__main__':
