@@ -295,7 +295,10 @@ class ScoreViewer:
                         tmp[5] = ''
                     # score, bp, notesの順なので、これをscore, score_rate, bpに書き換える
                     bp = tmp[5]
-                    tmp[5] = f"{tmp[4]*100/(tmp[6]*2):.1f}"
+                    if tmp[6]>0:
+                        tmp[5] = f"{tmp[4]*100/(tmp[6]*2):.1f}"
+                    else:
+                        tmp[5] = 0
                     tmp[6] = bp
                     date = tmp[-1].split('-')
                     tmp[-1] = f"{date[0]}/{date[1]}/{date[2]} {date[3]}:{date[4]}"
