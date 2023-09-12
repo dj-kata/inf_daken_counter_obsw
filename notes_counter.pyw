@@ -42,12 +42,6 @@ hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcNa
 hdl.setFormatter(hdl_formatter)
 logger.addHandler(hdl)
 
-"""
-    TODO
-    スコアビューワで選択中の曲を表示
-    today_updateでもdiff表示
-"""
-
 ### 固定値
 SWNAME = 'INFINITAS打鍵カウンタ'
 try:
