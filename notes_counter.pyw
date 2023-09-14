@@ -128,7 +128,8 @@ class DakenCounter:
             'host':'localhost', 'port':'4444', 'passwd':'', 'obs_source':'INFINITAS',
             'autosave_lamp':False,'autosave_djlevel':False,'autosave_score':False,'autosave_bp':False,'autosave_dbx':'no',
             'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False, 'todaylog_always_push':True,
-            'todaylog_dbx_always_push':True,
+            'todaylog_dbx_always_push':True,'gen_dailylog_from_alllog':False,'target_score_rate':'80',
+            'auto_update':True,
             'obs_scene':'', 'obs_itemid_history_cursong':False, 'obs_itemid_today_result':False, 'obs_scenename_history_cursong':'', 'obs_scenename_today_result':'',
             # スレッド起動時の設定
             'obs_enable_boot':[],'obs_disable_boot':['history_cursong', 'today_result'],'obs_scene_boot':'',
@@ -189,6 +190,7 @@ class DakenCounter:
     def save_dakenlog(self):
         tmp = DakenLogger()
         if self.today_plays > 0:
+            logger.debug(f"date:{self.startdate}, plays:{self.today_plays}, judge:{self.judge}")
             tmp.add(self.startdate, self.today_plays, self.judge)
             tmp.save()
 
@@ -779,7 +781,9 @@ class DakenCounter:
 
         logger.debug(f'startdate = {self.startdate} (imgpath:{self.imgpath})')
 
-        tmp_stats = ManageStats(date=self.startdate, todaylog=self.todaylog, judge=self.judge, plays=self.today_plays)
+        tmp_stats = ManageStats(date=self.startdate, todaylog=self.todaylog, judge=self.judge, plays=self.today_plays, from_alllog=self.settings['gen_dailylog_from_alllog'], target_srate=self.settings['target_score_rate'])
+        tmp_stats.update(self.todaylog, self.judge, self.today_plays)
+        tmp_stats.write_stats_to_xml()
         print(f'スコア検出スレッド開始。')
         while True:
             while True: # 曲開始までを検出
@@ -1265,10 +1269,17 @@ class DakenCounter:
             [par_text('DBx系の履歴の更新:'),sg.Radio(text='常時', group_id='2', default=self.settings['todaylog_dbx_always_push'], font=FONT, key='todaylog_dbx_always_push'), sg.Radio(text='クリア時のみ', group_id='2', default=not self.settings['todaylog_dbx_always_push'], font=FONT)],
             [sg.Button('保存したリザルト画像からスコアデータに反映する', key='btn_ocr_from_savedir', tooltip='リザルト画像の数によってはかなり時間がかかります。')],
         ]
+        layout_others =[
+            [par_text('起動時に更新を確認する'), sg.Radio(text='する', group_id='auto_update', default=self.settings['auto_update'], font=FONT, key='auto_update'),sg.Radio(text='しない', group_id='auto_update', default=not self.settings['auto_update'], font=FONT)],
+            [par_text('日々のノーツ数を別方式で算出:'), sg.Radio(text='する', group_id='stats_daily', default=self.settings['gen_dailylog_from_alllog'], font=FONT, key='gen_dailylog_from_alllog'),sg.Radio(text='しない', group_id='stats_daily', default=not self.settings['gen_dailylog_from_alllog'], font=FONT)],
+            [par_text('目標スコアレート(0-100)'), sg.Combo([str(i) for i in range(50,101)], default_value=self.settings['target_score_rate'],key='target_score_rate', size=(4,1), font=FONT), par_text('%')],
+            [par_text('(別方式:リザルトログから目標レートに応じて推定)', text_color='#ff0000')],
+        ]
         col_l = sg.Column([
             [sg.Frame('OBS設定', layout=layout_obs, title_color='#000044')],
             [sg.Frame('リザルト自動保存設定', layout=layout_autosave, title_color='#000044')],
             [sg.Frame('OCR(リザルト文字認識)設定', layout=layout_ocr, title_color='#000044')],
+            [sg.Frame('その他設定', layout=layout_others, title_color='#000044')],
         ])
         layout = [
             #[col_l, col_r],
@@ -1428,7 +1439,7 @@ class DakenCounter:
         keyboard.add_hotkey('F6', self.save_screenshot_general)
 
         ver = self.get_latest_version()
-        if ver != SWVER:
+        if ver != SWVER and self.settings['auto_update']:
             print(f'現在のバージョン: {SWVER}, 最新版:{ver}')
             ans = sg.popup_yes_no(f'アップデートが見つかりました。\n\n{SWVER} -> {ver}\n\nアプリを終了して更新します。', icon=self.ico)
             if ans == "Yes":
@@ -1494,6 +1505,9 @@ class DakenCounter:
                     self.settings['autosave_bp'] = val['chk_bp']
                     self.settings['autosave_always'] = val['chk_always']
                     self.settings['autosave_mosaic'] = val['chk_mosaic']
+                    self.settings['gen_dailylog_from_alllog'] = val['gen_dailylog_from_alllog']
+                    self.settings['target_score_rate'] = val['target_score_rate']
+                    self.settings['auto_update'] = val['auto_update']
                     if val['chk_always']:
                         self.window['chk_lamp'].update(disabled=True)
                         self.window['chk_djlevel'].update(disabled=True)
