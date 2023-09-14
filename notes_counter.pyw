@@ -529,16 +529,18 @@ class DakenCounter:
             # こうすると、過去のリザルトから読む場合もプレー中に読む場合も共通化できる
             tmp.append(dt.strftime('%Y-%m-%d-%H-%M'))
             ret = tmp
+            notes = 999999
             if self.noteslist != False: # ノーツリストがある場合
                 if tmp[2] != None:
-                    notes = self.noteslist[info.music][self.difflist.index(tmp[2])]
-                    if 'BATTLE' in tmp[-2]:
-                        notes = 2 * self.noteslist[info.music][self.difflist.index(tmp[2].replace('DP','SP'))]
-                        #if onplay: # プレー中の場合、残りノーツ数を加算
-                        #    ret[11] += notes-(self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5])
-                    if tmp[3] != notes:
-                        logger.debug(f"ノーツ数不一致エラー。判定失敗とみなします。music={info.music}, notes={notes:,}, tmp[3]={tmp[3]:,}")
-                        ret = False
+                    if info.music in self.noteslist.keys():
+                        notes = self.noteslist[info.music][self.difflist.index(tmp[2])]
+                        if 'BATTLE' in tmp[-2]:
+                            notes = 2 * self.noteslist[info.music][self.difflist.index(tmp[2].replace('DP','SP'))]
+                        if tmp[3] != notes:
+                            logger.debug(f"ノーツ数不一致エラー。判定失敗とみなします。music={info.music}, notes={notes:,}, tmp[3]={tmp[3]:,}")
+                            ret = False
+                    else: # ノーツ数一覧が追いついていない場合、通す
+                        logger.debug('曲リストに記載なしですが保存します。')
         return ret
 
     ### オプション検出を行う
