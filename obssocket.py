@@ -66,7 +66,8 @@ class OBSSocket():
         try:
             res = self.ws.set_input_settings(source, {'text':text}, True)
         except Exception:
-            logger.debug(traceback.format_exc())
+            pass
+            #logger.debug(traceback.format_exc())
 
     def save_screenshot(self):
         res = self.ws.save_source_screenshot(self.inf_source, 'png', self.dst_screenshot, 1280, 720, 100)
