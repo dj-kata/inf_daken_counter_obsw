@@ -3,6 +3,21 @@ import os, datetime, pickle
 from matplotlib import pyplot as plt
 import numpy as np
 
+import logging, logging.handlers
+import traceback
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+hdl = logging.handlers.RotatingFileHandler(
+    './dbg.log',
+    encoding='utf-8',
+    maxBytes=1024*1024*2,
+    backupCount=1,
+)
+hdl.setLevel(logging.DEBUG)
+hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcName)s() [%(levelname)s] %(message)s')
+hdl.setFormatter(hdl_formatter)
+logger.addHandler(hdl)
+
 ### 打鍵ログ(ノーツ数)保存用クラス
 class DakenLogger:
     def __init__(self):
