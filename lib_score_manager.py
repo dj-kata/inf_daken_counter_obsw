@@ -47,17 +47,17 @@ class ScoreManager:
     def get_scores_from_log(self):
         for s in self.log:
             key = f"{s[1]}___{s[2]}"
-            notes = self.noteslist[s[1]][self.difflist.index(s[2])]
+            notes = 100000000
             if 'BATTLE' in s[-2]:
                 key = f"{s[1]}___DB{s[2][-1]}"
-                notes = 2 * self.noteslist[s[1]][self.difflist.index(s[2].replace('DP','SP'))]
-            if s[3] == notes:
-                self.score[key].append(s)
+            if s[1] in self.noteslist.keys():
+                notes = self.noteslist[s[1]][self.difflist.index(s[2])]
+                if 'BATTLE' in s[-2]:
+                    notes = 2 * self.noteslist[s[1]][self.difflist.index(s[2].replace('DP','SP'))]
+                if s[3] == notes:
+                    self.score[key].append(s)
             else:
-                pass
-                #print(f'error! ノーツ数が不一致 ({s}), notes={notes}')
-            #if 'GAMBOL' in key:
-            #    print(s)
+                self.score[key].append(s)
 
     def get_scores_best(self):
         for key in self.score.keys():
