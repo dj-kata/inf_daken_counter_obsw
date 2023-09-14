@@ -7,8 +7,23 @@ from daken_logger import DakenLogger
 from lib_score_manager import ScoreManager
 import datetime
 
+import logging, logging.handlers
+import traceback
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+hdl = logging.handlers.RotatingFileHandler(
+    './dbg.log',
+    encoding='utf-8',
+    maxBytes=1024*1024*2,
+    backupCount=1,
+)
+hdl.setLevel(logging.DEBUG)
+hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcName)s() [%(levelname)s] %(message)s')
+hdl.setFormatter(hdl_formatter)
+logger.addHandler(hdl)
+
 class ManageStats:
-    def __init__(self, date='????/??/??', todaylog=[], judge=[], plays=0):
+    def __init__(self, date='????/??/??', todaylog=[], judge=[], plays=0, from_alllog=False, target_srate='80'):
         self.date = date
         self.todaylog = todaylog
         self.judge    = judge
@@ -19,6 +34,8 @@ class ManageStats:
         self.dakenlog = tmp.log
         self.plays    = plays
         self.srate    = 0
+        self.from_alllog = from_alllog
+        self.target_srate = int(target_srate)
         if len(self.judge):
             if (self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5]) > 0:
                 self.srate = (self.judge[0]*2+self.judge[1])/(self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5])*50
@@ -53,6 +70,33 @@ class ManageStats:
                     else:
                         self.dp[s[0]] += s[9]
 
+    def get_notes_last5days_from_alllog(self):
+        with open('alllog.pkl', 'rb') as f:
+            alllog = pickle.load(f)
+        #logger.debug(alllog)
+        tmp = []
+        dates = []
+        tmp_date = list(map(int, alllog[-1][-1].split('-')))
+        self.date = f"{tmp_date[0]:02d}/{tmp_date[1]:02d}/{tmp_date[2]:02d}"
+        today = datetime.date(tmp_date[0], tmp_date[1], tmp_date[2])
+        logger.debug(f'today={today}, self.date={self.date}')
+        for i in reversed(range(5)): # 先に[日付,0,0,0,0,0,0,0]として初期化
+            date = today - datetime.timedelta(days=i)
+            dates.append(date)
+            tmp.append([date.strftime('%Y/%m/%d'), 0, 0, 0, 0, 0, 0, 0])
+        logger.debug(f'tmp={tmp}')
+
+        for l in reversed(alllog):
+            tmp_date = list(map(int, l[-1].split('-')))
+            tmp_day = datetime.date(tmp_date[0], tmp_date[1], tmp_date[2])
+            if tmp_day in dates:
+                tmp[dates.index(tmp_day)][2] += (l[9]*self.target_srate)//100
+            else:
+                break
+        self.log_last5days = tmp
+        logger.debug(f'tmp={tmp}')
+        
+
     def get_notes_last5days(self):
         tmp_date = list(map(int, self.date.split('/')))
         today = datetime.date(tmp_date[0], tmp_date[1], tmp_date[2])
@@ -76,6 +120,7 @@ class ManageStats:
             else:
                 break
         self.log_last5days = tmp
+        logger.debug(tmp)
 
     def update(self, todaylog, judge, plays):
         # TODO リザルト画面に来るたびに実行するが、差分実行にできないか？
@@ -90,7 +135,14 @@ class ManageStats:
             if (self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5]) > 0:
                 self.srate = (self.judge[0]*2+self.judge[1])/(self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5])*50
         self.calc_lv_histogram()
-        self.get_notes_last5days()
+        try:
+            if self.from_alllog:
+                self.get_notes_last5days_from_alllog()
+            else:
+                self.get_notes_last5days()
+        except Exception:
+            logger.debug(traceback.format_exc())
+            #self.get_notes_last5days_from_alllog()
         self.score_manager.load()
 
     def disp(self):
