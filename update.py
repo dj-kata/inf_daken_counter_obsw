@@ -53,26 +53,30 @@ class Updater:
             self.window['prog'].update(percent)
 
         # zipファイルのDL
+        logger.debug('now downloading...')
         os.makedirs('tmp', exist_ok=True)
         urllib.request.urlretrieve(url, filename, _progress)
 
         # zipファイルの解凍
+        logger.debug('now extracting...')
         self.window['txt_info'].update('zipファイル解凍中')
         shutil.unpack_archive(filename, 'tmp')
 
         zp = zipfile.ZipFile(filename, 'r')
 
         target_dir = '.'
-        try:
-            for query in ('*', '*/*', '*/*/*'):
-                for f in glob('tmp/inf_daken_counter/'+query):
-                    if os.path.isfile(f):
-                            base = re.sub('.*inf_daken_counter.', '', f)
-                            print(f, '->', target_dir+'/'+base)
-                            shutil.move(f, target_dir+'/'+base)
-            shutil.rmtree('tmp/inf_daken_counter')
-        except:
-            logger.debug(traceback.format_exc())
+        logger.debug('now moving...')
+        for query in ('*', '*/*', '*/*/*'):
+            for f in glob('tmp/inf_daken_counter/'+query):
+                if os.path.isfile(f):
+                    try:
+                        base = re.sub('.*inf_daken_counter.', '', f)
+                        shutil.move(f, target_dir+'/'+base)
+                        logger.debug(f'{f} -> {target_dir}/{base}')
+                    except:
+                        logger.debug(f"error! ({f})")
+                        logger.debug(traceback.format_exc())
+        shutil.rmtree('tmp/inf_daken_counter')
         self.window.write_event_value('-FINISH-', '')
 
     # icon用
