@@ -1440,21 +1440,6 @@ class DakenCounter:
         #keyboard.add_hotkey('ctrl+F6', self.save_screenshot_general)
         keyboard.add_hotkey('F6', self.save_screenshot_general)
 
-        ver = self.get_latest_version()
-        if ver != SWVER and self.settings['auto_update']:
-            print(f'現在のバージョン: {SWVER}, 最新版:{ver}')
-            ans = sg.popup_yes_no(f'アップデートが見つかりました。\n\n{SWVER} -> {ver}\n\nアプリを終了して更新します。', icon=self.ico)
-            if ans == "Yes":
-                self.save_alllog()
-                self.save_settings()
-                self.save_dakenlog()
-                self.control_obs_sources('quit')
-                if os.path.exists('update.exe'):
-                    logger.info('アップデート確認のため終了します')
-                    res = subprocess.Popen('update.exe')
-                    return
-                else:
-                    sg.popup_error('update.exeがありません', icon=self.ico)
         if self.settings['run_on_boot']: # 起動後即開始設定の場合
             logger.info('自動起動設定が有効です。')
             self.window.refresh()
@@ -1477,6 +1462,8 @@ class DakenCounter:
             self.gen_notes_xml(0,self.today_notes,self.today_plays, self.notes_ran, self.notes_battle, self.judge)
             th.start()
             self.window['start'].update("stop")
+            if self.settings['auto_update']:
+                self.window.write_event_value('アップデートを確認', " ")
 
         while True:
             ev, val = self.window.read()
