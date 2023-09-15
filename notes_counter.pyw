@@ -1552,6 +1552,13 @@ class DakenCounter:
                             print('obs socket error!')
                             pass
                     self.gui_main()
+                    if self.settings['run_on_boot']: # 起動後即開始設定の場合
+                        self.running = True
+                        # 自動リセットはここでは使わない
+                        th = threading.Thread(target=self.detect_top, args=(SLEEP_TIME,), daemon=True)
+                        self.gen_notes_xml(0,self.today_notes,self.today_plays, self.notes_ran, self.notes_battle, self.judge)
+                        th.start()
+                        self.window['start'].update("stop")
             elif ev.startswith('start'):
                 self.running = not self.running
                 if self.running:
@@ -1738,6 +1745,14 @@ class DakenCounter:
                 self.playopt = self.settings['playopt']
 
             elif ev  == f'{SWNAME}について':
+                if self.running:
+                    print(f'スコア検出スレッドを終了します。')
+                    self.window['start'].update("(終了処理中)")
+                    self.stop_thread = True
+                    th.join()
+                    self.stop_thread = False
+                    self.window['start'].update("start")
+                    self.running = not self.running
                 self.gui_info()
 
             elif ev.startswith('URL '): # URLをブラウザで開く;info用
