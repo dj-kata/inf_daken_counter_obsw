@@ -120,6 +120,30 @@ class DakenCounter:
             print('obs socket error!')
             pass
 
+    def debug(self, *obj, sep=' '):
+        try:
+            out = ''
+            for o in obj:
+                if type(o) != str:
+                    out += str(o) + sep
+                else:
+                    out += o + sep
+            logger.debug(out)
+        except Exception:
+            pass
+    
+    def info(self, *obj, sep=' '):
+        try:
+            out = ''
+            for o in obj:
+                if type(o) != str:
+                    out += str(o) + sep
+                else:
+                    out += o + sep
+            logger.info(out)
+        except Exception:
+            pass
+
     def load_settings(self):
         default_val = {
             'target_srate':'72%', 'sleep_time':'1.0',
@@ -150,7 +174,7 @@ class DakenCounter:
                 ret = json.load(f)
                 print(f"設定をロードしました。\n")
         except Exception as e:
-            logger.debug(traceback.format_exc())
+            self.debug(traceback.format_exc())
             print(f"有効な設定ファイルなし。デフォルト値を使います。")
 
         ### 後から追加した値がない場合にもここでケア
@@ -190,7 +214,7 @@ class DakenCounter:
     def save_dakenlog(self):
         tmp = DakenLogger()
         if self.today_plays > 0:
-            logger.debug(f"date:{self.startdate}, plays:{self.today_plays}, judge:{self.judge}")
+            self.debug(f"date:{self.startdate}, plays:{self.today_plays}, judge:{self.judge}")
             tmp.add(self.startdate, self.today_plays, self.judge)
             tmp.save()
 
@@ -226,8 +250,9 @@ class DakenCounter:
             self.obs.save_screenshot()
         try:
             result = self.ocr(self.imgpath)
+            self.debug(result)
         except Exception:
-            logger.debug(traceback.format_exc())
+            self.debug(traceback.format_exc())
             result = False
         try:
             if result:
@@ -240,7 +265,7 @@ class DakenCounter:
                 self.obs.save_screenshot_dst(dst)
             print(f'スクリーンショットを保存しました -> {dst}')
         except Exception:
-            logger.debug(traceback.format_exc())
+            self.debug(traceback.format_exc())
             print(f'error!! スクリーンショット保存に失敗しました')
 
 
@@ -256,7 +281,7 @@ class DakenCounter:
     # OBSソースの表示・非表示及びシーン切り替えを行う
     # nameで適切なシーン名を指定する必要がある。
     def control_obs_sources(self, name):
-        logger.debug(f"name={name} (detect_mode={self.detect_mode.name})")
+        self.debug(f"name={name} (detect_mode={self.detect_mode.name})")
         name_common = name
         if name[-1] in ('0','1'):
             name_common = name[:-1]
@@ -312,7 +337,7 @@ class DakenCounter:
                 rival_1p += np.array(sc).sum()
                 sc = img.crop((360,195+y*80,400,203+y*80))
                 rival_2p += np.array(sc).sum()
-            logger.debug(f"sum 1p,2p = {rival_1p:,}, {rival_2p:,}")
+            self.debug(f"sum 1p,2p = {rival_1p:,}, {rival_2p:,}")
             result_threshold = 542400
         
             # ライバル欄があるかどうかの判定
@@ -416,16 +441,17 @@ class DakenCounter:
         for f in paths:
             if ('infinitas' in str(f).lower()) or ('inf_' in str(f)):
                 try:
-                    logger.debug(f)
+                    self.debug(f)
                     result = self.ocr(f, onplay=False)
+                    self.debug(result)
                     if result:
                         tmp_key = result[1]+'___'+result[-1]
                         judge = tmp_key in keys
                         print(f"{result[-1]} {result[1]}({result[2]}) - {result[7]}, score:{result[9]:,}, bp:{result[11]}")
-                        logger.debug(f"judge:{judge}, file={f}, result={result}")
+                        self.debug(f"judge:{judge}, file={f}, result={result}")
                         if not judge:
                             self.alllog.append(result)
-                            logger.debug(f'===> added! ({f})')
+                            self.debug(f'===> added! ({f})')
                             cnt_add += 1
                             list_added.append(result)
                         else: # 同一リザルトが存在する場合、上書き
@@ -433,9 +459,9 @@ class DakenCounter:
                                 self.alllog[keys.index(tmp_key)] = result
                                 cnt_edit += 1
                 except Exception:
-                    logger.debug(traceback.format_exc())
+                    self.debug(traceback.format_exc())
         print(f"過去リザルトの登録完了。{cnt_add:,}件追加、{cnt_edit:,}件修正 -> 全{len(self.alllog):,}件")
-        logger.debug(f"過去リザルトの登録完了。{cnt_add:,}件追加、{cnt_edit:,}件修正 -> 全{len(self.alllog):,}件")
+        self.debug(f"過去リザルトの登録完了。{cnt_add:,}件追加、{cnt_edit:,}件修正 -> 全{len(self.alllog):,}件")
         self.window.write_event_value('-OCR_FROM_IMG_END-', " ")
 
     ### プレイサイド検出を行う
@@ -466,7 +492,7 @@ class DakenCounter:
                 ret = f"{ret}, FLIP"
             if opt.assist != None:
                 ret = f"{ret}, {opt.assist}"
-            #logger.debug(f"arrange:{opt.arrange}, battle:{opt.battle}, flip:{opt.flip}, assist:{opt.assist}, fumen:{fumen} ===> ret:{ret}")
+            #self.debug(f"arrange:{opt.arrange}, battle:{opt.battle}, flip:{opt.flip}, assist:{opt.assist}, fumen:{fumen} ===> ret:{ret}")
         return ret
 
     # リザルト画像pngを受け取って、スコアツールの1entryとして返す
@@ -494,7 +520,7 @@ class DakenCounter:
             pic_info   = img_mono.crop((410,633,870,704))
             info.music = recog.get_music(np.array(pic_info))
         is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
-        #logger.debug(info.music, info.level, info.play_mode, info.difficulty, playdata.clear_type.current, playdata.dj_level.current, playdata.score.current)
+        #self.debug(info.music, info.level, info.play_mode, info.difficulty, playdata.clear_type.current, playdata.dj_level.current, playdata.score.current)
         if is_valid:
             tmp.append(info.level)
             tmp.append(info.music)
@@ -537,10 +563,11 @@ class DakenCounter:
                         if 'BATTLE' in tmp[-2]:
                             notes = 2 * self.noteslist[info.music][self.difflist.index(tmp[2].replace('DP','SP'))]
                         if tmp[3] != notes:
-                            logger.debug(f"ノーツ数不一致エラー。判定失敗とみなします。music={info.music}, notes={notes:,}, tmp[3]={tmp[3]:,}")
+                            self.debug(f"ノーツ数不一致エラー。判定失敗とみなします。music={info.music}, notes={notes:,}, tmp[3]={tmp[3]:,}")
                             ret = False
                     else: # ノーツ数一覧が追いついていない場合、通す
-                        logger.debug('曲リストに記載なしですが保存します。')
+                        pass
+                        #self.debug('曲リストに記載なしですが保存します。')
         return ret
 
     ### オプション検出を行う
@@ -738,7 +765,7 @@ class DakenCounter:
         hash_target = imagehash.average_hash(Image.open('layout/e4.png'))
         tmp = imagehash.average_hash(img.crop((358,90,358+24,90+24)))
         ret = (hash_target - tmp) < 10
-        #logger.debug(f"ret = {ret}")
+        #self.debug(f"ret = {ret}")
 
         return ret
     
@@ -758,7 +785,7 @@ class DakenCounter:
         img = Image.open('layout/endresult.png')
         hash_target = imagehash.average_hash(img)
         ret = (hash_target - tmp) < 10
-        #logger.debug(f"ret = {ret}")
+        #self.debug(f"ret = {ret}")
         return ret
 
     ### 無限ループにする(終了時は上から止める)
@@ -766,7 +793,7 @@ class DakenCounter:
     ### 曲中は検出したスコアをprintする
     def detect_top(self, sleep_time):
         self.control_obs_sources('boot')
-        logger.debug(f'OBSver:{self.obs.ws.get_version().obs_version}, RPCver:{self.obs.ws.get_version().rpc_version}, OBSWSver:{self.obs.ws.get_version().obs_web_socket_version}')
+        self.debug(f'OBSver:{self.obs.ws.get_version().obs_version}, RPCver:{self.obs.ws.get_version().rpc_version}, OBSWSver:{self.obs.ws.get_version().obs_web_socket_version}')
         pre_det = ''
         pre_judge = ['0','0','0','0','0','0']
         pre_score = 0
@@ -781,7 +808,7 @@ class DakenCounter:
         ts = os.path.getmtime(self.imgpath)
         self.startdate = datetime.datetime.fromtimestamp(ts).strftime("%Y/%m/%d")
 
-        logger.debug(f'startdate = {self.startdate} (imgpath:{self.imgpath})')
+        self.debug(f'startdate = {self.startdate} (imgpath:{self.imgpath})')
 
         tmp_stats = ManageStats(date=self.startdate, todaylog=self.todaylog, judge=self.judge, plays=self.today_plays, from_alllog=self.settings['gen_dailylog_from_alllog'], target_srate=self.settings['target_score_rate'])
         tmp_stats.update(self.todaylog, self.judge, self.today_plays)
@@ -793,13 +820,13 @@ class DakenCounter:
                     self.obs.save_screenshot()
                     playside = self.detect_playside()
                     tmp_playopt, tmp_gauge = self.detect_option()
-                    if not flg_autosave:
-                        try:
-                            result = self.ocr(self.imgpath)
-                            flg_autosave = self.autosave_result(result)
-                        except Exception as e:
-                            logger.debug(traceback.format_exc())
                     if self.detect_mode == detect_mode.result:
+                        if not flg_autosave: # 
+                            try:
+                                result = self.ocr(self.imgpath)
+                                flg_autosave = self.autosave_result(result)
+                            except Exception as e:
+                                self.debug(traceback.format_exc())
                         if not flg_result1: # リザルト画面終了時のOBS操作をしたかどうか
                             if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
                                 self.control_obs_sources('result1')
@@ -817,6 +844,7 @@ class DakenCounter:
                     if not is_pushed_to_alllog: # 曲ルーチンを1回抜けないとOCR起動フラグが立たない
                         try:
                             result = self.ocr(self.imgpath)
+                            self.debug(result)
                             if result != False:
                                 self.todaylog.append(result)
                                 self.alllog.append(result)
@@ -826,21 +854,21 @@ class DakenCounter:
                                 self.dict_alllog[key].append(result)
                                 is_pushed_to_alllog = True
                                 print(f"{result[1]}({result[2]}) - {result[7]},score:{result[9]:,},")
-                                logger.debug(f'result = {result}')
+                                self.debug(f'result = {result}')
                                 # xml更新
                                 self.write_today_update_xml()
                                 self.write_history_cursong_xml(result)
                                 self.control_obs_sources('result0')
                                 flg_result1 = False
                                 self.detect_mode = detect_mode.result
-                                logger.debug('')
+                                self.debug('')
                                 self.save_alllog() # ランプ内訳グラフ更新のため、alllogも保存する
                                 tmp_stats.update(self.todaylog, self.judge, self.today_plays)
-                                logger.debug('')
+                                self.debug('')
                                 tmp_stats.write_stats_to_xml()
-                                logger.debug('')
+                                self.debug('')
                         except Exception as e:
-                            logger.debug(traceback.format_exc())
+                            self.debug(traceback.format_exc())
 
                     if tmp_playopt and tmp_gauge:
                         if self.playopt != tmp_playopt:
@@ -857,7 +885,7 @@ class DakenCounter:
                         self.gen_opt_xml(self.playopt, self.gauge, True) # 常時表示+曲中のみデータの書き出し
                         break
                 except Exception as e: # 今の構成になってから、このtry文がそもそも不要かもしれない TODO
-                    logger.debug(traceback.format_exc())
+                    self.debug(traceback.format_exc())
                     stop_local = True
                     print(f'スクリーンショットに失敗しました。{e}')
                     self.window.write_event_value('-SCRSHOT_ERROR-', " ")
@@ -1017,7 +1045,7 @@ class DakenCounter:
             f.write(f'    <music>{self.escape_for_xml(result[1])}</music>\n')
             f.write(f'    <difficulty>{result[2]}</difficulty>\n')
             key = f"{result[1]}({result[2]})"
-            logger.debug(f"key={key}")
+            self.debug(f"key={key}")
 
             # 非公式難易度
             dpunoff_key = f"{result[1]}"
@@ -1045,7 +1073,7 @@ class DakenCounter:
             f.write(f'    <sp_12clear>{sp_12clear}</sp_12clear>\n')
 
             for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
-                #logger.debug(f"s = {s}")
+                #self.debug(f"s = {s}")
                 bp = s[11]
                 if len(s) != 14: # フォーマットがおかしい場合は飛ばす
                     continue
@@ -1088,7 +1116,7 @@ class DakenCounter:
                         f.write(f'        <scorerate>{srate}</scorerate>\n')
                         f.write('    </item>\n')
             f.write('</Results>\n')
-            logger.debug(f"end")
+            self.debug(f"end")
 
     def write_today_update_xml(self):
         with open('today_update.xml', 'w', encoding='utf-8') as f:
@@ -1096,7 +1124,7 @@ class DakenCounter:
             f.write("<Results>\n")
             lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
             for s in reversed(self.todaylog):
-                #logger.debug(f"s = {s}")
+                #self.debug(f"s = {s}")
                 lamp = ''
                 score = ''
                 dpunoff_key = f"{s[1]}"
@@ -1166,7 +1194,7 @@ class DakenCounter:
                     f.write(f'    <scorerate>{srate}</scorerate>\n')
                     f.write('</item>\n')
             f.write('</Results>\n')
-            logger.debug(f"end")
+            self.debug(f"end")
 
     def get_ytinfo(self, url):
         liveid = self.parse_url(url)
@@ -1441,7 +1469,7 @@ class DakenCounter:
         keyboard.add_hotkey('F6', self.save_screenshot_general)
 
         if self.settings['run_on_boot']: # 起動後即開始設定の場合
-            logger.info('自動起動設定が有効です。')
+            self.info('自動起動設定が有効です。')
             self.window.refresh()
             print('自動起動設定が有効です。')
             if self.settings['reset_on_boot']:
@@ -1467,7 +1495,7 @@ class DakenCounter:
 
         while True:
             ev, val = self.window.read()
-            #logger.debug(f"ev={ev}")
+            #self.debug(f"ev={ev}")
             # 設定を最新化
             if self.settings and val: # 起動後、そのまま何もせずに終了するとvalが拾われないため対策している
                 if self.gui_mode == gui_mode.main:
@@ -1525,7 +1553,7 @@ class DakenCounter:
                     self.save_settings()
                     self.save_dakenlog()
                     self.control_obs_sources('quit')
-                    logger.info('終了します')
+                    self.info('終了します')
                     break
                 else:
                     if self.gui_mode == gui_mode.setting:
@@ -1651,8 +1679,8 @@ class DakenCounter:
                     self.notes_battle += cur
                 elif ('RAN / RAN' in self.playopt) or ('S-RAN / S-RAN' in self.playopt) or ('H-RAN / H-RAN' in self.playopt): # 両乱だけ数えるか片乱だけ数えるか未定
                     self.notes_ran += cur
-                logger.debug(f'self.playopt = {self.playopt},  dat = {dat}')
-                logger.debug(f'self.notes_ran = {self.notes_ran:,}, self.notes_battle = {self.notes_battle:,}')
+                self.debug(f'self.playopt = {self.playopt},  dat = {dat}')
+                self.debug(f'self.notes_ran = {self.notes_ran:,}, self.notes_battle = {self.notes_battle:,}')
             elif ev == '-SCRSHOT_ERROR-':
                 self.stop_thread = True
                 th.join()
@@ -1686,7 +1714,7 @@ class DakenCounter:
                         self.save_dakenlog()
                         self.control_obs_sources('quit')
                         if os.path.exists('update.exe'):
-                            logger.info('アップデート確認のため終了します')
+                            self.info('アップデート確認のため終了します')
                             res = subprocess.Popen('update.exe')
                             break
                         else:
@@ -1788,4 +1816,5 @@ class DakenCounter:
 
 if __name__ == '__main__':
     a = DakenCounter()
+    a.debug('a', 'b', 1, 'd', [1,2,3])
     a.main()
