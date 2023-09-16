@@ -122,25 +122,15 @@ class DakenCounter:
 
     def debug(self, *obj, sep=' '):
         try:
-            out = ''
-            for o in obj:
-                if type(o) != str:
-                    out += str(o) + sep
-                else:
-                    out += o + sep
-            logger.debug(out)
+            tmp = list(map(str, obj))
+            logger.debug(sep.join(tmp))
         except Exception:
             pass
     
     def info(self, *obj, sep=' '):
         try:
-            out = ''
-            for o in obj:
-                if type(o) != str:
-                    out += str(o) + sep
-                else:
-                    out += o + sep
-            logger.info(out)
+            tmp = list(map(str, obj))
+            logger.info(sep.join(tmp))
         except Exception:
             pass
 
