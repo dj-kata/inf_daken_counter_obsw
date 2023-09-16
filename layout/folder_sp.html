@@ -35,10 +35,22 @@ function loadXml()
             var a          = Number($(item).find("a").text());
             var aa         = Number($(item).find("aa").text());
             var aaa        = Number($(item).find("aaa").text());
-            var aaa        = Number($(item).find("aaa_diff").text());
+            var aaa_diff   = Number($(item).find("aaa_diff").text());
             var under_b    = Number($(item).find("under_b").text());
             var total      = noplay+failed+ac+ec+nc+hc+exhc+fc;
             var total_sc   = a+aa+aaa+under_b;
+            if (hc_diff != 0){
+                hc = hc+"("+hc_diff+")";
+            }
+            if (exhc_diff != 0){
+                exhc = exhc+"("+exhc_diff+")";
+            }
+            if (fc_diff != 0){
+                fc = fc+"("+fc_diff+")";
+            }
+            if (aaa_diff != 0){
+                aaa = aaa+"("+aaa_diff+")";
+            }
 
     		$('.'+difficulty).find('noplay').text(                   noplay);
     		$('.'+difficulty).find('failed').text(                   failed);
