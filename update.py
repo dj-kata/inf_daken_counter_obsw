@@ -11,10 +11,11 @@ import threading
 import logging, logging.handlers
 import traceback
 
+os.makedirs('log', exist_ok=True)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 hdl = logging.handlers.RotatingFileHandler(
-    './dbg.log',
+    f'log/{os.path.basename(__file__).split(".")[0]}.log',
     encoding='utf-8',
     maxBytes=1024*1024*2,
     backupCount=1,

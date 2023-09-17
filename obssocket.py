@@ -3,13 +3,14 @@ import obsws_python as obsws
 #import base64
 import numpy as np
 from PIL import Image
-import traceback
+import traceback, os
 import logging, logging.handlers
 
+os.makedirs('log', exist_ok=True)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 hdl = logging.handlers.RotatingFileHandler(
-    './dbg.log',
+    f'log/{os.path.basename(__file__).split(".")[0]}.log',
     encoding='utf-8',
     maxBytes=1024*1024*2,
     backupCount=1,
