@@ -130,7 +130,7 @@ class DakenCounter:
             'autosave_lamp':False,'autosave_djlevel':False,'autosave_score':False,'autosave_bp':False,'autosave_dbx':'no',
             'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False, 'todaylog_always_push':True,
             'todaylog_dbx_always_push':True,'gen_dailylog_from_alllog':False,'target_score_rate':'80',
-            'auto_update':True,
+            'auto_update':True,'use_gauge_at_dbx_lamp':False,
             'obs_scene':'', 'obs_itemid_history_cursong':False, 'obs_itemid_today_result':False, 'obs_scenename_history_cursong':'', 'obs_scenename_today_result':'',
             # スレッド起動時の設定
             'obs_enable_boot':[],'obs_disable_boot':['history_cursong', 'today_result'],'obs_scene_boot':'',
@@ -509,7 +509,23 @@ class DakenCounter:
             tmp.append(playdata.dj_level.best)
             tmp.append(playdata.dj_level.current)
             tmp.append(playdata.clear_type.best)
-            tmp.append(playdata.clear_type.current)
+            if ('BATTLE' in self.playopt) and self.settings['use_gauge_at_dbx_lamp']:
+                if self.tmp_judge[5] == 0:
+                    cur_lamp = 'F-COMBO'
+                # どのゲージだか不明だが抜けた場合
+                # ランプ設定優先モードでは皿なしDBxでも例えば難抜けしたらHARD扱いにする
+                elif playdata.clear_type.current == 'A-CLEAR':
+                    if self.gauge == 'EASY':
+                        cur_lamp = 'E-CLEAR'
+                    elif self.gauge == 'NORMAL':
+                        cur_lamp = 'CLEAR'
+                    elif self.gauge == 'HARD':
+                        cur_lamp = 'H-CLEAR'
+                    elif self.gauge == 'EX-HARD':
+                        cur_lamp = 'EXH-CLEAR'
+                tmp.append(cur_lamp)
+            else:
+                tmp.append(playdata.clear_type.current)
             tmp.append(playdata.score.best)
             if 'H-RAN' in self.playopt:
                 # H乱の場合もEXスコアを出しておく(本日のノーツ数加算の都合)
@@ -1297,11 +1313,14 @@ class DakenCounter:
             ,sg.Checkbox('スコア', self.settings['autosave_score'], key='chk_score', enable_events=True)
             ,sg.Checkbox('ミスカウント', self.settings['autosave_bp'], key='chk_bp', enable_events=True)
             ],
-            [par_text('DBx系リザルト(DBM,DBR等)自動保存用設定')],
+            [par_text('DBx系リザルト(DBM,DBR等)用設定')],
             [
                 sg.Radio('しない', group_id='dbx', default=(self.settings['autosave_dbx']=='no'), key='radio_dbx_no'),
                 sg.Radio('常時', group_id='dbx', default=(self.settings['autosave_dbx']=='always'), key='radio_dbx_always'),
                 sg.Radio('A-CLEAR以上の場合のみ', group_id='dbx', default=(self.settings['autosave_dbx']=='clear'), key='radio_dbx_clear'),
+            ],
+            [
+                sg.Checkbox('現在のゲージ設定を優先してランプを記録', self.settings['use_gauge_at_dbx_lamp'], key='chk_use_gauge', enable_events=True, tooltip='現在のゲージ設定からDBx系のクリアランプを設定します。\nonにした場合、例えば皿なしDBMでハードするとハード扱いになります。\nまた、皿なしDBxでCB0を出すとフルコン扱いになります。\nオプション検出が正しく行われていることを確認の上お使いください。'),
             ]
         ]
         layout_ocr = [
@@ -1527,6 +1546,7 @@ class DakenCounter:
                     self.settings['passwd'] = val['input_passwd']
                     self.settings['obs_source'] = val['input_obs_source']
                     self.settings['autosave_lamp'] = val['chk_lamp']
+                    self.settings['use_gauge_at_dbx_lamp'] = val['chk_use_gauge']
                     self.settings['autosave_djlevel'] = val['chk_djlevel']
                     self.settings['autosave_score'] = val['chk_score']
                     self.settings['autosave_bp'] = val['chk_bp']
