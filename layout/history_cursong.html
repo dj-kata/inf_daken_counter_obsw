@@ -76,6 +76,23 @@
             	overflow:hidden;
             	text-overflow:ellipsis;
             }
+            table#best {
+                font-size: 80px;
+            	width:100%;
+            }
+            table#best td:nth-child(1) {
+                color:#ffccff;
+                width:20%;
+            }
+            table#best td:nth-child(2) {
+                color:#ffffff;
+                width:15%;
+                padding-right:3%;
+                text-align:right;
+            }
+            table#best td:nth-child(3) {
+                color:#77bb77;
+            }
             .MAX{
                 animation-name: flashmax;
                 animation-duration: 0.4s;
@@ -185,6 +202,16 @@
                 //    lv += '<sp12clear>('+$(xml).find('Results sp_12clear').text()+')</sp12clear>';
                 //}
                 var difficulty = $(xml).find('Results difficulty').text();
+                var best_lamp = $(xml).find('best_lamp').text();
+                var best_score = $(xml).find('best_score').text();
+                var best_bp = $(xml).find('best_bp').text();
+                var best_lamp_opt = $(xml).find('best_lamp_opt').text();
+                var best_score_opt = $(xml).find('best_score_opt').text();
+                var best_bp_opt = $(xml).find('best_bp_opt').text();
+                var best_lamp_date = $(xml).find('best_lamp_date').text();
+                var best_score_date = $(xml).find('best_score_date').text();
+                var best_bp_date = $(xml).find('best_bp_date').text();
+                var notes = 0;
                 $("#title tbody").html('<tr><td>☆'+lv+'</td><td>'+title+'</td><td>('+difficulty+')</td></tr>');
                 $(xml).find("Results item").each(function(index, item){
                     var date = $(item).find('date').text();
@@ -192,6 +219,8 @@
                     var score = $(item).find('score').text();
                     var opt = $(item).find('opt').text();
                     var bp = $(item).find('bp').text();
+                    notes = Number($(item).find('notes').text());
+
                     var score_pre = $(item).find('score_pre').text();
                     var rank = $(item).find('rank').text();
                     var rank_pre = $(item).find('rank_pre').text();
@@ -283,7 +312,11 @@
                     if (index == 19){ // 直近の20プレイだけ表示としている。曲数はここから変更可能。
                         return false;
                     }
-                    });
+                });
+                var best_html = "";
+                best_html += "<tr><td>best(score)</td><td>"+best_score+"</td><td>"+best_score_opt+"</td></tr>";
+                best_html += "<tr><td>best(bp)</td><td>"+best_bp+"</td><td>"+best_bp_opt+"</td></tr>";
+                $('#best tbody').html(best_html);
                 $('#result tbody').html(out);
                 if (isHard == 1){
                     $('sp12hard').css('display', 'none');
@@ -309,6 +342,10 @@
 <body>
   <div id="all">
     <table id="title">
+      <tbody>
+      </tbody>
+    </table>
+    <table id="best">
       <tbody>
       </tbody>
     </table>
