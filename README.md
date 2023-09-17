@@ -232,7 +232,7 @@ v.2.0.18以降で設定方法が変わっています。
 5. 必要に応じてブラウザソースをダブルクリックし、幅・高さを設定する。
 以下の設定でちょうどよく見えるように調整しています。  
 - today_result.html(名前:today_result)は幅1800, 高さ960
-- history_cursong.html(名前:history_cursong)は幅2600, 高さ1400
+- history_cursong.html(名前:history_cursong)は幅2600, 高さ1450
 
 各HTMLのソース名については、好きな名前に設定してそのソースに対する表示・非表示設定を自分で登録してもよいです。デフォルトではtoday_result, history_cursongとして登録しています。
 
