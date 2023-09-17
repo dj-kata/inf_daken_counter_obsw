@@ -1446,7 +1446,7 @@ class DakenCounter:
         keyboard.add_hotkey('F6', self.save_screenshot_general)
 
         if self.settings['run_on_boot']: # 起動後即開始設定の場合
-            self.info('自動起動設定が有効です。')
+            logger.info('自動起動設定が有効です。')
             self.window.refresh()
             print('自動起動設定が有効です。')
             if self.settings['reset_on_boot']:
@@ -1530,7 +1530,7 @@ class DakenCounter:
                     self.save_settings()
                     self.save_dakenlog()
                     self.control_obs_sources('quit')
-                    self.info('終了します')
+                    logger.info('終了します')
                     break
                 else:
                     if self.gui_mode == gui_mode.setting:
@@ -1691,7 +1691,7 @@ class DakenCounter:
                         self.save_dakenlog()
                         self.control_obs_sources('quit')
                         if os.path.exists('update.exe'):
-                            self.info('アップデート確認のため終了します')
+                            logger.info('アップデート確認のため終了します')
                             res = subprocess.Popen('update.exe')
                             break
                         else:
