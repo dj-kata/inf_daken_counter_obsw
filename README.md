@@ -50,6 +50,8 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 |---|---|
 |notes_counter.exe|ツール本体|
 |manage_score.exe|スコアビューワ|
+|update.exe|自動アップデート用のプログラム|
+|log\\*.log|各モジュールのデバッグ用ログファイル|
 |layout\autoload.html|OBSで読み込むノーツ数表示用HTMLファイル|
 |layout\basetitle.html|OBSで読み込む配信のタイトル名表示用HTMLファイル|
 |layout\gauge.html|OBSで読み込むグルーブゲージ情報表示用HTMLファイル|
@@ -60,15 +62,16 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 |layout\option.html|OBSで読み込むオプション表示用HTMLファイル|
 |layout\series.html|OBSで読み込む配信のシリーズ名(第N回の部分)表示用HTMLファイル|
 |layout\today_result.html|OBSで読み込む本日の成果一覧表示用HTMLファイル|
+|layout\today_result_for_score.html|OBSで読み込む本日の成果一覧(スコアラー向け)表示用HTMLファイル|
 |layout\\*.png|各種判定処理に必要な画像ファイル|
 |resources\\ |曲名認識(OCR)機能のために必要な外部入力ファイル|
 |noteslist.pkl|全収録曲のノーツ数一覧が記録されたファイル。|
 |alllog.pkl|自動生成される全打鍵ログの保存用ファイル|
 |dakenlog.pkl|自動生成される過去に起動した日に叩いたノーツ数の情報|
 |*.xml|自動生成される各種データ表示用ファイル。layout内のHTMLファイルから使う。|
-|dbg.log|デバッグ用データ|
-|settings.json|ツール本体の設定ファイル。|
+|settings.json|ツール本体の設定ファイル|
 |README.txt|説明書|
+|version.txt|バージョン情報を格納したファイル|
 |LICENSE|ライセンス情報|
 
 # インストール方法
