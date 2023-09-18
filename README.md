@@ -68,6 +68,8 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 |noteslist.pkl|全収録曲のノーツ数一覧が記録されたファイル。|
 |alllog.pkl|自動生成される全打鍵ログの保存用ファイル|
 |dakenlog.pkl|自動生成される過去に起動した日に叩いたノーツ数の情報|
+|dp_unofficial.pkl|DP非公式難易度表のデータ格納用ファイル|
+|sp_12jiriki.pkl|SP☆12地力表のデータ格納用ファイル|
 |*.xml|自動生成される各種データ表示用ファイル。layout内のHTMLファイルから使う。|
 |settings.json|ツール本体の設定ファイル|
 |README.txt|説明書|
