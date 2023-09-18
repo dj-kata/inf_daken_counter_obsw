@@ -230,6 +230,47 @@ class ScoreViewer:
                 sp_12clear = spjiriki_list[self.sp_jiriki['clear'][spjiriki_key]]
             f.write(f'    <sp_12hard>{sp_12hard}</sp_12hard>\n')
             f.write(f'    <sp_12clear>{sp_12clear}</sp_12clear>\n')
+            best = ['NO PLAY', 0, 9999, '', '', '', 'xxxx-xx-xx', 'xxxx-xx-xx', 'xxxx-xx-xx'] # lamp, score, bp, lamp-op,score-op,bp-op,lamp-date, score-date, bp-date
+            for s in self.score_manager.score[f"{result[1]}___{result[2]}"]:
+                if 'DB' in result[2]: # 現在DBx系オプションの場合、単曲履歴もDBxのリザルトのみを表示
+                    if 'BATTLE' in s[-2]: # DBxのリザルトのみ抽出
+                        if lamp_table.index(best[0]) < lamp_table.index(s[7]):
+                            best[0] = s[7]
+                            best[3] = s[-2]
+                            best[6] = s[-1][2:10]
+                        if s[9] > best[1]:
+                            best[1] = s[9]
+                            best[4] = s[-2]
+                            best[7] = s[-1][2:10]
+                        if type(s[11]) == int:
+                            if s[11] < best[2]:
+                                best[2] = s[11]
+                                best[5] = s[-2]
+                                best[8] = s[-1][2:10]
+                else: # 現在のオプションがDBx系ではない
+                    if not 'BATTLE' in s[-2]: # DBx''以外''のリザルトのみ抽出
+                        if lamp_table.index(best[0]) < lamp_table.index(s[7]):
+                            best[0] = s[7]
+                            best[3] = s[-2]
+                            best[6] = s[-1][2:10]
+                        if s[9] > best[1]:
+                            best[1] = s[9]
+                            best[4] = s[-2]
+                            best[7] = s[-1][2:10]
+                        if type(s[11]) == int:
+                            if s[11] < best[2]:
+                                best[2] = s[11]
+                                best[5] = s[-2]
+                                best[8] = s[-1][2:10]
+            f.write(f'    <best_lamp>{best[0]}</best_lamp>\n')
+            f.write(f'    <best_score>{best[1]}</best_score>\n')
+            f.write(f'    <best_bp>{best[2]}</best_bp>\n')
+            f.write(f'    <best_lamp_opt>{best[3]}</best_lamp_opt>\n')
+            f.write(f'    <best_score_opt>{best[4]}</best_score_opt>\n')
+            f.write(f'    <best_bp_opt>{best[5]}</best_bp_opt>\n')
+            f.write(f'    <best_lamp_date>{best[6]}</best_lamp_date>\n')
+            f.write(f'    <best_score_date>{best[7]}</best_score_date>\n')
+            f.write(f'    <best_bp_date>{best[8]}</best_bp_date>\n')
 
             for s in reversed(self.score_manager.score[f"{result[1]}___{result[2]}"]): # 過去のプレー履歴のループ,sが1つのresultに相当
                 #logger.debug(f"s = {s}")
