@@ -511,19 +511,20 @@ class DakenCounter:
             tmp.append(playdata.clear_type.best)
             if ('BATTLE' in self.playopt) and self.settings['use_gauge_at_dbx_lamp']:
                 cur_lamp = playdata.clear_type.current
-                if self.tmp_judge[5] == 0:
-                    cur_lamp = 'F-COMBO'
                 # どのゲージだか不明だが抜けた場合
                 # ランプ設定優先モードでは皿なしDBxでも例えば難抜けしたらHARD扱いにする
-                elif playdata.clear_type.current == 'A-CLEAR':
-                    if self.gauge == 'EASY':
-                        cur_lamp = 'E-CLEAR'
-                    elif self.gauge == 'NORMAL':
-                        cur_lamp = 'CLEAR'
-                    elif self.gauge == 'HARD':
-                        cur_lamp = 'H-CLEAR'
-                    elif self.gauge == 'EX-HARD':
-                        cur_lamp = 'EXH-CLEAR'
+                if playdata.clear_type.current == 'A-CLEAR':
+                    if self.tmp_judge[5] == 0:
+                        cur_lamp = 'F-COMBO'
+                    else:
+                        if self.gauge == 'EASY':
+                            cur_lamp = 'E-CLEAR'
+                        elif self.gauge == 'NORMAL':
+                            cur_lamp = 'CLEAR'
+                        elif self.gauge == 'HARD':
+                            cur_lamp = 'H-CLEAR'
+                        elif self.gauge == 'EX-HARD':
+                            cur_lamp = 'EXH-CLEAR'
                 tmp.append(cur_lamp)
             else:
                 tmp.append(playdata.clear_type.current)
