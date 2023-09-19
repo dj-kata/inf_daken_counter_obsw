@@ -130,7 +130,7 @@ class DakenCounter:
             'autosave_lamp':False,'autosave_djlevel':False,'autosave_score':False,'autosave_bp':False,'autosave_dbx':'no',
             'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False, 'todaylog_always_push':True,
             'todaylog_dbx_always_push':True,'gen_dailylog_from_alllog':False,'target_score_rate':'80',
-            'auto_update':True,'use_gauge_at_dbx_lamp':False,
+            'auto_update':True,'use_gauge_at_dbx_lamp':False,'tweet_on_exit':False,
             'obs_scene':'', 'obs_itemid_history_cursong':False, 'obs_itemid_today_result':False, 'obs_scenename_history_cursong':'', 'obs_scenename_today_result':'',
             # スレッド起動時の設定
             'obs_enable_boot':[],'obs_disable_boot':['history_cursong', 'today_result'],'obs_scene_boot':'',
@@ -1339,7 +1339,8 @@ class DakenCounter:
             [sg.Button('保存したリザルト画像からスコアデータに反映する', key='btn_ocr_from_savedir', tooltip='リザルト画像の数によってはかなり時間がかかります。')],
         ]
         layout_others =[
-            [par_text('起動時に更新を確認する'), sg.Radio(text='する', group_id='auto_update', default=self.settings['auto_update'], font=FONT, key='auto_update'),sg.Radio(text='しない', group_id='auto_update', default=not self.settings['auto_update'], font=FONT)],
+            [sg.Checkbox('起動時に更新を確認する', default=self.settings['auto_update'], key='auto_update')],
+            [sg.Checkbox('終了時に本日のノーツ数ツイート画面を開く', default=self.settings['tweet_on_exit'], key='tweet_on_exit')],
             [par_text('日々のノーツ数を別方式で算出:'), sg.Radio(text='する', group_id='stats_daily', default=self.settings['gen_dailylog_from_alllog'], font=FONT, key='gen_dailylog_from_alllog'),sg.Radio(text='しない', group_id='stats_daily', default=not self.settings['gen_dailylog_from_alllog'], font=FONT)],
             [par_text('目標スコアレート(0-100)'), sg.Combo([str(i) for i in range(50,101)], default_value=self.settings['target_score_rate'],key='target_score_rate', size=(4,1), font=FONT), par_text('%')],
             [par_text('(別方式:リザルトログから目標レートに応じて推定)', text_color='#ff0000')],
@@ -1557,6 +1558,7 @@ class DakenCounter:
                     self.settings['obs_source'] = val['input_obs_source']
                     self.settings['autosave_lamp'] = val['chk_lamp']
                     self.settings['use_gauge_at_dbx_lamp'] = val['chk_use_gauge']
+                    self.settings['tweet_on_exit'] = val['tweet_on_exit']
                     self.settings['autosave_djlevel'] = val['chk_djlevel']
                     self.settings['autosave_score'] = val['chk_score']
                     self.settings['autosave_bp'] = val['chk_bp']
@@ -1594,6 +1596,16 @@ class DakenCounter:
                     self.save_dakenlog()
                     self.control_obs_sources('quit')
                     logger.info('終了します')
+                    if self.settings['tweet_on_exit'] and (self.today_notes>0):
+                        srate = 0.0
+                        if self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5] > 0:
+                            srate = (self.judge[0]*2+self.judge[1])/(self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5])*50
+                        msg = f"今日は{self.today_plays:,}曲プレイし、{self.today_notes:,}ノーツ叩きました。\n"
+                        msg += f'(PG:{self.judge[0]:,}, GR:{self.judge[1]:,}, GD:{self.judge[2]:,}, BD:{self.judge[3]:,}, PR:{self.judge[4]:,}, CB:{self.judge[5]:,})\n'
+                        msg += f'(スコアレート: {srate:.1f}%)\n'
+                        msg += '#INFINITAS_daken_counter'
+                        encoded_msg = urllib.parse.quote(msg)
+                        webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_msg}")
                     break
                 else:
                     if self.gui_mode == gui_mode.setting:
