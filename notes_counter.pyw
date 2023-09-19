@@ -510,6 +510,7 @@ class DakenCounter:
             tmp.append(playdata.dj_level.current)
             tmp.append(playdata.clear_type.best)
             if ('BATTLE' in self.playopt) and self.settings['use_gauge_at_dbx_lamp']:
+                cur_lamp = playdata.clear_type.current
                 if self.tmp_judge[5] == 0:
                     cur_lamp = 'F-COMBO'
                 # どのゲージだか不明だが抜けた場合
