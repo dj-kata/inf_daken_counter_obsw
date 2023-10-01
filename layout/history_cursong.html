@@ -94,7 +94,7 @@
                 text-align:right;
             }
             table#best td:nth-child(3) {
-                color:#ffffff;
+                color:#cccccc;
                 width:20%;
                 padding-right:3%;
                 text-align:center;
@@ -253,6 +253,7 @@
                     if (rankdiff == "MAX+0"){
                         rank_update = '<span class="MAX">MAX</span>';
                         rankdiff = '<span class="MAX">MAX</span>'
+                        best_rankdiff = rankdiff;
                     }
                     // 毎回表示する場合の変数
                     rank = '<span class="' + rank +'">'+rank+'</span>';
