@@ -10,3 +10,4 @@ Makefile
 #*.png
 __pycache__/*
 tmp/*
+old/*
