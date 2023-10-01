@@ -244,7 +244,7 @@ class ScoreViewer:
                             best[4] = s[-2]
                             best[11] = s[-1][2:10]
                             best[6] = s[5]
-                            best[7],best[8] = self.calc_rankdiff(s[3]*2, s[9])
+                            best[7],best[8] = self.calc_rankdiff(s[3], s[9])
                         if type(s[11]) == int:
                             if s[11] < best[2]:
                                 best[2] = s[11]
@@ -263,11 +263,18 @@ class ScoreViewer:
                             best[6] = s[5]
                             best[7],best[8] = self.calc_rankdiff(s[3], s[9])
                             best[11] = s[-1][2:10]
+                        if s[8] > best[1]: # 過去の自己べ情報も確認
+                            best[1] = s[8]
+                            best[6] = s[5]
+                            best[7],best[8] = self.calc_rankdiff(s[3], s[8])
                         if type(s[11]) == int:
                             if s[11] < best[2]:
                                 best[2] = s[11]
                                 best[5] = s[-2]
                                 best[12] = s[-1][2:10]
+                        if type(s[10]) == int:
+                            if s[10] < best[2]:
+                                best[2] = s[10]
             f.write(f'    <best_lamp>{best[0]}</best_lamp>\n')
             f.write(f'    <best_score>{best[1]}</best_score>\n')
             f.write(f'    <best_bp>{best[2]}</best_bp>\n')
