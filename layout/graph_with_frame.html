@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8">
+  <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
+  <title>Google Charts</title>
+  <style>
+    body {
+      -moz-box-sizing:border-box;
+      box-sizing: border-box;
+      align-items: flex-end;
+      background-color: rgba(0, 0, 0, 0);
+      margin: 0px;
+      padding: 0px;
+      width: 1920px;
+      height: 1080px;
+      border: solid 2px #000000;
+
+      overflow: hidden;
+      text-align:left;
+      font-family:"RocknRoll One";
+      color: #fff;
+      font-size: 24px;
+      text-shadow:
+        1px 1px 1px #000, -1px -1px 1px #000,
+        -1px 1px 1px #000, 1px -1px 1px #000,
+        1px 1px 1px #000, -1px -1px 1px #000,
+        1px 1px 1px #000, 1px -1px 1px #000;
+    }
+    :root{
+      --A: #1111ff;
+      --B: #aaaaff;
+      --C: #eeeeff;
+      --D: #aaaaff;
+      --bA: #7f7fff;
+      --bB: #7fff7f;
+      --bC: #ffff7f;
+      --bD: #ff7f7f;
+      --bE: #ff7fff;
+      --border-size: 8;
+    }
+    .container{
+      /*animation: color-change 6s linear infinite;*/
+      -moz-box-sizing:border-box;
+      box-sizing: border-box;
+      border: 16px solid ;
+      border-image: conic-gradient(from 0.5turn at 30%, var(--bA), var(--bB), var(--bC), var(--bE), var(--bA)) 1;
+      margin: 0px;
+      padding: 0px;
+      height: 100%;
+      width: 100%;
+    }
+    .inner{
+      -moz-box-sizing:border-box;
+      box-sizing: border-box;
+      margin: 0px;
+      padding: 0px;
+      border: solid 2px #000000;
+      height: 100%;
+      width: 100%;
+    }
+    table#opt {
+      width:100%;
+    }
+    table#opt td {
+      white-space:nowrap;
+    }
+    table#opt td:nth-child(1) {
+      max-width:10px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    table#opt td:nth-child(2) {
+      text-align:center;
+      width:30%;
+    }
+    EX-HARD {color: #ffff00;}
+    HARD {color: #ff2222;}
+    NORMAL {color:#22aaff;}
+    EASY {color: #00ff22;}
+    A-EASY {color: #cc00ff;}
+    extxt {color: #aaaaff}
+    @keyframes color-change{
+      0%,100%{
+        border-image: conic-gradient(var(--bA), var(--bB), var(--bC), var(--bD), var(--bA)) 1;
+      }
+      25%{
+        border-image: conic-gradient(var(--bD), var(--bA), var(--bB), var(--bC), var(--bD)) 1;
+      }
+      50%{
+        border-image: conic-gradient(var(--bC), var(--bD), var(--bA), var(--bB), var(--bC)) 1;
+      }
+      75%{
+        border-image: conic-gradient(var(--bB), var(--bC), var(--bD), var(--bA), var(--bB)) 1;
+      }
+    }
+    .kakomiarea {
+      position: absolute;
+      top: 85.2%;
+      left: 76.8%;
+      padding-left: 10px;
+      width: 21%;
+      height: 12%;
+      text-align:center;
+      border: 6px solid #02144a; /* 枠線の太さ・色 */
+      background: linear-gradient(
+        180deg
+        ,rgba(0,0,60,0.9)
+        ,rgba(35,85,155,0.9)
+      ); 
+    }
+
+  </style>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+  <script type="text/javascript">
+    var data;
+    var chart;
+    var options;
+    google.charts.load('current', { 'packages': ['corechart', 'bar'], 'language': 'ja' });
+    google.charts.setOnLoadCallback(drawChart);
+    function drawChart() {
+      data = google.visualization.arrayToDataTable([
+        ['pr', 'ran', 'gd', 'gr', 'pg', { role: 'annotation' }],
+        ['notes', 0, 0, 0, 0, 0],
+        //['両乱', 0, 0, 0, 0, 0],
+        //['僧', 0, 0, 0, 0, 0],
+      ]);
+      options = {
+        //width: 600,
+        chartArea:{left:100,right:100,top:0,width:'70%',height:'50%'},
+        height: 100,
+        legend: { position: 'none' },
+        bar: { groupWidth: '40%' },
+        isStacked: true,
+        backgroundColor: { color: "#000000", fill: 'transparent' },
+        series: {
+          0: { color: '#DD4445' },
+          1: { color: '#77FF00' },
+          2: { color: '#FFBB00' },
+          3: { color: '#00AAFF' }
+        },
+        annotations: {
+          textStyle: {
+            color: 'white',
+            fontName: 'RocknRoll One',
+            fontSize: 22,
+          },
+          alwaysOutside: true
+        },
+        hAxis: {textPosition: 'none'},
+        vAxis: {
+          textStyle: { fontSize: 22, color: '#aaaaff' , fontName:'RocknRoll One'},
+        },
+      };
+      // Instantiate and draw our chart, passing in some options.
+      chart = new google.visualization.BarChart(document.getElementById('chart_div'));
+      chart.draw(data, options);
+
+    }
+    function update() {
+      var pg = 0;
+      var gr = 0;
+      var gd = 0;
+      var bd = 0;
+      var pr = 0;
+      var cb = 0;
+      var ran = 0;
+
+      var getxml = $.ajax({
+        url: "../data.xml",
+        type: 'GET',
+        dataType: 'xml',
+        cache: false
+      });
+      getxml.done(function (xml) {
+
+        pg = Number($(xml).find('pg').text());
+        gr = Number($(xml).find('gr').text());
+        gd = Number($(xml).find('gd').text());
+        bd = Number($(xml).find('bd').text());
+        pr = Number($(xml).find('pr').text());
+        cb = Number($(xml).find('cb').text());
+        ran = Number($(xml).find('notes_ran').text());
+        dbx = Number($(xml).find('notes_battle').text());
+        xmax = Math.max(100000,(Math.floor((pg + gr + gd) / 25000) + 1) * 25000);
+        playcount = Number($(xml).find('playcount').text());
+        cur_notes = Number($(xml).find('cur_notes').text());
+        today_notes = Number($(xml).find('today_notes').text());
+        notes_ran = Number($(xml).find('notes_ran').text());
+        notes_battle = Number($(xml).find('notes_battle').text());
+        score_rate = $(xml).find('score_rate').text();
+        var opt = $(xml).find('opt').text();
+        var gauge = $(xml).find('gauge').text();
+        $('playcount').text(playcount.toLocaleString());
+        $('cur_notes').text(cur_notes.toLocaleString());
+        $('score_rate').text(score_rate);
+        $('today_notes').text(today_notes);
+        $('opt').text(opt);
+        $('gauge').html("<"+gauge+">"+gauge+"</"+gauge+">");
+
+        data.setValue(0, 2, gd);
+        data.setValue(0, 3, gr);
+        data.setValue(0, 4, pg);
+        data.setValue(0, 5, pg+gd+gr);
+        //data.setValue(1, 1, ran);
+        //data.setValue(1, 5, ran);
+        //data.setValue(1, 1, dbx);
+        //data.setValue(1, 5, dbx);
+        options.hAxis.maxValue = xmax;
+        options.hAxis.ticks = [xmax];
+        options.hAxis.ticks = [];
+        chart.draw(data, options)
+      });
+      getxml.fail(function (error) {
+        //alert("読み込み失敗");
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+      var roopTimer = setInterval(update, 1000);
+    });
+  </script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="inner">
+      <div class="kakomiarea">
+        <table id="opt">
+          <tr>
+            <td><opt></opt></td>
+            <td><gauge></gauge></td>
+          </tr>
+        </table>
+        <extxt>plays:</extxt><playcount></playcount>,&nbsp;&nbsp;&nbsp;&nbsp;<extxt>rate:</extxt><score_rate></score_rate>%<br>
+        <div id="chart_div"></div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
