@@ -1077,7 +1077,7 @@ class DakenCounter:
             for s in self.dict_alllog[key]:
                 if 'BATTLE' in result[-2]: # 現在DBx系オプションの場合、単曲履歴もDBxのリザルトのみを表示
                     if 'BATTLE' in s[-2]: # DBxのリザルトのみ抽出
-                        best[9] = s[3]*2
+                        best[9] = s[3]
                         if lamp_table.index(best[0]) < lamp_table.index(s[7]):
                             best[0] = s[7]
                             best[3] = s[-2]
