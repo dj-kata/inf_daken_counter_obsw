@@ -104,6 +104,8 @@ class DakenCounter:
         self.alllog      = []
         self.dict_alllog = {}
         self.todaylog    = []
+        self.playopt = ''
+        self.gauge = ''
         self.write_today_update_xml()
         self.load_alllog()
         self.load_settings()
@@ -794,8 +796,6 @@ class DakenCounter:
         pre_score = 0
         stop_local = False
         playside = False
-        self.playopt = '' # 曲開始タイミングとオプション検出タイミングは一致しないため、最後の値を覚えておく
-        self.gauge   = ''
         flg_autosave = True # その曲で自動保存を使ったかどうか, autosaveが成功したらTrue、曲終了時にリセット
         flg_result1  = False # result1のobs操作を行ったら立てる(result画面に戻ったら下げる)
         is_pushed_to_alllog = True
