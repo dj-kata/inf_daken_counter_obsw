@@ -935,6 +935,7 @@ class DakenCounter:
         if judge[0]+judge[1]+judge[2]+judge[5] > 0:
             srate = (judge[0]*2+judge[1])/(judge[0]+judge[1]+judge[2]+judge[5])*50
         f = codecs.open('data.xml', 'w', 'utf-8')
+        gauge = f"<{re.sub('-', '', self.gauge.lower())}>{self.gauge}</{re.sub('-', '', self.gauge.lower())}>"
         f.write(f'''<?xml version="1.0" encoding="utf-8"?>
     <Items>
         <playcount>{plays}</playcount>
@@ -942,6 +943,8 @@ class DakenCounter:
         <today_notes>{today}</today_notes>
         <notes_ran>{notes_ran}</notes_ran>
         <notes_battle>{notes_battle}</notes_battle>
+        <opt>{self.playopt}</opt>
+        <gauge>{gauge}</gauge>
         <pg>{judge[0]}</pg>
         <gr>{judge[1]}</gr>
         <gd>{judge[2]}</gd>
