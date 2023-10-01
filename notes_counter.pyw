@@ -935,7 +935,10 @@ class DakenCounter:
         if judge[0]+judge[1]+judge[2]+judge[5] > 0:
             srate = (judge[0]*2+judge[1])/(judge[0]+judge[1]+judge[2]+judge[5])*50
         f = codecs.open('data.xml', 'w', 'utf-8')
-        gauge = f"<{re.sub('-', '', self.gauge.lower())}>{self.gauge}</{re.sub('-', '', self.gauge.lower())}>"
+        if self.gauge == "":
+            gauge = ''
+        else:
+            gauge = f"<{re.sub('-', '', self.gauge.lower())}>{self.gauge}</{re.sub('-', '', self.gauge.lower())}>"
         f.write(f'''<?xml version="1.0" encoding="utf-8"?>
     <Items>
         <playcount>{plays}</playcount>
@@ -1121,7 +1124,7 @@ class DakenCounter:
             f.write(f'    <best_lamp_date>{best[10]}</best_lamp_date>\n')
             f.write(f'    <best_score_date>{best[11]}</best_score_date>\n')
             f.write(f'    <best_bp_date>{best[12]}</best_bp_date>\n')
-            f.write(f'    <best_bp_rate>{best[2]*100/best[9]:.2f}</best_bp>\n')
+            f.write(f'    <best_bp_rate>{best[2]*100/best[9]:.2f}</best_bp_rate>\n')
 
             for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
                 #logger.debug(f"s = {s}")
