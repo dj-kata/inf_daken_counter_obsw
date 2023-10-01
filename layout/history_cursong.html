@@ -215,7 +215,7 @@
                 //}
                 var difficulty = $(xml).find('Results difficulty').text();
                 var best_lamp = $(xml).find('best_lamp').text();
-                var best_score = $(xml).find('best_score').text();
+                var best_score = Number($(xml).find('best_score').text());
                 var best_bp = $(xml).find('best_bp').text();
                 var best_lamp_opt = $(xml).find('best_lamp_opt').text();
                 var best_score_opt = $(xml).find('best_score_opt').text();
@@ -223,6 +223,7 @@
                 var best_lamp_date = $(xml).find('best_lamp_date').text();
                 var best_score_date = $(xml).find('best_score_date').text();
                 var best_bp_date = $(xml).find('best_bp_date').text();
+                var best_notes = Number($(xml).find('best_notes').text());
                 var best_rank = $(xml).find('best_rank').text();
                 var best_rankdiff0 = $(xml).find('best_rankdiff0').text();
                 var best_rankdiff1 = $(xml).find('best_rankdiff1').text();
@@ -253,7 +254,6 @@
                     if (rankdiff == "MAX+0"){
                         rank_update = '<span class="MAX">MAX</span>';
                         rankdiff = '<span class="MAX">MAX</span>'
-                        best_rankdiff = rankdiff;
                     }
                     // 毎回表示する場合の変数
                     rank = '<span class="' + rank +'">'+rank+'</span>';
@@ -332,6 +332,9 @@
                         return false;
                     }
                 });
+                if (best_score == best_notes*2){
+                    best_rankdiff = '<span class="MAX">MAX</span>'
+                }
                 var best_html = "";
                 best_html += "<tr>";
                 best_html += "<td>best(score)</td>";
