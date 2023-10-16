@@ -234,7 +234,7 @@
                 $(xml).find("Results item").each(function(index, item){
                     var date = $(item).find('date').text();
                     var lamp = $(item).find('lamp').text();
-                    var score = $(item).find('score').text();
+                    var score = Number($(item).find('score').text());
                     var opt = $(item).find('opt').text();
                     var bp = $(item).find('bp').text();
                     notes = Number($(item).find('notes').text());
@@ -251,7 +251,7 @@
                     if ((score > score_pre) && (rank != rank_pre)){ // スコア伸び&ランク初到達
                         rank_update = '<span class="' + rank +'">'+rank+'</span>';
                     }
-                    if (rankdiff == "MAX+0"){
+                    if (score == notes*2){
                         rank_update = '<span class="MAX">MAX</span>';
                         rankdiff = '<span class="MAX">MAX</span>'
                     }
