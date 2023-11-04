@@ -495,8 +495,8 @@ class DakenCounter:
         playdata     = recog.get_details(pic_playdata)
         # 新方式がNGの場合、旧方式で曲名認識
         if info.music == None:
-            img_mono   = img.convert('L')
-            pic_info   = img_mono.crop((410,633,870,704))
+            #img_mono   = img.convert('L')
+            pic_info   = img.crop((410,633,870,704))
             info.music = recog.get_music(np.array(pic_info))
         is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
         #logger.debug(info.music, info.level, info.play_mode, info.difficulty, playdata.clear_type.current, playdata.dj_level.current, playdata.score.current)
