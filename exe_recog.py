@@ -33,16 +33,19 @@ if __name__ == '__main__':
         filename = sys.argv[1]
         #'informations': (slice(628, 706), slice(410, 870)),
         img = Image.open(filename)
-        play_side = recog.get_play_side(np.array(img))
+        #play_side = recog.get_play_side(np.array(img))
+        play_side = 'DP'
         # TODO define.pyのsliceをそのまま渡せるように修正したい
         #title = img.crop((410,633,870,704)) # 旧方式
         title = img.crop((410,628,870,706)) # 新方式
+        #title = title.convert('L')
         title_np = np.array(title)
+        print(title_np.shape)
         a = recog.get_informations(title_np)
         if a.music == None:
             img_mono = img.convert('L')
-            pic_info = img_mono.crop((410,633,870,704))
-            a.music  = recog.get_music(pic_info)
+            pic_info = img.crop((410,633,870,704))
+            a.music  = recog.get_music(np.array(pic_info))
         # 1p, 2pをケアする必要がある TODO
         score = img.crop((905,192,905+350,192+293))
         score = np.array(score)
