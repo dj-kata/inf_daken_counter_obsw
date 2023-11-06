@@ -112,20 +112,28 @@ class DakenLogger:
         gd = []
         out = [0]*7 # plays, pg, gr, gd, bd, pr, cb, 
 
+        idx_st = self.log_date.index(st.strftime('%Y/%m/%d'))
         for i in range((ed-st).days+1): 
             cur_date = st + datetime.timedelta(days=i)
             x.append(cur_date.strftime('%Y/%m/%d'))
+            tmp_pg = 0
+            tmp_gr = 0
+            tmp_gd = 0
             if cur_date.strftime('%Y/%m/%d') in self.log_date:
                 idx = self.log_date.index(cur_date.strftime('%Y/%m/%d'))
-                pg.append(self.log[idx][2])
-                gr.append(self.log[idx][3])
-                gd.append(self.log[idx][4])
-                for i in range(7):
-                    out[i] += self.log[idx][1+i]
-            else:
-                pg.append(0)
-                gr.append(0)
-                gd.append(0)
+                for j in range(idx, len(self.log_date)):
+                    if self.log_date[j] == cur_date.strftime('%Y/%m/%d'):
+                        tmp_pg += self.log[j][2]
+                        tmp_gr += self.log[j][3]
+                        tmp_gd += self.log[j][4]
+                        for i in range(7):
+                            out[i] += self.log[j][1+i]
+                    else:
+                        break
+            pg.append(tmp_pg)
+            gr.append(tmp_gr)
+            gd.append(tmp_gd)
+
         self.gen_graph_core(filename, x, pg, gr, gd, write_sum)
         return out
 
@@ -134,4 +142,4 @@ if __name__ == "__main__":
     a = DakenLogger()
     a.disp()
     a.save()
-    a.gen_graph_with_date('tmp.png', datetime.date(2023,4,1), datetime.date(2023,4,7))
+    a.gen_graph_with_date('tmp.png', datetime.date(2023,9,12), datetime.date(2023,9,16))
