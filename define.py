@@ -61,7 +61,7 @@ class Define():
     informations_trimsize = (460, 71)
 
     informations_recognition_version = '2.1'
-    informations_trimarea_new = (410, 628, 870, 706)
+    informations_trimarea = (410, 628, 870, 706)
 
     informations_areas = {
         'play_mode': (82, 55, 102, 65),
@@ -70,8 +70,6 @@ class Define():
         'notes': (268, 59, 324, 61)
     }
 
-    music_recognition_vesion = '4.0'
-    
     details_recognition_version = '1.0'
 
     details_trimpos = {
@@ -83,6 +81,8 @@ class Define():
 
     details_graphtarget_name_area = (121, 265, 196, 283)
 
+    musictable_version = '1.0'
+    
     filter_ranking_size = (386, 504)
     filter_ranking_position = {
         '1P': (876, 175),
@@ -96,17 +96,9 @@ class Define():
     }
 
     def __init__(self):
-        self.informations_trimarea = (
-            self.informations_trimpos[0],
-            self.informations_trimpos[1],
-            self.informations_trimpos[0] + self.informations_trimsize[0],
-            self.informations_trimpos[1] + self.informations_trimsize[1]
-        )
-
-        self.musics_resourcename = f'musics{self.music_recognition_vesion}'
-
         self.informations_resourcename = f'informations{self.informations_recognition_version}'
         self.details_resourcename = f'details{self.details_recognition_version}'
+        self.musictable_resourcename = f'musictable{self.musictable_version}'
 
         self.details_trimarea = {}
         for play_side in self.details_trimpos.keys():

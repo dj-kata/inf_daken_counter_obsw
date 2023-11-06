@@ -18,10 +18,33 @@ sounds_dirname = 'sounds'
 
 sounds_dirpath = os.path.join(resources_dirname, sounds_dirname)
 
-recog_musics_filename = f'musics{define.music_recognition_vesion}.json'
-recog_musics_filepath = os.path.join(resources_dirname, recog_musics_filename)
-
 sound_result_filepath = os.path.join(sounds_dirpath, 'result.wav')
+
+class Resource():
+    def __init__(self):
+        self.is_savable = load_resource_serialized('is_savable')
+        self.play_side = load_resource_numpy('play_side')
+        self.dead = load_resource_numpy('dead')
+        self.rival = load_resource_numpy('rival')
+
+        self.load_resource_informations()
+        self.load_resource_details()
+        self.load_resource_musictable()
+    
+    def load_resource_informations(self):
+        resourcename = f'informations{define.informations_recognition_version}'
+        
+        self.informations = load_resource_serialized(resourcename)
+
+    def load_resource_details(self):
+        resourcename = f'details{define.details_recognition_version}'
+        
+        self.details = load_resource_serialized(resourcename)
+
+    def load_resource_musictable(self):
+        resourcename = f'musictable{define.musictable_version}'
+        
+        self.musictable = load_resource_serialized(resourcename)
 
 class ResourceTimestamp():
     def __init__(self, resourcename):
@@ -36,6 +59,7 @@ class ResourceTimestamp():
         return timestamp
 
     def write_timestamp(self, timestamp):
+        print(timestamp)
         with open(self.filepath, 'w') as f:
             f.write(timestamp)
 
@@ -74,5 +98,8 @@ def check_latest(storage, filename):
     
     filepath = os.path.join(resources_dirname, filename)
     if storage.download_resource(filename, filepath):
+        logger.info(f'download {filename}')
         timestamp.write_timestamp(latest_timestamp)
         return True
+
+resource = Resource()

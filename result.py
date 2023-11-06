@@ -9,10 +9,8 @@ logger_child_name = 'result'
 logger = getLogger().getChild(logger_child_name)
 logger.debug('loaded result.py')
 
-from gui.general import get_imagevalue
-
-results_basepath = 'results'
-filtereds_basepath = 'filtered'
+results_dirname = 'results'
+filtereds_dirname = 'filtered'
 
 adjust_length = 94
 
@@ -67,7 +65,7 @@ class Result():
             self.details.miss_count.new
         ])
 
-def result_save(image, music, timestamp, musicname_right=False):
+def result_save(image, music, timestamp, destination_dirpath, musicname_right=False):
     """リザルト画像をファイル保存する
 
     Args:
@@ -79,11 +77,12 @@ def result_save(image, music, timestamp, musicname_right=False):
     Returns:
         str: 成功した場合はファイル名を返す
     """
-    if not os.path.exists(results_basepath):
-        os.mkdir(results_basepath)
+    dirpath = os.path.join(destination_dirpath, results_dirname)
+    if not os.path.exists(dirpath):
+        os.mkdir(dirpath)
 
     filename = generate_resultfilename(music, timestamp, musicname_right)
-    filepath = os.path.join(results_basepath, filename)
+    filepath = os.path.join(dirpath, filename)
     if os.path.exists(filepath):
         return None
     
@@ -91,7 +90,7 @@ def result_save(image, music, timestamp, musicname_right=False):
 
     return filename
 
-def result_savefiltered(image, music, timestamp, musicname_right=False):
+def result_savefiltered(image, music, timestamp, destination_dirpath, musicname_right=False):
     """ライバル欄にぼかしを入れたリザルト画像をファイル保存する
 
     Args:
@@ -103,11 +102,12 @@ def result_savefiltered(image, music, timestamp, musicname_right=False):
     Returns:
         str: 成功した場合はファイル名を返す
     """
-    if not os.path.exists(filtereds_basepath):
-        os.mkdir(filtereds_basepath)
+    dirpath = os.path.join(destination_dirpath, filtereds_dirname)
+    if not os.path.exists(dirpath):
+        os.mkdir(dirpath)
 
     filename = generate_resultfilename(music, timestamp, musicname_right)
-    filepath = os.path.join(filtereds_basepath, filename)
+    filepath = os.path.join(dirpath, filename)
     if os.path.exists(filepath):
         return None
     
@@ -136,7 +136,7 @@ def generate_resultfilename(music, timestamp, musicname_right=False):
     else:
         return f"{timestamp}_{adjustmented}.jpg"
 
-def get_resultimage(music, timestamp):
+def get_resultimage(music, timestamp, destination_dirpath):
     """リザルト画像をファイルから取得する
 
     最も古い形式はタイムスタンプのみのファイル名。
@@ -150,24 +150,26 @@ def get_resultimage(music, timestamp):
     Returns:
         bytes: PySimpleGUIに渡すデータ
     """
+    dirpath = os.path.join(destination_dirpath, results_dirname)
+
     filename = generate_resultfilename(music, timestamp)
-    filepath = os.path.join(results_basepath, filename)
+    filepath = os.path.join(dirpath, filename)
     if os.path.isfile(filepath):
         return Image.open(filepath)
     
     filename = generate_resultfilename(music, timestamp, True)
-    filepath = os.path.join(results_basepath, filename)
+    filepath = os.path.join(dirpath, filename)
     if os.path.isfile(filepath):
         return Image.open(filepath)
     
     filename = generate_resultfilename(None, timestamp)
-    filepath = os.path.join(results_basepath, filename)
+    filepath = os.path.join(dirpath, filename)
     if os.path.isfile(filepath):
         return Image.open(filepath)
     
     return None
 
-def get_filteredimage(music, timestamp):
+def get_filteredimage(music, timestamp, destination_dirpath):
     """ぼかしの入ったリザルト画像をファイルから取得する
 
     最も古い形式はタイムスタンプのみのファイル名。
@@ -181,18 +183,20 @@ def get_filteredimage(music, timestamp):
     Returns:
         bytes: PySimpleGUIに渡すデータ
     """
+    dirpath = os.path.join(destination_dirpath, filtereds_dirname)
+
     filename = generate_resultfilename(music, timestamp)
-    filepath = os.path.join(filtereds_basepath, filename)
+    filepath = os.path.join(dirpath, filename)
     if os.path.isfile(filepath):
         return Image.open(filepath)
     
     filename = generate_resultfilename(music, timestamp, True)
-    filepath = os.path.join(filtereds_basepath, filename)
+    filepath = os.path.join(dirpath, filename)
     if os.path.isfile(filepath):
         return Image.open(filepath)
     
     filename = generate_resultfilename(None, timestamp)
-    filepath = os.path.join(filtereds_basepath, filename)
+    filepath = os.path.join(dirpath, filename)
     if os.path.isfile(filepath):
         return Image.open(filepath)
     

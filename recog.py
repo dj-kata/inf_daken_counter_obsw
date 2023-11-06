@@ -1,7 +1,5 @@
 import numpy as np
-import json
 from logging import getLogger
-from os.path import exists
 
 logger_child_name = 'recog'
 
@@ -9,7 +7,7 @@ logger = getLogger().getChild(logger_child_name)
 logger.debug('loaded recog.py')
 
 from define import define
-from resources import recog_musics_filepath,load_resource_serialized,load_resource_numpy
+from resources import resource
 from result import ResultInformations,ResultValues,ResultDetails,ResultOptions,Result
 
 class Recog():
@@ -22,27 +20,15 @@ class Recog():
         return self.mask.eval(np_trim)
 
 class Recognition():
-    def __init__(self):
-        self.is_savable = load_resource_serialized('is_savable')
-        self.play_side = load_resource_numpy('play_side')
-        self.dead = load_resource_numpy('dead')
-        self.rival = load_resource_numpy('rival')
-
-        self.load_resource_informations()
-        self.load_resource_details()
-
-        self.musics = None
-        self.load_resource_musics()
-    
     def get_is_savable(self, np_value):
         define_result_check = define.result_check
 
         background_key = np_value[define_result_check['background_key_position']]
-        if not background_key in self.is_savable.keys():
+        if not background_key in resource.is_savable.keys():
             return False
 
         for area_key, area in define_result_check['areas'].items():
-            if not np.array_equal(np_value[area], self.is_savable[background_key][area_key]):
+            if not np.array_equal(np_value[area], resource.is_savable[background_key][area_key]):
                 return False
         
         return True
@@ -50,73 +36,73 @@ class Recognition():
     def get_play_side(self, np_value):
         for target in define.value_list['play_sides']:
             trimmed = np_value[define.areas_np['play_side'][target]]
-            if np.all((self.play_side==0)|(trimmed==self.play_side)):
+            if np.all((resource.play_side==0)|(trimmed==resource.play_side)):
                 return target
 
         return None
 
     def get_has_dead(self, np_value, play_side):
         trimmed = np_value[define.areas_np['dead'][play_side]]
-        if np.all((self.dead==0)|(trimmed==self.dead)):
+        if np.all((resource.dead==0)|(trimmed==resource.dead)):
             return True
         else:
             return False
     
     def get_has_rival(self, np_value):
         trimmed = np_value[define.areas_np['rival']]
-        if np.all((self.rival==0)|(trimmed==self.rival)):
+        if np.all((resource.rival==0)|(trimmed==resource.rival)):
             return True
         else:
             return False
     
     def get_play_mode(self, np_value_informations):
-        trimmed = np_value_informations[self.informations['play_mode']['trim']].flatten()
-        bins = np.where(trimmed==self.informations['play_mode']['maskvalue'], 1, 0)
+        trimmed = np_value_informations[resource.informations['play_mode']['trim']].flatten()
+        bins = np.where(trimmed==resource.informations['play_mode']['maskvalue'], 1, 0)
         hexs=bins[::4]*8+bins[1::4]*4+bins[2::4]*2+bins[3::4]
         tablekey = ''.join([format(v, '0x') for v in hexs])
-        if not tablekey in self.informations['play_mode']['table'].keys():
+        if not tablekey in resource.informations['play_mode']['table'].keys():
             return None
-        return self.informations['play_mode']['table'][tablekey]
+        return resource.informations['play_mode']['table'][tablekey]
 
     def get_difficulty(self, np_value_informations):
-        trimmed = np_value_informations[self.informations['difficulty']['trim']]
+        trimmed = np_value_informations[resource.informations['difficulty']['trim']]
         uniques, counts = np.unique(trimmed, return_counts=True)
         difficultykey = uniques[np.argmax(counts)]
-        if not difficultykey in self.informations['difficulty']['table']['difficulty'].keys():
+        if not difficultykey in resource.informations['difficulty']['table']['difficulty'].keys():
             return None, None
         
-        difficulty = self.informations['difficulty']['table']['difficulty'][difficultykey]
+        difficulty = resource.informations['difficulty']['table']['difficulty'][difficultykey]
 
-        leveltrimmed = trimmed[self.informations['difficulty']['trimlevel']].flatten()
+        leveltrimmed = trimmed[resource.informations['difficulty']['trimlevel']].flatten()
         bins = np.where(leveltrimmed==difficultykey, 1, 0)
         hexs=bins[::4]*8+bins[1::4]*4+bins[2::4]*2+bins[3::4]
         levelkey = ''.join([format(v, '0x') for v in hexs])
 
-        if not levelkey in self.informations['difficulty']['table']['level'][difficulty].keys():
+        if not levelkey in resource.informations['difficulty']['table']['level'][difficulty].keys():
             return None, None
         
-        level = self.informations['difficulty']['table']['level'][difficulty][levelkey]
+        level = resource.informations['difficulty']['table']['level'][difficulty][levelkey]
 
         return difficulty, level
 
     def get_notes(self, np_value_informations):
-        trimmed = np_value_informations[self.informations['notes']['trim']]
-        splited = np.hsplit(trimmed, self.informations['notes']['digit'])
+        trimmed = np_value_informations[resource.informations['notes']['trim']]
+        splited = np.hsplit(trimmed, resource.informations['notes']['digit'])
 
         value = 0
         pos = 3
         for pos in range(4):
-            trimmed_once = splited[pos][self.informations['notes']['trimnumber']]
-            bins = np.where(trimmed_once==self.informations['notes']['maskvalue'], 1, 0).flatten()
+            trimmed_once = splited[pos][resource.informations['notes']['trimnumber']]
+            bins = np.where(trimmed_once==resource.informations['notes']['maskvalue'], 1, 0).flatten()
             hexs=bins[::4]*8+bins[1::4]*4+bins[2::4]*2+bins[3::4]
             tablekey = ''.join([format(v, '0x') for v in hexs])
-            if not tablekey in self.informations['notes']['table'].keys():
+            if not tablekey in resource.informations['notes']['table'].keys():
                 if value != 0:
                     return None
                 else:
                     continue
             
-            value = value * 10 + self.informations['notes']['table'][tablekey]
+            value = value * 10 + resource.informations['notes']['table'][tablekey]
 
         if value == 0:
             return None
@@ -132,26 +118,26 @@ class Recognition():
         Returns:
             str: 曲名(認識失敗時はNone)
         """
-        trimmed = np_value_informations[self.informations['music']['trim']]
+        trimmed = np_value_informations[resource.informations['music']['trim']]
 
-        blue = np.where(trimmed[:,:,2]==self.informations['music']['bluevalue'],trimmed[:,:,2],0)
-        red = np.where(trimmed[:,:,0]==self.informations['music']['redvalue'],trimmed[:,:,0],0)
+        blue = np.where(trimmed[:,:,2]==resource.informations['music']['bluevalue'],trimmed[:,:,2],0)
+        red = np.where(trimmed[:,:,0]==resource.informations['music']['redvalue'],trimmed[:,:,0],0)
         gray1 = np.where((trimmed[:,:,0]==trimmed[:,:,1])&(trimmed[:,:,0]==trimmed[:,:,2]),trimmed[:,:,0],0)
-        gray = np.where((gray1!=255)&(gray1>self.informations['music']['gray_threshold']),gray1,0)
+        gray = np.where((gray1!=255)&(gray1>resource.informations['music']['gray_threshold']),gray1,0)
 
         gray_count = np.count_nonzero(gray)
         blue_count = np.count_nonzero(blue)
         red_count = np.count_nonzero(red)
         max_count = max(gray_count, blue_count, red_count)
         if max_count == gray_count:
-            masked = np.where(self.informations['music']['mask']['gray']==1,gray,0)
-            targettable = self.informations['music']['table']['gray']
+            masked = np.where(resource.informations['music']['mask']['gray']==1,gray,0)
+            targettable = resource.informations['music']['table']['gray']
         if max_count == blue_count:
-            masked = np.where(self.informations['music']['mask']['blue']==1,blue,0)
-            targettable = self.informations['music']['table']['blue']
+            masked = np.where(resource.informations['music']['mask']['blue']==1,blue,0)
+            targettable = resource.informations['music']['table']['blue']
         if max_count == red_count:
-            masked = np.where(self.informations['music']['mask']['red']==1,red,0)
-            targettable = self.informations['music']['table']['red']
+            masked = np.where(resource.informations['music']['mask']['red']==1,red,0)
+            targettable = resource.informations['music']['table']['red']
         
         maxcounts = []
         maxcount_values = []
@@ -179,10 +165,10 @@ class Recognition():
         return None
 
     def get_options(self, np_value):
-        trimmed = np_value[self.details['define']['option']['trim']]
+        trimmed = np_value[resource.details['define']['option']['trim']]
 
         def generatekey(np_value):
-            bins = np.where(np_value==self.details['define']['option']['maskvalue'], 1, 0)
+            bins = np.where(np_value==resource.details['define']['option']['maskvalue'], 1, 0)
             hexs = bins[:,0::4]*8+bins[:,1::4]*4+bins[:,2::4]*2+bins[:,3::4]
             return ''.join([format(v, '0x') for v in hexs.flatten()])
 
@@ -191,11 +177,11 @@ class Recognition():
         assist = None
         battle = False
         while True:
-            tablekey = generatekey(trimmed[:, :self.details['option']['lengths'][0]*8:2])
+            tablekey = generatekey(trimmed[:, :resource.details['option']['lengths'][0]*8:2])
             value = None
-            for length in self.details['option']['lengths']:
-                if tablekey[:length] in self.details['option'].keys():
-                    value = self.details['option'][tablekey[:length]]
+            for length in resource.details['option']['lengths']:
+                if tablekey[:length] in resource.details['option'].keys():
+                    value = resource.details['option'][tablekey[:length]]
                     break
             
             if value is None:
@@ -219,15 +205,15 @@ class Recognition():
             if value == 'BATTLE':
                 battle = True
             if not arrange_dp_left:
-                trimmed = trimmed[:, self.details['define']['option']['width'][value] + self.details['define']['option']['width'][',']:]
+                trimmed = trimmed[:, resource.details['define']['option']['width'][value] + resource.details['define']['option']['width'][',']:]
             else:
-                trimmed = trimmed[:, self.details['define']['option']['width'][value] + self.details['define']['option']['width']['/']:]
+                trimmed = trimmed[:, resource.details['define']['option']['width'][value] + resource.details['define']['option']['width']['/']:]
         
         return ResultOptions(arrange, flip, assist, battle)
 
     def get_graphtype(self, np_value):
-        for key, value in self.details['graphtype'].items():
-            trimmed = np_value[self.details['define']['graphtype'][key]]
+        for key, value in resource.details['graphtype'].items():
+            trimmed = np_value[resource.details['define']['graphtype'][key]]
             if np.all(trimmed==value):
                 return key
         return 'gauge'
@@ -235,14 +221,14 @@ class Recognition():
     def get_clear_type(self, np_value):
         result = {'best': None, 'current': None}
         for key in result.keys():
-            trimmed = np_value[self.details['define']['clear_type'][key]]
+            trimmed = np_value[resource.details['define']['clear_type'][key]]
             uniques, counts = np.unique(trimmed, return_counts=True)
             color = uniques[np.argmax(counts)]
-            if color in self.details['clear_type'].keys():
-                result[key] = self.details['clear_type'][color]
+            if color in resource.details['clear_type'].keys():
+                result[key] = resource.details['clear_type'][color]
         
-        trimmed = np_value[self.details['define']['clear_type']['new']]
-        if np.all((self.details['not_new']==0)|(trimmed==self.details['not_new'])):
+        trimmed = np_value[resource.details['define']['clear_type']['new']]
+        if np.all((resource.details['not_new']==0)|(trimmed==resource.details['not_new'])):
             isnew = False
         else:
             isnew = True
@@ -252,13 +238,13 @@ class Recognition():
     def get_dj_level(self, np_value):
         result = {'best': None, 'current': None}
         for key in result.keys():
-            trimmed = np_value[self.details['define']['dj_level'][key]]
-            count = np.count_nonzero(trimmed==self.details['define']['dj_level']['maskvalue'])
-            if count in self.details['dj_level'].keys():
-                result[key] = self.details['dj_level'][count]
+            trimmed = np_value[resource.details['define']['dj_level'][key]]
+            count = np.count_nonzero(trimmed==resource.details['define']['dj_level']['maskvalue'])
+            if count in resource.details['dj_level'].keys():
+                result[key] = resource.details['dj_level'][count]
         
-        trimmed = np_value[self.details['define']['dj_level']['new']]
-        if np.all((self.details['not_new']==0)|(trimmed==self.details['not_new'])):
+        trimmed = np_value[resource.details['define']['dj_level']['new']]
+        if np.all((resource.details['not_new']==0)|(trimmed==resource.details['not_new'])):
             isnew = False
         else:
             isnew = True
@@ -266,36 +252,36 @@ class Recognition():
         return ResultValues(result['best'], result['current'], isnew)
 
     def get_score(self, np_value):
-        trimmed = np_value[self.details['define']['score']['best']]
+        trimmed = np_value[resource.details['define']['score']['best']]
         best = None
-        for dig in range(self.details['define']['score']['digit']):
-            splitted = np.hsplit(trimmed, self.details['define']['score']['digit'])
-            trimmed_once = splitted[-(dig+1)][self.details['define']['numberbest']['trim']]
-            bins = np.where(trimmed_once==self.details['define']['numberbest']['maskvalue'], 1, 0).T
+        for dig in range(resource.details['define']['score']['digit']):
+            splitted = np.hsplit(trimmed, resource.details['define']['score']['digit'])
+            trimmed_once = splitted[-(dig+1)][resource.details['define']['numberbest']['trim']]
+            bins = np.where(trimmed_once==resource.details['define']['numberbest']['maskvalue'], 1, 0).T
             hexs = bins[:,0::4]*8+bins[:,1::4]*4+bins[:,2::4]*2+bins[:,3::4]
             tablekey = ''.join([format(v, '0x') for v in hexs.flatten()])
-            if not tablekey in self.details['number_best'].keys():
+            if not tablekey in resource.details['number_best'].keys():
                 break
             if best is None:
                 best = 0
-            best += 10 ** dig * self.details['number_best'][tablekey]
+            best += 10 ** dig * resource.details['number_best'][tablekey]
 
-        trimmed = np_value[self.details['define']['score']['current']]
+        trimmed = np_value[resource.details['define']['score']['current']]
         current = None
-        for dig in range(self.details['define']['score']['digit']):
-            splitted = np.hsplit(trimmed, self.details['define']['score']['digit'])
-            trimmed_once = splitted[-(dig+1)][self.details['define']['numbercurrent']['trim']]
-            bins = np.where(trimmed_once==self.details['define']['numbercurrent']['maskvalue'], 1, 0).T
+        for dig in range(resource.details['define']['score']['digit']):
+            splitted = np.hsplit(trimmed, resource.details['define']['score']['digit'])
+            trimmed_once = splitted[-(dig+1)][resource.details['define']['numbercurrent']['trim']]
+            bins = np.where(trimmed_once==resource.details['define']['numbercurrent']['maskvalue'], 1, 0).T
             hexs = bins[:,0::4]*8+bins[:,1::4]*4+bins[:,2::4]*2+bins[:,3::4]
             tablekey = ''.join([format(v, '0x') for v in hexs.flatten()])
-            if not tablekey in self.details['number_current'].keys():
+            if not tablekey in resource.details['number_current'].keys():
                 break
             if current is None:
                 current = 0
-            current += 10 ** dig * self.details['number_current'][tablekey]
+            current += 10 ** dig * resource.details['number_current'][tablekey]
         
-        trimmed = np_value[self.details['define']['score']['new']]
-        if np.all((self.details['not_new']==0)|(trimmed==self.details['not_new'])):
+        trimmed = np_value[resource.details['define']['score']['new']]
+        if np.all((resource.details['not_new']==0)|(trimmed==resource.details['not_new'])):
             isnew = False
         else:
             isnew = True
@@ -303,36 +289,36 @@ class Recognition():
         return ResultValues(best, current, isnew)
 
     def get_miss_count(self, np_value):
-        trimmed = np_value[self.details['define']['miss_count']['best']]
+        trimmed = np_value[resource.details['define']['miss_count']['best']]
         best = None
-        for dig in range(self.details['define']['miss_count']['digit']):
-            splitted = np.hsplit(trimmed, self.details['define']['miss_count']['digit'])
-            trimmed_once = splitted[-(dig+1)][self.details['define']['numberbest']['trim']]
-            bins = np.where(trimmed_once==self.details['define']['numberbest']['maskvalue'], 1, 0).T
+        for dig in range(resource.details['define']['miss_count']['digit']):
+            splitted = np.hsplit(trimmed, resource.details['define']['miss_count']['digit'])
+            trimmed_once = splitted[-(dig+1)][resource.details['define']['numberbest']['trim']]
+            bins = np.where(trimmed_once==resource.details['define']['numberbest']['maskvalue'], 1, 0).T
             hexs = bins[:,0::4]*8+bins[:,1::4]*4+bins[:,2::4]*2+bins[:,3::4]
             tablekey = ''.join([format(v, '0x') for v in hexs.flatten()])
-            if not tablekey in self.details['number_best'].keys():
+            if not tablekey in resource.details['number_best'].keys():
                 break
             if best is None:
                 best = 0
-            best += 10 ** dig * self.details['number_best'][tablekey]
+            best += 10 ** dig * resource.details['number_best'][tablekey]
 
-        trimmed = np_value[self.details['define']['miss_count']['current']]
+        trimmed = np_value[resource.details['define']['miss_count']['current']]
         current = None
-        for dig in range(self.details['define']['miss_count']['digit']):
-            splitted = np.hsplit(trimmed, self.details['define']['miss_count']['digit'])
-            trimmed_once = splitted[-(dig+1)][self.details['define']['numbercurrent']['trim']]
-            bins = np.where(trimmed_once==self.details['define']['numbercurrent']['maskvalue'], 1, 0).T
+        for dig in range(resource.details['define']['miss_count']['digit']):
+            splitted = np.hsplit(trimmed, resource.details['define']['miss_count']['digit'])
+            trimmed_once = splitted[-(dig+1)][resource.details['define']['numbercurrent']['trim']]
+            bins = np.where(trimmed_once==resource.details['define']['numbercurrent']['maskvalue'], 1, 0).T
             hexs = bins[:,0::4]*8+bins[:,1::4]*4+bins[:,2::4]*2+bins[:,3::4]
             tablekey = ''.join([format(v, '0x') for v in hexs.flatten()])
-            if not tablekey in self.details['number_current'].keys():
+            if not tablekey in resource.details['number_current'].keys():
                 break
             if current is None:
                 current = 0
-            current += 10 ** dig * self.details['number_current'][tablekey]
+            current += 10 ** dig * resource.details['number_current'][tablekey]
         
-        trimmed = np_value[self.details['define']['miss_count']['new']]
-        if np.all((self.details['not_new']==0)|(trimmed==self.details['not_new'])):
+        trimmed = np_value[resource.details['define']['miss_count']['new']]
+        if np.all((resource.details['not_new']==0)|(trimmed==resource.details['not_new'])):
             isnew = False
         else:
             isnew = True
@@ -340,20 +326,20 @@ class Recognition():
         return ResultValues(best, current, isnew)
     
     def get_graphtarget(self, np_value):
-        trimmed = np_value[self.details['define']['graphtarget']['trimmode']]
+        trimmed = np_value[resource.details['define']['graphtarget']['trimmode']]
         uniques, counts = np.unique(trimmed, return_counts=True)
         mode = uniques[np.argmax(counts)]
-        if not mode in self.details['graphtarget'].keys():
+        if not mode in resource.details['graphtarget'].keys():
             return None
         
-        trimmed = np_value[self.details['define']['graphtarget']['trimkey']]
+        trimmed = np_value[resource.details['define']['graphtarget']['trimkey']]
         bins = np.where(trimmed==mode, 1, 0)
         hexs=bins[::4]*8+bins[1::4]*4+bins[2::4]*2+bins[3::4]
         tablekey = ''.join([format(v, '0x') for v in hexs])
-        if not tablekey in self.details['graphtarget'][mode].keys():
+        if not tablekey in resource.details['graphtarget'][mode].keys():
             return None
         
-        return self.details['graphtarget'][mode][tablekey]
+        return resource.details['graphtarget'][mode][tablekey]
 
     def get_informations(self, np_value):
         play_mode = self.get_play_mode(np_value)
@@ -392,39 +378,5 @@ class Recognition():
         )
     
         return result
-    
-    def load_resource_musics(self):
-        if not exists(recog_musics_filepath):
-            return
-        
-        with open(recog_musics_filepath) as f:
-            resource = json.load(f)
-        
-        self.music_trimarea = tuple(resource['define']['trimarea'])
-        self.background_key_position = tuple(resource['define']['background_key_position'])
-
-        self.backgrounds = {}
-        for background_key in resource['backgrounds'].keys():
-            self.backgrounds[background_key] = np.array(resource['backgrounds'][background_key])
-        
-        trimarea = resource['define']['trimarea']
-        width = trimarea[2] - trimarea[0]
-        self.gray_filter = np.tile(np.array(resource['define']['gray_thresholds']), (width, 1)).T
-
-        self.mask = np.array(resource['mask'])
-        
-        self.music_recognition = resource['recognition']
-
-        self.musics = resource['musics']
-    
-    def load_resource_informations(self):
-        resourcename = f'informations{define.informations_recognition_version}'
-        
-        self.informations = load_resource_serialized(resourcename)
-
-    def load_resource_details(self):
-        resourcename = f'details{define.details_recognition_version}'
-        
-        self.details = load_resource_serialized(resourcename)
 
 recog = Recognition()
