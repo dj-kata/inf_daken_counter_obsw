@@ -134,6 +134,7 @@ class DakenCounter:
             'todaylog_dbx_always_push':True,'gen_dailylog_from_alllog':False,'target_score_rate':'80',
             'auto_update':True,'use_gauge_at_dbx_lamp':False,'tweet_on_exit':False,
             'obs_scene':'', 'obs_itemid_history_cursong':False, 'obs_itemid_today_result':False, 'obs_scenename_history_cursong':'', 'obs_scenename_today_result':'',
+            'scene_collection':'',
             # スレッド起動時の設定
             'obs_enable_boot':[],'obs_disable_boot':['history_cursong', 'today_result'],'obs_scene_boot':'',
             # 0: シーン開始時
@@ -1462,6 +1463,7 @@ class DakenCounter:
         layout_boot = self.build_layout_one_scene('boot')
         layout_quit = self.build_layout_one_scene('quit')
         layout_obs2 = [
+            [par_text('シーンコレクション(起動時に切り替え):'), sg.Combo(self.obs.get_scene_collection_list(), key='scene_collection', size=(40,1), enable_events=True)],
             [par_text('シーン:'), sg.Combo(obs_scenes, key='combo_scene', size=(40,1), enable_events=True)],
             [par_text('ソース:'),sg.Combo(obs_sources, key='combo_source', size=(40,1))],
             [par_text('INFINITAS画面:'), par_text(self.settings['obs_source'], size=(20,1), key='obs_source'), par_btn('set', key='set_obs_source')],
@@ -1482,6 +1484,7 @@ class DakenCounter:
             [sg.Text('', key='info', font=(None,9))]
         ]
         self.window = sg.Window(f"INFINITAS打鍵カウンタ - OBS制御設定", layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=self.ico,location=(self.settings['lx'], self.settings['ly']))
+        self.window['scene_collection'].update(value=self.settings['scene_collection'])
 
     def gui_main(self): # GUI設定
         self.gui_mode = gui_mode.main
@@ -1527,6 +1530,7 @@ class DakenCounter:
         if self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5] > 0:
             self.srate = (self.judge[0]*2+self.judge[1])/(self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5])*50
         self.gui_main()
+        self.obs.set_scene_collection(self.settings['scene_collection'])
         self.notes_ran = 0
         self.notes_battle  = 0
         pre_cur = 0
@@ -1872,6 +1876,17 @@ class DakenCounter:
                 if tmp != "":
                     self.settings['obs_source'] = tmp
                     self.window['obs_source'].update(tmp)
+            elif ev == 'scene_collection':
+                self.settings['scene_collection'] = val[ev]
+                self.obs.set_scene_collection(val[ev])
+                time.sleep(3)
+                obs_scenes = []
+                tmp = self.obs.get_scenes()
+                tmp.reverse()
+                for s in tmp:
+                    obs_scenes.append(s['sceneName'])
+                self.window['combo_scene'].update(values=obs_scenes)
+                print(obs_scenes)
 
             elif ev.startswith('set_scene_'): # 各画面のシーンsetボタン押下時
                 tmp = val['combo_scene'].strip()
