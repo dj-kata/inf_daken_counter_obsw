@@ -1481,7 +1481,7 @@ class DakenCounter:
         layout_boot = self.build_layout_one_scene('boot')
         layout_quit = self.build_layout_one_scene('quit')
         layout_obs2 = [
-            [par_text('シーンコレクション(起動時に切り替え):'), sg.Combo(self.obs.get_scene_collection_list(), key='scene_collection', size=(40,1), enable_events=True)],
+            [par_text('シーンコレクション(起動時に切り替え):'), sg.Combo([""]+self.obs.get_scene_collection_list(), key='scene_collection', size=(40,1), enable_events=True)],
             [par_text('シーン:'), sg.Combo(obs_scenes, key='combo_scene', size=(40,1), enable_events=True)],
             [par_text('ソース:'),sg.Combo(obs_sources, key='combo_source', size=(40,1))],
             [par_text('INFINITAS画面:'), par_text(self.settings['obs_source'], size=(20,1), key='obs_source'), par_btn('set', key='set_obs_source')],
