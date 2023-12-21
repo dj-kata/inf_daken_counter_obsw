@@ -106,9 +106,10 @@ class DakenCounter:
         self.todaylog    = []
         self.playopt = ''
         self.gauge = ''
-        self.write_today_update_xml()
         self.load_alllog()
         self.load_settings()
+        self.update_resources()
+        self.write_today_update_xml()
         self.score_manager = ScoreManager()
         self.init_stat = self.score_manager.stat_perlv.copy() # 起動時の統計情報(本日更新分の計算用)
         self.valid_playside = ''
@@ -147,6 +148,8 @@ class DakenCounter:
             'obs_enable_result1':[],'obs_disable_result1':['history_cursong'],
             # スレッド終了時時の設定
             'obs_enable_quit':[],'obs_disable_quit':[],'obs_scene_quit':'',
+            # その他
+            'autoload_resources':True,
         }
         ret = {}
         try:
@@ -1279,6 +1282,21 @@ class DakenCounter:
         else:
             print('無効なURLです\n')
         return ret
+
+    def update_resources(self):
+        """曲リスト(musiclist.pkl)を最新化する
+        """
+        base = 'https://github.com/dj-kata/inf_daken_counter_obsw/raw/main/resources/'
+        target = ['informations2.1.res', 'musictable1.0.res', 'get_screen.res']
+        for t in target:
+            try:
+                if self.settings['autoload_resources']:
+                    with urllib.request.urlopen(base + t) as wf:
+                        with open(f'resources/{t}', 'wb') as f:
+                            f.write(wf.read())
+                    logger.debug(f'{t}を更新しました。')
+            except Exception:
+                logger.debug(traceback.format_exc())
 
     def gui_ytinfo(self, default_query='#[number]'):
         sg.theme('SystemDefault')
