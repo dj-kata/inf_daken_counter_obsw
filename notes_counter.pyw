@@ -1535,7 +1535,8 @@ class DakenCounter:
         if self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5] > 0:
             self.srate = (self.judge[0]*2+self.judge[1])/(self.judge[0]+self.judge[1]+self.judge[2]+self.judge[5])*50
         self.gui_main()
-        self.obs.set_scene_collection(self.settings['scene_collection'])
+        if type(self.obs) == OBSSocket:
+            self.obs.set_scene_collection(self.settings['scene_collection'])
         self.notes_ran = 0
         self.notes_battle  = 0
         pre_cur = 0
