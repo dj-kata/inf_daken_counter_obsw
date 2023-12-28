@@ -1271,15 +1271,17 @@ class DakenCounter:
         return ret
 
     def update_resources(self):
-        """曲リスト(musiclist.pkl)を最新化する
+        """各リソースファイルを最新化する
         """
-        base = 'https://github.com/dj-kata/inf_daken_counter_obsw/raw/main/resources/'
-        target = ['informations2.1.res', 'musictable1.0.res', 'get_screen.res']
+        base = 'https://github.com/dj-kata/inf_daken_counter_obsw/raw/main/'
+        target = ['resources/informations2.1.res', 'resources/musictable1.0.res', 'resources/get_screen.res'
+                  ,'sp_12jiriki.pkl', 'noteslist.pkl', 'dp_unofficial.pkl'
+        ]
         for t in target:
             try:
                 if self.settings['autoload_resources']:
                     with urllib.request.urlopen(base + t) as wf:
-                        with open(f'resources/{t}', 'wb') as f:
+                        with open(t, 'wb') as f:
                             f.write(wf.read())
                     logger.debug(f'{t}を更新しました。')
             except Exception:
