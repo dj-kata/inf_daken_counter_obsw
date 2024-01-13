@@ -1,10 +1,12 @@
-from recog import *
+#import recog
 import sys
 import pickle
 import os
 from PIL import Image
 import numpy as np
 import imagehash
+from screenshot import Screenshot,open_screenimage
+from recog import Recognition as recog
 
 def gen_ocr_result(info, playdata):
     out = []
@@ -31,34 +33,10 @@ if __name__ == '__main__':
         print('')
     else:
         filename = sys.argv[1]
-        #'informations': (slice(628, 706), slice(410, 870)),
-        img = Image.open(filename)
-        #play_side = recog.get_play_side(np.array(img))
-        play_side = 'DP'
-        # TODO define.pyのsliceをそのまま渡せるように修正したい
-        #title = img.crop((410,633,870,704)) # 旧方式
-        title = img.crop((410,628,870,706)) # 新方式
-        #title = title.convert('L')
-        title_np = np.array(title)
-        print(title_np.shape)
-        a = recog.get_informations(title_np)
-        if a.music == None:
-            img_mono = img.convert('L')
-            pic_info = img.crop((410,633,870,704))
-            a.music  = recog.get_music(np.array(pic_info))
-        # 1p, 2pをケアする必要がある TODO
-        score = img.crop((905,192,905+350,192+293))
-        score = np.array(score)
-        b = recog.get_details(score)
-        #gen_ocr_result(a, b)
-        print(a.music, a.difficulty)
-        print(play_side)
-        print(f"opt arrange:{b.options.arrange}, flip:{b.options.flip}, battle:{b.options.battle}, assist:{b.options.assist}, special:{b.options.special}")
+        screen = open_screenimage(sys.argv[1])
+        result = recog.get_result(screen)
 
-        # x(2p): 133-210
-        # y 1st: 199-216, 2nd:279-296, ...
+        print(result.informations.music)
+        print(result.informations.play_mode, result.informations.difficulty, result.informations.level, result.informations.notes)
+        print(f"opt arrange:{result.details.options.arrange}, flip:{result.details.options.flip}, battle:{result.details.options.battle}, assist:{result.details.options.assist}, special:{result.details.options.special}")
 
-        # ライバル名のhash
-        #for i in range(6):
-        #    tmp = imagehash.average_hash(img.crop((133,199+80*i,210,216+80*i)))
-        #    print(f"{i}: {tmp}")

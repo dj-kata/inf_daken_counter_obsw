@@ -19,7 +19,6 @@ from daken_logger import DakenLogger
 from log_manager import LogManager
 import pickle
 from pathlib import Path
-from recog import *
 from manage_output import *
 import logging, logging.handlers
 import traceback
@@ -28,6 +27,8 @@ from lib_score_manager import ScoreManager
 from enum import Enum
 import math
 import keyboard
+from screenshot import Screenshot,open_screenimage
+from recog import Recognition as recog
 
 os.makedirs('log', exist_ok=True)
 logger = logging.getLogger(__name__)
@@ -482,26 +483,10 @@ class DakenCounter:
     def ocr(self, pic, onplay=True):
         ret = False
         tmp = []
-        img = Image.open(pic)
-        pic_info = np.array(img.crop((410,628,870,706)))
-        info = recog.get_informations(pic_info)
-        if onplay:
-            if ('2p' in self.valid_playside) or (self.valid_playside == 'dp-r'):
-                pic_playdata = np.array(img.crop((905,192,905+350,192+293)))
-            else:
-                pic_playdata = np.array(img.crop((25,192,25+350,192+293)))
-        else: # 過去の画像から抽出している場合はrecogの機能で抽出しておく
-            play_side = recog.get_play_side(np.array(img))
-            if '2P' == play_side:
-                pic_playdata = np.array(img.crop((905,192,905+350,192+293)))
-            else:
-                pic_playdata = np.array(img.crop((25,192,25+350,192+293)))
-        playdata     = recog.get_details(pic_playdata)
-        # 新方式がNGの場合、旧方式で曲名認識
-        if info.music == None:
-            #img_mono   = img.convert('L')
-            pic_info   = img.crop((410,633,870,704))
-            info.music = recog.get_music(np.array(pic_info))
+        screen = open_screenimage(self.imgpath)
+        result = recog.get_result(screen)
+        info = result.informations
+        playdata     = result.details
         is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
         #logger.debug(info.music, info.level, info.play_mode, info.difficulty, playdata.clear_type.current, playdata.dj_level.current, playdata.score.current)
         if is_valid:
@@ -547,10 +532,6 @@ class DakenCounter:
                 tmp.append(playdata.miss_count.current)
             ts = os.path.getmtime(pic)
             dt = datetime.datetime.fromtimestamp(ts)
-            #if onplay:
-            #    tmp.append(self.playopt)
-            #else:
-            #    tmp.append(self.convert_option(playdata.options, tmp[2]))
             tmp.append(self.convert_option(playdata.options, tmp[2]))
             # タイムスタンプはpngの作成日時を使っている。
             # こうすると、過去のリザルトから読む場合もプレー中に読む場合も共通化できる
@@ -1274,8 +1255,10 @@ class DakenCounter:
         """各リソースファイルを最新化する
         """
         base = 'https://github.com/dj-kata/inf_daken_counter_obsw/raw/main/'
-        target = ['resources/informations2.1.res', 'resources/musictable1.0.res', 'resources/get_screen.res'
-                  ,'sp_12jiriki.pkl', 'noteslist.pkl', 'dp_unofficial.pkl'
+        target = [
+            'resources/informations2.2.res','resources/informations2.1.res'
+            ,'resources/musictable1.0.res', 'resources/get_screen.res'
+            ,'sp_12jiriki.pkl', 'noteslist.pkl', 'dp_unofficial.pkl'
         ]
         for t in target:
             try:
