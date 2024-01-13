@@ -12,7 +12,7 @@ class Define():
     # 幅は8の倍数でないとだめかも
     get_screen_area = {
         'left': 782,
-        'top': 690,
+        'top': 691,
         'width': 8,
         'height': 2
     }
@@ -60,7 +60,7 @@ class Define():
     informations_trimpos = (410, 633)
     informations_trimsize = (460, 71)
 
-    informations_recognition_version = '2.1'
+    informations_recognition_version = '2.2'
     informations_trimarea = (410, 628, 870, 706)
 
     informations_areas = {
@@ -83,6 +83,8 @@ class Define():
 
     musictable_version = '1.0'
     
+    musicselect_recognition_version = '1.0'
+
     filter_ranking_size = (386, 504)
     filter_ranking_position = {
         '1P': (876, 175),
@@ -99,6 +101,7 @@ class Define():
         self.informations_resourcename = f'informations{self.informations_recognition_version}'
         self.details_resourcename = f'details{self.details_recognition_version}'
         self.musictable_resourcename = f'musictable{self.musictable_version}'
+        self.musicselect_resourcename = f'musicselect{self.musicselect_recognition_version}'
 
         self.details_trimarea = {}
         for play_side in self.details_trimpos.keys():

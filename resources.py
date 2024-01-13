@@ -30,6 +30,7 @@ class Resource():
         self.load_resource_informations()
         self.load_resource_details()
         self.load_resource_musictable()
+        self.load_resource_musicselect()
     
     def load_resource_informations(self):
         resourcename = f'informations{define.informations_recognition_version}'
@@ -46,8 +47,14 @@ class Resource():
         
         self.musictable = load_resource_serialized(resourcename)
 
+    def load_resource_musicselect(self):
+        resourcename = f'musicselect{define.musicselect_recognition_version}'
+        
+        self.musicselect = load_resource_serialized(resourcename)
+
 class ResourceTimestamp():
     def __init__(self, resourcename):
+        self.resourcename = resourcename
         self.filepath = os.path.join(resources_dirname, f'{resourcename}.timestamp')
     
     def get_timestamp(self):
@@ -59,7 +66,7 @@ class ResourceTimestamp():
         return timestamp
 
     def write_timestamp(self, timestamp):
-        print(timestamp)
+        logger.info(f'Update timestamp {self.resourcename} {timestamp}')
         with open(self.filepath, 'w') as f:
             f.write(timestamp)
 
@@ -98,7 +105,7 @@ def check_latest(storage, filename):
     
     filepath = os.path.join(resources_dirname, filename)
     if storage.download_resource(filename, filepath):
-        logger.info(f'download {filename}')
+        logger.info(f'Download {filename}')
         timestamp.write_timestamp(latest_timestamp)
         return True
 
