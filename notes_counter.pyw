@@ -117,7 +117,7 @@ class DakenCounter:
         self.startdate = False # 最後にスレッドを開始した日付を記録。打鍵ログ保存用
         self.running = False # メインスレッドが実行中かどうか
         self.detect_mode = detect_mode.init
-        self.imgpath = os.path.dirname(__file__) + '\\tmp.png'
+        self.imgpath = os.getcwd() + '/tmp.png'
         try:
             self.obs = OBSSocket(self.settings['host'], self.settings['port'], self.settings['passwd'], self.settings['obs_source'], self.imgpath)
         except:
@@ -1258,7 +1258,7 @@ class DakenCounter:
         target = [
             'resources/informations2.2.res','resources/informations2.1.res'
             ,'resources/musictable1.0.res', 'resources/get_screen.res'
-            ,'sp_12jiriki.pkl', 'noteslist.pkl', 'dp_unofficial.pkl'
+            ,'sp_12jiriki.pkl', 'details1.0.res', 'is_savable.res', 'noteslist.pkl', 'dp_unofficial.pkl'
         ]
         for t in target:
             try:

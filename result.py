@@ -1,8 +1,5 @@
 from datetime import datetime
-import os
 from logging import getLogger
-from PIL import Image
-import re
 
 logger_child_name = 'result'
 
@@ -11,8 +8,6 @@ logger.debug('loaded result.py')
 
 results_dirname = 'results'
 filtereds_dirname = 'filtered'
-
-adjust_length = 94
 
 class ResultInformations():
     def __init__(self, play_mode, difficulty, level, notes, music):
@@ -65,139 +60,3 @@ class Result():
             self.details.miss_count.new
         ])
 
-def result_save(image, music, timestamp, destination_dirpath, musicname_right=False):
-    """リザルト画像をファイル保存する
-
-    Args:
-        image (Image): 対象の画像(PIL.Image)
-        music (str): 曲名
-        timestamp (str): リザルトを記録したときのタイムスタンプ
-        musicname_right (bool, optional): 曲名をファイル名の後尾にする. Defaults to False.
-
-    Returns:
-        str: 成功した場合はファイル名を返す
-    """
-    dirpath = os.path.join(destination_dirpath, results_dirname)
-    if not os.path.exists(dirpath):
-        os.mkdir(dirpath)
-
-    filename = generate_resultfilename(music, timestamp, musicname_right)
-    filepath = os.path.join(dirpath, filename)
-    if os.path.exists(filepath):
-        return None
-    
-    image.save(filepath)
-
-    return filename
-
-def result_savefiltered(image, music, timestamp, destination_dirpath, musicname_right=False):
-    """ライバル欄にぼかしを入れたリザルト画像をファイル保存する
-
-    Args:
-        image (Image): 対象の画像(PIL.Image)
-        music (str): 曲名
-        timestamp (str): リザルトを記録したときのタイムスタンプ
-        musicname_right (bool, optional): 曲名をファイル名の後尾にする. Defaults to False.
-
-    Returns:
-        str: 成功した場合はファイル名を返す
-    """
-    dirpath = os.path.join(destination_dirpath, filtereds_dirname)
-    if not os.path.exists(dirpath):
-        os.mkdir(dirpath)
-
-    filename = generate_resultfilename(music, timestamp, musicname_right)
-    filepath = os.path.join(dirpath, filename)
-    if os.path.exists(filepath):
-        return None
-    
-    image.save(filepath)
-
-    return filename
-
-def generate_resultfilename(music, timestamp, musicname_right=False):
-    """保存ファイル名を作る
-
-    Args:
-        music (str): 曲名
-        timestamp (str): リザルトを記録したときのタイムスタンプ
-        musicname_right (bool, optional): 曲名をファイル名の後尾にする. Defaults to False.
-
-    Returns:
-        str: ファイル名
-    """
-    if music is None:
-        return f"{timestamp}.jpg"
-
-    music_convert=re.sub(r'[\\|/|:|*|?|.|"|<|>|/|]', '', music)
-    adjustmented = music_convert if len(music_convert) < adjust_length else f'{music_convert[:adjust_length]}..'
-    if not musicname_right:
-        return f"{adjustmented}_{timestamp}.jpg"
-    else:
-        return f"{timestamp}_{adjustmented}.jpg"
-
-def get_resultimage(music, timestamp, destination_dirpath):
-    """リザルト画像をファイルから取得する
-
-    最も古い形式はタイムスタンプのみのファイル名。
-    曲名がファイル名の左側にあるときも右側にあるときもある。
-    全パターンでファイルの有無を確認する。
-
-    Args:
-        music (str): 曲名
-        timestamp (str): リザルトを記録したときのタイムスタンプ
-
-    Returns:
-        bytes: PySimpleGUIに渡すデータ
-    """
-    dirpath = os.path.join(destination_dirpath, results_dirname)
-
-    filename = generate_resultfilename(music, timestamp)
-    filepath = os.path.join(dirpath, filename)
-    if os.path.isfile(filepath):
-        return Image.open(filepath)
-    
-    filename = generate_resultfilename(music, timestamp, True)
-    filepath = os.path.join(dirpath, filename)
-    if os.path.isfile(filepath):
-        return Image.open(filepath)
-    
-    filename = generate_resultfilename(None, timestamp)
-    filepath = os.path.join(dirpath, filename)
-    if os.path.isfile(filepath):
-        return Image.open(filepath)
-    
-    return None
-
-def get_filteredimage(music, timestamp, destination_dirpath):
-    """ぼかしの入ったリザルト画像をファイルから取得する
-
-    最も古い形式はタイムスタンプのみのファイル名。
-    曲名がファイル名の左側にあるときも右側にあるときもある。
-    全パターンでファイルの有無を確認する。
-
-    Args:
-        music (str): 曲名
-        timestamp (str): リザルトを記録したときのタイムスタンプ
-
-    Returns:
-        bytes: PySimpleGUIに渡すデータ
-    """
-    dirpath = os.path.join(destination_dirpath, filtereds_dirname)
-
-    filename = generate_resultfilename(music, timestamp)
-    filepath = os.path.join(dirpath, filename)
-    if os.path.isfile(filepath):
-        return Image.open(filepath)
-    
-    filename = generate_resultfilename(music, timestamp, True)
-    filepath = os.path.join(dirpath, filename)
-    if os.path.isfile(filepath):
-        return Image.open(filepath)
-    
-    filename = generate_resultfilename(None, timestamp)
-    filepath = os.path.join(dirpath, filename)
-    if os.path.isfile(filepath):
-        return Image.open(filepath)
-    
-    return None
