@@ -1070,110 +1070,111 @@ class DakenCounter:
             f.write(f'    <sp_12hard>{sp_12hard}</sp_12hard>\n')
             f.write(f'    <sp_12clear>{sp_12clear}</sp_12clear>\n')
             best = ['NO PLAY', 0, 9999, '', '', '', '', '', '', 0, 'xxxx-xx-xx', 'xxxx-xx-xx', 'xxxx-xx-xx'] # lamp, score, bp, lamp-op,score-op,bp-op,rank,rankdiff0,rankdiff1,notes, lamp-date, score-date, bp-date
-            for s in self.dict_alllog[key]:
-                if 'BATTLE' in result[-2]: # 現在DBx系オプションの場合、単曲履歴もDBxのリザルトのみを表示
-                    if 'BATTLE' in s[-2]: # DBxのリザルトのみ抽出
-                        best[9] = s[3]
-                        if lamp_table.index(best[0]) < lamp_table.index(s[7]):
-                            best[0] = s[7]
-                            best[3] = s[-2]
-                            best[10] = s[-1][2:10]
-                        if s[9] > best[1]: # score
-                            best[1] = s[9]
-                            best[4] = s[-2]
-                            best[11] = s[-1][2:10]
-                            best[6] = s[5]
-                            best[7],best[8] = self.calc_rankdiff(s[3], s[9])
-                        if type(s[11]) == int:
-                            if s[11] < best[2]: # BP
-                                best[2] = s[11]
-                                best[5] = s[-2]
-                                best[12] = s[-1][2:10]
-                else: # 現在のオプションがDBx系ではない
-                    if not 'BATTLE' in s[-2]: # DBx''以外''のリザルトのみ抽出
-                        best[9] = s[3]
-                        if lamp_table.index(best[0]) < lamp_table.index(s[7]):
-                            best[0] = s[7]
-                            best[3] = s[-2]
-                            best[10] = s[-1][2:10]
-                        if s[9] > best[1]: # score
-                            best[1] = s[9]
-                            best[4] = s[-2]
-                            best[6] = s[5]
-                            best[7],best[8] = self.calc_rankdiff(s[3], s[9])
-                            best[11] = s[-1][2:10]
-                        if s[8] > best[1]: # 過去の自己べ情報も確認
-                            best[1] = s[8]
-                            best[4] = '?'
-                            best[6] = s[4]
-                            best[7],best[8] = self.calc_rankdiff(s[3], s[8])
-                        if type(s[11]) == int:
-                            if s[11] < best[2]: # BP
-                                best[2] = s[11]
-                                best[5] = s[-2]
-                                best[12] = s[-1][2:10]
-                        if type(s[10]) == int:
-                            if s[10] < best[2]:
-                                best[2] = s[10]
-                                best[5] = '?'
-            f.write(f'    <best_lamp>{best[0]}</best_lamp>\n')
-            f.write(f'    <best_score>{best[1]}</best_score>\n')
-            f.write(f'    <best_bp>{best[2]}</best_bp>\n')
-            f.write(f'    <best_lamp_opt>{best[3]}</best_lamp_opt>\n')
-            f.write(f'    <best_score_opt>{best[4]}</best_score_opt>\n')
-            f.write(f'    <best_bp_opt>{best[5]}</best_bp_opt>\n')
-            f.write(f'    <best_rank>{best[6]}</best_rank>\n')
-            f.write(f'    <best_rankdiff0>{best[7]}</best_rankdiff0>\n')
-            f.write(f'    <best_rankdiff1>{best[8]}</best_rankdiff1>\n')
-            f.write(f'    <best_notes>{best[9]}</best_notes>\n')
-            f.write(f'    <best_lamp_date>{best[10]}</best_lamp_date>\n')
-            f.write(f'    <best_score_date>{best[11]}</best_score_date>\n')
-            f.write(f'    <best_bp_date>{best[12]}</best_bp_date>\n')
-            f.write(f'    <best_bp_rate>{best[2]*100/best[9]:.2f}</best_bp_rate>\n')
-
-            for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
-                #logger.debug(f"s = {s}")
-                bp = s[11]
-                if len(s) != 14: # フォーマットがおかしい場合は飛ばす
-                    continue
-                if bp == None: # 昔のリザルトに入っていない可能性を考えて一応例外処理している
-                    bp = '?'
-                if 'BATTLE' in result[-2]: # 現在DBx系オプションの場合、単曲履歴もDBxのリザルトのみを表示
-                    if 'BATTLE' in s[-2]: # DBxのリザルトのみ抽出
-                        f.write('    <item>\n')
-                        f.write(f'        <date>{s[-1][2:10]}</date>\n')
-                        f.write(f'        <lamp>{s[7]}</lamp>\n')
-                        f.write(f'        <score>{s[9]}</score>\n')
-                        f.write(f'        <opt>{s[-2]}</opt>\n')
-                        f.write(f'        <bp>{bp}</bp>\n')
-                        f.write(f'        <notes>{s[3]}</notes>\n')
-                        f.write(f'        <rank>{s[5]}</rank>\n')
-                        tmp0,tmp1 = self.calc_rankdiff(s[3]*2, s[9])
-                        f.write(f'        <rankdiff>{tmp0}{tmp1}</rankdiff>\n')
-                        f.write(f'        <rankdiff0>{tmp0}</rankdiff0>\n')
-                        f.write(f'        <rankdiff1>{tmp1}</rankdiff1>\n')
-                        srate = f"{25*s[9]/s[3]:.2f}"
-                        f.write(f'        <scorerate>{srate}</scorerate>\n')
-                        f.write('    </item>\n')
-                else: # 現在のオプションがDBx系ではない
-                    if not 'BATTLE' in s[-2]: # DBx''以外''のリザルトのみ抽出
-                        f.write('    <item>\n')
-                        f.write(f'        <date>{s[-1][2:10]}</date>\n')
-                        f.write(f'        <lamp>{s[7]}</lamp>\n')
-                        f.write(f'        <score_pre>{s[8]}</score_pre>\n')
-                        f.write(f'        <score>{s[9]}</score>\n')
-                        f.write(f'        <opt>{s[-2]}</opt>\n')
-                        f.write(f'        <bp>{bp}</bp>\n')
-                        f.write(f'        <notes>{s[3]}</notes>\n')
-                        f.write(f'        <rank_pre>{s[4]}</rank_pre>\n')
-                        f.write(f'        <rank>{s[5]}</rank>\n')
-                        tmp0,tmp1 = self.calc_rankdiff(s[3], s[9])
-                        f.write(f'        <rankdiff>{tmp0}{tmp1}</rankdiff>\n')
-                        f.write(f'        <rankdiff0>{tmp0}</rankdiff0>\n')
-                        f.write(f'        <rankdiff1>{tmp1}</rankdiff1>\n')
-                        srate = f"{50*s[9]/s[3]:.2f}"
-                        f.write(f'        <scorerate>{srate}</scorerate>\n')
-                        f.write('    </item>\n')
+            if key in self.dict_alllog.keys():
+                for s in self.dict_alllog[key]:
+                    if 'BATTLE' in result[-2]: # 現在DBx系オプションの場合、単曲履歴もDBxのリザルトのみを表示
+                        if 'BATTLE' in s[-2]: # DBxのリザルトのみ抽出
+                            best[9] = s[3]
+                            if lamp_table.index(best[0]) < lamp_table.index(s[7]):
+                                best[0] = s[7]
+                                best[3] = s[-2]
+                                best[10] = s[-1][2:10]
+                            if s[9] > best[1]: # score
+                                best[1] = s[9]
+                                best[4] = s[-2]
+                                best[11] = s[-1][2:10]
+                                best[6] = s[5]
+                                best[7],best[8] = self.calc_rankdiff(s[3], s[9])
+                            if type(s[11]) == int:
+                                if s[11] < best[2]: # BP
+                                    best[2] = s[11]
+                                    best[5] = s[-2]
+                                    best[12] = s[-1][2:10]
+                    else: # 現在のオプションがDBx系ではない
+                        if not 'BATTLE' in s[-2]: # DBx''以外''のリザルトのみ抽出
+                            best[9] = s[3]
+                            if lamp_table.index(best[0]) < lamp_table.index(s[7]):
+                                best[0] = s[7]
+                                best[3] = s[-2]
+                                best[10] = s[-1][2:10]
+                            if s[9] > best[1]: # score
+                                best[1] = s[9]
+                                best[4] = s[-2]
+                                best[6] = s[5]
+                                best[7],best[8] = self.calc_rankdiff(s[3], s[9])
+                                best[11] = s[-1][2:10]
+                            if s[8] > best[1]: # 過去の自己べ情報も確認
+                                best[1] = s[8]
+                                best[4] = '?'
+                                best[6] = s[4]
+                                best[7],best[8] = self.calc_rankdiff(s[3], s[8])
+                            if type(s[11]) == int:
+                                if s[11] < best[2]: # BP
+                                    best[2] = s[11]
+                                    best[5] = s[-2]
+                                    best[12] = s[-1][2:10]
+                            if type(s[10]) == int:
+                                if s[10] < best[2]:
+                                    best[2] = s[10]
+                                    best[5] = '?'
+                f.write(f'    <best_lamp>{best[0]}</best_lamp>\n')
+                f.write(f'    <best_score>{best[1]}</best_score>\n')
+                f.write(f'    <best_bp>{best[2]}</best_bp>\n')
+                f.write(f'    <best_lamp_opt>{best[3]}</best_lamp_opt>\n')
+                f.write(f'    <best_score_opt>{best[4]}</best_score_opt>\n')
+                f.write(f'    <best_bp_opt>{best[5]}</best_bp_opt>\n')
+                f.write(f'    <best_rank>{best[6]}</best_rank>\n')
+                f.write(f'    <best_rankdiff0>{best[7]}</best_rankdiff0>\n')
+                f.write(f'    <best_rankdiff1>{best[8]}</best_rankdiff1>\n')
+                f.write(f'    <best_notes>{best[9]}</best_notes>\n')
+                f.write(f'    <best_lamp_date>{best[10]}</best_lamp_date>\n')
+                f.write(f'    <best_score_date>{best[11]}</best_score_date>\n')
+                f.write(f'    <best_bp_date>{best[12]}</best_bp_date>\n')
+                f.write(f'    <best_bp_rate>{best[2]*100/best[9]:.2f}</best_bp_rate>\n')
+    
+                for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
+                    #logger.debug(f"s = {s}")
+                    bp = s[11]
+                    if len(s) != 14: # フォーマットがおかしい場合は飛ばす
+                        continue
+                    if bp == None: # 昔のリザルトに入っていない可能性を考えて一応例外処理している
+                        bp = '?'
+                    if 'BATTLE' in result[-2]: # 現在DBx系オプションの場合、単曲履歴もDBxのリザルトのみを表示
+                        if 'BATTLE' in s[-2]: # DBxのリザルトのみ抽出
+                            f.write('    <item>\n')
+                            f.write(f'        <date>{s[-1][2:10]}</date>\n')
+                            f.write(f'        <lamp>{s[7]}</lamp>\n')
+                            f.write(f'        <score>{s[9]}</score>\n')
+                            f.write(f'        <opt>{s[-2]}</opt>\n')
+                            f.write(f'        <bp>{bp}</bp>\n')
+                            f.write(f'        <notes>{s[3]}</notes>\n')
+                            f.write(f'        <rank>{s[5]}</rank>\n')
+                            tmp0,tmp1 = self.calc_rankdiff(s[3]*2, s[9])
+                            f.write(f'        <rankdiff>{tmp0}{tmp1}</rankdiff>\n')
+                            f.write(f'        <rankdiff0>{tmp0}</rankdiff0>\n')
+                            f.write(f'        <rankdiff1>{tmp1}</rankdiff1>\n')
+                            srate = f"{25*s[9]/s[3]:.2f}"
+                            f.write(f'        <scorerate>{srate}</scorerate>\n')
+                            f.write('    </item>\n')
+                    else: # 現在のオプションがDBx系ではない
+                        if not 'BATTLE' in s[-2]: # DBx''以外''のリザルトのみ抽出
+                            f.write('    <item>\n')
+                            f.write(f'        <date>{s[-1][2:10]}</date>\n')
+                            f.write(f'        <lamp>{s[7]}</lamp>\n')
+                            f.write(f'        <score_pre>{s[8]}</score_pre>\n')
+                            f.write(f'        <score>{s[9]}</score>\n')
+                            f.write(f'        <opt>{s[-2]}</opt>\n')
+                            f.write(f'        <bp>{bp}</bp>\n')
+                            f.write(f'        <notes>{s[3]}</notes>\n')
+                            f.write(f'        <rank_pre>{s[4]}</rank_pre>\n')
+                            f.write(f'        <rank>{s[5]}</rank>\n')
+                            tmp0,tmp1 = self.calc_rankdiff(s[3], s[9])
+                            f.write(f'        <rankdiff>{tmp0}{tmp1}</rankdiff>\n')
+                            f.write(f'        <rankdiff0>{tmp0}</rankdiff0>\n')
+                            f.write(f'        <rankdiff1>{tmp1}</rankdiff1>\n')
+                            srate = f"{50*s[9]/s[3]:.2f}"
+                            f.write(f'        <scorerate>{srate}</scorerate>\n')
+                            f.write('    </item>\n')
             f.write('</Results>\n')
             logger.debug(f"end")
 
