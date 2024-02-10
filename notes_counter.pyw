@@ -770,6 +770,7 @@ class DakenCounter:
         pre_det = ''
         pre_judge = ['0','0','0','0','0','0']
         pre_score = 0
+        pre_musicname = None # 選曲画面での認識結果
         stop_local = False
         playside = False
         flg_autosave = True # その曲で自動保存を使ったかどうか, autosaveが成功したらTrue、曲終了時にリセット
@@ -817,20 +818,22 @@ class DakenCounter:
                             self.detect_mode = detect_mode.init # 遷移中はinitにしておく
                         else: # 選曲画面での認識
                             np_value = np.array(Image.open(self.imgpath))
-                            playmode = recog.MusicSelect.get_playmode(np_value)
-                            difficulty = recog.MusicSelect.get_difficulty(np_value)
                             musicname = recog.MusicSelect.get_musicname(np_value)
-                            levels = recog.MusicSelect.get_levels(np_value)
-                            flginfo = True
-                            flginfo &= (playmode is None)
-                            flginfo &= (musicname is None)
-                            try:
-                                result = [levels[difficulty], musicname, playmode+difficulty[0], self.playopt, self.playopt]
-                                self.write_history_cursong_xml(result)
-                            except Exception:
-                                pass
+                            if musicname != pre_musicname:
+                                playmode = recog.MusicSelect.get_playmode(np_value)
+                                difficulty = recog.MusicSelect.get_difficulty(np_value)
+                                levels = recog.MusicSelect.get_levels(np_value)
+                                flginfo = True
+                                flginfo &= (playmode is None)
+                                flginfo &= (musicname is None)
+                                try:
+                                    result = [levels[difficulty], musicname, playmode+difficulty[0], self.playopt, self.playopt]
+                                    self.write_history_cursong_xml(result)
+                                    #print(musicname, playmode, difficulty)
+                                except Exception:
+                                    pass
+                            pre_musicname = musicname
 
-                            #print(musicname, playmode, difficulty)
     
                     if not is_pushed_to_alllog: # 曲ルーチンを1回抜けないとOCR起動フラグが立たない
                         try:
