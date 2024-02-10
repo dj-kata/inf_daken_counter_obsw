@@ -30,6 +30,11 @@ import keyboard
 from screenshot import Screenshot,open_screenimage
 from recog import Recognition as recog
 
+from record import NotebookRecent,NotebookSummary,NotebookMusic,rename_allfiles,rename_changemusicname,musicnamechanges_filename
+from define import define
+from resources import resource, check_latest
+from storage import StorageAccessor
+
 os.makedirs('log', exist_ok=True)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -109,7 +114,6 @@ class DakenCounter:
         self.gauge = ''
         self.load_alllog()
         self.load_settings()
-        self.update_resources()
         self.write_today_update_xml()
         self.score_manager = ScoreManager()
         self.init_stat = self.score_manager.stat_perlv.copy() # 起動時の統計情報(本日更新分の計算用)
@@ -787,6 +791,14 @@ class DakenCounter:
                     self.obs.save_screenshot()
                     playside = self.detect_playside()
                     tmp_playopt, tmp_gauge = self.detect_option()
+                    if self.detect_select():
+                        if self.detect_mode == detect_mode.result:
+                            if len(self.todaylog) > 0:
+                                is_pushed_to_alllog = True
+                        if self.detect_mode != detect_mode.select:
+                            self.control_obs_sources('select0')
+                        self.detect_mode = detect_mode.select
+
                     if self.detect_mode == detect_mode.result:
                         if not flg_autosave: # 
                             try:
@@ -798,16 +810,28 @@ class DakenCounter:
                             if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
                                 self.control_obs_sources('result1')
                                 flg_result1 = True
-                        if self.detect_select(): # 選曲画面を検出
-                            if len(self.todaylog) > 0:
-                                is_pushed_to_alllog = True
-                                self.control_obs_sources('select0')
-                                self.detect_mode = detect_mode.select
                     # 選曲画面モードなら終了判定 (何度もselect0に入らない)
                     if self.detect_mode == detect_mode.select:
                         if self.detect_endselect():
                             self.control_obs_sources('select1')
                             self.detect_mode = detect_mode.init # 遷移中はinitにしておく
+                        else: # 選曲画面での認識
+                            np_value = np.array(Image.open(self.imgpath))
+                            playmode = recog.MusicSelect.get_playmode(np_value)
+                            difficulty = recog.MusicSelect.get_difficulty(np_value)
+                            musicname = recog.MusicSelect.get_musicname(np_value)
+                            levels = recog.MusicSelect.get_levels(np_value)
+                            flginfo = True
+                            flginfo &= (playmode is None)
+                            flginfo &= (musicname is None)
+                            try:
+                                result = [levels[difficulty], musicname, playmode+difficulty[0], self.playopt, self.playopt]
+                                self.write_history_cursong_xml(result)
+                            except Exception:
+                                pass
+
+                            #print(musicname, playmode, difficulty)
+    
                     if not is_pushed_to_alllog: # 曲ルーチンを1回抜けないとOCR起動フラグが立たない
                         try:
                             result = self.ocr(self.imgpath)
@@ -1250,25 +1274,6 @@ class DakenCounter:
         else:
             print('無効なURLです\n')
         return ret
-
-    def update_resources(self):
-        """各リソースファイルを最新化する
-        """
-        base = 'https://github.com/dj-kata/inf_daken_counter_obsw/raw/main/'
-        target = [
-            'resources/informations2.2.res','resources/informations2.1.res'
-            ,'resources/musictable1.0.res', 'resources/get_screen.res'
-            ,'sp_12jiriki.pkl', 'details1.0.res', 'is_savable.res', 'noteslist.pkl', 'dp_unofficial.pkl'
-        ]
-        for t in target:
-            try:
-                if self.settings['autoload_resources']:
-                    with urllib.request.urlopen(base + t) as wf:
-                        with open(t, 'wb') as f:
-                            f.write(wf.read())
-                    logger.debug(f'{t}を更新しました。')
-            except Exception:
-                logger.debug(traceback.format_exc())
 
     def gui_ytinfo(self, default_query='#[number]'):
         sg.theme('SystemDefault')
@@ -1900,5 +1905,26 @@ class DakenCounter:
                             self.window[key].update(self.settings[key])
 
 if __name__ == '__main__':
+    def check_resource():
+        informations_filename = f'{define.informations_resourcename}.res'
+        if check_latest(storage, informations_filename):
+            resource.load_resource_informations()
+
+        details_filename = f'{define.details_resourcename}.res'
+        if check_latest(storage, details_filename):
+            resource.load_resource_details()
+
+        musictable_filename = f'{define.musictable_resourcename}.res'
+        if check_latest(storage, musictable_filename):
+            resource.load_resource_musictable()
+
+        musicselect_filename = f'{define.musicselect_resourcename}.res'
+        if check_latest(storage, musicselect_filename):
+            resource.load_resource_musicselect()
+
+        check_latest(storage, musicnamechanges_filename)
+
+    storage = StorageAccessor()
+    threading.Thread(target=check_resource).start()
     a = DakenCounter()
     a.main()
