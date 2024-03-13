@@ -20,6 +20,7 @@ from log_manager import LogManager
 import pickle
 from pathlib import Path
 from manage_output import *
+from detect_core import *
 import logging, logging.handlers
 import traceback
 from functools import partial
@@ -60,7 +61,6 @@ except Exception:
 width  = 1280
 height = 720
 digit_vals = [43860,16065,44880,43095,32895,43605,46920,28050,52020,49215]
-mdigit_vals = [10965,3570,9945,8925,8160,9945,12240,7140,11730,12495]
 savefile   = 'settings.json'
 FONT = ('Meiryo',12)
 FONTs = ('Meiryo',8)
@@ -457,7 +457,7 @@ class DakenCounter:
         ret = False
         target = ['1p-l', '1p-r', '2p-l', '2p-r', '1p_nograph', '2p_nograph', 'dp-l', 'dp-r'] # BGA表示エリアの位置
         for t in target:
-            det = self.detect_judge(t)
+            det = detect_judge(self.img, t)
             if det[0] == '0':
                 ret = t
         if ret:
@@ -547,7 +547,7 @@ class DakenCounter:
     def detect_option(self):
         playopt = False
         #self.obs.save_screenshot()
-        whole = Image.open(self.imgpath)
+        whole = self.img
         flip = ''
         left = False
         right = False
@@ -665,102 +665,6 @@ class DakenCounter:
                     playopt = f"{right}{assist}"
         return playopt, gauge
 
-    ### 判定部分の切り出し
-    def get_judge_img(self, playside):
-        img = Image.open(self.imgpath)
-        if playside == '1p-l':
-            x=414
-            y=647
-        elif playside == '1p-r':
-            x=694
-            y=647
-        elif playside == '2p-l':
-            x=570
-            y=647
-        elif playside == '2p-r':
-            x=850
-            y=647
-        elif playside == '1p_nograph':
-            x=383
-            y=649
-        elif playside == '2p_nograph':
-            x=881
-            y=649
-        elif playside == 'dp-l':
-            x=176
-            y=600
-        elif playside == 'dp-r':
-            x=1089
-            y=600
-        sc = img.crop((x,y,x+38,y+57))
-        d = []
-        for j in range(6): # pg～prの5つ
-            tmp_sec = []
-            for i in range(4): # 4文字
-                DW = 8
-                DH = 7
-                DSEPA = 2
-                tmp = np.array(sc.crop((i*(DW+DSEPA),10*j,(i+1)*DW+i*DSEPA,10*j+DH)))
-                tmp_sec.append(tmp)
-            d.append(tmp_sec)
-        return np.array(sc), d
-
-    ### プレー画面から判定内訳を取得
-    def detect_judge(self, playside):
-        sc,digits = self.get_judge_img(playside)
-        ret = []
-        for jj in digits: # 各判定、ピカグレー>POORの順
-            line = ''
-            for d in jj:
-                dd = d[:,:,2]
-                dd = (dd>100)*255
-                val = dd.sum()
-                tmp = '?'
-                if val == 0:
-                    tmp  = '' # 従来スペースを入れていたが、消しても動く?
-                elif val in mdigit_vals:
-                    if val == mdigit_vals[2]: # 2,5がひっくり返しただけで合計値が同じなのでケア
-                        if dd[2,1] == 255:
-                            tmp = '5'
-                        else:
-                            tmp = '2'
-                    else:
-                        tmp = str(mdigit_vals.index(val))
-                line += tmp 
-            ret.append(line)
-        return ret
-
-    ### 選曲画面かどうかを判定し、判定結果(True/False)を返す
-    def detect_select(self):
-        ret = False
-
-        img = Image.open(self.imgpath)
-        hash_target = imagehash.average_hash(Image.open('layout/e4.png'))
-        tmp = imagehash.average_hash(img.crop((358,90,358+24,90+24)))
-        ret = (hash_target - tmp) < 10
-        #logger.debug(f"ret = {ret}")
-
-        return ret
-    
-    ### 選曲画面の終了判定
-    def detect_endselect(self):
-        img = Image.open(self.imgpath) #.crop((550,1,750,85))
-        tmp = imagehash.average_hash(img)
-        img = Image.open('layout/endselect.png') #.crop((550,1,750,85))
-        hash_target = imagehash.average_hash(img)
-        ret = (hash_target - tmp) < 10
-        return ret
-
-    ### リザルト画面の終了判定
-    def detect_endresult(self):
-        img = Image.open(self.imgpath)
-        tmp = imagehash.average_hash(img)
-        img = Image.open('layout/endresult.png')
-        hash_target = imagehash.average_hash(img)
-        ret = (hash_target - tmp) < 10
-        #logger.debug(f"ret = {ret}")
-        return ret
-
     ### 無限ループにする(終了時は上から止める)
     ### 曲の開始・終了を数字から検出し、境界処理を行う
     ### 曲中は検出したスコアをprintする
@@ -790,9 +694,10 @@ class DakenCounter:
             while True: # 曲開始までを検出
                 try:
                     self.obs.save_screenshot()
+                    self.img = Image.open(self.imgpath)
                     playside = self.detect_playside()
                     tmp_playopt, tmp_gauge = self.detect_option()
-                    if self.detect_select():
+                    if detect_select(self.img):
                         if self.detect_mode == detect_mode.result:
                             if len(self.todaylog) > 0:
                                 is_pushed_to_alllog = True
@@ -808,12 +713,12 @@ class DakenCounter:
                             except Exception as e:
                                 logger.debug(traceback.format_exc())
                         if not flg_result1: # リザルト画面終了時のOBS操作をしたかどうか
-                            if self.detect_endresult(): # リザルト画面を抜けた後の青い画面
+                            if detect_endresult(self.img): # リザルト画面を抜けた後の青い画面
                                 self.control_obs_sources('result1')
                                 flg_result1 = True
                     # 選曲画面モードなら終了判定 (何度もselect0に入らない)
                     if self.detect_mode == detect_mode.select:
-                        if self.detect_endselect():
+                        if detect_endselect(self.img):
                             self.control_obs_sources('select1')
                             self.detect_mode = detect_mode.init # 遷移中はinitにしておく
                         else: # 選曲画面での認識

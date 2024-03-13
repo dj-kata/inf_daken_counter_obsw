@@ -21,6 +21,9 @@ hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcNa
 hdl.setFormatter(hdl_formatter)
 logger.addHandler(hdl)
 
+W_CAP = 1920
+H_CAP = 1080
+
 class OBSSocket():
     def __init__(self,hostIP,portNum,passWord,inf_source,dst_screenshot):
         self.host = hostIP
@@ -81,7 +84,7 @@ class OBSSocket():
     def save_screenshot(self):
         #logger.debug(f'dst:{self.dst_screenshot}')
         try:
-            res = self.ws.save_source_screenshot(self.inf_source, 'png', self.dst_screenshot, 1280, 720, 100)
+            res = self.ws.save_source_screenshot(self.inf_source, 'png', self.dst_screenshot, W_CAP, H_CAP, 100)
             return res
         except Exception:
             logger.debug(traceback.format_exc())
@@ -89,7 +92,7 @@ class OBSSocket():
 
     def save_screenshot_dst(self, dst):
         try:
-            res = self.ws.save_source_screenshot(self.inf_source, 'png', dst, 1280, 720, 100)
+            res = self.ws.save_source_screenshot(self.inf_source, 'png', dst, W_CAP, H_CAP, 100)
             return res
         except Exception:
             logger.debug(traceback.format_exc())
@@ -97,7 +100,7 @@ class OBSSocket():
 
     # 設定されたソースを取得し、PIL.Image形式で返す
     def get_screenshot(self):
-        b = self.ws.get_source_screenshot(self.inf_source, 'jpeg', 1280, 720, 100).image_data
+        b = self.ws.get_source_screenshot(self.inf_source, 'jpeg', W_CAP, H_CAP, 100).image_data
         b = b.split(',')[1]
         c = base64.b64decode(b) # バイナリ形式のはず？
         tmp = io.BytesIO(c)
