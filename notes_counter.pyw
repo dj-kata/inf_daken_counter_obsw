@@ -681,7 +681,7 @@ class DakenCounter:
         while True:
             while True: # 曲開始までを検出
                 try:
-                    self.window.write_event_value('-DETECT_MODE-', self.detect_mode.name)
+                    #self.window.write_event_value('-DETECT_MODE-', self.detect_mode.name)
                     self.obs.save_screenshot()
                     self.img = Image.open(self.imgpath)
                     playside = detect_playside(self.img)
@@ -783,19 +783,22 @@ class DakenCounter:
                         stop_local = True
                     elif not self.obs.active: # obsインスタンスがあっても、OBSが落ちていたら止める
                         stop_local = True
+                    logger.debug('break!')
                     break
                 if self.stop_thread:
                     stop_local = True
+                    logger.debug('break!')
                     break
                 #time.sleep(sleep_time)
                 time.sleep(0.3) # オプション取得のためにここは短くしたほうがよさそう？
 
             if stop_local:
+                logger.debug('break!')
                 break
             
             pre_success = True # 前の検出サイクルに取得が成功したかどうか
             while True: # 曲中の処理
-                self.window.write_event_value('-DETECT_MODE-', self.detect_mode.name)
+                #self.window.write_event_value('-DETECT_MODE-', self.detect_mode.name)
                 self.obs.save_screenshot()
                 self.img = Image.open(self.imgpath)
                 det = detect_judge(self.img, playside)
@@ -814,18 +817,22 @@ class DakenCounter:
                         self.gen_opt_xml(self.playopt, self.gauge) # 曲中のみデータの削除
                         flg_autosave = False
                         self.control_obs_sources('play1')
+                        logger.debug('break!')
                         break
                     pre_success = False
                 if self.stop_thread:
                     stop_local = True
+                    logger.debug('break!')
                     break
                 time.sleep(sleep_time)
 
             if stop_local:
+                logger.debug('break!')
                 break
 
         self.control_obs_sources('quit')
         print('detect_top end')
+        logger.debug('detect_top end')
 
     def gen_notes_xml(self, cur,today, plays, notes_ran, notes_battle, judge):
         srate = 0.0
@@ -1401,7 +1408,8 @@ class DakenCounter:
             [par_text("ノーツ数 "),par_text("cur:"),par_text("0", key='cur', size=(7,1)),par_text("Total:"),sg.Text("0", key='today',font=FONT)],
             [par_text('PG:',font=FONTs),par_text('0',key='judge0',font=FONTs),par_text('GR:',font=FONTs),sg.Text('0',key='judge1',font=FONTs),sg.Text('GD:',font=FONTs),sg.Text('0',key='judge2',font=FONTs),sg.Text('BD:',font=FONTs),sg.Text('0',key='judge3',font=FONTs),sg.Text('PR:',font=FONTs),sg.Text('0',key='judge4',font=FONTs),sg.Text('CB:',font=FONTs),sg.Text('0',key='judge5',font=FONTs)],
             [par_text("ゲージ:"),par_text(" ", key='gauge'),par_text('平均スコアレート:'),par_text('0 %',key='srate')],
-            [par_text("option:"),par_text(" ", key='playopt'), par_text('mode:'), par_text('', key='detect_mode')],
+            #[par_text("option:"),par_text(" ", key='playopt'), par_text('mode:'), par_text('', key='detect_mode')],
+            [par_text("option:"),par_text(" ", key='playopt')],
             [sg.Output(size=(63,8), key='output', font=('Meiryo',9))],
             ]
         self.window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=self.ico,location=(self.settings['lx'], self.settings['ly']))
