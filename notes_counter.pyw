@@ -452,18 +452,6 @@ class DakenCounter:
         logger.debug(f"過去リザルトの登録完了。{cnt_add:,}件追加、{cnt_edit:,}件修正 -> 全{len(self.alllog):,}件")
         self.window.write_event_value('-OCR_FROM_IMG_END-', " ")
 
-    ### プレイサイド検出を行う
-    def detect_playside(self):
-        ret = False
-        target = ['1p-l', '1p-r', '2p-l', '2p-r', '1p_nograph', '2p_nograph', 'dp-l', 'dp-r'] # BGA表示エリアの位置
-        for t in target:
-            det = detect_judge(self.img, t)
-            if det[0] == '0':
-                ret = t
-        if ret:
-            self.valid_playside = ret # 最後に検出した有効なプレイサイドを覚えておく
-        return ret
-    
     def convert_option(self, opt, fumen):
         ret = '?'
         if opt != None:
@@ -693,9 +681,12 @@ class DakenCounter:
         while True:
             while True: # 曲開始までを検出
                 try:
+                    self.window.write_event_value('-DETECT_MODE-', self.detect_mode.name)
                     self.obs.save_screenshot()
                     self.img = Image.open(self.imgpath)
-                    playside = self.detect_playside()
+                    playside = detect_playside(self.img)
+                    if playside:
+                        self.valid_playside = playside
                     tmp_playopt, tmp_gauge = self.detect_option()
                     if detect_select(self.img):
                         if self.detect_mode == detect_mode.result:
@@ -804,8 +795,10 @@ class DakenCounter:
             
             pre_success = True # 前の検出サイクルに取得が成功したかどうか
             while True: # 曲中の処理
+                self.window.write_event_value('-DETECT_MODE-', self.detect_mode.name)
                 self.obs.save_screenshot()
-                det = self.detect_judge(playside)
+                self.img = Image.open(self.imgpath)
+                det = detect_judge(self.img, playside)
                 try:
                     score = int(det[0])+int(det[1])+int(det[2])
                     self.window.write_event_value('-THREAD-', f"cur {score} {det[0]} {det[1]} {det[2]} {det[3]} {det[4]} {det[5]}")
@@ -1408,7 +1401,7 @@ class DakenCounter:
             [par_text("ノーツ数 "),par_text("cur:"),par_text("0", key='cur', size=(7,1)),par_text("Total:"),sg.Text("0", key='today',font=FONT)],
             [par_text('PG:',font=FONTs),par_text('0',key='judge0',font=FONTs),par_text('GR:',font=FONTs),sg.Text('0',key='judge1',font=FONTs),sg.Text('GD:',font=FONTs),sg.Text('0',key='judge2',font=FONTs),sg.Text('BD:',font=FONTs),sg.Text('0',key='judge3',font=FONTs),sg.Text('PR:',font=FONTs),sg.Text('0',key='judge4',font=FONTs),sg.Text('CB:',font=FONTs),sg.Text('0',key='judge5',font=FONTs)],
             [par_text("ゲージ:"),par_text(" ", key='gauge'),par_text('平均スコアレート:'),par_text('0 %',key='srate')],
-            [par_text("option:"),par_text(" ", key='playopt')],
+            [par_text("option:"),par_text(" ", key='playopt'), par_text('mode:'), par_text('', key='detect_mode')],
             [sg.Output(size=(63,8), key='output', font=('Meiryo',9))],
             ]
         self.window = sg.Window('打鍵カウンタ for INFINITAS', layout, grab_anywhere=True,return_keyboard_events=True,resizable=False,finalize=True,enable_close_attempted_event=True,icon=self.ico,location=(self.settings['lx'], self.settings['ly']))
@@ -1746,6 +1739,12 @@ class DakenCounter:
             elif ev == '-OCR_FROM_IMG_END-':
                 th_read_result.join()
                 self.playopt = self.settings['playopt']
+
+            elif ev == '-DETECT_MODE-':
+                try:
+                    self.window['detect_mode'].update(val[ev])
+                except Exception:
+                    pass
 
             elif ev  == f'{SWNAME}について':
                 if self.running:

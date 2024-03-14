@@ -1,43 +1,51 @@
 import numpy as np
 from PIL import Image
 import imagehash
-mdigit_vals = [10965,3570,9945,8925,8160,9945,12240,7140,11730,12495]
+mdigit_vals = [20910,3570,9945,8925,8160,9945,12240,7140,11730,12495]
+mdigit_vals = [20910,8415,19635,18615,17085,20655,23205,13515,24225,23205]
 
 ### 判定部分の切り出し
 def get_judge_img(img, playside):
+    # x,yはPGの4桁目(一番左)の左上座標としている
     if playside == '1p-l':
-        x=414
-        y=647
+        x=632
+        y=969
     elif playside == '1p-r':
-        x=694
-        y=647
+        x=1049
+        y=969
     elif playside == '2p-l':
-        x=570
-        y=647
+        x=852
+        y=969
     elif playside == '2p-r':
-        x=850
-        y=647
+        x=1269
+        y=969
     elif playside == '1p_nograph':
-        x=383
-        y=649
+        x=678
+        y=969
     elif playside == '2p_nograph':
-        x=881
-        y=649
+        x=1223
+        y=969
     elif playside == 'dp-l':
-        x=176
-        y=600
+        x=262
+        y=898
     elif playside == 'dp-r':
-        x=1089
-        y=600
-    sc = img.crop((x,y,x+38,y+57))
+        x=1643
+        y=898
+    # 判定内訳部分のみを切り取る
+    sc = img.crop((x,y,x+53,y+91))
     d = []
     for j in range(6): # pg～prの5つ
         tmp_sec = []
         for i in range(4): # 4文字
-            DW = 8
-            DH = 7
-            DSEPA = 2
-            tmp = np.array(sc.crop((i*(DW+DSEPA),10*j,(i+1)*DW+i*DSEPA,10*j+DH)))
+            W = 11
+            H = 11
+            DSEPA = 3
+            HSEPA = 5
+            sx = i*(W+DSEPA)
+            ex = sx+W
+            sy = j*(H+HSEPA)
+            ey = sy+H
+            tmp = np.array(sc.crop((sx,sy,ex,ey)))
             tmp_sec.append(tmp)
         d.append(tmp_sec)
     return np.array(sc), d
@@ -56,17 +64,27 @@ def detect_judge(img, playside):
             if val == 0:
                 tmp  = '' # 従来スペースを入れていたが、消しても動く?
             elif val in mdigit_vals:
-                if val == mdigit_vals[2]: # 2,5がひっくり返しただけで合計値が同じなのでケア
-                    if dd[2,1] == 255:
-                        tmp = '5'
+                if val == mdigit_vals[6]: # 6,9がひっくり返しただけで合計値が同じなのでケア
+                    if dd[8,0] == 0:
+                        tmp = '9'
                     else:
-                        tmp = '2'
+                        tmp = '6'
                 else:
                     tmp = str(mdigit_vals.index(val))
             line += tmp 
         ret.append(line)
     return ret
 
+### プレイサイド検出を行う
+def detect_playside(img):
+    ret = False
+    target = ['1p-l', '1p-r', '2p-l', '2p-r', '1p_nograph', '2p_nograph', 'dp-l', 'dp-r'] # BGA表示エリアの位置
+    for t in target:
+        det = detect_judge(img, t)
+        if det[0] == '0':
+            ret = t
+    return ret
+    
 ### 選曲画面かどうかを判定し、判定結果(True/False)を返す
 def detect_select(img):
     ret = False
@@ -103,3 +121,10 @@ if __name__ == '__main__':
         print('is_select:', detect_select(img))
         print('end_select:', detect_endselect(img))
         print('end_result:', detect_endresult(img))
+        print(detect_playside(img))
+        print(detect_judge(img, 'dp-l'))
+    img = Image.open('debug/play0_sp_all0.png')
+    print(detect_playside(img))
+    #detect_judge(img, '2p-l')
+    #img = Image.open('debug/play1_sp.png')
+    #detect_judge(img, '2p-l')
