@@ -54,9 +54,9 @@ class Result():
     
     def has_new_record(self):
         return any([
-            self.details.clear_type.new,
-            self.details.dj_level.new,
-            self.details.score.new,
-            self.details.miss_count.new
+            self.details.clear_type is not None and self.details.clear_type.new,
+            self.details.dj_level is not None and self.details.dj_level.new,
+            self.details.score is not None and self.details.score.new,
+            self.details.miss_count is not None and self.details.miss_count.new
         ])
 

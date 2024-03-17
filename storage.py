@@ -16,15 +16,16 @@ from define import define
 
 bucket_name_informations = 'bucket-inf-notebook-informations'
 bucket_name_details = 'bucket-inf-notebook-details'
-bucket_name_musics = 'bucket-inf-notebook-musics'
+bucket_name_musicselect = 'bucket-inf-notebook-musicselect'
 bucket_name_resources = 'bucket-inf-notebook-resources'
 
 service_account_info = service_account_info
 
 informations_dirname = 'informations'
 details_dirname = 'details'
+musicselect_dirname = 'musicselect'
 
-rivalname_fillbox = (
+result_rivalname_fillbox = (
     (
         define.details_graphtarget_name_area[0],
         define.details_graphtarget_name_area[1]
@@ -35,11 +36,23 @@ rivalname_fillbox = (
     )
 )
 
+musicselect_rivals_fillbox = (
+    (
+        define.musicselect_rivals_name_area[0],
+        define.musicselect_rivals_name_area[1],
+    ),
+    (
+        define.musicselect_rivals_name_area[2],
+        define.musicselect_rivals_name_area[3]
+    )
+
+)
+
 class StorageAccessor():
     client = None
     bucket_informations = None
     bucket_details = None
-    bucket_musics = None
+    bucket_musicselect = None
     bucket_resources = None
     blob_musics = None
 
@@ -75,6 +88,18 @@ class StorageAccessor():
         try:
             self.bucket_details = self.client.get_bucket(bucket_name_details)
             logger.debug('connect bucket details')
+        except Exception as ex:
+            logger.exception(ex)
+    
+    def connect_bucket_musicselect(self):
+        if self.client is None:
+            self.connect_client()
+        if self.client is None:
+            return
+        
+        try:
+            self.bucket_musicselect = self.client.get_bucket(bucket_name_musicselect)
+            logger.debug('connect bucket musicselect')
         except Exception as ex:
             logger.exception(ex)
     
@@ -121,7 +146,20 @@ class StorageAccessor():
         except Exception as ex:
             logger.exception(ex)
 
-    def upload_collection(self, result, image, force):
+    def upload_musicselect(self, object_name, image):
+        if self.bucket_musicselect is None:
+            self.connect_bucket_musicselect()
+        if self.bucket_musicselect is None:
+            return
+
+        try:
+            blob = self.bucket_musicselect.blob(object_name)
+            self.upload_image(blob, image)
+            logger.debug(f'upload musicselect image {object_name}')
+        except Exception as ex:
+            logger.exception(ex)
+
+    def start_uploadcollection(self, result, image, force):
         """収集画像をアップロードする
 
         Args:
@@ -141,24 +179,29 @@ class StorageAccessor():
         informations_trim = force
         details_trim = force
 
-        if result.informations.play_mode is None:
+        if result.informations is None:
             informations_trim = True
-        if result.informations.difficulty is None:
-            informations_trim = True
-        if result.informations.level is None:
-            informations_trim = True
-        if result.informations.music is None:
-            informations_trim = True
+        else:
+            if result.informations.play_mode is None:
+                informations_trim = True
+            if result.informations.difficulty is None:
+                informations_trim = True
+            if result.informations.level is None:
+                informations_trim = True
+            if result.informations.music is None:
+                informations_trim = True
 
-        if result.details.clear_type.current is None:
+        if result.details is None:
             details_trim = True
-        if result.details.dj_level.current is None:
-            details_trim = True
-        if result.details.score.current is None:
-            details_trim = True
-
-        if result.details.graphtarget is None:
-            details_trim = True
+        else:
+            if result.details.clear_type is None or result.details.clear_type.current is None:
+                details_trim = True
+            if result.details.dj_level is None or result.details.dj_level.current is None:
+                details_trim = True
+            if result.details.score is None or result.details.score.current is None:
+                details_trim = True
+            if result.details.graphtarget is None:
+                details_trim = True
 
         if informations_trim:
             trim = image.crop(define.informations_trimarea)
@@ -167,10 +210,27 @@ class StorageAccessor():
             play_side = result.play_side
             trim = image.crop(define.details_trimarea[play_side])
             image_draw = ImageDraw.Draw(trim)
-            image_draw.rectangle(rivalname_fillbox, fill=0)
+            image_draw.rectangle(result_rivalname_fillbox, fill=0)
             Thread(target=self.upload_details, args=(object_name, trim,)).start()
         
         return informations_trim and details_trim
+    
+    def start_uploadmusicselect(self, image):
+        """選曲画面の収集画像をアップロードする
+
+        Args:
+            image (Image): 対象のリザルト画像(PIL.Image)
+        """
+        self.connect_client()
+        if self.client is None:
+            return
+        
+        object_name = f'{uuid.uuid1()}.png'
+
+        trim = image.crop(define.musicselect_trimarea)
+        image_draw = ImageDraw.Draw(trim)
+        image_draw.rectangle(musicselect_rivals_fillbox, fill=0)
+        Thread(target=self.upload_musicselect, args=(object_name, trim,)).start()
     
     def upload_resource(self, resourcename, targetfilepath):
         if self.bucket_resources is None:
@@ -236,6 +296,7 @@ class StorageAccessor():
 
         informations_dirpath = join(basedir, informations_dirname)
         details_dirpath = join(basedir, details_dirname)
+        musicselect_dirpath = join(basedir, musicselect_dirname)
 
         count = 0
         blobs = self.client.list_blobs(bucket_name_informations)
@@ -250,4 +311,10 @@ class StorageAccessor():
             blob.delete()
             count += 1
 
-        print(f'download cont: {count}')
+        blobs = self.client.list_blobs(bucket_name_musicselect)
+        for blob in blobs:
+            self.save_image(musicselect_dirpath, blob)
+            blob.delete()
+            count += 1
+
+        print(f'download count: {count}')

@@ -95,7 +95,7 @@ class Screenshot:
     np_value = None
 
     def __init__(self):
-        self.checkloading = Capture(define.get_screen_area['width'], define.get_screen_area['height'])
+        self.checkscreens = [(screen, (areas['left'], areas['top']), Capture(areas['width'], areas['height']), self.screentable[screen]) for screen, areas in define.screens.items()]
         self.capture = Capture(define.width, define.height)
 
     def __del__(self):
@@ -106,18 +106,18 @@ class Screenshot:
         if self.xy is None:
             return None
         
-        x = self.xy[0] + define.get_screen_area['left']
-        y = self.xy[1] + define.get_screen_area['top']
-        np_value = self.checkloading.shot(x, y)
-        key = np.sum(np_value)
+        results = []
+        for screen, pos, capture, value in self.checkscreens:
+            x = self.xy[0] + pos[0]
+            y = self.xy[1] + pos[1]
 
-        if not key:
-            return 'black'
+            if np.sum(capture.shot(x, y)) == value:
+                results.append(screen)
+        
+        if len(results) != 1:
+            return None
 
-        if key in self.screentable.keys():
-            return self.screentable[key]
-
-        return None
+        return results[0]
 
     def shot(self):
         if self.xy is None:

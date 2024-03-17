@@ -1,4 +1,5 @@
 from logging import getLogger
+import numpy as np
 
 logger_child_name = 'define'
 
@@ -6,23 +7,36 @@ logger = getLogger().getChild(logger_child_name)
 logger.debug('loaded define.py')
 
 class Define():
-    width = 1280
-    height = 720
+    width = 1920
+    height = 1080
 
-    # 幅は8の倍数でないとだめかも
-    get_screen_area = {
-        'left': 782,
-        'top': 691,
-        'width': 8,
-        'height': 2
+    screens = {
+        'loading': {
+            'left': 898,
+            'top': 482,
+            'width': 4,
+            'height': 2
+        },
+        'result': {
+            'left': 1110,
+            'top': 1042,
+            'width': 4,
+            'height': 2
+        },
+        'music_select': {
+            'left': 181,
+            'top': 84,
+            'width': 4,
+            'height': 2
+        }
     }
 
     result_check = {
         'background_count': 13,
-        'background_key_position': (641, 410, 1),
+        'background_key_position': (961, 615, 1),
         'areas': {
-            "heightline1": (slice(5, 150), 420, 1),
-            "heightline2": (slice(235, 630), 420, 1)
+            "horizontalline": (60, slice(156, 390), 1),
+            "verticalline": (slice(550, 760), 788, 1)
         }
     }
 
@@ -42,26 +56,27 @@ class Define():
     }
 
     areas_np = {
-        'rival': (slice(578, 592), slice(542, 611), 0),
+        'rival': (slice(858, 872), slice(842, 920), 0),
         'play_side': {
-            '1P': (slice(17, 26), slice(36, 46), 0),
-            '2P': (slice(17, 26), slice(1212, 1222), 0)
+            '1P': (slice(26, 30), slice(20, 24), 0),
+            '2P': (slice(26, 30), slice(1860, 1864), 0)
         },
         'dead': {
-            '1P': (slice(168, 178), slice(406, 412), 0),
-            '2P': (slice(168, 178), slice(822, 828), 0)
+            '1P': (slice(300, 304), slice(573, 576), 0),
+            '2P': (slice(300, 304), slice(1145, 1148), 0)
         },
-        'informations': (slice(628, 706), slice(410, 870)),
+        'informations': (slice(960, 1066), slice(560, 1360)),
         'details': {
-            '1P': (slice(192, 485), slice(25, 375)),
-            '2P': (slice(192, 485), slice(905, 1255))
-        }    }
+            '1P': (slice(64, 1016), slice(10, 564)),
+            '2P': (slice(64, 1016), slice(1360, 1914))
+        }
+    }
 
-    informations_trimpos = (410, 633)
-    informations_trimsize = (460, 71)
+    informations_trimpos = (560, 960)
+    informations_trimsize = (800, 166)
 
-    informations_recognition_version = '2.2'
-    informations_trimarea = (410, 628, 870, 706)
+    informations_recognition_version = '3.0'
+    informations_trimarea = (560, 960, 1360, 1066)
 
     informations_areas = {
         'play_mode': (82, 55, 102, 65),
@@ -70,31 +85,43 @@ class Define():
         'notes': (268, 59, 324, 61)
     }
 
-    details_recognition_version = '1.0'
+    details_recognition_version = '2.0'
 
     details_trimpos = {
-        '1P': (25, 192),
-        '2P': (905, 192),
+        '1P': (10, 64),
+        '2P': (1360, 64),
     }
 
-    details_trimsize = (350, 293)
+    details_trimsize = (554, 952)
 
-    details_graphtarget_name_area = (121, 265, 196, 283)
+    details_playside_area = 5, slice(4, 548, 8), 0
+    details_playside = {
+        '0fffffffffffffffe': '1P',
+        '7fffffffffffffff0': '2P'
+    }
+    details_graphtarget_name_area = (210, 622, 300, 644)
 
     musictable_version = '1.0'
     
-    musicselect_recognition_version = '1.0'
+    musicselect_recognition_version = '2.0'
+    musicselect_trimarea = (48, 135, 1188, 952)
+    musicselect_trimarea_np = (
+        (slice(musicselect_trimarea[1], musicselect_trimarea[3])),
+        (slice(musicselect_trimarea[0], musicselect_trimarea[2])),
+    )
 
-    filter_ranking_size = (386, 504)
+    musicselect_rivals_name_area = (760, 634, 856, 808)
+
+    filter_ranking_size = (526, 626)
     filter_ranking_position = {
-        '1P': (876, 175),
-        '2P': (20, 175)
+        '1P': (1372, 264),
+        '2P': (32, 264)
     }
 
     filter_areas = {
         'ranking': {},
         'graphtarget_name': {},
-        'loveletter': (527, 449, 760, 623)
+        'loveletter': (820, 700, 1102, 912)
     }
 
     def __init__(self):
@@ -127,5 +154,14 @@ class Define():
                 self.details_trimpos[key][0] + self.details_graphtarget_name_area[2],
                 self.details_trimpos[key][1] + self.details_graphtarget_name_area[3]
             )
+
+    def details_get_playside(self, np_value):
+        trimmed = np_value[self.details_playside_area]
+        bins = np.where(trimmed==150, 1, 0)
+        hexs = bins[0::4]*8+bins[1::4]*4+bins[2::4]*2+bins[3::4]
+        playsidekey = ''.join([format(v, '0x') for v in hexs.flatten()])
+        if not playsidekey in self.details_playside.keys():
+            return None
+        return self.details_playside[playsidekey]
 
 define = Define()

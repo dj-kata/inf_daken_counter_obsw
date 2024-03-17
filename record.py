@@ -68,14 +68,14 @@ class NotebookRecent(Notebook):
             'play_mode': result.informations.play_mode,
             'difficulty': result.informations.difficulty,
             'music': result.informations.music,
-            'clear_type_new': result.details.clear_type.new,
-            'dj_level_new': result.details.dj_level.new,
-            'score_new': result.details.score.new,
-            'miss_count_new': result.details.miss_count.new,
-            'update_clear_type': result.details.clear_type.current if result.details.clear_type.new else None,
-            'update_dj_level': result.details.dj_level.current if result.details.dj_level.new else None,
-            'update_score': result.details.score.current - result.details.score.best if result.details.score.new else None,
-            'update_miss_count': result.details.miss_count.current - result.details.miss_count.best if result.details.miss_count.new and result.details.miss_count.best is not None else None,
+            'clear_type_new': result.details.clear_type is not None and result.details.clear_type.new,
+            'dj_level_new': result.details.dj_level is not None and result.details.dj_level.new,
+            'score_new': result.details.score is not None and result.details.score.new,
+            'miss_count_new': result.details.miss_count is not None and result.details.miss_count.new,
+            'update_clear_type': result.details.clear_type.current if result.details.clear_type is not None and result.details.clear_type.new else None,
+            'update_dj_level': result.details.dj_level.current if result.details.dj_level is not None and result.details.dj_level.new else None,
+            'update_score': result.details.score.current - result.details.score.best if result.details.score is not None and result.details.score.new else None,
+            'update_miss_count': result.details.miss_count.current - result.details.miss_count.best if result.details.miss_count is not None and result.details.miss_count.new and result.details.miss_count.best is not None else None,
             'option': option,
             'play_side': result.play_side,
             'has_loveletter': result.rival,
@@ -128,6 +128,8 @@ class NotebookSummary(Notebook):
             musicname (str): 曲名
             notebook (NotebookMusic): 対象曲の記録
         """
+        if not 'musics' in self.json.keys():
+            self.json['musics'] = {}
         self.json['musics'][musicname] = {'SP': {}, 'DP': {}}
         music_item = resource.musictable['musics'][musicname]
         for playmode in define.value_list['play_modes']:
