@@ -357,11 +357,6 @@ class DakenCounter:
                 if (self.settings['autosave_dbx'] == 'always') or ((self.settings['autosave_dbx'] == 'clear') and (lamp_table.index(result[7]) >= 2)) or isAlways:
                     self.save_result(result)
                     ret = True
-        else: # OCR失敗時、とりあえずモザイク処理と自動保存はやる
-            if isLamp or isDjlevel or isScore or isBp or isAlways:
-                if isMissionEnd and isBitwindowEnd:
-                    self.save_result(False)
-                    ret = True
         return ret
     
     ### 自動保存用ディレクトリ内の画像からDBを作成する
