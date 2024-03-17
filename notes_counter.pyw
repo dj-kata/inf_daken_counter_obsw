@@ -136,7 +136,7 @@ class DakenCounter:
             'series_query':'#[number]','judge':[0,0,0,0,0,0], 'playopt':'OFF',
             'host':'localhost', 'port':'4444', 'passwd':'', 'obs_source':'INFINITAS',
             'autosave_lamp':False,'autosave_djlevel':False,'autosave_score':False,'autosave_bp':False,'autosave_dbx':'no',
-            'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False, 'todaylog_always_push':True,
+            'autosave_dir':'','autosave_always':False, 'autosave_mosaic':False, 'autosave_trim':False, 'todaylog_always_push':True,
             'todaylog_dbx_always_push':True,'gen_dailylog_from_alllog':False,'target_score_rate':'80',
             'auto_update':True,'use_gauge_at_dbx_lamp':False,'tweet_on_exit':False,
             'obs_scene':'', 'obs_itemid_history_cursong':False, 'obs_itemid_today_result':False, 'obs_scenename_history_cursong':'', 'obs_scenename_today_result':'',
@@ -294,6 +294,7 @@ class DakenCounter:
         now = datetime.datetime.fromtimestamp(ts)
         fmtnow = format(now, "%Y%m%d_%H%M%S")
         dst = f"{self.settings['autosave_dir']}/infinitas_{fmtnow}.png"
+        # OCR成功時はファイル名を細かく設定
         if result != False:
             title = result[1]
             for ch in ('\\', '/', ':', '*', '?', '"', '<', '>', '|'):
@@ -317,95 +318,36 @@ class DakenCounter:
                 title+=f'_{with_scratch}DB'
             dst = f"{self.settings['autosave_dir']}/inf_{title}_{lamp}_{score}{bp}_{fmtnow}.png"
         print(f"自動保存します。 -> {dst})")
-        if self.settings['autosave_mosaic']: # TODO ライバルエリアがあるかどうかを判定する
-            rival_1p = 0
-            rival_2p = 0
-            for y in range(6):
-                sc = img.crop((1215,195+y*80,1255,203+y*80))
-                rival_1p += np.array(sc).sum()
-                sc = img.crop((360,195+y*80,400,203+y*80))
-                rival_2p += np.array(sc).sum()
-            logger.debug(f"sum 1p,2p = {rival_1p:,}, {rival_2p:,}")
-            result_threshold = 542400
-        
-            # ライバル欄があるかどうかの判定
-            rival_mode = 'none'
-            if rival_1p == result_threshold:
-                rival_mode = '1p'
-            elif rival_2p == result_threshold:
-                rival_mode = '2p'
-
-            # ライバルのモザイク処理
-            img_array = np.array(img)
-            self.obs.save_screenshot_dst(dst)
-            if rival_mode == '1p': # ライバルエリアが右側
-                rivalarea = img.crop((877,180,1212,655))
-                rivalarea = rivalarea.resize((33,47))
-                rivalarea = rivalarea.resize((335,475))
-                rival_array = np.array(rivalarea)
-                img_array[180:655, 877:1212] = rival_array
-            elif rival_mode == '2p': # ライバルエリアが左側
-                rivalarea = img.crop((22,180,357,655))
-                rivalarea = rivalarea.resize((33,47))
-                rivalarea = rivalarea.resize((335,475))
-                rival_array = np.array(rivalarea)
-                img_array[180:655, 22:357] = rival_array
-            # 挑戦状エリアの処理
-            if img.getpixel((540,591)) == (0,0,0,255):
-                mailarea = img.crop((577,513,677,533))
-                mailarea = mailarea.resize((10,2))
-                mailarea = mailarea.resize((100,20))
-                mail_array = np.array(mailarea)
-                img_array[513:533, 577:677] = mail_array
-            # ターゲット名も隠す(ライバルの名前が入っている可能性があるため)
-            if ('1p' in self.valid_playside) or (self.valid_playside == 'dp-l'):
-                targetarea = img.crop((29,456,241,476))
-                targetarea = targetarea.resize((21,2))
-                targetarea = targetarea.resize((212,20))
-                img_array[456:476, 29:241] = targetarea
-            else:
-                targetarea = img.crop((910,456,1122,476))
-                targetarea = targetarea.resize((21,2))
-                targetarea = targetarea.resize((212,20))
-                img_array[456:476, 910:1122] = targetarea
-
-            out = Image.fromarray(img_array)
-            out.save(dst)
-        else: # ライバル欄を隠さない場合
-            self.obs.save_screenshot_dst(dst)
+        out = self.img
+        if self.settings['autosave_mosaic']:
+            rival_mode = has_rival_area(out)
+            if rival_mode != None:
+                out = mosaic_rival_area(out, rival_mode)
+        if self.settings['autosave_trim']:
+            out = trim_main_area(out, rival_mode)
+        out.save(dst)
         return dst
 
     def autosave_result(self, result):
         ret = False
         isAlways  = (self.settings['autosave_always'])
+        # 更新したかどうかを検出
+        update_area = get_update_area(self.img, self.valid_playside)
+        isLamp    = (self.settings['autosave_lamp'])    and (update_area[0])
+        isDjlevel = (self.settings['autosave_djlevel']) and (update_area[1])
+        isScore   = (self.settings['autosave_score'])   and (update_area[2])
+        isBp      = (self.settings['autosave_bp'])      and (update_area[3])
+        # 左上にミッション進捗が出ていないかどうか
+        isMissionEnd = self.img.getpixel((20,15)) != (44,61,77, 255)
+        isMissionEnd = True # TODO
+        # 獲得bitと所持bitのwindowが出ていないかどうか
+        tmp = np.array(self.img.crop((100,30,180,110)))
+        tmp[:,:][-1] = 0
+        isBitwindowEnd = tmp.sum() != 1914960
+        isBitwindowEnd = True # TODO
         if result != False:
             img = Image.open(self.imgpath)
-
-            update_area = []
-            hash_target = imagehash.average_hash(Image.open('layout/update.png'))
-            if ('1p' in self.valid_playside) or (self.valid_playside == 'dp-l'):
-                for i in range(4):
-                    tmp = imagehash.average_hash(img.crop((355,258+48*i,385,288+48*i)))
-                    update_area.append(hash_target - tmp)
-
-            else:
-                for i in range(4):
-                    tmp = imagehash.average_hash(img.crop((1235,258+48*i,1265,288+48*i)))
-                    update_area.append(hash_target - tmp)
-
             if not 'BATTLE' in self.playopt:
-                #print(f"update_area = {update_area}")
-                isLamp    = (self.settings['autosave_lamp'])    and (update_area[0] < 10)
-                isDjlevel = (self.settings['autosave_djlevel']) and (update_area[1] < 10)
-                isScore   = (self.settings['autosave_score'])   and (update_area[2] < 10)
-                isBp      = (self.settings['autosave_bp'])      and (update_area[3] < 10)
-                # 左上にミッション進捗が出ていないかどうか
-                isMissionEnd = img.getpixel((20,15)) != (44,61,77, 255)
-                # 獲得bitと所持bitのwindowが出ていないかどうか
-                tmp = np.array(img.crop((100,30,180,110)))
-                tmp[:,:][-1] = 0
-                isBitwindowEnd = tmp.sum() != 1914960
-
                 if isLamp or isDjlevel or isScore or isBp or isAlways:
                     if isMissionEnd and isBitwindowEnd:
                         self.save_result(result)
@@ -415,7 +357,11 @@ class DakenCounter:
                 if (self.settings['autosave_dbx'] == 'always') or ((self.settings['autosave_dbx'] == 'clear') and (lamp_table.index(result[7]) >= 2)) or isAlways:
                     self.save_result(result)
                     ret = True
-
+        else: # OCR失敗時、とりあえずモザイク処理と自動保存はやる
+            if isLamp or isDjlevel or isScore or isBp or isAlways:
+                if isMissionEnd and isBitwindowEnd:
+                    self.save_result(False)
+                    ret = True
         return ret
     
     ### 自動保存用ディレクトリ内の画像からDBを作成する
@@ -477,6 +423,8 @@ class DakenCounter:
         tmp = []
         screen = open_screenimage(self.imgpath)
         result = recog.get_result(screen)
+        if result == None:
+            return False
         info = result.informations
         playdata     = result.details
         is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
@@ -688,7 +636,7 @@ class DakenCounter:
                     if playside:
                         self.valid_playside = playside
                     tmp_playopt, tmp_gauge = self.detect_option()
-                    if detect_select(self.img):
+                    if is_select(self.img):
                         if self.detect_mode == detect_mode.result:
                             if len(self.todaylog) > 0:
                                 is_pushed_to_alllog = True
@@ -735,7 +683,12 @@ class DakenCounter:
                         try:
                             result = self.ocr(self.imgpath)
                             logger.debug(result)
-                            if result != False:
+                            if is_result(self.img):
+                                self.control_obs_sources('result0')
+                                self.detect_mode = detect_mode.result
+                                flg_result1 = False
+
+                            if result != False: # OCR成功時に統計情報を更新
                                 self.todaylog.append(result)
                                 self.alllog.append(result)
                                 key = f"{result[1]}({result[2]})"
@@ -748,15 +701,9 @@ class DakenCounter:
                                 # xml更新
                                 self.write_today_update_xml()
                                 self.write_history_cursong_xml(result)
-                                self.control_obs_sources('result0')
-                                flg_result1 = False
-                                self.detect_mode = detect_mode.result
-                                logger.debug('')
                                 self.save_alllog() # ランプ内訳グラフ更新のため、alllogも保存する
                                 tmp_stats.update(self.todaylog, self.judge, self.today_plays)
-                                logger.debug('')
                                 tmp_stats.write_stats_to_xml()
-                                logger.debug('')
                         except Exception as e:
                             logger.debug(traceback.format_exc())
 
@@ -1247,7 +1194,8 @@ class DakenCounter:
             [sg.Text(self.settings['autosave_dir'], key='txt_autosave_dir')],
             [
                 sg.Checkbox('更新に関係なく常時保存する',self.settings['autosave_always'],key='chk_always', enable_events=True),
-                sg.Checkbox('ライバルの名前を隠す',self.settings['autosave_mosaic'],key='chk_mosaic', enable_events=True)
+                sg.Checkbox('ライバルの名前をぼかす',self.settings['autosave_mosaic'],key='chk_mosaic', enable_events=True),
+                sg.Checkbox('スコア・曲名周りだけ切り取る',self.settings['autosave_trim'],key='chk_trim', enable_events=True)
             ],
             [par_text('リザルト自動保存用設定 (onになっている項目の更新時に保存)')],
             [sg.Checkbox('クリアランプ',self.settings['autosave_lamp'],key='chk_lamp', enable_events=True)
@@ -1501,6 +1449,7 @@ class DakenCounter:
                     self.settings['autosave_bp'] = val['chk_bp']
                     self.settings['autosave_always'] = val['chk_always']
                     self.settings['autosave_mosaic'] = val['chk_mosaic']
+                    self.settings['autosave_trim'] = val['chk_trim']
                     self.settings['gen_dailylog_from_alllog'] = val['gen_dailylog_from_alllog']
                     self.settings['target_score_rate'] = val['target_score_rate']
                     self.settings['auto_update'] = val['auto_update']
