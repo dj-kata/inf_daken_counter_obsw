@@ -421,7 +421,7 @@ class DakenCounter:
     def ocr(self, pic, onplay=True):
         ret = False
         tmp = []
-        screen = open_screenimage(self.imgpath)
+        screen = open_screenimage(pic)
         result = recog.get_result(screen)
         if result == None:
             return False
@@ -683,12 +683,11 @@ class DakenCounter:
                         try:
                             result = self.ocr(self.imgpath)
                             logger.debug(result)
-                            if is_result(self.img):
+                            if result != False: # OCR成功時に統計情報を更新
                                 self.control_obs_sources('result0')
                                 self.detect_mode = detect_mode.result
                                 flg_result1 = False
 
-                            if result != False: # OCR成功時に統計情報を更新
                                 self.todaylog.append(result)
                                 self.alllog.append(result)
                                 key = f"{result[1]}({result[2]})"
