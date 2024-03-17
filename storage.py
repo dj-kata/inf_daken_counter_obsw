@@ -255,7 +255,8 @@ class StorageAccessor():
             blob = self.bucket_resources.get_blob(resourcename)
             return str(blob.updated)
         except Exception as ex:
-            logger.exception(ex)
+            pass
+            #logger.exception(ex)
         
         return None
     
