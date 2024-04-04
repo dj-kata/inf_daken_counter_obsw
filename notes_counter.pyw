@@ -658,25 +658,24 @@ class DakenCounter:
                     if detect_endselect(self.img):
                         self.control_obs_sources('select1')
                         self.detect_mode = detect_mode.init # 遷移中はinitにしておく
-                    # 選曲画面からの認識は向こう側の仕様が変わり果ててしまったので一旦pending
-                    #else: # 選曲画面での認識
-                    #    np_value = np.array(Image.open(self.imgpath))
-                    #    musicname = recog.MusicSelect.get_musicname(np_value)
-                    #    print(musicname)
-                    #    if musicname != pre_musicname:
-                    #        playmode = recog.MusicSelect.get_playmode(np_value)
-                    #        difficulty = recog.MusicSelect.get_difficulty(np_value)
-                    #        levels = recog.MusicSelect.get_levels(np_value)
-                    #        flginfo = True
-                    #        flginfo &= (playmode is None)
-                    #        flginfo &= (musicname is None)
-                    #        try:
-                    #            result = [levels[difficulty], musicname, playmode+difficulty[0], self.playopt, self.playopt]
-                    #            self.write_history_cursong_xml(result)
-                    #            #print(musicname, playmode, difficulty)
-                    #        except Exception:
-                    #            pass
-                    #    pre_musicname = musicname
+                    else: # 選曲画面での認識
+                        np_value = np.array(Image.open(self.imgpath).crop((48,135,1188,952)))
+                        musicname = recog.MusicSelect.get_musicname(np_value)
+                        print(musicname)
+                        if musicname != pre_musicname:
+                            playmode = recog.MusicSelect.get_playmode(np_value)
+                            difficulty = recog.MusicSelect.get_difficulty(np_value)
+                            levels = recog.MusicSelect.get_levels(np_value)
+                            flginfo = True
+                            flginfo &= (playmode is None)
+                            flginfo &= (musicname is None)
+                            try:
+                                result = [levels[difficulty], musicname, playmode+difficulty[0], self.playopt, self.playopt]
+                                self.write_history_cursong_xml(result)
+                                #print(musicname, playmode, difficulty)
+                            except Exception:
+                                pass
+                        pre_musicname = musicname
     
                 if not is_pushed_to_alllog: # 曲ルーチンを1回抜けないとOCR起動フラグが立たない
                     try:
