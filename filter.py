@@ -9,7 +9,7 @@ def blur(image, area):
 
     return image
 
-def filter(image, play_side, loveletter, rivalname):
+def filter(image, play_side, loveletter, rivalname, compact):
     """適切な位置にぼかしを入れる
 
     ライバル順位と、必要があれば挑戦状・グラフターゲットのライバル名にぼかしを入れる。
@@ -20,6 +20,7 @@ def filter(image, play_side, loveletter, rivalname):
         play_side (str): 1P or 2P
         loveletter (bool): ライバル挑戦状の有無
         rivalname (bool): グラフターゲットのライバル名の有無
+        compact (bool): ぼかしの範囲を最小限にする
 
     Returns:
         Image: ぼかしを入れた画像
@@ -27,11 +28,19 @@ def filter(image, play_side, loveletter, rivalname):
     ret = image.copy()
 
     if play_side != '':
-        ret = blur(ret, define.filter_areas['ranking'][play_side])
+        if not compact:
+            ret = blur(ret, define.filter_areas['ranking'][play_side])
+        else:
+            for area in define.filter_areas['ranking_compact'][play_side]:
+                ret = blur(ret, area)
+        
         if rivalname:
             ret = blur(ret, define.filter_areas['graphtarget_name'][play_side])
 
     if loveletter:
-        ret = blur(ret, define.filter_areas['loveletter'])
+        if not compact:
+            ret = blur(ret, define.filter_areas['loveletter'])
+        else:
+            ret = blur(ret, define.filter_areas['loveletter_compact'])
     
     return ret

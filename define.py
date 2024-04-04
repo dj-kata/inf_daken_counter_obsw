@@ -101,9 +101,9 @@ class Define():
     }
     details_graphtarget_name_area = (210, 622, 300, 644)
 
-    musictable_version = '1.0'
+    musictable_version = '1.1'
     
-    musicselect_recognition_version = '2.0'
+    musicselect_recognition_version = '2.1'
     musicselect_trimarea = (48, 135, 1188, 952)
     musicselect_trimarea_np = (
         (slice(musicselect_trimarea[1], musicselect_trimarea[3])),
@@ -113,15 +113,22 @@ class Define():
     musicselect_rivals_name_area = (760, 634, 856, 808)
 
     filter_ranking_size = (526, 626)
+    filter_ranking_compact_size = (97, 20)
     filter_ranking_position = {
         '1P': (1372, 264),
         '2P': (32, 264)
     }
+    filter_ranking_compact_positions = {
+        'left': {'1P': 1494, '2P': 154},
+        'tops': (287, 393, 499, 605, 711, 817, )
+    }
 
     filter_areas = {
         'ranking': {},
+        'ranking_compact': {},
         'graphtarget_name': {},
-        'loveletter': (820, 700, 1102, 912)
+        'loveletter': (820, 700, 1102, 912),
+        'loveletter_compact': (880, 777, 978, 800)
     }
 
     def __init__(self):
@@ -146,6 +153,17 @@ class Define():
                 self.filter_ranking_position[key][0] + self.filter_ranking_size[0],
                 self.filter_ranking_position[key][1] + self.filter_ranking_size[1]
             )
+        
+        for playside in self.filter_ranking_compact_positions['left'].keys():
+            left = self.filter_ranking_compact_positions['left'][playside]
+            self.filter_areas['ranking_compact'][playside] = []
+            for top in self.filter_ranking_compact_positions['tops']:
+                self.filter_areas['ranking_compact'][playside].append((
+                    left,
+                    top,
+                    left + self.filter_ranking_compact_size[0],
+                    top + self.filter_ranking_compact_size[1]
+                ))
 
         for key in self.details_trimpos.keys():
             self.filter_areas['graphtarget_name'][key] = (

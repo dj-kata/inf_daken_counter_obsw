@@ -243,7 +243,7 @@ class DakenCounter:
             logger.debug(traceback.format_exc())
             result = False
         try:
-            if result:
+            if is_result(self.img):
                 dst = self.save_result(result)
             else:
                 ts = os.path.getmtime(self.imgpath)
@@ -297,9 +297,12 @@ class DakenCounter:
         # OCR成功時はファイル名を細かく設定
         if result != False:
             title = result[1]
-            for ch in ('\\', '/', ':', '*', '?', '"', '<', '>', '|'):
-                title = title.replace(ch, '')
-            title = f"{title[:120]}_{result[2]}"
+            if title == None: # 曲名の判別ができなかった場合
+                title = ''
+            else:
+                for ch in ('\\', '/', ':', '*', '?', '"', '<', '>', '|'):
+                    title = title.replace(ch, '')
+                title = f"{title[:120]}_{result[2]}"
             lamp  = result[7].replace('-', '')
             score = f'ex{result[9]}'
             bp    = ''
@@ -323,8 +326,8 @@ class DakenCounter:
             rival_mode = has_rival_area(out)
             if rival_mode != None:
                 out = mosaic_rival_area(out, rival_mode)
-        if self.settings['autosave_trim']:
-            out = trim_main_area(out, rival_mode)
+        #if self.settings['autosave_trim']:
+        #    out = trim_main_area(out, rival_mode)
         out.save(dst)
         return dst
 
@@ -422,7 +425,8 @@ class DakenCounter:
             return False
         info = result.informations
         playdata     = result.details
-        is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
+        #is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
+        is_valid = (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
         #logger.debug(info.music, info.level, info.play_mode, info.difficulty, playdata.clear_type.current, playdata.dj_level.current, playdata.score.current)
         if is_valid:
             tmp.append(info.level)
@@ -623,66 +627,68 @@ class DakenCounter:
         print(f'スコア検出スレッド開始。')
         while True:
             while True: # 曲開始までを検出
-                try:
-                    #self.window.write_event_value('-DETECT_MODE-', self.detect_mode.name)
-                    self.obs.save_screenshot()
-                    self.img = Image.open(self.imgpath)
-                    playside = detect_playside(self.img)
-                    if playside:
-                        self.valid_playside = playside
-                    tmp_playopt, tmp_gauge = self.detect_option()
-                    if is_select(self.img):
-                        if self.detect_mode == detect_mode.result:
-                            if len(self.todaylog) > 0:
-                                is_pushed_to_alllog = True
-                        if self.detect_mode != detect_mode.select:
-                            self.control_obs_sources('select0')
-                        self.detect_mode = detect_mode.select
-
+                #self.window.write_event_value('-DETECT_MODE-', self.detect_mode.name)
+                self.obs.save_screenshot()
+                self.img = Image.open(self.imgpath)
+                playside = detect_playside(self.img)
+                if playside:
+                    self.valid_playside = playside
+                tmp_playopt, tmp_gauge = self.detect_option()
+                if is_select(self.img):
                     if self.detect_mode == detect_mode.result:
-                        if not flg_autosave: # 
-                            try:
-                                result = self.ocr(self.imgpath)
-                                flg_autosave = self.autosave_result(result)
-                            except Exception as e:
-                                logger.debug(traceback.format_exc())
-                        if not flg_result1: # リザルト画面終了時のOBS操作をしたかどうか
-                            if detect_endresult(self.img): # リザルト画面を抜けた後の青い画面
-                                self.control_obs_sources('result1')
-                                flg_result1 = True
-                    # 選曲画面モードなら終了判定 (何度もselect0に入らない)
-                    if self.detect_mode == detect_mode.select:
-                        if detect_endselect(self.img):
-                            self.control_obs_sources('select1')
-                            self.detect_mode = detect_mode.init # 遷移中はinitにしておく
-                        else: # 選曲画面での認識
-                            np_value = np.array(Image.open(self.imgpath))
-                            musicname = recog.MusicSelect.get_musicname(np_value)
-                            if musicname != pre_musicname:
-                                playmode = recog.MusicSelect.get_playmode(np_value)
-                                difficulty = recog.MusicSelect.get_difficulty(np_value)
-                                levels = recog.MusicSelect.get_levels(np_value)
-                                flginfo = True
-                                flginfo &= (playmode is None)
-                                flginfo &= (musicname is None)
-                                try:
-                                    result = [levels[difficulty], musicname, playmode+difficulty[0], self.playopt, self.playopt]
-                                    self.write_history_cursong_xml(result)
-                                    #print(musicname, playmode, difficulty)
-                                except Exception:
-                                    pass
-                            pre_musicname = musicname
+                        if len(self.todaylog) > 0:
+                            is_pushed_to_alllog = True
+                    if self.detect_mode != detect_mode.select:
+                        self.control_obs_sources('select0')
+                    self.detect_mode = detect_mode.select
 
-    
-                    if not is_pushed_to_alllog: # 曲ルーチンを1回抜けないとOCR起動フラグが立たない
+                if self.detect_mode == detect_mode.result:
+                    if not flg_autosave: # 
                         try:
                             result = self.ocr(self.imgpath)
-                            logger.debug(result)
-                            if result != False: # OCR成功時に統計情報を更新
-                                self.control_obs_sources('result0')
-                                self.detect_mode = detect_mode.result
-                                flg_result1 = False
+                            flg_autosave = self.autosave_result(result)
+                        except Exception as e:
+                            logger.debug(traceback.format_exc())
+                    if not flg_result1: # リザルト画面終了時のOBS操作をしたかどうか
+                        if detect_endresult(self.img): # リザルト画面を抜けた後の青い画面
+                            self.control_obs_sources('result1')
+                            flg_result1 = True
+                # 選曲画面モードなら終了判定 (何度もselect0に入らない)
+                if self.detect_mode == detect_mode.select:
+                    if detect_endselect(self.img):
+                        self.control_obs_sources('select1')
+                        self.detect_mode = detect_mode.init # 遷移中はinitにしておく
+                    # 選曲画面からの認識は向こう側の仕様が変わり果ててしまったので一旦pending
+                    #else: # 選曲画面での認識
+                    #    np_value = np.array(Image.open(self.imgpath))
+                    #    musicname = recog.MusicSelect.get_musicname(np_value)
+                    #    print(musicname)
+                    #    if musicname != pre_musicname:
+                    #        playmode = recog.MusicSelect.get_playmode(np_value)
+                    #        difficulty = recog.MusicSelect.get_difficulty(np_value)
+                    #        levels = recog.MusicSelect.get_levels(np_value)
+                    #        flginfo = True
+                    #        flginfo &= (playmode is None)
+                    #        flginfo &= (musicname is None)
+                    #        try:
+                    #            result = [levels[difficulty], musicname, playmode+difficulty[0], self.playopt, self.playopt]
+                    #            self.write_history_cursong_xml(result)
+                    #            #print(musicname, playmode, difficulty)
+                    #        except Exception:
+                    #            pass
+                    #    pre_musicname = musicname
+    
+                if not is_pushed_to_alllog: # 曲ルーチンを1回抜けないとOCR起動フラグが立たない
+                    try:
+                        result = self.ocr(self.imgpath)
+                        logger.debug(result)
+                        if is_result(self.img):
+                            self.control_obs_sources('result0')
+                            self.detect_mode = detect_mode.result
+                            flg_result1 = False
 
+                        if result != False: # OCR成功時に統計情報を更新
+                            if result[1] != None:
                                 self.todaylog.append(result)
                                 self.alllog.append(result)
                                 key = f"{result[1]}({result[2]})"
@@ -698,33 +704,22 @@ class DakenCounter:
                                 self.save_alllog() # ランプ内訳グラフ更新のため、alllogも保存する
                                 tmp_stats.update(self.todaylog, self.judge, self.today_plays)
                                 tmp_stats.write_stats_to_xml()
-                        except Exception as e:
-                            logger.debug(traceback.format_exc())
+                    except Exception as e:
+                        logger.debug(traceback.format_exc())
 
-                    if tmp_playopt and tmp_gauge:
-                        if self.playopt != tmp_playopt:
-                            self.window.write_event_value('-PLAYOPT-', tmp_playopt)
-                        if self.gauge != tmp_gauge:
-                            self.window.write_event_value('-GAUGE-', tmp_gauge)
-                        self.playopt = tmp_playopt
-                        self.gauge = tmp_gauge
-                        self.gen_opt_xml(self.playopt, self.gauge) # 常時表示オプションを書き出す
-                    if playside: # 曲頭を検出
-                        self.control_obs_sources('play0')
-                        self.detect_mode = detect_mode.play
-                        print(f'曲開始を検出しました。\nEXスコア取得開始。mode={playside.upper()}')
-                        self.gen_opt_xml(self.playopt, self.gauge, True) # 常時表示+曲中のみデータの書き出し
-                        break
-                except Exception as e: # 今の構成になってから、このtry文がそもそも不要かもしれない TODO
-                    logger.debug(traceback.format_exc())
-                    stop_local = True
-                    print(f'スクリーンショットに失敗しました。{e}')
-                    self.window.write_event_value('-SCRSHOT_ERROR-', " ")
-                    if self.obs == False:
-                        stop_local = True
-                    elif not self.obs.active: # obsインスタンスがあっても、OBSが落ちていたら止める
-                        stop_local = True
-                    logger.debug('break!')
+                if tmp_playopt and tmp_gauge:
+                    if self.playopt != tmp_playopt:
+                        self.window.write_event_value('-PLAYOPT-', tmp_playopt)
+                    if self.gauge != tmp_gauge:
+                        self.window.write_event_value('-GAUGE-', tmp_gauge)
+                    self.playopt = tmp_playopt
+                    self.gauge = tmp_gauge
+                    self.gen_opt_xml(self.playopt, self.gauge) # 常時表示オプションを書き出す
+                if playside: # 曲頭を検出
+                    self.control_obs_sources('play0')
+                    self.detect_mode = detect_mode.play
+                    print(f'曲開始を検出しました。\nEXスコア取得開始。mode={playside.upper()}')
+                    self.gen_opt_xml(self.playopt, self.gauge, True) # 常時表示+曲中のみデータの書き出し
                     break
                 if self.stop_thread:
                     stop_local = True
@@ -1189,7 +1184,7 @@ class DakenCounter:
             [
                 sg.Checkbox('更新に関係なく常時保存する',self.settings['autosave_always'],key='chk_always', enable_events=True),
                 sg.Checkbox('ライバルの名前をぼかす',self.settings['autosave_mosaic'],key='chk_mosaic', enable_events=True),
-                sg.Checkbox('スコア・曲名周りだけ切り取る',self.settings['autosave_trim'],key='chk_trim', enable_events=True)
+                #sg.Checkbox('スコア・曲名周りだけ切り取る',self.settings['autosave_trim'],key='chk_trim', enable_events=True)
             ],
             [par_text('リザルト自動保存用設定 (onになっている項目の更新時に保存)')],
             [sg.Checkbox('クリアランプ',self.settings['autosave_lamp'],key='chk_lamp', enable_events=True)
@@ -1443,7 +1438,7 @@ class DakenCounter:
                     self.settings['autosave_bp'] = val['chk_bp']
                     self.settings['autosave_always'] = val['chk_always']
                     self.settings['autosave_mosaic'] = val['chk_mosaic']
-                    self.settings['autosave_trim'] = val['chk_trim']
+                    #self.settings['autosave_trim'] = val['chk_trim']
                     self.settings['gen_dailylog_from_alllog'] = val['gen_dailylog_from_alllog']
                     self.settings['target_score_rate'] = val['target_score_rate']
                     self.settings['auto_update'] = val['auto_update']

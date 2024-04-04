@@ -581,6 +581,7 @@ def rename_changemusicname():
         logger.debug(ex)
         return
     
+    changed = []
     for target, renamed in convertlist:
         target_encoded = target.encode('UTF-8').hex()
         target_filepath = join(records_basepath, f'{target_encoded}.json')
@@ -591,4 +592,7 @@ def rename_changemusicname():
                 remove(renamed_filepath)
             rename(target_filepath, renamed_filepath)
             logger.info(f'Rename {target} to {renamed}')
+            changed.append((target, renamed))
+    
+    return changed
 

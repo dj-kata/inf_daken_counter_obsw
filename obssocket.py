@@ -6,6 +6,11 @@ from PIL import Image
 import traceback, os, io
 import logging, logging.handlers
 import base64
+from screenshot import Screenshot,open_screenimage
+from recog import Recognition as recog
+from record import NotebookRecent,NotebookSummary,NotebookMusic,rename_allfiles,rename_changemusicname,musicnamechanges_filename
+from define import define
+from resources import resource, check_latest
 
 os.makedirs('log', exist_ok=True)
 logger = logging.getLogger(__name__)
@@ -178,8 +183,14 @@ class OBSSocket():
 if __name__ == "__main__":
     a = OBSSocket('localhost', '4455', 'panipaninoakuma','たぬきお休み.png','tmp.png')
     #a.save_screenshot('メインモニタ', 'png', 'C:\\Users\\katao\\OneDrive\\デスクトップ\\hoge.png')
+    a.save_screenshot()
     #tmp = a.get_screenshot('メインモニタ', 'png')
     print(a.search_itemid('2. DP_NEW', 'history_cursong'))
     #for i in range(100):
     #    img = a.get_screenshot()# image_data # base64文字列
     #img.save('tmp.png')
+
+    import sys
+    screen = open_screenimage(sys.argv[1])
+    result = recog.get_result(screen)
+    print(result.informations.music)
