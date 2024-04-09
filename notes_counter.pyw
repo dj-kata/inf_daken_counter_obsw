@@ -661,7 +661,6 @@ class DakenCounter:
                     else: # 選曲画面での認識
                         np_value = np.array(Image.open(self.imgpath).crop((48,135,1188,952)))
                         musicname = recog.MusicSelect.get_musicname(np_value)
-                        print(musicname)
                         if musicname != pre_musicname:
                             playmode = recog.MusicSelect.get_playmode(np_value)
                             difficulty = recog.MusicSelect.get_difficulty(np_value)
