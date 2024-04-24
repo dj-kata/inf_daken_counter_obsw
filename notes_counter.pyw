@@ -439,7 +439,8 @@ class DakenCounter:
             tmp.append(playdata.dj_level.best)
             tmp.append(playdata.dj_level.current)
             tmp.append(playdata.clear_type.best)
-            if ('BATTLE' in self.playopt) and self.settings['use_gauge_at_dbx_lamp']:
+            #if ('BATTLE' in self.playopt) and self.settings['use_gauge_at_dbx_lamp']:
+            if playdata.options.battle and self.settings['use_gauge_at_dbx_lamp']:
                 cur_lamp = playdata.clear_type.current
                 # どのゲージだか不明だが抜けた場合
                 # ランプ設定優先モードでは皿なしDBxでも例えば難抜けしたらHARD扱いにする
@@ -465,7 +466,7 @@ class DakenCounter:
             else:
                 tmp.append(playdata.score.current)
             tmp.append(playdata.miss_count.best)
-            if 'BATTLE' in self.playopt:
+            if playdata.options.battle in self.playopt:
                 tmp.append(self.tmp_judge[3]+self.tmp_judge[4])
             else:
                 tmp.append(playdata.miss_count.current)
