@@ -219,9 +219,12 @@ def is_select(img:Image) -> bool:
     """
     ret = False
 
-    hash_target = imagehash.average_hash(Image.open('layout/is_select.png'))
-    tmp = imagehash.average_hash(img.crop((272,982,272+62,982+58)))
-    ret = (hash_target - tmp) < 10
+    hash_target = imagehash.hex_to_hash('007e7e5e5a7e7c00')
+    img_1p = img.crop((466,1000,466+27,1000+27))
+    h_1p = imagehash.average_hash(img_1p)
+    img_2p = img.crop((1422,1000,1422+27,1000+27))
+    h_2p = imagehash.average_hash(img_2p)
+    ret = ((hash_target - h_1p) < 10) or ((hash_target - h_2p) < 10)
     #logger.debug(f"ret = {ret}")
 
     return ret
