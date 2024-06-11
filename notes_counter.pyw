@@ -286,6 +286,7 @@ class DakenCounter:
         # 表示の制御
         for s in self.settings[f"obs_enable_{name}"]:
             tmps, tmpid = self.obs.search_itemid(scene, s)
+            #self.obs.refresh_source(s)
             self.obs.enable_source(tmps,tmpid)
 
     def save_result(self, result):
@@ -466,7 +467,7 @@ class DakenCounter:
             else:
                 tmp.append(playdata.score.current)
             tmp.append(playdata.miss_count.best)
-            if playdata.options.battle in self.playopt:
+            if playdata.options.battle:
                 tmp.append(self.tmp_judge[3]+self.tmp_judge[4])
             else:
                 tmp.append(playdata.miss_count.current)
@@ -1025,7 +1026,7 @@ class DakenCounter:
         with open('today_update.xml', 'w', encoding='utf-8') as f:
             f.write(f'<?xml version="1.0" encoding="utf-8"?>\n')
             f.write("<Results>\n")
-            lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
+            lamp_table = [None, 'NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
             for s in reversed(self.todaylog):
                 #logger.debug(f"s = {s}")
                 lamp = ''
