@@ -11,3 +11,4 @@ Makefile
 __pycache__/*
 tmp/*
 old/*
+service_account_info.py

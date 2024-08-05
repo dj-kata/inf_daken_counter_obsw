@@ -99,7 +99,8 @@ class Screenshot:
         self.capture = Capture(define.width, define.height)
 
     def __del__(self):
-        del self.checkloading
+        for screen, pos, capture, value in self.checkscreens:
+            del capture
         del self.capture
 
     def get_screen(self):

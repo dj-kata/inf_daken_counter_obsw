@@ -157,13 +157,14 @@ class Recognition():
             
             for height in range(masked.shape[0]):
                 unique, counts = np.unique(masked[height], return_counts=True)
-                if len(unique) == 1:
-                    continue
-                index = -np.argmax(np.flip(counts[1:])) - 1
-                intensity = unique[index]
-                bins = np.where(masked[height]==intensity, 1, 0)
-                hexs = bins[::4]*8+bins[1::4]*4+bins[2::4]*2+bins[3::4]
-                tablekey = f"{height:02d}{''.join([format(v, '0x') for v in hexs])}"
+                if len(unique) > 1:
+                    index = -np.argmax(np.flip(counts[1:])) - 1
+                    intensity = unique[index]
+                    bins = np.where(masked[height]==intensity, 1, 0)
+                    hexs = bins[::4]*8+bins[1::4]*4+bins[2::4]*2+bins[3::4]
+                    tablekey = f"{height:02d}{''.join([format(v, '0x') for v in hexs])}"
+                else:
+                    tablekey = f'{height:02d}'
                 if not tablekey in targettable.keys():
                     break
 
@@ -615,12 +616,13 @@ class Recognition():
     def get_is_savable(np_value):
         define_result_check = define.result_check
 
-        background_key = np_value[define_result_check['background_key_position']]
-        if not background_key in resource.is_savable.keys():
+        pixel = np_value[resource.is_savable['keyposition']]
+        background_key = ''.join([format(v, '02x') for v in pixel])
+        if not background_key in resource.is_savable['areas'].keys():
             return False
 
-        for area_key, area in define_result_check['areas'].items():
-            if not np.array_equal(np_value[area], resource.is_savable[background_key][area_key]):
+        for area_key, area in define_result_check.items():
+            if not np.array_equal(np_value[area], resource.is_savable['areas'][background_key][area_key]):
                 return False
         
         return True

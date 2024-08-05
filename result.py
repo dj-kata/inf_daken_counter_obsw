@@ -10,7 +10,7 @@ results_dirname = 'results'
 filtereds_dirname = 'filtered'
 
 class ResultInformations():
-    def __init__(self, play_mode, difficulty, level, notes, music):
+    def __init__(self, play_mode: str, difficulty: str, level: str, notes: int, music: str):
         self.play_mode = play_mode
         self.difficulty = difficulty
         self.level = level
@@ -18,13 +18,21 @@ class ResultInformations():
         self.music = music
 
 class ResultValues():
-    def __init__(self, best, current, new):
+    def __init__(self, best: str | int, current: str | int, new: bool):
         self.best = best
         self.current = current
         self.new = new
 
+class ResultOptions():
+    def __init__(self, arrange: str, flip: str, assist: str, battle: bool):
+        self.arrange = arrange
+        self.flip = flip
+        self.assist = assist
+        self.battle = battle
+        self.special = (arrange is not None and 'H-RAN' in arrange) or self.battle
+
 class ResultDetails():
-    def __init__(self, graphtype, options, clear_type, dj_level, score, miss_count, graphtarget):
+    def __init__(self, graphtype: str, options: ResultOptions, clear_type: ResultValues, dj_level: ResultValues, score: ResultValues, miss_count: ResultValues, graphtarget: str):
         self.graphtype = graphtype
         self.options = options
         self.clear_type = clear_type
@@ -33,21 +41,13 @@ class ResultDetails():
         self.miss_count = miss_count
         self.graphtarget = graphtarget
 
-class ResultOptions():
-    def __init__(self, arrange, flip, assist, battle):
-        self.arrange = arrange
-        self.flip = flip
-        self.assist = assist
-        self.battle = battle
-        self.special = (arrange is not None and 'H-RAN' in arrange) or self.battle
-
 class Result():
-    def __init__(self, informations, play_side, rival, dead, details):
-        self.informations = informations
+    def __init__(self, informations: ResultInformations, play_side: str, rival: bool, dead: bool, details: ResultDetails):
+        self.informations: ResultInformations = informations
         self.play_side = play_side
         self.rival = rival
         self.dead = dead
-        self.details = details
+        self.details: ResultDetails = details
 
         now = datetime.now()
         self.timestamp = f"{now.strftime('%Y%m%d-%H%M%S')}"

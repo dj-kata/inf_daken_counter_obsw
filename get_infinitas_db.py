@@ -27,7 +27,7 @@ for tr in soup.find_all('tr'):
 
 # 整合性確認
 # AETHERやMacho Monkyなどが表記ゆれの関係になっている。
-with open('resources/informations2.0.res', 'rb') as f:
+with open('resources/informations3.0.res', 'rb') as f:
     js = pickle.load(f)
 
 ocr_title = js['music']['musics']

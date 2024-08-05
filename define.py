@@ -12,8 +12,8 @@ class Define():
 
     screens = {
         'loading': {
-            'left': 898,
-            'top': 482,
+            'left': 380,
+            'top': 120,
             'width': 4,
             'height': 2
         },
@@ -32,12 +32,8 @@ class Define():
     }
 
     result_check = {
-        'background_count': 13,
-        'background_key_position': (961, 615, 1),
-        'areas': {
-            "horizontalline": (60, slice(156, 390), 1),
-            "verticalline": (slice(550, 760), 788, 1)
-        }
+        "horizontalline": (60, slice(156, 390), 1),
+        "verticalline": (slice(550, 760), 788, 1)
     }
 
     value_list = {
@@ -51,8 +47,9 @@ class Define():
         'options_arrange_sync': ('SYNC-RAN', 'SYMM-RAN',),
         'options_flip': ('FLIP',),
         'options_assist': ('A-SCR', 'LEGACY',),
-        'clear_types': ('NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO'),
-        'graphtargets': ('no graph', 'personal best score only', 'national best', 'national average', 'prefecture best', 'prefecture average', 'same class best', 'same class average', 'rival', 'rival best', 'rival average', 'pacemaker')
+        'clear_types': ('NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO',),
+        'graphtargets': ('no graph', 'personal best score only', 'national best', 'national average', 'prefecture best', 'prefecture average', 'same class best', 'same class average', 'rival', 'rival best', 'rival average', 'pacemaker',),
+        'notesradar_attributes': ('NOTES', 'CHORD', 'PEAK', 'CHARGE', 'SCRATCH', 'SOF-LAN',)
     }
 
     areas_np = {
@@ -75,7 +72,7 @@ class Define():
     informations_trimpos = (560, 960)
     informations_trimsize = (800, 166)
 
-    informations_recognition_version = '3.0'
+    informations_recognition_version = '3.1'
     informations_trimarea = (560, 960, 1360, 1066)
 
     informations_areas = {
@@ -112,6 +109,8 @@ class Define():
 
     musicselect_rivals_name_area = (760, 634, 856, 808)
 
+    notesradar_version = '1.0'
+
     filter_ranking_size = (526, 626)
     filter_ranking_compact_size = (97, 20)
     filter_ranking_position = {
@@ -136,6 +135,7 @@ class Define():
         self.details_resourcename = f'details{self.details_recognition_version}'
         self.musictable_resourcename = f'musictable{self.musictable_version}'
         self.musicselect_resourcename = f'musicselect{self.musicselect_recognition_version}'
+        self.notesradar_resourcename = f'notesradar{self.notesradar_version}'
 
         self.details_trimarea = {}
         for play_side in self.details_trimpos.keys():

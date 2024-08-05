@@ -45,7 +45,7 @@ for song in diffs:
     diff_hard[title] = song['hard']
     diff_clear[title] = song['n_clear']
 
-with open('resources/informations2.0.res', 'rb') as f:
+with open('resources/informations3.0.res', 'rb') as f:
     js = pickle.load(f)
 
 ocr_title = js['music']['musics']

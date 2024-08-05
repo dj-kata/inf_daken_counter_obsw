@@ -10,7 +10,7 @@ logger_child_name = 'record'
 logger = getLogger().getChild(logger_child_name)
 logger.debug(f'loaded resources.py')
 
-#from version import version
+from version import version
 from resources import resource,resources_dirname
 from define import define
 
@@ -98,86 +98,6 @@ class NotebookRecent(Notebook):
         if not 'results' in self.json.keys() or not timestamp in self.json['results']:
             return None
         return self.json['results'][timestamp]
-
-class NotebookSummary(Notebook):
-    def __init__(self):
-        self.filename = summary_filename
-        super().__init__()
-    
-    def start_import(self):
-        """全曲の記録の取り込みを開始する
-        """
-        self.counter = [None, None]
-        Thread(target=self.import_async).start()
-        return self.counter
-    
-    def import_async(self):
-        """非同期で全曲の記録を取り込む
-        """
-        self.counter[0] = 0
-        self.counter[1] = len(resource.musictable['musics'])
-        for musicname in resource.musictable['musics'].keys():
-            notebook = NotebookMusic(musicname)
-            self.import_targetmusic(musicname, notebook)
-            self.counter[0] += 1
-    
-    def import_targetmusic(self, musicname, notebook):
-        """対象の曲の記録を取り込む
-        
-        Args:
-            musicname (str): 曲名
-            notebook (NotebookMusic): 対象曲の記録
-        """
-        if not 'musics' in self.json.keys():
-            self.json['musics'] = {}
-        self.json['musics'][musicname] = {'SP': {}, 'DP': {}}
-        music_item = resource.musictable['musics'][musicname]
-        for playmode in define.value_list['play_modes']:
-            for difficulty in define.value_list['difficulties']:
-                if not difficulty in music_item[playmode].keys() or music_item[playmode][difficulty] is None:
-                    continue
-
-                r = notebook.get_recordlist(playmode, difficulty)
-                if r is None:
-                    continue
-
-                self.json['musics'][musicname][playmode][difficulty] = {}
-                target = self.json['musics'][musicname][playmode][difficulty]
-                if 'latest' in r.keys() and 'timestamp' in r['latest'].keys():
-                    target['latest'] = r['latest']['timestamp']
-                else:
-                    target['latest'] = None
-
-                if 'timestamps' in r.keys():
-                    target['playcount'] = len(r['timestamps'])
-                else:
-                    target['playcount'] = None
-
-                if 'best' in r.keys():
-                    if 'clear_type' in r['best'].keys() and r['best']['clear_type'] is not None:
-                        target['cleartype'] = r['best']['clear_type']['value']
-                    else:
-                        target['cleartype'] = None
-                    
-                    if 'dj_level' in r['best'].keys() and r['best']['dj_level'] is not None:
-                        target['djlevel'] = r['best']['dj_level']['value']
-                    else:
-                        target['djlevel'] = None
-
-                    if 'score' in r['best'].keys() and r['best']['score'] is not None:
-                        target['score'] = r['best']['score']['value']
-                    else:
-                        target['score'] = None
-
-                    if 'miss_count' in r['best'].keys() and r['best']['miss_count'] is not None:
-                        target['misscount'] = r['best']['miss_count']['value']
-                    else:
-                        target['misscount'] = None
-                else:
-                    target['cleartype'] = None
-                    target['djlevel'] = None
-                    target['score'] = None
-                    target['misscount'] = None
 
 class NotebookMusic(Notebook):
     achievement_default = {
@@ -533,6 +453,130 @@ class NotebookMusic(Notebook):
             del target['history'][timestamp]
 
         self.save()
+
+class NotebookSummary(Notebook):
+    def __init__(self):
+        self.filename = summary_filename
+        super().__init__()
+    
+    def import_allmusics(self, version: str):
+        """全曲の記録を取り込む
+
+        Args:
+            version (str): 実行したバージョン
+        """
+        self.json = {}
+        for musicname in resource.musictable['musics'].keys():
+            notebook = NotebookMusic(musicname)
+            self.import_targetmusic(musicname, notebook)
+        
+        self.json['last_allimported'] = version
+    
+    def import_targetmusic(self, musicname: str, notebook: NotebookMusic):
+        """対象の曲の記録を取り込む
+        
+        Args:
+            musicname (str): 曲名
+            notebook (NotebookMusic): 対象曲の記録
+        """
+        if not 'musics' in self.json.keys():
+            self.json['musics'] = {}
+        self.json['musics'][musicname] = {'SP': {}, 'DP': {}}
+        music_item = resource.musictable['musics'][musicname]
+        for playmode in define.value_list['play_modes']:
+            for difficulty in define.value_list['difficulties']:
+                if not difficulty in music_item[playmode].keys() or music_item[playmode][difficulty] is None:
+                    continue
+
+                r = notebook.get_recordlist(playmode, difficulty)
+                if r is None:
+                    continue
+
+                self.json['musics'][musicname][playmode][difficulty] = {}
+                target = self.json['musics'][musicname][playmode][difficulty]
+                if 'latest' in r.keys() and 'timestamp' in r['latest'].keys():
+                    target['latest'] = r['latest']['timestamp']
+                else:
+                    target['latest'] = None
+
+                if 'timestamps' in r.keys():
+                    target['playcount'] = len(r['timestamps'])
+                else:
+                    target['playcount'] = None
+
+                if 'best' in r.keys():
+                    if 'clear_type' in r['best'].keys() and r['best']['clear_type'] is not None:
+                        target['cleartype'] = r['best']['clear_type']['value']
+                    else:
+                        target['cleartype'] = None
+                    
+                    if 'dj_level' in r['best'].keys() and r['best']['dj_level'] is not None:
+                        target['djlevel'] = r['best']['dj_level']['value']
+                    else:
+                        target['djlevel'] = None
+
+                    if 'score' in r['best'].keys() and r['best']['score'] is not None:
+                        target['score'] = r['best']['score']['value']
+                    else:
+                        target['score'] = None
+
+                    if 'miss_count' in r['best'].keys() and r['best']['miss_count'] is not None:
+                        target['misscount'] = r['best']['miss_count']['value']
+                    else:
+                        target['misscount'] = None
+                else:
+                    target['cleartype'] = None
+                    target['djlevel'] = None
+                    target['score'] = None
+                    target['misscount'] = None
+    
+    def count(self):
+        if not 'musics' in self.json.keys():
+            return
+
+        result = {}
+        for playmode in define.value_list['play_modes']:
+            result[playmode] = {}
+            for difficulty in define.value_list['difficulties']:
+                result[playmode][difficulty] = {'total': 0, 'datacount': 0}
+                for cleartype in define.value_list['clear_types']:
+                    result[playmode][difficulty][cleartype] = 0
+                for djlevel in define.value_list['dj_levels']:
+                    result[playmode][difficulty][djlevel] = 0
+            for level in define.value_list['levels']:
+                result[playmode][level] = {'total': 0, 'datacount': 0}
+                for cleartype in define.value_list['clear_types']:
+                    result[playmode][level][cleartype] = 0
+                for djlevel in define.value_list['dj_levels']:
+                    result[playmode][level][djlevel] = 0
+            
+        for musicname in resource.musictable['musics'].keys():
+            for playmode in define.value_list['play_modes']:
+                for difficulty, level in resource.musictable['musics'][musicname][playmode].items():
+                    result[playmode][difficulty]['total'] += 1
+                    result[playmode][level]['total'] += 1
+
+                    if not musicname in self.json['musics'].keys():
+                        continue
+                    if not playmode in self.json['musics'][musicname].keys():
+                        continue
+                    if not difficulty in self.json['musics'][musicname][playmode].keys():
+                        continue
+
+                    if 'cleartype' in self.json['musics'][musicname][playmode][difficulty].keys():
+                        cleartype = self.json['musics'][musicname][playmode][difficulty]['cleartype']
+                        if cleartype is not None:
+                            result[playmode][difficulty][cleartype] += 1
+                            result[playmode][difficulty]['datacount'] += 1
+                            result[playmode][level][cleartype] += 1
+                            result[playmode][level]['datacount'] += 1
+                    if 'djlevel' in self.json['musics'][musicname][playmode][difficulty].keys():
+                        djlevel = self.json['musics'][musicname][playmode][difficulty]['djlevel']
+                        if djlevel is not None:
+                            result[playmode][difficulty][djlevel] += 1
+                            result[playmode][level][djlevel] += 1
+        
+        return result
 
 def rename_allfiles(musics):
     """短縮された記録ファイルのファイル名を修正する

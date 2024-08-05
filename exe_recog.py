@@ -38,7 +38,7 @@ if __name__ == '__main__':
         img = Image.open(sys.argv[1])
         result = recog.get_result(screen)
 
-        np_value = np.array(img)
+        np_value = np.array(img.crop((48,135,1188,952)))
         musicname = recog.MusicSelect.get_musicname(np_value)
         print('musicname:',musicname)
 
