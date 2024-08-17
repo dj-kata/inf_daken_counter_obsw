@@ -423,12 +423,13 @@ class DakenCounter:
         screen = open_screenimage(pic)
         result = recog.get_result(screen)
         if result == None:
+            logger.debug('result is None!')
             return False
         info = result.informations
         playdata     = result.details
         #is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
         is_valid = (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
-        #logger.debug(info.music, info.level, info.play_mode, info.difficulty, playdata.clear_type.current, playdata.dj_level.current, playdata.score.current)
+        logger.debug(info.music, info.level, info.play_mode, info.difficulty, playdata.clear_type.current, playdata.dj_level.current, playdata.score.current)
         if is_valid:
             tmp.append(info.level)
             tmp.append(info.music)
@@ -663,6 +664,7 @@ class DakenCounter:
                     else: # 選曲画面での認識
                         np_value = np.array(Image.open(self.imgpath).crop((48,135,1188,952)))
                         musicname = recog.MusicSelect.get_musicname(np_value)
+                        print(musicname, pre_musicname)
                         if musicname != pre_musicname:
                             playmode = recog.MusicSelect.get_playmode(np_value)
                             difficulty = recog.MusicSelect.get_difficulty(np_value)
