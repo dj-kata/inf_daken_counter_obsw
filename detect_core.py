@@ -229,8 +229,15 @@ def is_select(img:Image) -> bool:
 
     return ret
 
-### リザルト画面かどうかを判定し、判定結果(True/False)を返す
 def is_result(img):
+    """リザルト画面かどうかを判定し、判定結果を返す
+
+    Args:
+        img (PIL.Image): キャプチャ画像
+
+    Returns:
+        bool: Trueならimgがリザルト画面である
+    """
     ret = False
 
     hash_target = imagehash.average_hash(Image.open('layout/is_result.png'))
