@@ -225,6 +225,13 @@ def is_select(img:Image) -> bool:
     img_2p = img.crop((1422,1000,1422+27,1000+27))
     h_2p = imagehash.average_hash(img_2p)
     ret = ((hash_target - h_1p) < 10) or ((hash_target - h_2p) < 10)
+    # キーボードプレイの場合
+    hash_target = imagehash.hex_to_hash('003c3c3c3c3c3c00')
+    img_1p = img.crop((60,980,60+34,980+47))
+    h_1p = imagehash.average_hash(img_1p)
+    img_2p = img.crop((1860,980,1860+34,980+47))
+    h_2p = imagehash.average_hash(img_2p)
+    ret |= ((hash_target - h_1p) < 10) or ((hash_target - h_2p) < 10)
     #logger.debug(f"ret = {ret}")
 
     return ret
