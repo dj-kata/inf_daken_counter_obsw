@@ -3,8 +3,11 @@ import pandas as pd
 import pickle
 from bs4 import BeautifulSoup
 import requests
+import json
 from collections import defaultdict
 url = 'https://bemaniwiki.com/index.php?beatmania+IIDX+INFINITAS/%C1%ED%A5%CE%A1%BC%A5%C4%BF%F4%A5%EA%A5%B9%A5%C8'
+
+### TODO 当初のノーツ数リスト用のsongsの曲目をそのまま引用するために、かなり歪な作りになってしまっている。整理したい。
 
 req = requests.get(url)
 soup = BeautifulSoup(req.text, 'html.parser')
@@ -193,6 +196,54 @@ def convert_unofficial_songs(songs):
             ret[title][8] = songs[s]
     return ret
 
+    #"""BPI Managerのデータを取得して埋め込む
+def get_bpim_data(songs):
+    """BPI Managerの定義データを取得して整理する
+
+    Args:
+        songs (dict): 曲リストの辞書。keyが曲名。
+
+    Returns:
+        ret (dict): BPIM定義情報。key: 曲名___SPAのような形式, value: 
+    """
+    not_found = [] # songsになかった曲名を出力
+    res = requests.get('https://bpim.msqkn310.workers.dev/release') # 定義ファイルのURL
+    ret_json = json.loads(res.text)
+    # {'title': '& Intelligence', 'difficulty': '4', 'wr': 3234, 'avg': 2812, 'notes': 1623
+    # , 'bpm': '160', 'textage': '26/_and_int.html?1AB00', 'difficultyLevel': '11', 'dpLevel': '0', 'coef': -1}
+
+    ret = {}
+
+    for s in ret_json['body']:
+        title = s['title']
+        lvidx = int(s['difficulty'])
+        diff = '???'
+        if lvidx == 10: # spl
+            diff = 'SPL'
+        elif lvidx == 11: # dpl
+            diff = 'DPL'
+        elif lvidx == 3: # sph
+            diff = 'SPH'
+        elif lvidx == 4: # spa
+            diff = 'SPA'
+        elif lvidx == 8: # dph
+            diff = 'DPH'
+        elif lvidx == 9: # dpa
+            diff = 'DPA'
+
+        if title in songs.keys():
+            ret[f"{title}___{diff}"] = {}
+            for k in ['wr', 'avg', 'notes']:
+                ret[f"{title}___{diff}"][k] = s[k]
+            if 'coef' in s.keys():
+                ret[f"{title}___{diff}"]['coef'] = s['coef']
+            else:
+                ret[f"{title}___{diff}"]['coef'] = -1
+        else:
+            not_found.append(title)
+
+    return ret, not_found
+
 a = update_songlist()
 b = convert_unofficial_songs(a)
 
@@ -222,7 +273,11 @@ songs['never let you down'] = [0, 408,575,581, 465,577,0] # bemaniwikiのノー�
 # bemaniwiki側のノーツ数のミスを修正
 songs['cinder'][-2]=1764
 
-with open('noteslist.pkl', 'wb') as f:
-    pickle.dump(songs, f)
+bpim, not_found = get_bpim_data(songs)
 
-print('\n->noteslist.pkl updated!')
+outdata = {}
+outdata['bpim'] = bpim
+with open('songinfo.pkl', 'wb') as f:
+    pickle.dump(outdata, f)
+
+print('\n->songinfo.pkl updated!')
