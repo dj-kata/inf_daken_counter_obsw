@@ -12,8 +12,8 @@
             body { 
             
             background-color: rgba(0, 0, 0, 0.99);
-            margin: 10px;
-            padding: 20px;
+            margin: 0px;
+            padding: 0px;
             overflow: hidden;
             font-family: 'RocknRoll One', sans-serif;
             color:#aaddff;   
@@ -25,10 +25,11 @@
                          -2px -2px 0 #000;
             }
             div#all{
-                height:5000px;
+                min-height:2000px;
                 background-color: rgba(0, 0, 0, 0.95);
             }
             table#title {
+                padding-left: 20px;
                 color: #aaddff;
                 background-color: rgba(0, 0, 100, 0.95);
                 font-size: 80px;
@@ -65,7 +66,14 @@
             }
             table#result td:nth-child(6) {
                 text-align:center;
-            	width:170px;
+            	width:320px;
+            }
+            table#result td:nth-child(7) {
+                text-align:center;
+                padding-right: 30px;
+            	width:1px;
+                font-size: 55px;
+                color: #ffffaa;
             }
             .MAX{
                 animation-name: flashmax;
@@ -153,6 +161,18 @@
                 display: none;
                 font-size: 50px;
             }
+            score_plus{
+                color: #ffcccc;
+            }
+            score_minus{
+                color: #777799;
+            }
+            bpi_plus{
+                color: #ffffaa;
+            }
+            bpi_minus{
+                color: #777733;
+            }
         </style>
     <body>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
@@ -198,6 +218,10 @@
                     }
                     var opt = $(item).find('opt').text();
                     var bp = $(item).find('bp').text();
+                    var bpi = $(item).find('bpi').text();
+                    if (bpi == "??"){
+                        bpi='';
+                    }
                     if (difficulty.slice(-1) == "N"){
                         difficulty = '<font color="#8888ff">'+difficulty+'</font>'
                     }
@@ -266,8 +290,17 @@
                         out += '<td>'+lamp+'</td>';
                         out += '<td>'+title+'</td>';
                         out += '<td>'+difficulty+'</td>';
-                        out += '<td><font color="#ffccff">'+score+'</font></td>';
-                        out += '<td>'+rank_update+'</td></tr>';
+                        if (score.includes('+')){
+                            out += '<td><score_plus>'+score+'</score_plus></td>';
+                        }else{
+                            out += '<td><score_minus>'+score+'</score_minus></td>';
+                        }
+                        out += '<td>'+rank_update+'</td>';
+                        if (bpi.includes('-')){
+                            out += '<td><bpi_minus>'+bpi+'</bpi_minus></td></tr>';
+                        }else{
+                            out += '<td><bpi_plus>'+bpi+'</bpi_plus></td></tr>';
+                        }
                     }
                     if (index == 26){ // 直近の27曲だけ表示としている。曲数はここから変更可能。
                         return false;

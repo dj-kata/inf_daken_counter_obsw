@@ -89,10 +89,10 @@ class DakenCounter:
         self.stop_thread = False # メインスレッドを強制停止するために使う
         self.window      = False
         try:
-            with open('noteslist.pkl', 'rb') as f:
-                self.noteslist = pickle.load(f)
+            with open('songinfo.pkl', 'rb') as f:
+                self.songinfo = pickle.load(f)
         except:
-            self.noteslist   = False
+            self.songinfo   = None
         try:
             with open('dp_unofficial.pkl', 'rb') as f:
                 self.dp_unofficial = pickle.load(f)
@@ -122,6 +122,7 @@ class DakenCounter:
         self.running = False # メインスレッドが実行中かどうか
         self.detect_mode = detect_mode.init
         self.imgpath = os.getcwd() + '/tmp.png'
+        self.dbg_dump_ocr = False # ocr周りのダンプに使うモード
         try:
             self.obs = OBSSocket(self.settings['host'], self.settings['port'], self.settings['passwd'], self.settings['obs_source'], self.imgpath)
         except:
@@ -230,8 +231,18 @@ class DakenCounter:
                 break # 1番上が最新なので即break
         return ret
 
-    # スクショを撮って保存する。OCR結果が返ってきた場合は曲名を入れる、それ以外の場合は時刻のみ
+    def toggle_dbgmode(self):
+        """情報ダンプ用の特殊モード起動関数。F3キーでの発動を想定。実行の度にトグルさせる。
+        """
+        self.dbg_dump_ocr = not self.dbg_dump_ocr
+        if self.dbg_dump_ocr:
+            print('OCR関連のダンプモードを有効にしました。')
+        else:
+            print('OCR関連のダンプモードを無効にしました。')
+
     def save_screenshot_general(self):
+        """スクショを撮って保存する。OCR結果が返ってきた場合は曲名を入れる、それ以外の場合は時刻のみ
+        """
         if self.running:
             time.sleep(0.4)
         else:
@@ -429,12 +440,16 @@ class DakenCounter:
         playdata     = result.details
         #is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
         is_valid = (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
-        logger.debug(info.music, info.level, info.play_mode, info.difficulty, playdata.clear_type.current, playdata.dj_level.current, playdata.score.current)
+        if self.dbg_dump_ocr:
+            logger.debug(f"{info.music}, {info.level}, {info.play_mode}, {info.difficulty}, {playdata.clear_type.current}, {playdata.dj_level.current}, {playdata.score.current}")
         if is_valid:
             tmp.append(info.level)
             tmp.append(info.music)
+            bpi = "??"
             if info.difficulty != None:
                 tmp.append(info.play_mode+info.difficulty[0])
+                bpim_key = f"{info.music}___{tmp[-1]}"
+                bpi = self.get_bpi(bpim_key, playdata.score.current)
             else:
                 tmp.append(None)
             tmp.append(info.notes)
@@ -472,6 +487,7 @@ class DakenCounter:
                 tmp.append(self.tmp_judge[3]+self.tmp_judge[4])
             else:
                 tmp.append(playdata.miss_count.current)
+            tmp.append(bpi)
             ts = os.path.getmtime(pic)
             dt = datetime.datetime.fromtimestamp(ts)
             tmp.append(self.convert_option(playdata.options, tmp[2]))
@@ -664,7 +680,6 @@ class DakenCounter:
                     else: # 選曲画面での認識
                         np_value = np.array(Image.open(self.imgpath).crop((48,135,1188,952)))
                         musicname = recog.MusicSelect.get_musicname(np_value)
-                        print(musicname, pre_musicname)
                         if musicname != pre_musicname:
                             playmode = recog.MusicSelect.get_playmode(np_value)
                             difficulty = recog.MusicSelect.get_difficulty(np_value)
@@ -677,6 +692,8 @@ class DakenCounter:
                                 self.write_history_cursong_xml(result)
                                 #print(musicname, playmode, difficulty)
                             except Exception:
+                                logger.debug(traceback.format_exc())
+                                #print(traceback.format_exc())
                                 pass
                         pre_musicname = musicname
     
@@ -879,6 +896,53 @@ class DakenCounter:
             diff = '+0'
 
         return target,diff
+    
+    def pgf(self, score_rate:float, notes:int):
+        """BPI計算用。入力スコアレートに対して許容されるKG率を求める。
+
+        Args:
+            score_rate (float): 目標スコアレート
+            notes (int): その曲のノーツ数。理論値が出ている曲の場合に必要。
+
+        Returns:
+            float: 何ノーツに1回黄グレを出してよいか
+        """
+        if score_rate == 1:
+            return notes*2
+        else:
+            return 1 + (score_rate - 0.5) / (1 - score_rate)
+
+    def get_bpi(self, key:str, best_score:int) -> str:
+        """BPIを計算して返す。XMLにそのまま渡す都合上返り値は文字型なので注意。
+
+        Args:
+            key (str): 譜面名。title___SPAのような形式。
+            best_score (int): 自己べのEXスコア
+
+        Returns:
+            str: フォーマット後BPIもしくは??(未定義の場合)
+        """
+        bpi = '??'
+        if key in self.songinfo['bpim']:
+            tmpbpi = self.songinfo['bpim'][key]
+            notes = tmpbpi['notes']
+            bpi_coef = tmpbpi['coef'] if tmpbpi['coef']>0 else 1.175
+            s = best_score
+            m = notes*2
+            z = tmpbpi['wr']
+            k = tmpbpi['avg']
+            sl = self.pgf(s/m, notes)
+            kl = self.pgf(k/m, notes)
+            zl = self.pgf(z/m, notes)
+            sd = sl/kl
+            zd = zl/kl
+            #logger.debug(f"s={s},m={m},z={z},k={k},sl={sl},kl={kl},zl={zl}")
+            #logger.debug(f"sd={sd:.3f}; zd={zd:.3f}; bpi_coef={bpi_coef}")
+            if s > k:
+                bpi = f"{(100 * (math.log(sd**bpi_coef))) / (math.log(zd**bpi_coef)):.2f}"
+            else:
+                bpi = f"{max((-100 * (-math.log(sd**bpi_coef))) / (math.log(zd**bpi_coef)),-15):.2f}"
+        return bpi
 
     def write_history_cursong_xml(self, result):
         lamp_table = ['NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO']
@@ -977,6 +1041,8 @@ class DakenCounter:
                 f.write(f'    <best_score_date>{best[11]}</best_score_date>\n')
                 f.write(f'    <best_bp_date>{best[12]}</best_bp_date>\n')
                 f.write(f'    <best_bp_rate>{best[2]*100/best[9]:.2f}</best_bp_rate>\n')
+                bpi = self.get_bpi(spjiriki_key, best[1])
+                f.write(f'    <best_bpi>{bpi}</best_bpi>\n')
     
                 for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
                     #logger.debug(f"s = {s}")
@@ -1071,6 +1137,7 @@ class DakenCounter:
                 bp = s[11]
                 if bp == None: # 昔のリザルトに入っていない可能性を考えて一応例外処理している
                     bp = '?'
+                bpi = s[12]
 # ['11', 'ABSOLUTE', 'DPL', 1488, 'B', 'B', 'E-CLEAR', 'FAILED', 1864, 1764, 141, 210, 'RAN / RAN', '2023-08-25-00-34']
                 if (lamp != '') or (score != ''):
                     f.write('<item>\n')
@@ -1084,6 +1151,7 @@ class DakenCounter:
                     f.write(f'    <score>{score}</score>\n')
                     f.write(f'    <opt>{s[-2]}</opt>\n')
                     f.write(f'    <bp>{bp}</bp>\n') # DB系で使うためにbpも送っておく
+                    f.write(f'    <bpi>{bpi}</bpi>\n')
                     f.write(f'    <notes>{notes}</notes>\n')
                     f.write(f'    <score_cur>{s[9]}</score_cur>\n')
                     if 'BATTLE' not in s[-2]: # DBx系
@@ -1383,6 +1451,7 @@ class DakenCounter:
         th = False
         #keyboard.add_hotkey('ctrl+F6', self.save_screenshot_general)
         keyboard.add_hotkey('F6', self.save_screenshot_general)
+        #keyboard.add_hotkey('F3', self.toggle_dbgmode)
 
         if self.settings['run_on_boot']: # 起動後即開始設定の場合
             logger.info('自動起動設定が有効です。')
