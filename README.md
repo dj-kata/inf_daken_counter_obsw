@@ -58,6 +58,7 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 |layout\graph.html|OBSで読み込むノーツ数リアルタイム表示用HTMLファイル|
 |layout\history_cursong.html|OBSで読み込む単曲プレー履歴の一覧表示用HTMLファイル|
 |layout\inf_today_stats.html|OBSで読み込む1日の統計情報表示用HTMLファイル|
+|layout\inf_today_stats_for_score.html|OBSで読み込む1日の統計情報(スコアラー向け)表示用HTMLファイル|
 |layout\judge.html|OBSで読み込む判定内訳表示用HTMLファイル|
 |layout\option.html|OBSで読み込むオプション表示用HTMLファイル|
 |layout\series.html|OBSで読み込む配信のシリーズ名(第N回の部分)表示用HTMLファイル|
@@ -75,6 +76,8 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 |README.txt|説明書|
 |version.txt|バージョン情報を格納したファイル|
 |LICENSE|ライセンス情報|
+
+_for_scoreとつく2つのHTMLについては、対応している曲のBPIも表示されます。
 
 # インストール方法
 ## 打鍵カウンタのインストール
@@ -273,13 +276,6 @@ v.2.0.18以降で設定方法が変わっています。
 HTMLやCSSを編集することでカスタマイズも可能です。(webデザインに詳しい人向け)
 
 ### ノーツ数グラフの表示方法
-#### 推奨: ゲーム画面用枠付きレイアウト
-layout\graph_with_frame.htmlをOBSにドラッグ&ドロップするだけで使えます。  
-16:9の枠の右下にノーツ数、オプション、ゲージ種別を出しています。  
-配信画面が16:9でない場合は、graph_with_frame.htmlのソースをダブルクリックし、幅1920高さ1080に設定するとゲーム画面に合うはずです。
-![image](https://github.com/dj-kata/inf_daken_counter_obsw/assets/61326119/44cd4890-a06f-4c55-990c-1d0b4558ac7f)
-
-#### 旧レイアウト
 1. ソースの追加 -> ブラウザを選択する。好きな名前を付けてOK。  
 ![image](https://user-images.githubusercontent.com/61326119/182008724-44d2711d-fb3e-4e32-b1f1-9fa95b8ed751.png)
 2. 1.で作成したブラウザソースをダブルクリックする。
@@ -292,26 +288,6 @@ body { background-color: rgba(0, 0, 0, 0.8); margin: 0px auto; overflow: hidden;
 PG,GR,GDのノーツ数が逐次更新されていきます。
 
 ![image](https://user-images.githubusercontent.com/61326119/225551460-856b8fc3-0731-465e-b202-bc33bcf8d7ca.png)
-
-### プレーオプションの表示方法
-v.2.0.18で方式が変わっています。  
-(option.htmlを使う前の方式も変わらず動きますが、設定はinfdc_optの方が楽です)
-
-1. ```ソースを追加->テキスト(GDI+)```でテキストソースを追加する
-2. ```追加されたソースを右クリック->名前を変更```でソースの名前を**infdc_opt**に変更する。
-3. infdc_optの見た目をカスタマイズする
-
-ちなみに、名前をinfdc_opt_dynとするとプレー中のみ表示されます。
-
-![image](https://github.com/dj-kata/inf_daken_counter_obsw/assets/61326119/b8b68c67-ea98-491f-86e0-f8b4e0544b8d)
-
-### グルーブゲージ情報の表示方法
-グルーブゲージ種別(EX-HARDとかEASYとか)を表示するためのlayout\gauge.htmlも同梱しています。  
-取得タイミングはプレーオプションと同時(約0.5s必要)なので、切り替えが速すぎると取得漏れする場合があります。  
-
-また、曲中だけオプションを表示するための<normal_dyn>などのタグも用意しています。  
-(layout\gauge.html内でコメントアウトしています)
-必要に応じてHTMLを編集して使ってください。
 
 ### 1日の統計情報ビューの表示方法
 1. ソースの追加 -> ブラウザを選択する。好きな名前を付けてOKを押す。
@@ -330,6 +306,9 @@ OBSの設定->ホットキーで作成したブラウザソースの項目を見
 以下の画像では、inf_today_stats.htmlを```Ctrl+Shift+7```で切り替え可能としています。
 ![image](https://github.com/dj-kata/inf_daken_counter_obsw/assets/61326119/b56be570-7089-45b7-98d0-c7b9b224ad9a)
 
+ちなみに、同梱のlayout\inf_today_stats_for_score.htmlでは以下のようにBPIが表示できます。
+![image](https://github.com/user-attachments/assets/941268f5-6eb6-4222-92ab-3d4ce8e0b0e9)
+プレー履歴ビューについても、today_score_for_score.htmlで同様なBPI表示を使うことができます。お好みでお使いください。
 
 ### 配信タイトル内のシリーズ文字列の表示方法
 **第237回**のような文字列を配信タイトルから抽出して表示するlayout\series.html及び、  
@@ -351,7 +330,7 @@ OBSの設定->ホットキーで作成したブラウザソースの項目を見
 
 あとは、OBSのブラウザソースでseries.html, basetitle.htmlを取り込んでおいてください。  
 
-### OBSソース・シーンの制御設定(new)
+### OBSソース・シーンの制御設定
 ファイル->OBS制御設定を開くと、以下のような設定画面が表示されます。
 
 ![image](https://github.com/dj-kata/inf_daken_counter_obsw/assets/61326119/fe9a87da-cd45-46af-a8de-ac0e474aaf86)
