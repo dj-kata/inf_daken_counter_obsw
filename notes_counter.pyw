@@ -1047,7 +1047,7 @@ class DakenCounter:
                 for s in reversed(self.dict_alllog[key]): # 過去のプレー履歴のループ,sが1つのresultに相当
                     #logger.debug(f"s = {s}")
                     bp = s[11]
-                    if len(s) != 14: # フォーマットがおかしい場合は飛ばす
+                    if len(s) < 14: # フォーマットがおかしい場合は飛ばす
                         continue
                     if bp == None: # 昔のリザルトに入っていない可能性を考えて一応例外処理している
                         bp = '?'

@@ -234,7 +234,7 @@ def get_bpim_data(songs):
         if title in songs.keys():
             ret[f"{title}___{diff}"] = {}
             for k in ['wr', 'avg', 'notes']:
-                ret[f"{title}___{diff}"][k] = s[k]
+                ret[f"{title}___{diff}"][k] = int(s[k])
             if 'coef' in s.keys():
                 ret[f"{title}___{diff}"]['coef'] = s['coef']
             else:
