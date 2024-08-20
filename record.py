@@ -10,7 +10,7 @@ logger_child_name = 'record'
 logger = getLogger().getChild(logger_child_name)
 logger.debug(f'loaded resources.py')
 
-from version import version
+#from version import version
 from resources import resource,resources_dirname
 from define import define
 
