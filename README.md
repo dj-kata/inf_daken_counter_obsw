@@ -241,7 +241,7 @@ v.2.0.18以降で設定方法が変わっています。
 以下の設定でちょうどよく見えるように調整しています。  
 - today_result.html(名前:today_result)は幅1800, 高さ960
   - ちなみに、同梱のtoday_result_for_score.htmlではプレーごとのBPI表示ができます
-- history_cursong.html(名前:history_cursong)は幅2600, 高さ1450
+- history_cursong.html(名前:history_cursong)は幅2600, 高さ1500
 
 各HTMLのソース名については、好きな名前に設定してそのソースに対する表示・非表示設定を自分で登録してもよいです。デフォルトではtoday_result, history_cursongとして登録しています。
 
