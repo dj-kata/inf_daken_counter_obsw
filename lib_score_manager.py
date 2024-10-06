@@ -179,8 +179,8 @@ class ScoreManager:
             x = '\t'.join([str(i) for i in s])
             print(x)
 
-    def get_stat(self):
-        best_allsong = {}
+    def get_best_allsong(self):
+        ret = {}
         for key in self.score.keys():
             best_reg = ['NO PLAY', 0, 0.0]  # lamp, score, score_rate
             for s in self.score[key]: # その曲の全ログを確認
@@ -202,7 +202,11 @@ class ScoreManager:
                         if lamp_table.index(best_reg[0]) < lamp_table.index(s[6]):
                             best_reg[0] = s[6]
             if best_reg[1] > 0:
-                best_allsong[key]=best_reg
+                ret[key]=best_reg
+        return ret
+
+    def get_stat(self):
+        best_allsong = self.get_best_allsong()
         best_perlv = defaultdict(list) # key:DP11などのレベル文字列、内容:各曲の[title, lamp, best_score, best_score_rate]のList
         stat_perlv = {} # key: DP11などのレベル文字列, val:[各ランプの数],[B以下、A,AA,AAAの数,マッマイ,MAX]
         for mode in ['SP', 'DP']:
@@ -210,7 +214,10 @@ class ScoreManager:
                 for s in self.list_diff[f"{mode}{lv}"]:
                     if s in best_allsong.keys():
                         tmp = best_allsong[s]
-                        tmp.insert(0, s)
+                        if len(tmp) == 4:
+                            print(f'同じ譜面のデータが複数存在するかも?\n({s})')
+                        else:
+                            tmp.insert(0, s)
                         best_perlv[f"{mode}{lv}"].append(tmp)
                 # ランプ数などの統計
                 stat_perlv[f"{mode}{lv}"] = [[0]*len(lamp_table), [0, 0, 0, 0, 0, 0]]
