@@ -2,8 +2,11 @@
 import urllib, json, requests, pickle
 
 url = 'https://sp12.iidx.app/api/v1/sheets'
+headers = { "User-Agent" :  "Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)" }
 
-tmp = urllib.request.urlopen(url).read()
+req = urllib.request.Request(url, None, headers)
+tmp = urllib.request.urlopen(req).read()
+#tmp = urllib.request.urlopen(url).read()
 diffs = json.loads(tmp)['sheets']
 
 out = {}
