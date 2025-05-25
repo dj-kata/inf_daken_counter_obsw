@@ -269,7 +269,7 @@ print('見つからなかった曲')
 for s in not_found_from_ocr:
     print(s)
 
-songs['never let you down'] = [0, 408,575,581, 465,577,0] # bemaniwikiのノーツ数が空欄なので直接書く
+songs['never let you down'] = [0, 408,575,581, 0, 465,577,0, 0] # bemaniwikiのノーツ数が空欄なので直接書く
 # bemaniwiki側のノーツ数のミスを修正
 songs['cinder'][-2]=1764
 
@@ -277,6 +277,7 @@ bpim, not_found = get_bpim_data(songs)
 
 outdata = {}
 outdata['bpim'] = bpim
+outdata['notes'] = songs
 with open('songinfo.pkl', 'wb') as f:
     pickle.dump(outdata, f)
 
