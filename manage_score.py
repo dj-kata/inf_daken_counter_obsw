@@ -51,7 +51,10 @@ class ScoreViewer:
                             tmp[5] = ''
                         # score, bp, notesの順なので、これをscore, score_rate, bpに書き換える
                         bp = tmp[5]
-                        tmp[5] = f"{tmp[4]*100/(tmp[6]*2):.1f}"
+                        if tmp[6] == 0:
+                            tmp[5] = '0.0'
+                        else:
+                            tmp[5] = f"{tmp[4]*100/(tmp[6]*2):.1f}"
                         tmp[6] = bp
                         date = tmp[-1].split('-')
                         tmp[-1] = f"{date[0]}/{date[1]}/{date[2]} {date[3]}:{date[4]}"
@@ -62,6 +65,8 @@ class ScoreViewer:
                     w = csv.writer(f, lineterminator="\n")
                     w.writerow(['LV', 'Title', 'mode', 'Lamp', 'Score', '(rate)', 'BP', 'Opt(best score)', 'Opt(min bp)', 'Last Played'])
                     for s in ret:
+                        if 'LOVE2 シュガ' in s[1]:
+                            s[1] = 'LOVE2 シュガ→'
                         w.writerow(s)
                 sg.popup(f'CSVエクスポート完了.\n --> {outfile}')
             except Exception as e:
