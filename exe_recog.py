@@ -44,6 +44,6 @@ if __name__ == '__main__':
 
         print(result.informations.music)
         print(result.informations.play_mode, result.informations.difficulty, result.informations.level, result.informations.notes)
-        print(f"opt arrange:{result.details.options.arrange}, flip:{result.details.options.flip}, battle:{result.details.options.battle}, assist:{result.details.options.assist}, special:{result.details.options.special}")
+        print(f"opt arrange:{result.details.options.arrange}, flip:{result.details.options.flip}, battle:{result.details.options.battle}, assist:{result.details.options.assist}, special:{result.details.options.special}, playspeed:{result.informations.playspeed}")
         print(f'sc:{result.details.score.current}, lamp:{result.details.clear_type.current}')
 

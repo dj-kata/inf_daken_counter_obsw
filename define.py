@@ -6,6 +6,31 @@ logger_child_name = 'define'
 logger = getLogger().getChild(logger_child_name)
 logger.debug('loaded define.py')
 
+class Playmodes():
+    '''プレイモード
+
+    SP と DP
+    '''
+    SP: str = 'SP'
+    '''SINGLE PLAY'''
+
+    DP: str = 'DP'
+    '''DOUBLE PLAY'''
+
+    values: list[str] = [SP, DP]
+    '''プレイモードのリスト'''
+
+class Playtypes():
+    '''プレイの種類
+
+    プレイモードにDP BATTLEを加えたもの
+    '''
+    DPBATTLE: str = 'DP BATTLE'
+    '''DOUBLE PLAY BATTLE'''
+
+    values: list[str] = [Playmodes.SP, Playmodes.DP, DPBATTLE]
+    '''プレイの種類のリスト'''
+
 class Define():
     width = 1920
     height = 1080
@@ -14,75 +39,50 @@ class Define():
         'loading': {
             'left': 380,
             'top': 120,
-            'width': 4,
-            'height': 2
+            'width': 8,
+            'height': 2,
         },
         'result': {
             'left': 1110,
             'top': 1042,
             'width': 4,
-            'height': 2
+            'height': 2,
         },
         'music_select': {
             'left': 181,
             'top': 84,
             'width': 4,
-            'height': 2
+            'height': 2,
         }
     }
 
     result_check = {
         "horizontalline": (60, slice(156, 390), 1),
-        "verticalline": (slice(550, 760), 788, 1)
+        "verticalline": (slice(550, 760), 788, 1),
     }
 
     value_list = {
-        'play_modes': ('SP', 'DP',),
         'difficulties': ('BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA',),
         'levels': ('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',),
         'dj_levels': ('F', 'E', 'D', 'C', 'B', 'A', 'AA', 'AAA',),
         'play_sides': ('1P', '2P',),
-        'options_arrange': ('RANDOM', 'S-RANDOM', 'R-RANDOM', 'MIRROR', 'H-RANDOM',),
-        'options_arrange_dp': ('OFF', 'RAN', 'S-RAN', 'R-RAN', 'MIR', 'H-RAN',),
+        'options_arrange': ('RANDOM', 'R-RANDOM', 'S-RANDOM', 'MIRROR', 'H-RANDOM',),
+        'options_arrange_dp': ('OFF', 'RAN', 'R-RAN', 'S-RAN', 'MIR', 'H-RAN',),
         'options_arrange_sync': ('SYNC-RAN', 'SYMM-RAN',),
         'options_flip': ('FLIP',),
         'options_assist': ('A-SCR', 'LEGACY',),
         'clear_types': ('NO PLAY', 'FAILED', 'A-CLEAR', 'E-CLEAR', 'CLEAR', 'H-CLEAR', 'EXH-CLEAR', 'F-COMBO',),
         'graphtargets': ('no graph', 'personal best score only', 'national best', 'national average', 'prefecture best', 'prefecture average', 'same class best', 'same class average', 'rival', 'rival best', 'rival average', 'pacemaker',),
-        'notesradar_attributes': ('NOTES', 'CHORD', 'PEAK', 'CHARGE', 'SCRATCH', 'SOF-LAN',)
+        'notesradar_attributes': ('NOTES', 'CHORD', 'PEAK', 'CHARGE', 'SCRATCH', 'SOF-LAN',),
     }
 
-    areas_np = {
-        'rival': (slice(858, 872), slice(842, 920), 0),
-        'play_side': {
-            '1P': (slice(26, 30), slice(20, 24), 0),
-            '2P': (slice(26, 30), slice(1860, 1864), 0)
-        },
-        'dead': {
-            '1P': (slice(300, 304), slice(573, 576), 0),
-            '2P': (slice(300, 304), slice(1145, 1148), 0)
-        },
-        'informations': (slice(960, 1066), slice(560, 1360)),
-        'details': {
-            '1P': (slice(64, 1016), slice(10, 564)),
-            '2P': (slice(64, 1016), slice(1360, 1914))
-        }
-    }
+    informations_trimpos = (560, 910)
+    informations_trimsize = (800, 156)
 
-    informations_trimpos = (560, 960)
-    informations_trimsize = (800, 166)
+    informations_recognition_version = '4.0'
+    informations_trimarea = (560, 910, 1360, 1066)
 
-    informations_recognition_version = '3.1'
-    informations_trimarea = (560, 960, 1360, 1066)
-
-    informations_areas = {
-        'play_mode': (82, 55, 102, 65),
-        'difficulty': (196, 58, 229, 62),
-        'level': (231, 58, 250, 62),
-        'notes': (268, 59, 324, 61)
-    }
-
-    details_recognition_version = '2.0'
+    details_recognition_version = '3.0'
 
     details_trimpos = {
         '1P': (10, 64),
@@ -100,7 +100,7 @@ class Define():
 
     musictable_version = '1.1'
     
-    musicselect_recognition_version = '2.1'
+    musicselect_recognition_version = '2.2'
     musicselect_trimarea = (48, 135, 1188, 952)
     musicselect_trimarea_np = (
         (slice(musicselect_trimarea[1], musicselect_trimarea[3])),
@@ -115,11 +115,11 @@ class Define():
     filter_ranking_compact_size = (97, 20)
     filter_ranking_position = {
         '1P': (1372, 264),
-        '2P': (32, 264)
+        '2P': (32, 264),
     }
     filter_ranking_compact_positions = {
         'left': {'1P': 1494, '2P': 154},
-        'tops': (287, 393, 499, 605, 711, 817, )
+        'tops': (287, 393, 499, 605, 711, 817, ),
     }
 
     filter_areas = {
@@ -127,7 +127,42 @@ class Define():
         'ranking_compact': {},
         'graphtarget_name': {},
         'loveletter': (820, 700, 1102, 912),
-        'loveletter_compact': (880, 777, 978, 800)
+        'loveletter_compact': (880, 777, 978, 800),
+    }
+
+    overlay = {
+        'rival': {
+            'positions': {
+                '1P': (1370, 270),
+                '2P': (30, 270),
+            },
+            'width': 530,
+        },
+        'loveletter': {
+            'position': (820, 700),
+            'width': 280,
+        },
+        'rivalname': {
+            'positions': {},
+            'width': 90,
+        },
+    }
+
+    areas_np = {
+        'rival': (slice(858, 872), slice(842, 920), 0),
+        'play_side': {
+            '1P': (slice(26, 30), slice(20, 24), 0),
+            '2P': (slice(26, 30), slice(1860, 1864), 0),
+        },
+        'dead': {
+            '1P': (slice(300, 304), slice(573, 576), 0),
+            '2P': (slice(300, 304), slice(1145, 1148), 0),
+        },
+        'informations': (slice(910, 1066), slice(560, 1360)),
+        'details': {
+            '1P': (slice(64, 1016), slice(10, 564)),
+            '2P': (slice(64, 1016), slice(1360, 1914)),
+        },
     }
 
     def __init__(self):
@@ -171,6 +206,11 @@ class Define():
                 self.details_trimpos[key][1] + self.details_graphtarget_name_area[1],
                 self.details_trimpos[key][0] + self.details_graphtarget_name_area[2],
                 self.details_trimpos[key][1] + self.details_graphtarget_name_area[3]
+            )
+        
+            self.overlay['rivalname']['positions'][key] = (
+                self.details_trimpos[key][0] + self.details_graphtarget_name_area[0],
+                self.details_trimpos[key][1] + self.details_graphtarget_name_area[1],
             )
 
     def details_get_playside(self, np_value):

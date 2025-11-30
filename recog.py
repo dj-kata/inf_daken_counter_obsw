@@ -9,6 +9,7 @@ logger.debug('loaded recog.py')
 from define import define
 from resources import resource
 from result import ResultInformations,ResultValues,ResultDetails,ResultOptions,Result
+from screenshot import Screen
 
 class Recognition():
     class Result():
@@ -106,15 +107,28 @@ class Recognition():
             return value
 
         @staticmethod
+        def get_playspeed(np_value_informations):
+            if resource.informations is None:
+                return None
+            
+            trimmed = np_value_informations[resource.informations['playspeed']['trim']].flatten()
+            bins = np.where(trimmed==resource.informations['playspeed']['maskvalue'], 1, 0)
+            hexs=bins[::4]*8+bins[1::4]*4+bins[2::4]*2+bins[3::4]
+            tablekey = ''.join([format(v, '0x') for v in hexs])
+            if not tablekey in resource.informations['playspeed']['table'].keys():
+                return None
+            return float(resource.informations['playspeed']['table'][tablekey])
+
+        @staticmethod
         def get_music(np_value_informations):
-            """曲名を取得する
+            '''曲名を取得する
 
             Args:
                 np_value_informations (np.array): 対象のトリミングされたリザルト画像データ
 
             Returns:
                 str: 曲名(認識失敗時はNone)
-            """
+            '''
             if resource.informations is None:
                 return None
 
@@ -181,49 +195,39 @@ class Recognition():
                 return None
 
             playside = define.details_get_playside(np_value)
-            trimmed = np_value[resource.details['define']['option']['trim'][playside]]
 
-            def generatekey(np_value):
-                bins = np.where(np_value[:, ::4]==resource.details['define']['option']['maskvalue'], 1, 0).T
-                hexs = bins[:,0::4]*8+bins[:,1::4]*4+bins[:,2::4]*2+bins[:,3::4]
-                return ''.join([format(v, '0x') for v in hexs.flatten()])
+            useoptiontrimmed = np_value[resource.details['define']['useoption']['trim'][playside]]
+            useoptioncount = np.count_nonzero(useoptiontrimmed==resource.details['define']['useoption']['maskvalue'])
+            if useoptioncount != resource.details['option']['useoption']:
+                return ResultOptions(None, None, None, False)
+
+            trimmed = np_value[resource.details['define']['option']['trim'][playside]]
+            bins = np.where(trimmed[:, ::4]==resource.details['define']['option']['maskvalue'], 1, 0).T
+            hexs = bins[:,0::4]*8+bins[:,1::4]*4+bins[:,2::4]*2+bins[:,3::4]
+            tablekey = ''.join([format(v, '0x') for v in hexs.flatten()])
+
+            if not tablekey in resource.details['option']['option']:
+                return None
+            
+            values = resource.details['option']['option'][tablekey]
+            if values is None:
+                return None
+            
+            values_splitted = values.split(',')
 
             arrange = None
             flip = None
             assist = None
             battle = False
-            while True:
-                tablekey = generatekey(trimmed[:, :resource.details['option']['lengths'][0]*2])
-                value = None
-                for length in resource.details['option']['lengths']:
-                    if tablekey[:length] in resource.details['option'].keys():
-                        value = resource.details['option'][tablekey[:length]]
-                        break
-                
-                if value is None:
-                    break
-
-                arrange_dp_left = False
-                if value in define.value_list['options_arrange']:
-                    arrange = value
-                if value in define.value_list['options_arrange_dp']:
-                    if arrange is None:
-                        arrange = f'{value}/'
-                        arrange_dp_left = True
-                    else:
-                        arrange += value
-                if value in define.value_list['options_arrange_sync']:
-                    arrange = value
-                if value in define.value_list['options_flip']:
-                    flip = value
-                if value in define.value_list['options_assist']:
-                    assist = value
-                if value == 'BATTLE':
+            for v in values_splitted:
+                if v in define.value_list['options_arrange'] or '/' in v or v in define.value_list['options_arrange_sync']:
+                    arrange = v
+                if v in define.value_list['options_flip']:
+                    flip = v
+                if v in define.value_list['options_assist']:
+                    assist = v
+                if v == 'BATTLE':
                     battle = True
-                if not arrange_dp_left:
-                    trimmed = trimmed[:, resource.details['define']['option']['width'][value] + resource.details['define']['option']['width'][',']:]
-                else:
-                    trimmed = trimmed[:, resource.details['define']['option']['width'][value] + resource.details['define']['option']['width']['/']:]
             
             return ResultOptions(arrange, flip, assist, battle)
 
@@ -387,9 +391,10 @@ class Recognition():
             play_mode = cls.get_play_mode(np_value)
             difficulty, level = cls.get_difficulty(np_value)
             notes = cls.get_notes(np_value)
+            playspeed = cls.get_playspeed(np_value)
             music = cls.get_music(np_value)
 
-            return ResultInformations(play_mode, difficulty, level, notes, music)
+            return ResultInformations(play_mode, difficulty, level, notes, playspeed, music)
 
         @classmethod
         def get_details(cls, np_value):
@@ -408,6 +413,15 @@ class Recognition():
             return ResultDetails(graphtype, options, clear_type, dj_level, score, miss_count, graphtarget)
 
     class MusicSelect():
+        DIFFICULTY_TRIMAREAS: dict[str, tuple[int, slice]] = {
+            'BEGINNER': (478, slice(161, 247)),
+            'NORMAL': (478, slice(319, 404)),
+            'HYPER': (478, slice(477, 562)),
+            'ANOTHER': (478, slice(635, 720)),
+            'LEGGENDARIA': (478, slice(793, 878)),
+        }
+        DIFFICULTY_MASKVALUE: tuple[int] = (255, 255, 255)
+
         @staticmethod
         def get_playmode(np_value):
             if resource.musicselect is None:
@@ -435,6 +449,16 @@ class Recognition():
                 if tablekey in table['table'].keys():
                     return table['table'][tablekey]
             return None
+
+        @staticmethod
+        def get_hasscoredata(np_value):
+            if resource.musicselect is None:
+                return None
+            
+            cropped = np_value[resource.musicselect['hasscoredata']['trim']]
+            mask = resource.musicselect['hasscoredata']['mask']
+
+            return bool(np.all((cropped==0)|(cropped==mask)))
 
         @staticmethod
         def get_musicname(np_value):
@@ -612,6 +636,17 @@ class Recognition():
                     ret[str.upper(difficulty)] = resourcetarget['table'][tablekey]
             return ret
 
+        @classmethod
+        def confirm_difficulty(cls, np_value):
+            ret = None
+            for key, trimarea in cls.DIFFICULTY_TRIMAREAS.items():
+                if np.all(np_value[trimarea]==cls.DIFFICULTY_MASKVALUE):
+                    if ret is not None:
+                        raise Exception('confirm difficulty duplicate.')
+                    ret = key
+            
+            return ret
+
     @staticmethod
     def get_is_savable(np_value):
         define_result_check = define.result_check
@@ -628,17 +663,17 @@ class Recognition():
         return True
         
     @classmethod
-    def get_result(cls, screen):
+    def get_result(cls, screen: Screen):
         play_side = cls.Result.get_play_side(screen.np_value)
         if play_side == None:
             return None
 
         result = Result(
-            cls.Result.get_informations(screen.np_value[define.areas_np['informations']]),
             play_side,
             cls.Result.get_has_rival(screen.np_value),
             cls.Result.get_has_dead(screen.np_value, play_side),
-            cls.Result.get_details(screen.np_value[define.areas_np['details'][play_side]])
+            cls.Result.get_informations(screen.np_value[define.areas_np['informations']]),
+            cls.Result.get_details(screen.np_value[define.areas_np['details'][play_side]]),
         )
     
         return result

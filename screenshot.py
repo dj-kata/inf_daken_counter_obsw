@@ -127,6 +127,9 @@ class Screenshot:
         self.np_value = self.capture.shot(self.xy[0], self.xy[1])[::-1, :, ::-1]
         return True
 
+    def is_black(self):
+        return np.all(self.np_value == 0)
+
     def get_image(self):
         if self.np_value is None:
             return None
