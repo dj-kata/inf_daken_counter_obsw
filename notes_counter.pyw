@@ -28,6 +28,7 @@ from lib_score_manager import ScoreManager
 from enum import Enum
 import math
 import keyboard
+import csv
 from screenshot import Screenshot,open_screenimage
 from recog import Recognition as recog
 
@@ -1429,6 +1430,40 @@ class DakenCounter:
         self.window['srate'].update(value=f"{self.srate:.2f} %")
         self.window['playopt'].update(value=self.settings['playopt'])
 
+    def export_score(self):
+        ret = []
+        savedir='.'
+        for mode in ('SP', 'DP', 'DB'):
+            for lv in range(1, 13):
+                lvlist = self.score_manager.get_diff_best(f"{mode}{lv}")
+                for tmp in lvlist:
+                    # tmpの形式:get_diff_scores_bestの形式なのでここで整形しておく
+                    tmp.insert(0, f'☆{lv}')
+                    if tmp[5] == 9999:
+                        tmp[5] = ''
+                    # score, bp, notesの順なので、これをscore, score_rate, bpに書き換える
+                    bp = tmp[5]
+                    if tmp[6] == 0:
+                        tmp[5] = '0.0'
+                    else:
+                        tmp[5] = f"{tmp[4]*100/(tmp[6]*2):.1f}"
+                    tmp[6] = bp
+                    date = tmp[-1].split('-')
+                    tmp[-1] = f"{date[0]}/{date[1]}/{date[2]} {date[3]}:{date[4]}"
+                    ret.append(tmp)
+        outfile = f'{savedir}/inf_score.csv'
+        try:
+            with open(outfile, 'w') as f:
+                w = csv.writer(f, lineterminator="\n")
+                w.writerow(['LV', 'Title', 'mode', 'Lamp', 'Score', '(rate)', 'BP', 'Opt(best score)', 'Opt(min bp)', 'Last Played'])
+                for s in ret:
+                    if 'LOVE2 シュガ' in s[1]:
+                        s[1] = 'LOVE2 シュガ→'
+                    w.writerow(s)
+        except Exception as e:
+            logger.debug(traceback.format_exc())
+    
+
     def main(self):
         obs_manager = None
         # 設定をもとにGUIの値を変更
@@ -1537,10 +1572,13 @@ class DakenCounter:
                         self.settings['autosave_dbx'] = 'clear'
             if ev in (sg.WIN_CLOSED, 'Escape:27', '-WINDOW CLOSE ATTEMPTED-', 'btn_close_info', 'btn_close_setting'):
                 if self.gui_mode == gui_mode.main:
+                    # キーボードフックを解除
+                    keyboard.unhook_all()
                     self.save_alllog()
                     self.save_settings()
                     self.save_dakenlog()
                     self.control_obs_sources('quit')
+                    self.export_score()
                     logger.info('終了します')
                     if self.settings['tweet_on_exit'] and (self.today_notes>0):
                         srate = 0.0
@@ -1850,6 +1888,6 @@ if __name__ == '__main__':
         check_latest(storage, musicnamechanges_filename)
 
     storage = StorageAccessor()
-    threading.Thread(target=check_resource).start()
+    threading.Thread(target=check_resource, daemon=True).start()
     a = DakenCounter()
     a.main()
