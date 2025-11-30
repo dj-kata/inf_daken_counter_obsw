@@ -438,6 +438,9 @@ class DakenCounter:
             logger.debug('result is None!')
             return False
         info = result.informations
+        if info.playspeed is not None: # TODO 速度変更しているものはスキップ
+            logger.debug('速度が変更されているのでスキップします')
+            return False
         playdata     = result.details
         #is_valid = (info.music!=None) and (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
         is_valid = (info.level!=None) and (info.play_mode!=None) and (info.difficulty!=None) and (playdata.dj_level.current!=None) and (playdata.clear_type.current!=None) and (playdata.score.current!=None)
@@ -477,7 +480,7 @@ class DakenCounter:
                 tmp.append(cur_lamp)
             else:
                 tmp.append(playdata.clear_type.current)
-            tmp.append(playdata.score.best)
+            tmp.append(playdata.score.best or 0)
             if 'H-RAN' in self.playopt:
                 # H乱の場合もEXスコアを出しておく(本日のノーツ数加算の都合)
                 tmp.append(self.tmp_judge[0]*2+self.tmp_judge[1]) 
@@ -986,18 +989,18 @@ class DakenCounter:
                     if 'BATTLE' in result[-2]: # 現在DBx系オプションの場合、単曲履歴もDBxのリザルトのみを表示
                         if 'BATTLE' in s[-2]: # DBxのリザルトのみ抽出
                             best[9] = s[3]
-                            if lamp_table.index(best[0]) < lamp_table.index(s[7]):
+                            if lamp_table.index(best[0] or 'NO PLAY') < lamp_table.index(s[7] or 'NO PLAY'):
                                 best[0] = s[7]
                                 best[3] = s[-2]
                                 best[10] = s[-1][2:10]
-                            if s[9] > best[1]: # score
+                            if s[9] > (best[1] or 0): # score
                                 best[1] = s[9]
                                 best[4] = s[-2]
                                 best[11] = s[-1][2:10]
                                 best[6] = s[5]
                                 best[7],best[8] = self.calc_rankdiff(s[3], s[9])
                             if type(s[11]) == int:
-                                if s[11] < best[2]: # BP
+                                if s[11] < (best[2] or 999999): # BP
                                     best[2] = s[11]
                                     best[5] = s[-2]
                                     best[12] = s[-1][2:10]
@@ -1008,19 +1011,20 @@ class DakenCounter:
                                 best[0] = s[7]
                                 best[3] = s[-2]
                                 best[10] = s[-1][2:10]
-                            if s[9] > best[1]: # score
+                            if s[9] > (best[1] or 0): # score
                                 best[1] = s[9]
                                 best[4] = s[-2]
                                 best[6] = s[5]
                                 best[7],best[8] = self.calc_rankdiff(s[3], s[9])
                                 best[11] = s[-1][2:10]
-                            if s[8] > best[1]: # 過去の自己べ情報も確認
-                                best[1] = s[8]
-                                best[4] = '?'
-                                best[6] = s[4]
-                                best[7],best[8] = self.calc_rankdiff(s[3], s[8])
+                            if type(s[8]) == int:
+                                if s[8] > (best[1] or 0): # 過去の自己べ情報も確認
+                                    best[1] = s[8]
+                                    best[4] = '?'
+                                    best[6] = s[4]
+                                    best[7],best[8] = self.calc_rankdiff(s[3], s[8])
                             if type(s[11]) == int:
-                                if s[11] < best[2]: # BP
+                                if s[11] < (best[2] or 99999): # BP
                                     best[2] = s[11]
                                     best[5] = s[-2]
                                     best[12] = s[-1][2:10]
