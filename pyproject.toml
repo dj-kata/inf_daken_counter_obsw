@@ -1,0 +1,10 @@
+[project]
+name = "inf-daken-counter-obsw"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "bs4>=0.0.2",
+    "cx-freeze>=8.5.3",
+]
