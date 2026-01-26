@@ -2,6 +2,7 @@ from classes import *
 from funcs import *
 import os
 import bz2, pickle
+from typing import List
 import traceback
 import logging
 import logging, logging.handlers
@@ -111,7 +112,7 @@ class OneSongInfo:
 class SongDatabase:
     """全曲の情報を保持するクラス。検索もできる。"""
     def __init__(self):
-        self.songs = []
+        self.songs:List[OneSongInfo] = []
         """曲情報(OneSongInfo)を格納するリスト"""
         self.load()
         self.save()

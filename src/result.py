@@ -8,6 +8,7 @@ import traceback
 import logging
 import logging, logging.handlers
 import math
+from typing import List
 # リザルト用のクラスを定義
 
 os.makedirs('log', exist_ok=True)
@@ -140,7 +141,7 @@ class ResultDatabase:
     def __init__(self):
         self.song_database = SongDatabase()
         """曲情報クラスのインスタンス。検索用。"""
-        self.results = []
+        self.results:List[OneResult] = []
         """全リザルトが格納されるリスト。OneResultが1エントリとなる。"""
         self.load()
         self.save()
@@ -179,6 +180,18 @@ class ResultDatabase:
     def save(self):
         with bz2.BZ2File('playlog.infdc', 'wb', compresslevel=9) as f:
             pickle.dump(self.results, f)
+
+    def search(self,
+                title:str=None, play_style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
+        ):
+        if chart_id:
+            key = chart_id
+        elif title is not None and play_style is not None and difficulty is not None:
+            key = calc_chart_id(title, play_style, difficulty)
+
+        for r in self.results:
+            if r.chart_id == key:
+                r.get_
 
 if __name__ == '__main__':
     db = ResultDatabase()
