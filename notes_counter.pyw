@@ -24,7 +24,6 @@ from src.logger import logger
 from src.config_dialog import ConfigDialog
 from src.obs_dialog import OBSControlDialog
 
-
 class MainWindow(QMainWindow):
     """メインウィンドウクラス"""
     

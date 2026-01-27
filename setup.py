@@ -55,7 +55,9 @@ build_exe_options = {
         "PySide6.QtCore",
         "PySide6.QtGui", 
         "PySide6.QtWidgets",
-        "obsws_python",
+        "obsws_python",  # OBS WebSocket連携に必要
+        "websocket",     # obsws_pythonの依存関係（websocket-client）
+        "http",
         "PIL",
         "numpy",
         "imagehash",
@@ -74,6 +76,11 @@ build_exe_options = {
         "sys",
         "enum",
         "typing",
+        "ctypes",
+        "ctypes.wintypes",
+        "tkinter",      # GUIに必要
+        "winsound",     # サウンド再生に必要
+        # infnotebookはinclude_filesで対応（パッケージスキャンを回避）
     ],
     
     # 含めるモジュール
@@ -89,11 +96,23 @@ build_exe_options = {
         "src.songinfo",
         "src.config_dialog",
         "src.obs_dialog",
+        # ctypes関連（Windows APIアクセスに必要）
+        "ctypes",
+        "ctypes.wintypes",
+        "ctypes.util",
+        # GUI/サウンド関連
+        "tkinter",
+        "winsound",
+        # obsws_pythonはpackagesで指定
+        # infnotebookはinclude_filesで対応（パッケージスキャンを回避）
+        "obsws_python.events", 
+        "obsws_python.subs",    # これも後で必要になる可能性が高いです
+        # "obsws_python.base"
     ],
     
     # 除外するパッケージ（サイズ削減のため）
     "excludes": [
-        "tkinter",
+        # tkinterとwinsoundは必要なので除外しない
         "matplotlib",
         "scipy",
         "pandas",
@@ -102,6 +121,7 @@ build_exe_options = {
         "email",
         "html",
         "http",
+        # "urllib",
         "xml",
         "pydoc",
         "distutils",
@@ -121,6 +141,10 @@ build_exe_options = {
         "PySide6.Qt3DRender",
         "PySide6.QtCharts",
         "PySide6.QtDataVisualization",
+        # obsws_pythonの存在しないサブモジュール（エラー回避）
+        "obsws_python.requests",
+        "obsws_python.events",
+        # infnotebookはpackagesに含めていないので、excludes不要
     ],
     
     # 含めるファイル
@@ -130,8 +154,10 @@ build_exe_options = {
     "include_msvcr": True,
     
     # zip圧縮の設定
-    "zip_include_packages": ["*"],
-    "zip_exclude_packages": ["PySide6"],
+    # zip圧縮を完全に無効化
+    # infnotebookはinclude_filesで直接コピーされるため、zip設定は不要
+    "zip_include_packages": [],  # 全て展開
+    "zip_exclude_packages": ["obsws_python"],
     
     # 最適化レベル（2が最大）
     "optimize": 2,
@@ -154,21 +180,18 @@ executables = [
     Executable(
         script="notes_counter.pyw",
         base=base,
-        target_name="notes_counter.exe" if sys.platform == "win32" else "notes_counter",
+        target_name="notes_counter.exe" if sys.platform == "win32" else "IIDXHelper",
         icon=None,  # アイコンファイルがあれば指定: "resources/icon.ico"
-        shortcut_name="IIDX Helper",
+        shortcut_name="notes_counter",
         shortcut_dir="DesktopFolder",
     )
 ]
 
 # セットアップ
 setup(
-    name="IIDXHelper",
-    version="3.0.0",
-    description="INF打鍵カウンタ",
-    author="dj-kata",
-    url="",
-    license="",
+    name="INFINITAS_daken_counter",
+    version="1.0.0",
+    description="OBS連携による自動リザルト保存アプリケーション",
     options={
         "build_exe": build_exe_options,
     },
