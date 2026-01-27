@@ -1,5 +1,5 @@
-from classes import *
-from funcs import *
+from .classes import *
+from .funcs import *
 import os
 import bz2, pickle
 from typing import List
@@ -117,7 +117,7 @@ class SongDatabase:
         self.load()
         self.save()
 
-    def get(self, chart_id:str) -> OneSongInfo:
+    def search(self, chart_id:str) -> OneSongInfo:
         """指定されたchart_idに対応する曲情報を返す。見つからない場合はNoneを返す。"""
         ret = None
         for s in self.songs:

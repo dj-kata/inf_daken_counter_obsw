@@ -1,6 +1,13 @@
-from classes import *
+from .classes import *
 import hashlib
 import math
+import sys
+
+sys.path.append('infnotebook')
+from screenshot import Screenshot,open_screenimage
+from recog import Recognition as recog
+from resources import resource
+from define import Define as define
 
 # 各クラスから使う共通の関数をここで定義しておく
 
@@ -48,3 +55,43 @@ def calc_rankdiff(notes, score):
         diff = '+0'
 
     return target,diff
+
+def convert_play_style(_style):
+    if _style == 'SP':
+        return play_style.sp
+    elif _style == 'DP':
+        return play_style.dp
+
+def convert_difficulty(_difficulty):
+    diff = None
+    if _difficulty == 'BEGINNER':
+        diff = difficulty.beginner
+    elif _difficulty == 'NORMAL':
+        diff = difficulty.normal
+    elif _difficulty == 'HYPER':
+        diff = difficulty.hyper
+    elif _difficulty == 'ANOTHER':
+        diff = difficulty.another
+    elif _difficulty == 'LEGGENDARIA':
+        diff = difficulty.leggendaria
+    return diff
+
+def convert_lamp(_lamp):
+    lamp = None
+    if _lamp == 'NOPLAY':
+        lamp = clear_lamp.noplay
+    elif _lamp == 'FAILED':
+        lamp = clear_lamp.failed
+    elif _lamp == 'A-CLEAR':
+        lamp = clear_lamp.assist
+    elif _lamp == 'E-CLEAR':
+        lamp = clear_lamp.easy
+    elif _lamp == 'CLEAR':
+        lamp = clear_lamp.clear
+    elif _lamp == 'H-CLEAR':
+        lamp = clear_lamp.hard
+    elif _lamp == 'EXH-CLEAR':
+        lamp = clear_lamp.exh
+    elif _lamp == 'F-COMBO':
+        lamp = clear_lamp.fc
+    return lamp

@@ -1,6 +1,7 @@
-from classes import *
-from funcs import *
-from songinfo import *
+# 単体検証: wuv run python -m src.result
+from .classes import *
+from .funcs import *
+from .songinfo import *
 import datetime
 import os
 import bz2, pickle
@@ -8,8 +9,15 @@ import traceback
 import logging
 import logging, logging.handlers
 import math
+import sys
 from typing import List
 # リザルト用のクラスを定義
+
+sys.path.append('infnotebook')
+from screenshot import Screenshot,open_screenimage,Screen
+from recog import Recognition as recog
+from resources import resource
+from define import Define as define
 
 os.makedirs('log', exist_ok=True)
 logger = logging.getLogger(__name__)
@@ -25,33 +33,78 @@ hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcNa
 hdl.setFormatter(hdl_formatter)
 logger.addHandler(hdl)
 
+class PlayOption():
+    """プレイオプション用のクラス。inf-notebook側が None==正規 となっていて非常に使いづらいので変えている。"""
+    def __init__(self, option):
+        self.valid = option is not None
+        '''有効かどうか。選曲画面ではオプションが読めないのでFalseに倒す。'''
+
+        self.arrange: str = option.arrange if option is not None else None
+        '''配置オプション'''
+
+        self.flip: str = option.flip if option is not None else None
+        '''DPオンリー 左右の譜面が入れ替わる'''
+
+        self.assist: str = option.assist if option is not None else None
+        '''A-SCR or LEGACY'''
+
+        self.battle: bool = option.battle if option is not None else None
+        '''DP時にBATTLEがON 両サイドがSP譜面になる'''
+
+        self.special: bool = ((option.arrange is not None and 'H-RAN' in option.arrange) or self.battle) if option is not None else None
+        '''H-RAN or BATTLE'''
+
+    def __str__(self):
+        out = 'unknown'
+        if self.valid:
+            if not self.arrange:
+                out = 'REGULAR'
+            else:
+                out = self.arrange
+            if self.flip:
+                out += ',FLIP'
+            if self.assist:
+                out += f',{self.assist}'
+            if self.battle:
+                out += ',BATTLE'
+        return out
+
 class OneResult:
     """1曲分のリザルトを表すクラス。ファイルへの保存用。"""
     def __init__(self,
                     chart_id:str,
-                    judge:Judge,
                     lamp:clear_lamp,
                     timestamp:int,
-                    option,
+                    playspeed,
+                    option:PlayOption,
                     is_arcade:bool=False,
+                    judge:Judge=None,
+                    score:int=None,
+                    bp:int=None,
                 ):
-        self.chart_id = chart_id
+        self.chart_id  = chart_id
         """楽曲ID。無効なIDも設定可能とする(選曲画面から登録した場合)。"""
-        self.judge = judge
-        self.score = judge.score
-        self.bp    = judge.bp
-        self.lamp  = lamp
+        self.judge     = judge
+        if judge:
+            self.score = judge.score
+            self.bp    = judge.bp
+        else: # 判定内訳がない場合も受ける(打鍵カウンタv2のデータなど)
+            self.score = score
+            self.bp    = bp
+
+        self.lamp      = lamp
         self.timestamp = timestamp
-        self.option = option
+        self.option    = option
+        self.playspeed = playspeed
         self.is_arcade = is_arcade
         
-    def disp(self):
+    def disp_all(self):
         """全attrsを表示"""
         print(self.__dict__)
 
-    def get_infostr(self):
+    def __str__(self):
         """主要情報の文字列を出力。ログ用"""
-        return f"chart_id:{self.chart_id}, score:{self.score}, bp:{self.bp}, lamp:{self.lamp.name}, option:{self.option}, timestamp:{self.timestamp}"
+        return f"chart_id:{self.chart_id}, score:{self.score}, bp:{self.bp}, lamp:{self.lamp.name}, playspeed:{self.playspeed}, option:{self.option}, timestamp:{self.timestamp}"
 
 class DetailedResult(OneResult):
     """1曲分のリザルトを表すクラス。スコアレート、BPIなどの詳細な情報を含む。ResultDatabase側からOneSongInfoを受け取る。"""
@@ -61,7 +114,16 @@ class DetailedResult(OneResult):
                 ):
         """コンストラクタ。ResultDatabase側でsonginfoとresultを与えて初期化する。"""
         self.songinfo = songinfo
-        super().__init__(chart_id=result.chart_id, judge=result.judge, lamp=result.lamp, timestamp=result.timestamp, option=result.option, is_arcade=result.is_arcade)
+        super().__init__(chart_id=result.chart_id,
+                         judge=result.judge,
+                         lamp=result.lamp,
+                         timestamp=result.timestamp,
+                         playspeed=result.playspeed,
+                         option=result.option,
+                         is_arcade=result.is_arcade,
+                         score=result.score,
+                         bp=result.bp
+                        )
 
         self.score_rate = None
         """スコアレート(0.0-1.0; float)"""
@@ -73,7 +135,7 @@ class DetailedResult(OneResult):
     
     def update_details(self):
         """詳細情報を算出"""
-        if self.songinfo:
+        if self.songinfo and self.songinfo.notes and self.score:
             self.score_rate = self.score / self.songinfo.notes / 2
             self.score_rate_with_rankdiff = calc_rankdiff(notes=self.songinfo.notes, score=self.score)
             self.bpi = self.get_bpi()
@@ -104,29 +166,32 @@ class DetailedResult(OneResult):
             str: フォーマット後BPIもしくは??(未定義の場合)
         """
         bpi = '??'
-        if self.songinfo:
-            notes = self.songinfo.notes
-            bpi_coef = self.songinfo.bpi_coef if self.songinfo.bpi_coef>0 else 1.175
-            s = self.score
-            m = notes*2
-            z = self.songinfo.bpi_top
-            k = self.songinfo.bpi_ave
-            sl = self.pgf(s/m, notes)
-            kl = self.pgf(k/m, notes)
-            zl = self.pgf(z/m, notes)
-            sd = sl/kl
-            zd = zl/kl
-            # logger.debug(f"s={s},m={m},z={z},k={k},sl={sl},kl={kl},zl={zl}")
-            # logger.debug(f"sd={sd:.3f}; zd={zd:.3f}; bpi_coef={bpi_coef}")
-            if s > k:
-                bpi = f"{(100 * (math.log(sd)**bpi_coef)) / (math.log(zd)**bpi_coef):.2f}"
-            else:
-                bpi = f"{max((-100 * (-math.log(sd)**bpi_coef)) / (math.log(zd)**bpi_coef),-15):.2f}"
+        try:
+            if self.songinfo and self.score:
+                notes = self.songinfo.notes
+                bpi_coef = self.songinfo.bpi_coef if self.songinfo.bpi_coef>0 else 1.175
+                s = self.score
+                m = notes*2
+                z = self.songinfo.bpi_top
+                k = self.songinfo.bpi_ave
+                sl = self.pgf(s/m, notes)
+                kl = self.pgf(k/m, notes)
+                zl = self.pgf(z/m, notes)
+                sd = sl/kl
+                zd = zl/kl
+                # logger.debug(f"s={s},m={m},z={z},k={k},sl={sl},kl={kl},zl={zl}")
+                # logger.debug(f"sd={sd:.3f}; zd={zd:.3f}; bpi_coef={bpi_coef}")
+                if s > k:
+                    bpi = f"{(100 * (math.log(sd)**bpi_coef)) / (math.log(zd)**bpi_coef):.2f}"
+                else:
+                    bpi = f"{max((-100 * (-math.log(sd)**bpi_coef)) / (math.log(zd)**bpi_coef),-15):.2f}"
+        except:
+            logger.error(traceback.format_exc())
         return bpi
-    def get_infostr(self):
+    def __str__(self):
         """主要情報の文字列を出力。ログ用(overrided)"""
         if self.songinfo is None:
-            return super().get_infostr()
+            return super().__str__()
         else:
             msg = f"chart:{self.songinfo.title}({self.songinfo.play_style.name.upper()}{self.songinfo.difficulty.name[0].upper()}), "
             msg += f""
@@ -147,27 +212,25 @@ class ResultDatabase:
         self.save()
 
     def add(self, judge:Judge, lamp:clear_lamp, option,
-            title:str=None, play_style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
+            title:str=None, play_style:play_style=None, difficulty:difficulty=None, _chart_id:str=None,
         ):
         """リザルト登録用関数。タイトルを渡す場合でもchart_idを渡す場合でも動く。"""
         timestamp = int(datetime.datetime.now().timestamp())
-        if chart_id:
-            result = OneResult(chart_id=chart_id, judge=judge, lamp=lamp, timestamp=timestamp, option=option)
+        if _chart_id:
+            chart_id = _chart_id
         elif title is not None and play_style is not None and difficulty is not None:
-            result = OneResult(chart_id=calc_chart_id(title, play_style, difficulty), judge=judge, lamp=lamp, timestamp=timestamp, option=option)
+            chart_id = calc_chart_id(title, play_style, difficulty)
         else: # chart_id不明(途中落ちなどの判定内訳も拾っておく)
-            result = OneResult(chart_id=None, judge=judge, lamp=lamp, timestamp=timestamp, option=option)
-        logger.info(f"result added! ({result.get_infostr()})")
+            chart_id = None
+        result = OneResult(chart_id=chart_id, judge=judge, lamp=lamp, timestamp=timestamp, option=PlayOption(option))
+        logger.info(f"result added! ({result})")
         self.results.append(result)
 
-    def get_result_detail(self, result:OneResult):
-        """リザルトを渡すと詳細な情報を返す"""
-
-    def disp(self):
+    def __str__(self):
         for r in self.results:
             songinfo = self.song_database.get(r.chart_id)
             detail = DetailedResult(songinfo, r)
-            print(detail.get_infostr())
+            print(detail)
     
     def load(self):
         """保存済みリザルトをロードする"""
@@ -183,16 +246,67 @@ class ResultDatabase:
 
     def search(self,
                 title:str=None, play_style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
-        ):
+        ) -> List[DetailedResult]:
+        ret:List[DetailedResult] = []
         if chart_id:
             key = chart_id
         elif title is not None and play_style is not None and difficulty is not None:
             key = calc_chart_id(title, play_style, difficulty)
+        songinfo = self.song_database.get(key)
 
         for r in self.results:
             if r.chart_id == key:
-                r.get_
+                detail = DetailedResult(songinfo, r)
+                ret.append(detail)
+        return ret
+    
+class ScreenReader:
+    """プレー画面を受け取ってDetailedResultに変換するためのアダプター"""
+    def __init__(self):
+        self.songinfo = SongDatabase()
 
+    def read_result_screen(self, screen:Screen) -> DetailedResult:
+        """リザルト画面のscreenを入力してDetailedResultを返す"""
+        ret = None
+        result = recog.get_result(screen)
+        if result:
+            title = result.informations.music
+            style = convert_play_style(result.informations.play_mode)
+            level = result.informations.level
+            notes = result.informations.notes
+            option = result.details.options
+            playspeed = result.informations.playspeed
+            score = result.details.score.current
+            bp = result.details.miss_count.current
+            diff = convert_difficulty(result.informations.difficulty)
+            lamp = convert_lamp(result.details.clear_type.current)
+            chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
+            songinfo = self.songinfo.search(chart_id)
+            timestamp = int(datetime.datetime.now().timestamp())
+            result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=PlayOption(option),
+                               judge=None,score=score,bp=bp)
+            ret = DetailedResult(songinfo=songinfo, result=result)
+        return ret
+
+    def read_music_select_screen(self, screen:Screen) -> DetailedResult:
+        """選曲画面のscreenを入力してDetailedResultを返す"""
+        ret = None
+        np_value = screen.np_value[define.musicselect_trimarea_np]
+        title = recog.MusicSelect.get_musicname(np_value)
+        if title:
+            diff = convert_difficulty(recog.MusicSelect.get_difficulty(np_value))
+            lamp = convert_lamp(recog.MusicSelect.get_cleartype(np_value))
+            score = recog.MusicSelect.get_score(np_value)
+            bp = recog.MusicSelect.get_misscount(np_value)
+            style = convert_play_style(recog.MusicSelect.get_playmode(np_value))
+            chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
+            songinfo = self.songinfo.search(chart_id)
+            timestamp = int(datetime.datetime.now().timestamp())
+            result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=None, option=PlayOption(None),
+                               judge=None,score=score,bp=bp)
+            ret = DetailedResult(songinfo=songinfo, result=result)
+        return ret
+        
 if __name__ == '__main__':
     db = ResultDatabase()
     a = OneSongInfo('THE BRAVE MUST DIE', play_style.sp, difficulty.another, 12, 2075)
@@ -207,4 +321,5 @@ if __name__ == '__main__':
     j = Judge(pg=750, gr=320, gd=33, bd=11, pr=20, cb=45)
     db.add(judge=j, lamp=clear_lamp.failed, option='')
     db.disp()
-    # db.search('324c6ea51143aad4911027761c42b55361829bd0248aaeeff5464c95ac089aa5')
+    b = db.search('THE BRAVE MUST DIE', play_style.sp, difficulty.another)
+    print(b[0])

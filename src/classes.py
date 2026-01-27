@@ -59,3 +59,6 @@ class Judge:
 
         self.score = pg*2 + gr
         self.bp = bd+pr
+
+    def __str__(self):
+        return f"PG:{self.pg}, GR:{self.gr}, GD:{self.gd}, BD:{self.bd}, PR:{self.pr}, CB:{self.cb},  score:{self.score}, bp:{self.bp}"
