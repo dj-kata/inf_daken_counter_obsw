@@ -117,11 +117,18 @@ class SongDatabase:
         self.load()
         self.save()
 
-    def search(self, chart_id:str) -> OneSongInfo:
+    def search(self,
+               title:str=None, play_style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
+        ) -> OneSongInfo:
         """指定されたchart_idに対応する曲情報を返す。見つからない場合はNoneを返す。"""
+        key = ''
+        if chart_id:
+            key = chart_id
+        elif title is not None and play_style is not None and difficulty is not None:
+            key = calc_chart_id(title, play_style, difficulty)
         ret = None
         for s in self.songs:
-            if chart_id == s.chart_id:
+            if key == s.chart_id:
                 ret = s
                 break
         return ret
