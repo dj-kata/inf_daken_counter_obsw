@@ -14,6 +14,7 @@ from define import Define as define
 
 from src.classes import *
 from src.result import *
+from src.logger import logger
 
 class ScreenReader:
     """ゲーム画面を読むためのクラス。ループの先頭でupdate_screenを叩いてから使うこと。"""

@@ -8,12 +8,12 @@ import numpy as np
 import threading
 import time
 from typing import Callable, Optional
-import logging, logging.handlers
 import traceback
 import base64
 import io
 import sys
 from .config import Config
+from src.logger import logger
 
 sys.path.append('infnotebook')
 from screenshot import Screenshot,open_screenimage
@@ -31,20 +31,6 @@ try:
 except ImportError:
     IMAGEHASH_AVAILABLE = False
     print("Warning: imagehash not installed. Install with: pip install imagehash")
-
-os.makedirs('log', exist_ok=True)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-hdl = logging.handlers.RotatingFileHandler(
-    f'log/{os.path.basename(__file__).split(".")[0]}.log',
-    encoding='utf-8',
-    maxBytes=1024*1024*2,
-    backupCount=1,
-)
-hdl.setLevel(logging.DEBUG)
-hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcName)s() [%(levelname)s] %(message)s')
-hdl.setFormatter(hdl_formatter)
-logger.addHandler(hdl)
 
 class OBSControlData:
     """OBS制御設定のデータ管理クラス"""
@@ -1530,9 +1516,6 @@ class OBSWebSocketManager:
         self.config:Config = None
         self.screen = None
         
-        # ログ設定
-        self.logger = logging.getLogger(__name__)
-        
     def set_config(self, config:Config):
         """設定オブジェクトを設定"""
         self.config = config
@@ -1568,24 +1551,24 @@ class OBSWebSocketManager:
             self.is_connected = True
             self._update_status(f"OBS WebSocket接続完了 (OBS: {obs_version}, WS: {ws_version})", True)
             
-            self.logger.info(f"OBS WebSocket connected to {host}:{port}")
+            logger.info(f"OBS WebSocket connected to {host}:{port}")
             return True
             
         except ConnectionRefusedError:
             self.is_connected = False
             error_message = f"OBS WebSocket接続拒否: {host}:{port} (OBSが起動していない可能性があります)"
             self._update_status(error_message, False)
-            self.logger.error(error_message)
+            logger.error(error_message)
         except TimeoutError:
             self.is_connected = False
             error_message = f"OBS WebSocket接続タイムアウト: {host}:{port}"
             self._update_status(error_message, False)
-            self.logger.error(error_message)
+            logger.error(error_message)
         except Exception as e:
             self.is_connected = False
             error_message = f"OBS WebSocket接続エラー: {str(e)}"
             self._update_status(error_message, False)
-            self.logger.error(error_message)
+            logger.error(error_message)
             
         # エラー時のクリーンアップ
         if self.client:
@@ -1604,9 +1587,9 @@ class OBSWebSocketManager:
         if self.client:
             try:
                 self.client.disconnect()
-                self.logger.info("OBS WebSocket disconnected")
+                logger.info("OBS WebSocket disconnected")
             except Exception as e:
-                self.logger.error(f"Error during disconnect: {e}")
+                logger.error(f"Error during disconnect: {e}")
             finally:
                 self.client = None
                 
@@ -1651,7 +1634,7 @@ class OBSWebSocketManager:
                 if not self.is_connected and self.config and self.config.enable_websocket:
                     # 再接続間隔の制御（5秒間隔で再接続試行）
                     if reconnect_interval <= 0:
-                        self.logger.info("Attempting auto-reconnect to OBS WebSocket...")
+                        logger.info("Attempting auto-reconnect to OBS WebSocket...")
                         if self.auto_connect():
                             reconnect_interval = 0  # 接続成功時はリセット
                         else:
@@ -1667,18 +1650,18 @@ class OBSWebSocketManager:
                         # 1. より軽量な接続確認（stats取得）
                         self.client.get_stats()
                     except Exception as e:
-                        self.logger.warning(f"Stats check failed: {e}")
+                        logger.warning(f"Stats check failed: {e}")
                         
                         # 2. フォールバック：バージョン情報で再確認
                         try:
                             self.client.get_version()
                         except Exception as e2:
-                            self.logger.warning(f"Version check also failed: {e2}")
+                            logger.warning(f"Version check also failed: {e2}")
                             connection_lost = True
                     
                     # 接続が失われた場合の処理
                     if connection_lost:
-                        self.logger.warning("OBS WebSocket connection lost")
+                        logger.warning("OBS WebSocket connection lost")
                         self.is_connected = False
                         self._update_status("OBS WebSocket接続が失われました", False)
                         
@@ -1693,7 +1676,7 @@ class OBSWebSocketManager:
                         reconnect_interval = 3  # 3秒後に再接続開始
                             
             except Exception as e:
-                self.logger.error(f"Connection worker error: {e}")
+                logger.error(f"Connection worker error: {e}")
                 # 予期しないエラーの場合も接続を切断
                 if self.is_connected:
                     self.is_connected = False
@@ -1715,7 +1698,7 @@ class OBSWebSocketManager:
             try:
                 self.status_callback(message, is_connected)
             except Exception as e:
-                self.logger.error(f"Status callback error: {e}")
+                logger.error(f"Status callback error: {e}")
     
     def get_status(self) -> tuple[str, bool]:
         """現在のステータスを取得"""
@@ -1742,20 +1725,20 @@ class OBSWebSocketManager:
             コマンドの実行結果、またはエラー時はNone
         """
         if not self.is_connected or not self.client:
-            self.logger.warning("OBS WebSocket not connected")
+            logger.warning("OBS WebSocket not connected")
             return None
             
         try:
             # 動的にメソッドを呼び出し
             method = getattr(self.client, command_name)
             result = method(**kwargs)
-            self.logger.info(f"OBS command executed: {command_name}")
+            logger.info(f"OBS command executed: {command_name}")
             return result
         except AttributeError:
-            self.logger.error(f"Unknown OBS command: {command_name}")
+            logger.error(f"Unknown OBS command: {command_name}")
             return None
         except Exception as e:
-            self.logger.error(f"OBS command failed: {command_name}, error: {e}")
+            logger.error(f"OBS command failed: {command_name}, error: {e}")
             return None
     
     def get_scene_list(self):
@@ -1765,7 +1748,7 @@ class OBSWebSocketManager:
         try:
             return self.client.get_scene_list()
         except Exception as e:
-            self.logger.error(f"Failed to get scene list: {e}")
+            logger.error(f"Failed to get scene list: {e}")
             return None
     
     def set_current_scene(self, scene_name: str):

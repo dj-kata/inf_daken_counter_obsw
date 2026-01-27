@@ -8,6 +8,7 @@ from screenshot import Screenshot,open_screenimage
 from recog import Recognition as recog
 from resources import resource
 from define import Define as define
+from src.logger import logger
 
 # 各クラスから使う共通の関数をここで定義しておく
 

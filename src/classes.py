@@ -1,4 +1,5 @@
 from enum import Enum
+from src.logger import logger
 
 class clear_lamp(Enum):
     """クリアランプを表すための列挙型クラス"""
