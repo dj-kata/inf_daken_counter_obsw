@@ -17,6 +17,7 @@ hdl.setFormatter(hdl_formatter)
 logger.addHandler(hdl)
 
 class Config:
+    '''設定を管理するクラス'''
     def __init__(self, config_file="config.json"):
         self.config_file = config_file
         self.oraja_path = ""
@@ -49,6 +50,7 @@ class Config:
         self.recognition_settings = {}
         
         self.load_config()
+        self.save_config()
     
     def load_config(self):
         """設定ファイルから設定を読み込む"""
@@ -132,8 +134,7 @@ class Config:
             return os.path.join(self.oraja_path, "target.txt")
         return ""
     
-    def disp(self):
-        # print(self.__dict__)
-        print('obs_control_settings')
+    def __str__(self):
+        out = 'obs_control_settings: '
         for s in self.obs_control_settings:
-            print(s)
+            print(f"{s},")

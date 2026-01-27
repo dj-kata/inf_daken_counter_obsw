@@ -60,5 +60,23 @@ class Judge:
         self.score = pg*2 + gr
         self.bp = bd+pr
 
+    def get_score_rate(self) -> float:
+        """現在の判定内訳に対するスコアレートを計算"""
+        notes = self.pg+self.gr+self.gd+self.bd+self.pr-self.cb
+        max_score = notes*2
+        cur_score = self.pg*2+self.gr
+        return cur_score / max_score
+
     def __str__(self):
-        return f"PG:{self.pg}, GR:{self.gr}, GD:{self.gd}, BD:{self.bd}, PR:{self.pr}, CB:{self.cb},  score:{self.score}, bp:{self.bp}"
+        return f"PG:{self.pg}, GR:{self.gr}, GD:{self.gd}, BD:{self.bd}, PR:{self.pr}, CB:{self.cb},  score:{self.score}, bp:{self.bp},  rate:{self.get_score_rate()}"
+
+class detect_mode(Enum):
+    """検出モード用のEnum"""
+    init = 0
+    '''初期状態'''
+    play = 1
+    '''プレー画面'''
+    select = 2
+    '''選曲画面'''
+    result = 3
+    '''リザルト画面'''

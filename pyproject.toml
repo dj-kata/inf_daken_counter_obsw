@@ -9,5 +9,6 @@ dependencies = [
     "cx-freeze>=8.5.3",
     "imagehash>=4.3.2",
     "numpy>=2.4.1",
+    "obsws-python>=1.8.0",
     "pillow>=12.1.0",
 ]

@@ -194,6 +194,7 @@ dependencies = [
     { name = "cx-freeze" },
     { name = "imagehash" },
     { name = "numpy" },
+    { name = "obsws-python" },
     { name = "pillow" },
 ]
 
@@ -203,6 +204,7 @@ requires-dist = [
     { name = "cx-freeze", specifier = ">=8.5.3" },
     { name = "imagehash", specifier = ">=4.3.2" },
     { name = "numpy", specifier = ">=2.4.1" },
+    { name = "obsws-python", specifier = ">=1.8.0" },
     { name = "pillow", specifier = ">=12.1.0" },
 ]
 
@@ -310,6 +312,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/33/9b/9dd6e2db8d49eb24f86acaaa5258e5f4c8ed38209a4ee9de2d1a0ca25045/numpy-2.4.1-pp311-pypy311_pp73-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:2023ef86243690c2791fd6353e5b4848eedaa88ca8a2d129f462049f6d484696", size = 14538937, upload-time = "2026-01-10T06:44:51.498Z" },
     { url = "https://files.pythonhosted.org/packages/53/87/d5bd995b0f798a37105b876350d346eea5838bd8f77ea3d7a48392f3812b/numpy-2.4.1-pp311-pypy311_pp73-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8361ea4220d763e54cff2fbe7d8c93526b744f7cd9ddab47afeff7e14e8503be", size = 16479830, upload-time = "2026-01-10T06:44:53.931Z" },
     { url = "https://files.pythonhosted.org/packages/5b/c7/b801bf98514b6ae6475e941ac05c58e6411dd863ea92916bfd6d510b08c1/numpy-2.4.1-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:4f1b68ff47680c2925f8063402a693ede215f0257f02596b1318ecdfb1d79e33", size = 12492579, upload-time = "2026-01-10T06:44:57.094Z" },
+]
+
+[[package]]
+name = "obsws-python"
+version = "1.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "websocket-client" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d6/2f/624af34a5b0f09fbf858bf6743521a8626d712671ac49573e625ad1c97d3/obsws_python-1.8.0.tar.gz", hash = "sha256:e082894f80deb0836861fdc3c222e497308c8f66328da6075baba5b456a20971", size = 28727, upload-time = "2025-07-01T08:24:11.652Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/97/4b/537f3d372f065b2aeeac3812228066eb70f47436adf88aaacc94eb5fd4e1/obsws_python-1.8.0-py3-none-any.whl", hash = "sha256:537bde416e149b6f59e0b2f31761d4a40329feafec171bde6fc1346ab8516e28", size = 30819, upload-time = "2025-07-01T08:24:10.086Z" },
 ]
 
 [[package]]
@@ -607,4 +621,13 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/72/94/1a15dd82efb362ac84269196e94cf00f187f7ed21c242792a923cdb1c61f/typing_extensions-4.15.0.tar.gz", hash = "sha256:0cea48d173cc12fa28ecabc3b837ea3cf6f38c6d1136f85cbaaf598984861466", size = 109391, upload-time = "2025-08-25T13:49:26.313Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/18/67/36e9267722cc04a6b9f15c7f3441c2363321a3ea07da7ae0c0707beb2a9c/typing_extensions-4.15.0-py3-none-any.whl", hash = "sha256:f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548", size = 44614, upload-time = "2025-08-25T13:49:24.86Z" },
+]
+
+[[package]]
+name = "websocket-client"
+version = "1.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2c/41/aa4bf9664e4cda14c3b39865b12251e8e7d239f4cd0e3cc1b6c2ccde25c1/websocket_client-1.9.0.tar.gz", hash = "sha256:9e813624b6eb619999a97dc7958469217c3176312b3a16a4bd1bc7e08a46ec98", size = 70576, upload-time = "2025-10-07T21:16:36.495Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/34/db/b10e48aa8fff7407e67470363eac595018441cf32d5e1001567a7aeba5d2/websocket_client-1.9.0-py3-none-any.whl", hash = "sha256:af248a825037ef591efbf6ed20cc5faa03d3b47b9e5a2230a529eeee1c1fc3ef", size = 82616, upload-time = "2025-10-07T21:16:34.951Z" },
 ]
