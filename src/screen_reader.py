@@ -29,6 +29,7 @@ class ScreenReader:
 
     def read_result_screen(self) -> DetailedResult:
         """pngファイルを入力してDetailedResultを返す"""
+        ret = None
         result = recog.get_result(self.screen)
         if result:
             title = result.informations.music
@@ -51,6 +52,7 @@ class ScreenReader:
 
     def read_music_select_screen(self) -> DetailedResult:
         """pngファイルを入力してDetailedResultを返す"""
+        ret = None
         np_value = self.screen.np_value[define.musicselect_trimarea_np]
         title = recog.MusicSelect.get_musicname(np_value)
         if title:

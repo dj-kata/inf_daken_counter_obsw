@@ -6,14 +6,7 @@ import numpy as np
 import imagehash
 import glob
 
-# sys.path.append('old')
-sys.path.append('infnotebook')
-from screenshot import Screenshot,open_screenimage
-from recog import Recognition as recog
-from resources import resource
-from define import Define as define
-
-from src.result import ScreenReader
+from src.screen_reader import ScreenReader
 
 def gen_ocr_result(info, playdata):
     out = []
@@ -39,21 +32,20 @@ if __name__ == '__main__':
     reader = ScreenReader()
     # for f in glob.glob('debug/select*.png'):
     for f in glob.glob('debug/*.png'):
-        filename = f
-        screen = open_screenimage(f)
-        print(f)
+        reader.update_screen_from_file(f)
         try:
-            r = reader.read_result_screen(screen)
+            r = reader.read_result_screen()
             if r:
                 print('[RESULT]', r)
             else:
-                r2 = reader.read_music_select_screen(screen)
+                r2 = reader.read_music_select_screen()
                 if r2:
                     print('[SELECT]', r2)
         except:
             # import traceback
             # print(traceback.format_exc())
             continue
+        print(reader.is_result(), reader.is_select(), reader.is_endresult(), reader.is_endselect())
 
         # break # debug
 
