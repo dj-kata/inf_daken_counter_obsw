@@ -11,4 +11,5 @@ dependencies = [
     "numpy>=2.4.1",
     "obsws-python>=1.8.0",
     "pillow>=12.1.0",
+    "pyside6>=6.10.1",
 ]
