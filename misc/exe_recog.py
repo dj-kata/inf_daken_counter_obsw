@@ -7,6 +7,7 @@ import imagehash
 import glob
 
 from src.screen_reader import ScreenReader
+from src.logger import logger
 
 def gen_ocr_result(info, playdata):
     out = []
