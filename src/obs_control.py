@@ -9,8 +9,6 @@ import threading
 import time
 from typing import Callable, Optional
 import traceback
-import base64
-import io
 import sys
 from .config import Config
 from src.logger import logger
@@ -1797,9 +1795,15 @@ class OBSWebSocketManager:
 
     def screenshot(self):
         '''OBSソースのキャプチャをself.screenに格納'''
+        if not os.path.exists('out'):
+            os.makedirs('out')
         dst = os.path.abspath('out/capture.png')
-        self.save_screenshot_dst(self.config.monitor_source_name, dst)
-        self.screen = open_screenimage(dst)
+        try:
+            self.save_screenshot_dst(self.config.monitor_source_name, dst)
+            self.screen = open_screenimage(dst)
+        except:
+            logger.error(traceback.format_exc())
+            self.screen = None
 
     # def save_screenshot(self):
     #     #logger.debug(f'dst:{self.dst_screenshot}')

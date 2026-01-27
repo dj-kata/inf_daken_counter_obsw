@@ -27,14 +27,9 @@ class Config:
         self.main_window_width = 500
         self.main_window_height = 300
 
-        # スキップする難易度表の名前を登録
-        # settings.py側はOKListを選択する形になっているが、DiffTableではこちらの方が扱いやすいので変換している。
-        self.difftable_nglist = []
-
         # OBS自動制御設定
         self.obs_control_settings = []
         self.monitor_source_name = ""
-        self.recognition_settings = {}
         
         self.load_config()
         self.save_config()
@@ -64,12 +59,9 @@ class Config:
                     self.main_window_width = window_config.get("width", 500)
                     self.main_window_height = window_config.get("height", 300)
 
-                    self.difftable_nglist = config_data.get('difftable_nglist', [])
-
                     # OBS自動制御設定
                     self.obs_control_settings = config_data.get('obs_control_settings', [])
                     self.monitor_source_name = config_data.get('monitor_source_name', "")
-                    self.recognition_settings = config_data.get('recognition_settings', {})
             except Exception as e:
                 logger.error(traceback.format_exc())
                 print(f"設定ファイル読み込みエラー: {e}")
@@ -94,10 +86,8 @@ class Config:
                 "width": self.main_window_width,
                 "height": self.main_window_height
             },
-            "difftable_nglist": self.difftable_nglist,
             "obs_control_settings": self.obs_control_settings,
             "monitor_source_name": self.monitor_source_name,
-            "recognition_settings": self.recognition_settings,
         }
         
         try:
