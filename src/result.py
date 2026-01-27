@@ -35,24 +35,34 @@ logger.addHandler(hdl)
 
 class PlayOption():
     """プレイオプション用のクラス。inf-notebook側が None==正規 となっていて非常に使いづらいので変えている。"""
-    def __init__(self, option):
-        self.valid = option is not None
-        '''有効かどうか。選曲画面ではオプションが読めないのでFalseに倒す。'''
+    valid = False
+    '''有効かどうか。選曲画面ではオプションが読めないのでFalseに倒す。'''
+    arrange = None
+    '''配置オプション'''
+    flip = None
+    '''DPオンリー 左右の譜面が入れ替わる'''
+    assist = None
+    '''A-SCR or LEGACY'''
+    battle = None
+    '''DP時にBATTLEがON 両サイドがSP譜面になる'''
+    special = None
+    '''H-RAN or BATTLE'''
 
-        self.arrange: str = option.arrange if option is not None else None
-        '''配置オプション'''
-
-        self.flip: str = option.flip if option is not None else None
-        '''DPオンリー 左右の譜面が入れ替わる'''
-
-        self.assist: str = option.assist if option is not None else None
-        '''A-SCR or LEGACY'''
-
-        self.battle: bool = option.battle if option is not None else None
-        '''DP時にBATTLEがON 両サイドがSP譜面になる'''
-
-        self.special: bool = ((option.arrange is not None and 'H-RAN' in option.arrange) or self.battle) if option is not None else None
-        '''H-RAN or BATTLE'''
+    def __init__(self, option=None):
+        if option:
+            self.valid = True
+            self.arrange: str = option.arrange
+            self.flip: str = option.flip
+            self.assist: str = option.assist
+            self.battle: bool = option.battle
+            self.special: bool = (option.arrange is not None and 'H-RAN' in option.arrange) or self.battle
+    def __init__(self, arrange:str=None, flip:str=None, assist:str=None, battle:bool=None):
+        self.valid = True
+        self.arrange = arrange
+        self.flip = flip
+        self.assist = assist
+        self.battle = battle
+        self.special = (arrange is not None and 'H-RAN' in arrange) or self.battle
 
     def __str__(self):
         out = 'unknown'
@@ -75,7 +85,7 @@ class OneResult:
                     chart_id:str,
                     lamp:clear_lamp,
                     timestamp:int,
-                    playspeed,
+                    playspeed:float | None,
                     option:PlayOption,
                     is_arcade:bool=False,
                     judge:Judge=None,
@@ -211,8 +221,9 @@ class ResultDatabase:
         self.load()
         self.save()
 
-    def add(self, judge:Judge, lamp:clear_lamp, option,
+    def add(self, judge:Judge, lamp:clear_lamp, option:PlayOption,
             title:str=None, play_style:play_style=None, difficulty:difficulty=None, _chart_id:str=None,
+            playspeed=None
         ):
         """リザルト登録用関数。タイトルを渡す場合でもchart_idを渡す場合でも動く。"""
         timestamp = int(datetime.datetime.now().timestamp())
@@ -222,15 +233,17 @@ class ResultDatabase:
             chart_id = calc_chart_id(title, play_style, difficulty)
         else: # chart_id不明(途中落ちなどの判定内訳も拾っておく)
             chart_id = None
-        result = OneResult(chart_id=chart_id, judge=judge, lamp=lamp, timestamp=timestamp, option=PlayOption(option))
+        result = OneResult(chart_id=chart_id, judge=judge, lamp=lamp, timestamp=timestamp, option=option, playspeed=playspeed)
         logger.info(f"result added! ({result})")
         self.results.append(result)
 
     def __str__(self):
+        out = ''
         for r in self.results:
-            songinfo = self.song_database.get(r.chart_id)
+            songinfo = self.song_database.search(r.chart_id)
             detail = DetailedResult(songinfo, r)
-            print(detail)
+            out += str(detail)
+        return out
     
     def load(self):
         """保存済みリザルトをロードする"""
@@ -247,12 +260,23 @@ class ResultDatabase:
     def search(self,
                 title:str=None, play_style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
         ) -> List[DetailedResult]:
+        """全リザルトの中から指定された譜面のプレーログのみを取り出してリストで返す
+
+        Args:
+            title (str, optional): 曲名. Defaults to None.
+            play_style (play_style, optional): SP/DPのスタイル. Defaults to None.
+            difficulty (difficulty, optional): 譜面難易度. Defaults to None.
+            chart_id (str, optional): 譜面ID. Defaults to None.
+
+        Returns:
+            List[DetailedResult]: 検索結果(詳細付きリザルトのリスト)
+        """
         ret:List[DetailedResult] = []
         if chart_id:
             key = chart_id
         elif title is not None and play_style is not None and difficulty is not None:
             key = calc_chart_id(title, play_style, difficulty)
-        songinfo = self.song_database.get(key)
+        songinfo = self.song_database.search(key)
 
         for r in self.results:
             if r.chart_id == key:
@@ -283,7 +307,7 @@ class ScreenReader:
             chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
             songinfo = self.songinfo.search(chart_id)
             timestamp = int(datetime.datetime.now().timestamp())
-            result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=PlayOption(option),
+            result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
                                judge=None,score=score,bp=bp)
             ret = DetailedResult(songinfo=songinfo, result=result)
         return ret
@@ -317,9 +341,9 @@ if __name__ == '__main__':
     a = OneSongInfo('KAMAITACHI', play_style.sp, difficulty.leggendaria, 12, 2000)
     db.song_database.songs.append(a)
     j = Judge(pg=1561, gr=414, gd=94, bd=3, pr=9, cb=6)
-    db.add(judge=j, lamp=clear_lamp.exh, option='RAN', title='THE BRAVE MUST DIE', play_style=play_style.sp, difficulty=difficulty.another)
+    db.add(judge=j, lamp=clear_lamp.exh, option=PlayOption(arrange='RANDOM'), title='THE BRAVE MUST DIE', play_style=play_style.sp, difficulty=difficulty.another)
     j = Judge(pg=750, gr=320, gd=33, bd=11, pr=20, cb=45)
     db.add(judge=j, lamp=clear_lamp.failed, option='')
-    db.disp()
+    print(db)
     b = db.search('THE BRAVE MUST DIE', play_style.sp, difficulty.another)
     print(b[0])
