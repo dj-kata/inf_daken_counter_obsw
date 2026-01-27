@@ -187,8 +187,6 @@ class MainWindow(QMainWindow):
         # OBS接続状態の再評価
         if not self.obs_manager.is_connected:
             self.obs_manager.connect()
-        elif self.obs_manager.is_connected:
-            self.obs_manager.disconnect()
     
     def show_about(self):
         """バージョン情報表示"""

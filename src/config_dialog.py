@@ -109,6 +109,17 @@ class ConfigDialog(QDialog):
         other_layout = QFormLayout()
         other_group.setLayout(other_layout)
         
+        # 画像保存先設定の追加
+        self.image_save_path_edit = QLineEdit()
+        self.browse_button = QPushButton("参照...")
+        self.browse_button.clicked.connect(self.on_browse_clicked)
+        
+        path_layout = QHBoxLayout()
+        path_layout.addWidget(self.image_save_path_edit)
+        path_layout.addWidget(self.browse_button)
+        
+        other_layout.addRow("画像保存先:", path_layout)
+        
         self.autoload_offset_spin = QSpinBox()
         self.autoload_offset_spin.setRange(0, 100)
         other_layout.addRow("自動読み込みオフセット:", self.autoload_offset_spin)
@@ -117,6 +128,19 @@ class ConfigDialog(QDialog):
         layout.addStretch()
         
         return widget
+
+    def on_browse_clicked(self):
+        """フォルダ参照ボタン押下時の処理"""
+        current_dir = self.image_save_path_edit.text()
+        if not os.path.exists(current_dir):
+            current_dir = os.path.expanduser("~")
+            
+        dir_path = QFileDialog.getExistingDirectory(
+            self, "画像保存先フォルダを選択", current_dir
+        )
+        
+        if dir_path:
+            self.image_save_path_edit.setText(dir_path)
     
     def load_config_values(self):
         """設定値を読み込んでUIに反映"""
@@ -130,6 +154,10 @@ class ConfigDialog(QDialog):
         self.enable_judge_check.setChecked(self.config.enable_judge)
         self.enable_folder_updates_check.setChecked(self.config.enable_folder_updates)
         self.autoload_offset_spin.setValue(self.config.autoload_offset)
+        
+        # 画像保存先 (Configクラスに image_save_path プロパティがある前提)
+        if hasattr(self.config, 'image_save_path'):
+            self.image_save_path_edit.setText(self.config.image_save_path)
         
     def accept(self):
         """OKボタン押下時の処理"""
@@ -145,6 +173,9 @@ class ConfigDialog(QDialog):
         self.config.enable_judge = self.enable_judge_check.isChecked()
         self.config.enable_folder_updates = self.enable_folder_updates_check.isChecked()
         self.config.autoload_offset = self.autoload_offset_spin.value()
+        
+        # 画像保存先
+        self.config.image_save_path = self.image_save_path_edit.text()
         
         # 設定を保存
         self.config.save_config()

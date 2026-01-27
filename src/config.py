@@ -30,6 +30,8 @@ class Config:
         # OBS自動制御設定
         self.obs_control_settings = []
         self.monitor_source_name = ""
+
+        self.image_save_path = 'results'
         
         self.load_config()
         self.save_config()
@@ -62,6 +64,9 @@ class Config:
                     # OBS自動制御設定
                     self.obs_control_settings = config_data.get('obs_control_settings', [])
                     self.monitor_source_name = config_data.get('monitor_source_name', "")
+
+                    # リザルト画像保存先フォルダ
+                    self.image_save_path = config_data.get('image_save_path', 'results')
             except Exception as e:
                 logger.error(traceback.format_exc())
                 print(f"設定ファイル読み込みエラー: {e}")
@@ -88,6 +93,7 @@ class Config:
             },
             "obs_control_settings": self.obs_control_settings,
             "monitor_source_name": self.monitor_source_name,
+            "image_save_path": self.image_save_path,
         }
         
         try:
