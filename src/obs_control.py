@@ -17,9 +17,9 @@ sys.path.append('infnotebook')
 from screenshot import Screenshot,open_screenimage
 
 try:
-    import obsws_python as obs
+    from obsws_python import ReqClient
 except ImportError:
-    obs = None
+    ReqClient = None
     print("Warning: obsws_python not installed. Install with: pip install obsws-python")
 
 # imagehashライブラリのimport（オプション）
@@ -1528,7 +1528,7 @@ class OBSWebSocketManager:
         host = self.config.websocket_host
         password = self.config.websocket_password
         port = self.config.websocket_port
-        if obs is None:
+        if ReqClient is None:
             self._update_status("obsws_python がインストールされていません", False)
             return False
             
@@ -1539,7 +1539,7 @@ class OBSWebSocketManager:
             self._update_status("OBS WebSocketに接続中...", False)
             
             # OBS WebSocketクライアント作成（タイムアウト短縮で切断検出を向上）
-            self.client = obs.ReqClient(host=host, port=port, password=password, timeout=3)
+            self.client = ReqClient(host=host, port=port, password=password, timeout=3)
             
             # 接続テスト（バージョン情報取得）
             version_info = self.client.get_version()
@@ -1596,7 +1596,7 @@ class OBSWebSocketManager:
     
     def auto_connect(self):
         """設定に基づいて自動接続を試行"""
-        if not self.config or not self.config.enable_websocket:
+        if not self.client:
             self._update_status("WebSocket連携が無効です", False)
             return False
             
@@ -1700,12 +1700,10 @@ class OBSWebSocketManager:
     
     def get_status(self) -> tuple[str, bool]:
         """現在のステータスを取得"""
-        if not obs:
+        if not ReqClient:
             return "obsws_python がインストールされていません", False
         elif not self.config:
             return "設定が読み込まれていません", False
-        elif not self.config.enable_websocket:
-            return "WebSocket連携が無効です", False
         elif self.is_connected:
             return f"接続中 ({self.config.websocket_host}:{self.config.websocket_port})", True
         else:
