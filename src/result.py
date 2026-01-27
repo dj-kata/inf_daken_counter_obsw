@@ -13,12 +13,6 @@ import sys
 from typing import List
 # リザルト用のクラスを定義
 
-sys.path.append('infnotebook')
-from screenshot import Screenshot,open_screenimage,Screen
-from recog import Recognition as recog
-from resources import resource
-from define import Define as define
-
 os.makedirs('log', exist_ok=True)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -208,7 +202,7 @@ class DetailedResult(OneResult):
             msg += f"score: {self.score}({''.join(self.score_rate_with_rankdiff)}, {self.score_rate*100:.2f}%), "
             if self.bpi:
                 msg += f"BPI: {self.bpi}, "
-            msg += f"bp: {self.bp}, lamp: {self.lamp.name}, option: {self.option}, timestamp:{self.timestamp}"
+            msg += f"bp: {self.bp}, lamp: {self.lamp.name}, option: {self.option}, timestamp:{self.timestamp}\n"
             return msg
 
 class ResultDatabase:
@@ -284,53 +278,6 @@ class ResultDatabase:
                 ret.append(detail)
         return ret
     
-class ScreenReader:
-    """プレー画面を受け取ってDetailedResultに変換するためのアダプター"""
-    def __init__(self):
-        self.songinfo = SongDatabase()
-
-    def read_result_screen(self, screen:Screen) -> DetailedResult:
-        """リザルト画面のscreenを入力してDetailedResultを返す"""
-        ret = None
-        result = recog.get_result(screen)
-        if result:
-            title = result.informations.music
-            style = convert_play_style(result.informations.play_mode)
-            level = result.informations.level
-            notes = result.informations.notes
-            option = result.details.options
-            playspeed = result.informations.playspeed
-            score = result.details.score.current
-            bp = result.details.miss_count.current
-            diff = convert_difficulty(result.informations.difficulty)
-            lamp = convert_lamp(result.details.clear_type.current)
-            chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
-            songinfo = self.songinfo.search(chart_id)
-            timestamp = int(datetime.datetime.now().timestamp())
-            result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
-                               judge=None,score=score,bp=bp)
-            ret = DetailedResult(songinfo=songinfo, result=result)
-        return ret
-
-    def read_music_select_screen(self, screen:Screen) -> DetailedResult:
-        """選曲画面のscreenを入力してDetailedResultを返す"""
-        ret = None
-        np_value = screen.np_value[define.musicselect_trimarea_np]
-        title = recog.MusicSelect.get_musicname(np_value)
-        if title:
-            diff = convert_difficulty(recog.MusicSelect.get_difficulty(np_value))
-            lamp = convert_lamp(recog.MusicSelect.get_cleartype(np_value))
-            score = recog.MusicSelect.get_score(np_value)
-            bp = recog.MusicSelect.get_misscount(np_value)
-            style = convert_play_style(recog.MusicSelect.get_playmode(np_value))
-            chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
-            songinfo = self.songinfo.search(chart_id)
-            timestamp = int(datetime.datetime.now().timestamp())
-            result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=None, option=PlayOption(None),
-                               judge=None,score=score,bp=bp)
-            ret = DetailedResult(songinfo=songinfo, result=result)
-        return ret
-        
 if __name__ == '__main__':
     db = ResultDatabase()
     a = OneSongInfo('THE BRAVE MUST DIE', play_style.sp, difficulty.another, 12, 2075)
@@ -344,6 +291,5 @@ if __name__ == '__main__':
     db.add(judge=j, lamp=clear_lamp.exh, option=PlayOption(arrange='RANDOM'), title='THE BRAVE MUST DIE', play_style=play_style.sp, difficulty=difficulty.another)
     j = Judge(pg=750, gr=320, gd=33, bd=11, pr=20, cb=45)
     db.add(judge=j, lamp=clear_lamp.failed, option='')
-    print(db)
     b = db.search('THE BRAVE MUST DIE', play_style.sp, difficulty.another)
     print(b[0])
