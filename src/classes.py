@@ -69,6 +69,10 @@ class Judge:
         self.score = pg*2 + gr
         self.bp = bd+pr
 
+        if self.cb < self.bd:
+            logger.info(f"cb < badなので補正します。(リザルト画面での認識ミス?)")
+            self.cb = self.bp
+
     @classmethod
     def from_list(cls, data: List[str]):
         """
@@ -88,6 +92,10 @@ class Judge:
             max_score = notes*2
             cur_score = self.pg*2+self.gr
             return cur_score / max_score
+        
+    def sum(self) -> int:
+        '''CB以外の判定値の合計を返す。CB補正用'''
+        return self.pg + self.gr + self.gd + self.bd + self.pr
 
     def __str__(self):
         return f"PG:{self.pg}, GR:{self.gr}, GD:{self.gd}, BD:{self.bd}, PR:{self.pr}, CB:{self.cb},  score:{self.score}, bp:{self.bp},  rate:{self.get_score_rate()}"

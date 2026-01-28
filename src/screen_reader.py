@@ -64,12 +64,12 @@ class ScreenReader:
                     digit = Image.fromarray(rgb)
                 fn = lambda x: 255 if x > 220 else 0
                 digit_mono = digit.convert('L').point(fn, mode='1')
-                # digit_mono.save(f"hoge_{['pg', 'gr', 'gd', 'bd', 'pr', 'cb'].index(item)}{item}_{idx}.png")
+                # digit.save(f"hoge_{['pg', 'gr', 'gd', 'bd', 'pr', 'cb'].index(item)}{item}_{idx}.png")
                 hash = imagehash.phash(digit_mono)
                 # print(item, idx, hash)
                 for i,h in enumerate(hash_digits):
                     hash_target = imagehash.hex_to_hash(h)
-                    if abs(hash - hash_target) < 7:
+                    if abs(hash - hash_target) < 10:
                         if i in (0,8): # 0:198, 
                             d_sum = np.sum(np.array(digit_mono))
                             if d_sum > 215:
@@ -102,6 +102,14 @@ class ScreenReader:
                 songinfo = self.songinfo.search(chart_id)
                 timestamp = int(datetime.datetime.now().timestamp())
                 judge = self.read_judge_from_result(convert_side(result.play_side))
+
+                judge_sum = judge.sum()
+                if judge_sum >= notes: # 完走した場合はCBを正確に計算
+                    cb = bp - (judge_sum - notes)
+                    judge.cb = cb
+                else: # 途中落ちの場合残りノーツを見逃しとして足しておく
+                    judge.pr += (notes - judge_sum)
+
                 result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
                                    judge=judge,score=score,bp=bp, dead=result.dead)
                 ret = DetailedResult(songinfo=songinfo, result=result)
