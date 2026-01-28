@@ -10,6 +10,7 @@ dependencies = [
     "imagehash>=4.3.2",
     "numpy>=2.4.1",
     "obsws-python>=1.8.0",
+    "opencv-python>=4.13.0.90",
     "pillow>=12.1.0",
     "pyside6>=6.10.1",
 ]
