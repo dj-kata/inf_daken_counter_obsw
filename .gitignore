@@ -14,3 +14,7 @@ old/*
 service_account_info.py
 */__pycache__/*
 infnotebook/*
+log/*
+out/*
+*.infdc
+config.json
