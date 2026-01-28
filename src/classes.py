@@ -28,11 +28,11 @@ class play_style(Enum):
     dp  = 1
     """ダブルプレイ"""
 
-class play_side(Enum):
+class result_side(Enum):
     '''1P/2Pのどちらであるかを表す列挙型クラス。リザルト画面で使う。'''
     _1p = 0
     '''1p側'''
-    _2p = 0
+    _2p = 1
     '''2p側'''
 
 class difficulty(Enum):

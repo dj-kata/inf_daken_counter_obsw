@@ -99,10 +99,10 @@ def convert_lamp(_lamp) -> clear_lamp|None:
         lamp = clear_lamp.fc
     return lamp
 
-def convert_side(_side) -> play_side:
-    if _side == '1P':
-        return play_side._1p
-    elif _side == '2P':
-        return play_side._2p
-    else:
-        return None
+def convert_side(side:str) -> result_side:
+    ret = None
+    if side == "1P":
+        ret = result_side._1p
+    elif side == "2P":
+        ret = result_side._2p
+    return ret

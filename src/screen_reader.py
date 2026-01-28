@@ -6,6 +6,8 @@ import numpy as np
 import imagehash
 import glob
 
+import cv2
+
 sys.path.append('infnotebook')
 from screenshot import Screenshot,open_screenimage
 from recog import Recognition as recog
@@ -31,11 +33,54 @@ class ScreenReader:
     def update_screen(self, screen):
         self.screen = screen
 
-    def read_judge_from_result(self, side:play_side) -> Judge:
+    def read_judge_from_result(self, side:result_side) -> Judge:
         """リザルト画面から判定部分を読み取る"""
         img = self.screen.original
-        print('hoge')
-        ret = Judge()
+        img.save('hoge.png')
+        out = []
+        for item in ['pg', 'gr', 'gd', 'bd', 'pr', 'cb']:
+            line = ''
+            for idx in range(4):
+                digit = img.crop(PosResultJudge.get(side, item, idx))
+
+                if item == 'cb': # combo break時のみ赤い領域を除去
+                    tmp = cv2.cvtColor(np.array(digit), cv2.COLOR_RGB2BGR)
+                    # tmp = self.screen.np_value
+                    hsv = cv2.cvtColor(tmp, cv2.COLOR_BGR2HSV)
+                    # 赤色の低い範囲の定義 (例: 0-10)
+                    lower_red1 = np.array([0, 50, 50])
+                    upper_red1 = np.array([10, 255, 255])
+                    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+
+                    # 赤色の高い範囲の定義 (例: 170-179)
+                    lower_red2 = np.array([170, 50, 50])
+                    upper_red2 = np.array([179, 255, 255])
+                    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+
+                    # 2つのマスクを結合
+                    full_mask = mask1 + mask2
+                    tmp[np.where(full_mask==255)] = [0, 0, 0]
+                    rgb = cv2.cvtColor(tmp, cv2.COLOR_BGR2RGB)
+                    digit = Image.fromarray(rgb)
+                fn = lambda x: 255 if x > 220 else 0
+                digit_mono = digit.convert('L').point(fn, mode='1')
+                # digit_mono.save(f"hoge_{['pg', 'gr', 'gd', 'bd', 'pr', 'cb'].index(item)}{item}_{idx}.png")
+                hash = imagehash.phash(digit_mono)
+                # print(item, idx, hash)
+                for i,h in enumerate(hash_digits):
+                    hash_target = imagehash.hex_to_hash(h)
+                    if abs(hash - hash_target) < 7:
+                        if i in (0,8): # 0:198, 
+                            d_sum = np.sum(np.array(digit_mono))
+                            if d_sum > 215:
+                                line += '8'
+                            else:
+                                line += str(i)
+                        else:
+                            line += str(i)
+                        break
+            out.append(line)
+        ret = Judge.from_list(out)
         return ret
 
     def read_result_screen(self) -> DetailedResult:
