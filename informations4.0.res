@@ -1,0 +1,1 @@
+/mnt/d/bin/YouTubeLive/inf_daken_counter/resources/informations4.0.res
