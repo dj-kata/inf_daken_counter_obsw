@@ -39,7 +39,10 @@ class MainWindow(QMainWindow):
         # OBS接続マネージャーの初期化
         self.obs_manager = OBSWebSocketManager()
         self.obs_manager.set_config(self.config)
-        
+
+        # 接続状態変化のシグナルを接続
+        self.obs_manager.connection_changed.connect(self.on_obs_connection_changed)
+
         # アプリケーション状態
         self.current_mode = detect_mode.init
         self.start_time = time.time()
@@ -226,6 +229,35 @@ class MainWindow(QMainWindow):
         self.result_count_label.setText(str(self.saved_result_count))
         self.last_song_label.setText(self.last_saved_song)
     
+    def on_obs_connection_changed(self, is_connected: bool, message: str):
+        """
+        OBS接続状態変化時のハンドラ
+
+        Args:
+            is_connected: 接続状態（True=接続中、False=切断）
+            message: ステータスメッセージ
+        """
+        logger.info(f"OBS connection changed: connected={is_connected}, message={message}")
+
+        # UIを更新（スレッドセーフに）
+        self.obs_status_label.setText(message)
+
+        if is_connected:
+            # 接続成功時
+            self.obs_status_label.setStyleSheet("color: green; font-weight: bold;")
+            logger.info("OBS接続が確立されました")
+
+            # 必要に応じて追加の処理
+            # 例: シーンリストを更新、自動制御を有効化など
+
+        else:
+            # 切断時
+            self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")
+            logger.warning("OBS接続が切断されました")
+
+            # 必要に応じて追加の処理
+            # 例: 自動制御を一時停止など
+
     def main_loop(self):
         """メインループ - 100ms毎に呼ばれる"""
         try:
@@ -323,10 +355,12 @@ class MainWindow(QMainWindow):
                                                    result.judge.gd + result.judge.bd + result.judge.pr)
                 
                 # 曲名の更新
-                if result.songinfo:
-                    self.last_saved_song = f"{result.songinfo.title} " \
-                                          f"({result.songinfo.play_style.name.upper()}" \
-                                          f"{result.songinfo.difficulty.name[0].upper()})"
+                self.last_saved_song = f"{self.screen_reader.last_title_result}"
+                # TODO
+                # if result.songinfo:
+                    # self.last_saved_song = f"{result.songinfo.title} " \
+                                        #   f"({result.songinfo.play_style.name.upper()}" \
+                                        #   f"{result.songinfo.difficulty.name[0].upper()})"
                 
                 logger.info(f"リザルト保存: {result}")
         except Exception as e:
@@ -334,6 +368,9 @@ class MainWindow(QMainWindow):
     
     def closeEvent(self, event):
         """ウィンドウクローズイベント"""
+        # OBS接続を切断（監視スレッドも停止）
+        self.obs_manager.disconnect()
+
         # ウィンドウ位置を保存
         self.config.save_window_position(
             self.x(), self.y(), 
@@ -344,6 +381,10 @@ class MainWindow(QMainWindow):
         if self.obs_manager.is_connected:
             self.obs_manager.disconnect()
         
+        # タイマーを停止
+        self.main_timer.stop()
+        self.display_timer.stop()
+
         logger.info("アプリケーション終了")
         event.accept()
 
