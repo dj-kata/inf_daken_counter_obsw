@@ -36,7 +36,6 @@ class ScreenReader:
     def read_judge_from_result(self, side:result_side) -> Judge:
         """リザルト画面から判定部分を読み取る"""
         img = self.screen.original
-        img.save('hoge.png')
         out = []
         # for item in ['pg', 'gr', 'gd', 'bd', 'pr', 'cb']:
         for item in ['pg', 'gr', 'gd', 'bd', 'pr']:
