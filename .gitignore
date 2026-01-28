@@ -12,6 +12,5 @@ __pycache__/*
 tmp/*
 old/*
 service_account_info.py
-resources/*
 */__pycache__/*
 infnotebook/*
