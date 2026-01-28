@@ -57,13 +57,15 @@ def calc_rankdiff(notes, score):
 
     return target,diff
 
-def convert_play_style(_style):
+def convert_play_style(_style) -> play_style|None:
     if _style == 'SP':
         return play_style.sp
     elif _style == 'DP':
         return play_style.dp
+    else:
+        return None
 
-def convert_difficulty(_difficulty):
+def convert_difficulty(_difficulty) -> difficulty|None:
     diff = None
     if _difficulty == 'BEGINNER':
         diff = difficulty.beginner
@@ -77,7 +79,7 @@ def convert_difficulty(_difficulty):
         diff = difficulty.leggendaria
     return diff
 
-def convert_lamp(_lamp):
+def convert_lamp(_lamp) -> clear_lamp|None:
     lamp = None
     if _lamp == 'NOPLAY':
         lamp = clear_lamp.noplay
@@ -96,3 +98,11 @@ def convert_lamp(_lamp):
     elif _lamp == 'F-COMBO':
         lamp = clear_lamp.fc
     return lamp
+
+def convert_side(_side) -> play_side:
+    if _side == '1P':
+        return play_side._1p
+    elif _side == '2P':
+        return play_side._2p
+    else:
+        return None

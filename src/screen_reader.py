@@ -31,6 +31,13 @@ class ScreenReader:
     def update_screen(self, screen):
         self.screen = screen
 
+    def read_judge_from_result(self, side:play_side) -> Judge:
+        """リザルト画面から判定部分を読み取る"""
+        img = self.screen.original
+        print('hoge')
+        ret = Judge()
+        return ret
+
     def read_result_screen(self) -> DetailedResult:
         """pngファイルを入力してDetailedResultを返す"""
         try:
@@ -49,8 +56,9 @@ class ScreenReader:
                 chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
                 songinfo = self.songinfo.search(chart_id)
                 timestamp = int(datetime.datetime.now().timestamp())
+                judge = self.read_judge_from_result(convert_side(result.play_side))
                 result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
-                                   judge=None,score=score,bp=bp, dead=result.dead)
+                                   judge=judge,score=score,bp=bp, dead=result.dead)
                 ret = DetailedResult(songinfo=songinfo, result=result)
                 self.last_title_result = title
         except:
@@ -90,7 +98,7 @@ class ScreenReader:
     def get_judge_img(self, playside:play_mode):
         img = self.screen.original
         # 判定内訳部分のみを切り取る
-        sc = img.crop(PosJudge.get(playside))
+        sc = img.crop(PosPlayJudge.get(playside))
         d = []
         for j in range(6): # pg～prの5つ
             tmp_sec = []
