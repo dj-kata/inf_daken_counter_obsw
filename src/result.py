@@ -224,7 +224,18 @@ class ResultDatabase:
             title:str=None, play_style:play_style=None, difficulty:difficulty=None, _chart_id:str=None,
             playspeed=None
         ):
-        """リザルト登録用関数。タイトルを渡す場合でもchart_idを渡す場合でも動く。"""
+        """リザルト登録用関数。chart_id情報を何も渡さなくても受ける(途中落ちのノーツ数保存用)
+
+        Args:
+            judge (Judge): 判定内訳
+            lamp (clear_lamp): クリアランプ
+            option (PlayOption): プレーオプション
+            title (str, optional): 曲名. Defaults to None.
+            play_style (play_style, optional): SP/DP. Defaults to None.
+            difficulty (difficulty, optional): 譜面難易度. Defaults to None.
+            _chart_id (str, optional): 譜面ID. Defaults to None.
+            playspeed (_type_, optional): プレー速度. Defaults to None.
+        """
         timestamp = int(datetime.datetime.now().timestamp())
         if _chart_id:
             chart_id = _chart_id
