@@ -294,7 +294,11 @@ class MainWindow(QMainWindow):
         elif self.screen_reader.is_select():
             return detect_mode.select
         else:
-            return detect_mode.init
+            play_mode = self.screen_reader.is_play()
+            if play_mode:
+                return detect_mode.play
+            else:
+                return detect_mode.init
     
     def on_mode_changed(self, old_mode: detect_mode, new_mode: detect_mode):
         """モード変更時の処理"""
