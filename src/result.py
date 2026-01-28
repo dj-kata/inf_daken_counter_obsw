@@ -85,6 +85,7 @@ class OneResult:
                     judge:Judge=None,
                     score:int=None,
                     bp:int=None,
+                    dead:bool=None,
                 ):
         self.chart_id  = chart_id
         """楽曲ID。無効なIDも設定可能とする(選曲画面から登録した場合)。"""
@@ -95,12 +96,12 @@ class OneResult:
         else: # 判定内訳がない場合も受ける(打鍵カウンタv2のデータなど)
             self.score = score
             self.bp    = bp
-
         self.lamp      = lamp
         self.timestamp = timestamp
         self.option    = option
         self.playspeed = playspeed
         self.is_arcade = is_arcade
+        self.dead      = dead
         
     def disp_all(self):
         """全attrsを表示"""
@@ -109,7 +110,7 @@ class OneResult:
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""
         if self.lamp and self.score:
-            return f"chart_id:{self.chart_id}, score:{self.score}, bp:{self.bp}, lamp:{self.lamp.name}, playspeed:{self.playspeed}, option:{self.option}, timestamp:{self.timestamp}"
+            return f"chart_id:{self.chart_id}, score:{self.score}, bp:{self.bp}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_arcade:{self.is_arcade}, timestamp:{self.timestamp}"
         else:
             return "not a result data!"
 
@@ -129,7 +130,8 @@ class DetailedResult(OneResult):
                          option=result.option,
                          is_arcade=result.is_arcade,
                          score=result.score,
-                         bp=result.bp
+                         bp=result.bp,
+                         dead=result.dead,
                         )
 
         self.score_rate = None

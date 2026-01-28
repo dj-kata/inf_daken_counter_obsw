@@ -50,7 +50,7 @@ class ScreenReader:
                 songinfo = self.songinfo.search(chart_id)
                 timestamp = int(datetime.datetime.now().timestamp())
                 result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
-                                   judge=None,score=score,bp=bp)
+                                   judge=None,score=score,bp=bp, dead=result.dead)
                 ret = DetailedResult(songinfo=songinfo, result=result)
                 self.last_title_result = title
         except:
@@ -77,6 +77,15 @@ class ScreenReader:
             ret = DetailedResult(songinfo=songinfo, result=result)
         return ret
         
+    def read_play_screen(self, mode:play_mode):
+        """プレー画面から判定を取得"""
+        try:
+            judge = self.detect_judge(mode)
+            return Judge.from_list(judge)
+        except:
+            print(traceback.format_exc())
+            return None
+
     ### 判定部分の切り出し
     def get_judge_img(self, playside:play_mode):
         img = self.screen.original
@@ -180,7 +189,7 @@ class ScreenReader:
         Returns:
             play_mode | None: 判定結果。どのモードかも返すようにする。
         """
-        ret = False
+        ret = None
         img = self.screen.original
 
         hash_target = imagehash.hex_to_hash('105f487f5effb700')
@@ -189,7 +198,7 @@ class ScreenReader:
             judge = (hash_target - tmp) < 10
             # x = img.crop(PosIsPlay.get(mode)).save(f'hoge{mode.value}.png')
             if judge:
-                return True
+                return mode
         return ret
 
     def is_endselect(self):
