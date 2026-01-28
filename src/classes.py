@@ -81,3 +81,22 @@ class detect_mode(Enum):
     '''選曲画面'''
     result = 3
     '''リザルト画面'''
+
+class play_mode(Enum):
+    """プレー画面のモード用Enum"""
+    sp_1p_l = 0
+    '''1P側、グラフが左'''
+    sp_1p_r = 1
+    '''1P側、グラフが右'''
+    sp_1p_nograph = 2
+    '''1P側、グラフなし'''
+    sp_2p_l = 3
+    '''2P側、グラフが左'''
+    sp_2p_r = 4
+    '''2P側、グラフが右'''
+    sp_2p_nograph = 5
+    '''2P側、グラフなし'''
+    dp_l = 6
+    '''DP、グラフが左'''
+    dp_r = 7
+    '''DP、グラフが右'''

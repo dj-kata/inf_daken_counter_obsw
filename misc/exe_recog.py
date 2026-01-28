@@ -32,21 +32,23 @@ def gen_ocr_result(info, playdata):
 if __name__ == '__main__':
     reader = ScreenReader()
     # for f in glob.glob('debug/select*.png'):
+    # for f in glob.glob('debug/play_*.png'):
     for f in glob.glob('debug/*.png'):
         reader.update_screen_from_file(f)
-        try:
+        print('file=',f)
+        if reader.is_result():
             r = reader.read_result_screen()
             if r:
                 print('[RESULT]', r)
-            else:
-                r2 = reader.read_music_select_screen()
-                if r2:
-                    print('[SELECT]', r2)
-        except:
+        elif reader.is_select():
+            r = reader.read_music_select_screen()
+            if r:
+                print('[SELECT]', r)
+        # except:
             # import traceback
             # print(traceback.format_exc())
-            continue
-        print(reader.is_result(), reader.is_select(), reader.is_endresult(), reader.is_endselect())
+            # continue
+        print(reader.is_play(), reader.is_result(), reader.is_select(), reader.is_endresult(), reader.is_endselect())
 
         # break # debug
 

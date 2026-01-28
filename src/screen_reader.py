@@ -14,6 +14,7 @@ from define import Define as define
 
 from src.classes import *
 from src.result import *
+from src.define import *
 from src.logger import logger
 
 class ScreenReader:
@@ -32,26 +33,28 @@ class ScreenReader:
 
     def read_result_screen(self) -> DetailedResult:
         """pngファイルを入力してDetailedResultを返す"""
-        ret = None
-        result = recog.get_result(self.screen)
-        if result:
-            title = result.informations.music
-            style = convert_play_style(result.informations.play_mode)
-            level = result.informations.level
-            notes = result.informations.notes
-            option = result.details.options
-            playspeed = result.informations.playspeed
-            score = result.details.score.current
-            bp = result.details.miss_count.current
-            diff = convert_difficulty(result.informations.difficulty)
-            lamp = convert_lamp(result.details.clear_type.current)
-            chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
-            songinfo = self.songinfo.search(chart_id)
-            timestamp = int(datetime.datetime.now().timestamp())
-            result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
-                               judge=None,score=score,bp=bp)
-            ret = DetailedResult(songinfo=songinfo, result=result)
-            self.last_title_result = title
+        try:
+            result = recog.get_result(self.screen)
+            if result:
+                title = result.informations.music
+                style = convert_play_style(result.informations.play_mode)
+                level = result.informations.level
+                notes = result.informations.notes
+                option = result.details.options
+                playspeed = result.informations.playspeed
+                score = result.details.score.current
+                bp = result.details.miss_count.current
+                diff = convert_difficulty(result.informations.difficulty)
+                lamp = convert_lamp(result.details.clear_type.current)
+                chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
+                songinfo = self.songinfo.search(chart_id)
+                timestamp = int(datetime.datetime.now().timestamp())
+                result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
+                                   judge=None,score=score,bp=bp)
+                ret = DetailedResult(songinfo=songinfo, result=result)
+                self.last_title_result = title
+        except:
+            return None
         return ret
 
     def read_music_select_screen(self) -> DetailedResult:
@@ -74,12 +77,64 @@ class ScreenReader:
             ret = DetailedResult(songinfo=songinfo, result=result)
         return ret
         
+    ### 判定部分の切り出し
+    def get_judge_img(self, playside:play_mode):
+        img = self.screen.original
+        # 判定内訳部分のみを切り取る
+        sc = img.crop(PosJudge.get(playside))
+        d = []
+        for j in range(6): # pg～prの5つ
+            tmp_sec = []
+            for i in range(4): # 4文字
+                W = 11
+                H = 11
+                DSEPA = 3
+                HSEPA = 5
+                sx = i*(W+DSEPA)
+                ex = sx+W
+                sy = j*(H+HSEPA)
+                ey = sy+H
+                tmp = np.array(sc.crop((sx,sy,ex,ey)))
+                tmp_sec.append(tmp)
+            d.append(tmp_sec)
+        return np.array(sc), d
+
+    ### プレー画面から判定内訳を取得
+    def detect_judge(self, playside):
+        sc,digits = self.get_judge_img(playside)
+        ret = []
+        for jj in digits: # 各判定、ピカグレー>POORの順
+            line = ''
+            for d in jj:
+                dd = d[:,:,2]
+                dd = (dd>100)*255
+                val = dd.sum()
+                tmp = '?'
+                if val == 0:
+                    tmp  = '' # 従来スペースを入れていたが、消しても動く?
+                elif val in judge_digits:
+                    if val == judge_digits[6]: # 6,9がひっくり返しただけで合計値が同じなのでケア
+                        if dd[8,0] == 0:
+                            tmp = '9'
+                        else:
+                            tmp = '6'
+                    else:
+                        tmp = str(judge_digits.index(val))
+                line += tmp 
+            ret.append(line)
+        return ret
+
+    def detect_playside(self) -> play_mode:
+        '''プレイサイド検出を行う'''
+        ret = None
+        for mode in play_mode:
+            det = self.detect_judge(mode)
+            if det[0] == '0':
+                ret = mode
+        return ret
+
     def is_select(self) -> bool:
         """選曲画面かどうかを判定し、判定結果(True/False)を返す
-
-        Args:
-            img (PIL.Image): ゲーム画面
-
         Returns:
             bool: 選曲画面であればTrue
         """
@@ -103,12 +158,8 @@ class ScreenReader:
 
         return ret
 
-    def is_result(self):
+    def is_result(self) -> bool:
         """リザルト画面かどうかを判定し、判定結果を返す
-
-        Args:
-            img (PIL.Image): キャプチャ画像
-
         Returns:
             bool: Trueならimgがリザルト画面である
         """
@@ -121,6 +172,24 @@ class ScreenReader:
         ret = ((hash_target - tmpl) < 10) or ((hash_target - tmpr) < 10)
         #logger.debug(f"ret = {ret}")
 
+        return ret
+    
+    def is_play(self) -> play_mode | None:
+        """プレー画面かどうかを判定し、判定結果を返す
+
+        Returns:
+            play_mode | None: 判定結果。どのモードかも返すようにする。
+        """
+        ret = False
+        img = self.screen.original
+
+        hash_target = imagehash.hex_to_hash('105f487f5effb700')
+        for mode in play_mode:
+            tmp = imagehash.average_hash(img.crop(PosIsPlay.get(mode)))
+            judge = (hash_target - tmp) < 10
+            # x = img.crop(PosIsPlay.get(mode)).save(f'hoge{mode.value}.png')
+            if judge:
+                return True
         return ret
 
     def is_endselect(self):

@@ -108,7 +108,10 @@ class OneResult:
 
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""
-        return f"chart_id:{self.chart_id}, score:{self.score}, bp:{self.bp}, lamp:{self.lamp.name}, playspeed:{self.playspeed}, option:{self.option}, timestamp:{self.timestamp}"
+        if self.lamp and self.score:
+            return f"chart_id:{self.chart_id}, score:{self.score}, bp:{self.bp}, lamp:{self.lamp.name}, playspeed:{self.playspeed}, option:{self.option}, timestamp:{self.timestamp}"
+        else:
+            return "not a result data!"
 
 class DetailedResult(OneResult):
     """1曲分のリザルトを表すクラス。スコアレート、BPIなどの詳細な情報を含む。ResultDatabase側からOneSongInfoを受け取る。"""
