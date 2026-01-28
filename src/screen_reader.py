@@ -38,30 +38,12 @@ class ScreenReader:
         img = self.screen.original
         img.save('hoge.png')
         out = []
-        for item in ['pg', 'gr', 'gd', 'bd', 'pr', 'cb']:
+        # for item in ['pg', 'gr', 'gd', 'bd', 'pr', 'cb']:
+        for item in ['pg', 'gr', 'gd', 'bd', 'pr']:
             line = ''
             for idx in range(4):
                 digit = img.crop(PosResultJudge.get(side, item, idx))
 
-                if item == 'cb': # combo break時のみ赤い領域を除去
-                    tmp = cv2.cvtColor(np.array(digit), cv2.COLOR_RGB2BGR)
-                    # tmp = self.screen.np_value
-                    hsv = cv2.cvtColor(tmp, cv2.COLOR_BGR2HSV)
-                    # 赤色の低い範囲の定義 (例: 0-10)
-                    lower_red1 = np.array([0, 50, 50])
-                    upper_red1 = np.array([10, 255, 255])
-                    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-
-                    # 赤色の高い範囲の定義 (例: 170-179)
-                    lower_red2 = np.array([170, 50, 50])
-                    upper_red2 = np.array([179, 255, 255])
-                    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-
-                    # 2つのマスクを結合
-                    full_mask = mask1 + mask2
-                    tmp[np.where(full_mask==255)] = [0, 0, 0]
-                    rgb = cv2.cvtColor(tmp, cv2.COLOR_BGR2RGB)
-                    digit = Image.fromarray(rgb)
                 fn = lambda x: 255 if x > 220 else 0
                 digit_mono = digit.convert('L').point(fn, mode='1')
                 # digit.save(f"hoge_{['pg', 'gr', 'gd', 'bd', 'pr', 'cb'].index(item)}{item}_{idx}.png")
@@ -80,6 +62,7 @@ class ScreenReader:
                             line += str(i)
                         break
             out.append(line)
+        out.append('0')
         ret = Judge.from_list(out)
         return ret
 
