@@ -248,6 +248,7 @@ class ResultDatabase:
             logger.error(traceback.format_exc())
 
     def save(self):
+        '''ファイル出力'''
         with bz2.BZ2File('playlog.infdc', 'wb', compresslevel=9) as f:
             pickle.dump(self.results, f)
 

@@ -44,6 +44,9 @@ class OBSControlDialog(QDialog):
         
         self.config = config
         self.obs_manager = obs_manager
+
+        # 接続状態変化を監視
+        self.obs_manager.connection_changed.connect(self.on_connection_changed)
         
         # OBSデータ
         self.scenes_list = []
@@ -241,16 +244,31 @@ class OBSControlDialog(QDialog):
     
     def reconnect_obs(self):
         """OBS再接続"""
-        try:
-            self.obs_manager.disconnect()
-            self.obs_manager.connect()
-            self.update_connection_status()
-            self.refresh_obs_data()
-            QMessageBox.information(self, "再接続", "OBSへの再接続を試みました。")
-        except Exception as e:
-            logger.error(f"OBS再接続エラー: {traceback.format_exc()}")
-            QMessageBox.warning(self, "エラー", f"再接続に失敗しました: {str(e)}")
+        # 自動再接続を一時的に停止
+        self.obs_manager.auto_reconnect = False
+        
+        # 再接続を試みる
+        self.obs_manager.disconnect()
+        success = self.obs_manager.connect()
+        
+        # 自動再接続を再有効化
+        self.obs_manager.auto_reconnect = True
+        
+        if success:
+            QMessageBox.information(self, "再接続", "OBSへの再接続に成功しました。")
+        else:
+            QMessageBox.warning(self, "再接続失敗", "OBSへの再接続に失敗しました。")
     
+    def closeEvent(self, event):
+        """ダイアログクローズ時の処理"""
+        # シグナル接続を解除（メモリリーク防止）
+        try:
+            self.obs_manager.connection_changed.disconnect(self.on_connection_changed)
+        except:
+            pass
+        
+        event.accept()
+
     def update_connection_status(self):
         """接続状態表示を更新"""
         status_msg, is_connected = self.obs_manager.get_status()
@@ -260,7 +278,19 @@ class OBSControlDialog(QDialog):
             self.status_label.setStyleSheet("color: green; font-weight: bold;")
         else:
             self.status_label.setStyleSheet("color: red; font-weight: bold;")
-    
+
+    def on_connection_changed(self, is_connected: bool, message: str):
+        """接続状態変化時のハンドラ"""
+        # ステータスラベルを更新
+        self.status_label.setText(message)
+        
+        if is_connected:
+            self.status_label.setStyleSheet("color: green; font-weight: bold;")
+            # 接続成功時にOBSデータを再取得
+            self.refresh_obs_data()
+        else:
+            self.status_label.setStyleSheet("color: red; font-weight: bold;")
+ 
     def load_current_settings(self):
         """現在の設定を読み込み"""
         # 制御設定テーブルを更新

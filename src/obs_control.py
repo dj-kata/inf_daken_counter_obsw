@@ -1495,212 +1495,265 @@ class ImageRecognitionDialog:
         self.window.grab_release()
         self.window.destroy()
 
-class OBSWebSocketManager:
-    picw = 1920
-    pich = 1080
-    def __init__(self, status_callback: Optional[Callable[[str, bool], None]] = None):
-        """
-        OBS WebSocket接続を管理するクラス
+"""
+OBS WebSocket制御モジュール（改善版）
+- 切断検出機能
+- 自動再接続機能
+- 接続状態変化通知（Qtシグナル）
+"""
+
+import time
+import threading
+import traceback
+from typing import Callable, Optional, List, Dict, Any
+from PySide6.QtCore import QObject, Signal
+
+from src.config import Config
+from src.logger import logger
+
+try:
+    from obsws_python import ReqClient
+    OBSWS_AVAILABLE = True
+except ImportError:
+    ReqClient = None
+    OBSWS_AVAILABLE = False
+    logger.warning("obsws_python not installed. Install with: pip install obsws-python")
+
+
+class OBSWebSocketManager(QObject):
+    """
+    OBS WebSocket接続管理クラス（改善版）
+    
+    機能:
+    - 自動再接続
+    - 切断検出
+    - 接続状態変化通知（Qtシグナル）
+    """
+    
+    # Qtシグナル定義
+    connection_changed = Signal(bool, str)  # (is_connected, message)
+    
+    def __init__(self):
+        super().__init__()
         
-        Args:
-            status_callback: 接続状態変更時に呼び出されるコールバック関数
-                           (status_message: str, is_connected: bool) -> None
-        """
-        self.client = None
+        self.config: Optional[Config] = None
+        self.client: Optional[ReqClient] = None
         self.is_connected = False
-        self.status_callback = status_callback
-        self.connection_thread = None
-        self.should_reconnect = False
-        self.config:Config = None
+        
+        # 再接続設定
+        self.auto_reconnect = True  # 自動再接続を有効化
+        self.reconnect_interval = 5.0  # 再接続試行間隔（秒）
+        self.max_reconnect_attempts = 0  # 0=無限に再試行
+        
+        # 接続監視スレッド
+        self.monitor_thread: Optional[threading.Thread] = None
+        self.monitor_running = False
+        self.stop_event = threading.Event()
+        
+        # 画面サイズ設定
+        self.picw = 1920
+        self.pich = 1080
         self.screen = None
-        
-    def set_config(self, config:Config):
-        """設定オブジェクトを設定"""
+    
+    def set_config(self, config: Config):
+        """設定をセット"""
         self.config = config
-        
-    def connect(self) -> bool:
-        """
-        OBS WebSocketサーバーに接続
-        
-        Returns:
-            bool: 接続成功可否
-        """
-        host = self.config.websocket_host
-        password = self.config.websocket_password
-        port = self.config.websocket_port
-        if ReqClient is None:
-            self._update_status("obsws_python がインストールされていません", False)
+        logger.info(f"OBS WebSocket config set: {config.websocket_host}:{config.websocket_port}")
+    
+    def connect(self):
+        """OBSに接続"""
+        if not OBSWS_AVAILABLE:
+            self._emit_status("obsws_python がインストールされていません", False)
             return False
-            
+        
+        if not self.config:
+            self._emit_status("設定が読み込まれていません", False)
+            return False
+        
         try:
-            # 既存の接続があれば切断
-            self.disconnect()
+            # 既存の接続を切断
+            if self.client:
+                try:
+                    self.client.disconnect()
+                except:
+                    pass
+                self.client = None
             
-            self._update_status("OBS WebSocketに接続中...", False)
+            # 新しい接続を確立
+            logger.info(f"Connecting to OBS WebSocket: {self.config.websocket_host}:{self.config.websocket_port}")
             
-            # OBS WebSocketクライアント作成（タイムアウト短縮で切断検出を向上）
-            self.client = ReqClient(host=host, port=port, password=password, timeout=3)
+            self.client = ReqClient(
+                host=self.config.websocket_host,
+                port=self.config.websocket_port,
+                password=self.config.websocket_password,
+                timeout=5
+            )
             
-            # 接続テスト（バージョン情報取得）
-            version_info = self.client.get_version()
-            obs_version = version_info.obs_version
-            ws_version = version_info.obs_web_socket_version
+            # 接続テスト
+            self.client.get_version()
             
             self.is_connected = True
-            self._update_status(f"OBS WebSocket接続完了 (OBS: {obs_version}, WS: {ws_version})", True)
+            self._emit_status(f"接続成功 ({self.config.websocket_host}:{self.config.websocket_port})", True)
             
-            logger.info(f"OBS WebSocket connected to {host}:{port}")
+            # 接続監視スレッドを開始
+            self.start_monitor()
+            
             return True
             
-        except ConnectionRefusedError:
-            self.is_connected = False
-            error_message = f"OBS WebSocket接続拒否: {host}:{port} (OBSが起動していない可能性があります)"
-            self._update_status(error_message, False)
-            logger.error(error_message)
-        except TimeoutError:
-            self.is_connected = False
-            error_message = f"OBS WebSocket接続タイムアウト: {host}:{port}"
-            self._update_status(error_message, False)
-            logger.error(error_message)
         except Exception as e:
             self.is_connected = False
-            error_message = f"OBS WebSocket接続エラー: {str(e)}"
-            self._update_status(error_message, False)
-            logger.error(error_message)
+            self.client = None
+            error_msg = f"接続失敗: {str(e)}"
+            self._emit_status(error_msg, False)
+            logger.error(f"OBS WebSocket connection failed: {e}")
             
-        # エラー時のクリーンアップ
+            # 自動再接続が有効な場合は監視スレッドを開始
+            if self.auto_reconnect:
+                self.start_monitor()
+            
+            return False
+    
+    def disconnect(self):
+        """OBSから切断"""
+        logger.info("Disconnecting from OBS WebSocket")
+        
+        # 監視スレッドを停止
+        self.stop_monitor()
+        
+        # 接続を切断
         if self.client:
             try:
                 self.client.disconnect()
             except:
                 pass
             self.client = None
-                
-        return False
-    
-    def disconnect(self):
-        """OBS WebSocketから切断"""
-        self.should_reconnect = False
         
-        if self.client:
-            try:
-                self.client.disconnect()
-                logger.info("OBS WebSocket disconnected")
-            except Exception as e:
-                logger.error(f"Error during disconnect: {e}")
-            finally:
-                self.client = None
-                
         self.is_connected = False
-        self._update_status("OBS WebSocket切断", False)
+        self._emit_status("切断しました", False)
     
-    def auto_connect(self):
-        """設定に基づいて自動接続を試行"""
-        if not self.client:
-            self._update_status("WebSocket連携が無効です", False)
-            return False
-            
-        if not self.config.websocket_host:
-            self._update_status("WebSocketホストが設定されていません", False)
-            return False
-            
-        return self.connect(
-            self.config.websocket_host,
-            self.config.websocket_port,
-            self.config.websocket_password
+    def start_monitor(self):
+        """接続監視スレッドを開始"""
+        if self.monitor_running:
+            return
+        
+        self.monitor_running = True
+        self.stop_event.clear()
+        
+        self.monitor_thread = threading.Thread(
+            target=self._monitor_connection,
+            daemon=True,
+            name="OBSMonitorThread"
         )
-    
-    def start_auto_reconnect(self):
-        """自動再接続を開始"""
-        if self.connection_thread is None or not self.connection_thread.is_alive():
-            self.should_reconnect = True
-            self.connection_thread = threading.Thread(target=self._connection_worker, daemon=True)
-            self.connection_thread.start()
-    
-    def stop_auto_reconnect(self):
-        """自動再接続を停止"""
-        self.should_reconnect = False
+        self.monitor_thread.start()
         
-    def _connection_worker(self):
-        """接続監視・自動再接続ワーカー"""
-        check_interval = 2  # 接続確認間隔を2秒に短縮
-        reconnect_interval = 0
+        logger.info("Connection monitor thread started")
+    
+    def stop_monitor(self):
+        """接続監視スレッドを停止"""
+        if not self.monitor_running:
+            return
         
-        while self.should_reconnect:
+        self.monitor_running = False
+        self.stop_event.set()
+        
+        if self.monitor_thread:
+            self.monitor_thread.join(timeout=2.0)
+            self.monitor_thread = None
+        
+        logger.info("Connection monitor thread stopped")
+    
+    def _monitor_connection(self):
+        """
+        接続監視ループ（バックグラウンドスレッド）
+        
+        機能:
+        1. 定期的に接続状態をチェック
+        2. 切断を検出したら自動再接続を試みる
+        """
+        consecutive_failures = 0
+        check_interval = 2.0  # 接続確認間隔（秒）
+        
+        while self.monitor_running and not self.stop_event.is_set():
             try:
-                # 未接続で再接続が必要な場合
-                if not self.is_connected and self.config and self.config.enable_websocket:
-                    # 再接続間隔の制御（5秒間隔で再接続試行）
-                    if reconnect_interval <= 0:
-                        logger.info("Attempting auto-reconnect to OBS WebSocket...")
-                        if self.auto_connect():
-                            reconnect_interval = 0  # 接続成功時はリセット
-                        else:
-                            reconnect_interval = 5  # 失敗時は5秒待機
-                    else:
-                        reconnect_interval -= check_interval
+                # 設定チェック
+                if not self.config:
+                    time.sleep(check_interval)
+                    continue
                 
-                # 接続確認（より頻繁に、かつ複数の方法で確認）
-                elif self.is_connected and self.client:
-                    connection_lost = False
-                    
+                # 接続状態チェック
+                if self.is_connected and self.client:
+                    # 接続中の場合、pingして確認
                     try:
-                        # 1. より軽量な接続確認（stats取得）
-                        self.client.get_stats()
+                        self.client.get_version()
+                        consecutive_failures = 0  # 成功したらカウンタリセット
+                        
                     except Exception as e:
-                        logger.warning(f"Stats check failed: {e}")
-                        
-                        # 2. フォールバック：バージョン情報で再確認
-                        try:
-                            self.client.get_version()
-                        except Exception as e2:
-                            logger.warning(f"Version check also failed: {e2}")
-                            connection_lost = True
-                    
-                    # 接続が失われた場合の処理
-                    if connection_lost:
-                        logger.warning("OBS WebSocket connection lost")
+                        # 接続が切れた
+                        logger.warning(f"OBS connection lost: {e}")
                         self.is_connected = False
-                        self._update_status("OBS WebSocket接続が失われました", False)
-                        
-                        # クリーンアップ
-                        if self.client:
-                            try:
-                                self.client.disconnect()
-                            except:
-                                pass
-                            self.client = None
-                        
-                        reconnect_interval = 3  # 3秒後に再接続開始
-                            
-            except Exception as e:
-                logger.error(f"Connection worker error: {e}")
-                # 予期しないエラーの場合も接続を切断
-                if self.is_connected:
-                    self.is_connected = False
-                    self._update_status("OBS WebSocket予期しないエラー", False)
-                    if self.client:
-                        try:
-                            self.client.disconnect()
-                        except:
-                            pass
                         self.client = None
-            
-            # 短い間隔で確認
-            time.sleep(check_interval)
-    
-    def _update_status(self, message: str, is_connected: bool):
-        """ステータス更新"""
-        self.is_connected = is_connected
-        if self.status_callback:
-            try:
-                self.status_callback(message, is_connected)
+                        self._emit_status("接続が切断されました", False)
+                        consecutive_failures += 1
+                
+                else:
+                    # 未接続の場合、自動再接続を試みる
+                    if self.auto_reconnect:
+                        # 最大再接続試行回数チェック
+                        if self.max_reconnect_attempts > 0 and consecutive_failures >= self.max_reconnect_attempts:
+                            logger.error(f"Max reconnection attempts reached: {self.max_reconnect_attempts}")
+                            self._emit_status(f"再接続失敗（{self.max_reconnect_attempts}回試行）", False)
+                            time.sleep(check_interval)
+                            continue
+                        
+                        # 再接続試行
+                        logger.info(f"Attempting to reconnect to OBS... (attempt {consecutive_failures + 1})")
+                        self._emit_status(f"再接続中... ({consecutive_failures + 1}回目)", False)
+                        
+                        try:
+                            self.client = ReqClient(
+                                host=self.config.websocket_host,
+                                port=self.config.websocket_port,
+                                password=self.config.websocket_password,
+                                timeout=5
+                            )
+                            
+                            # 接続テスト
+                            self.client.get_version()
+                            
+                            # 成功
+                            self.is_connected = True
+                            self._emit_status(f"再接続成功 ({self.config.websocket_host}:{self.config.websocket_port})", True)
+                            logger.info("OBS reconnection successful")
+                            consecutive_failures = 0
+                            
+                        except Exception as e:
+                            # 再接続失敗
+                            self.is_connected = False
+                            self.client = None
+                            consecutive_failures += 1
+                            logger.debug(f"Reconnection failed: {e}")
+                            
+                            # 次の再接続まで待機
+                            time.sleep(self.reconnect_interval)
+                            continue
+                
             except Exception as e:
-                logger.error(f"Status callback error: {e}")
+                logger.error(f"Monitor thread error: {e}\n{traceback.format_exc()}")
+            
+            # 次のチェックまで待機
+            time.sleep(check_interval)
+        
+        logger.info("Monitor thread terminated")
+    
+    def _emit_status(self, message: str, is_connected: bool):
+        """接続状態変化を通知"""
+        self.is_connected = is_connected
+        logger.info(f"OBS status: {message} (connected={is_connected})")
+        self.connection_changed.emit(is_connected, message)
     
     def get_status(self) -> tuple[str, bool]:
         """現在のステータスを取得"""
-        if not ReqClient:
+        if not OBSWS_AVAILABLE:
             return "obsws_python がインストールされていません", False
         elif not self.config:
             return "設定が読み込まれていません", False
@@ -1721,58 +1774,42 @@ class OBSWebSocketManager:
             コマンドの実行結果、またはエラー時はNone
         """
         if not self.is_connected or not self.client:
-            logger.warning("OBS WebSocket not connected")
+            logger.warning(f"OBS WebSocket not connected (command: {command_name})")
             return None
-            
+        
         try:
             # 動的にメソッドを呼び出し
             method = getattr(self.client, command_name)
             result = method(**kwargs)
-            logger.info(f"OBS command executed: {command_name}")
+            logger.debug(f"OBS command executed: {command_name}")
             return result
         except AttributeError:
             logger.error(f"Unknown OBS command: {command_name}")
             return None
         except Exception as e:
             logger.error(f"OBS command failed: {command_name}, error: {e}")
+            # コマンド失敗時は接続が切れた可能性がある
+            # 次の監視ループで自動的に検出・再接続される
             return None
     
-    def get_scene_list(self):
+    def get_scenes(self) -> List[Dict]:
         """シーン一覧を取得"""
-        if not self.is_connected:
-            return None
         try:
-            return self.client.get_scene_list()
-        except Exception as e:
-            logger.error(f"Failed to get scene list: {e}")
-            return None
-    
-    def set_current_scene(self, scene_name: str):
-        """現在のシーンを変更"""
-        return self.send_command("set_current_program_scene", scene_name=scene_name)
-    
-    def __del__(self):
-        """デストラクタ"""
-        self.disconnect()
-
-    def change_scene(self,name:str):
-        try:
-            self.client.set_current_program_scene(name)
-        except Exception:
-            pass
-
-    def get_scenes(self):
-        try:
+            if not self.is_connected or not self.client:
+                return []
             res = self.client.get_scene_list()
-            ret = res.scenes
             return res.scenes
-        except Exception:
-            logger.debug(traceback.format_exc())
+        except Exception as e:
+            logger.debug(f"Failed to get scenes: {e}")
             return []
-
-    def get_sources(self, scene):
+    
+    def get_sources(self, scene: str) -> List[str]:
+        """指定シーンのソース一覧を取得"""
         ret = []
         try:
+            if not self.is_connected or not self.client:
+                return ret
+            
             allitem = self.client.get_scene_item_list(scene).scene_items
             for x in allitem:
                 if x['isGroup']:
@@ -1780,72 +1817,94 @@ class OBSWebSocketManager:
                     for y in grp:
                         ret.append(y['sourceName'])
                 ret.append(x['sourceName'])
-        except Exception:
-            logger.debug(traceback.format_exc())
+        except Exception as e:
+            logger.debug(f"Failed to get sources: {e}")
+        
         ret.reverse()
         return ret
-
-    def change_text(self, source, text):
+    
+    def change_scene(self, name: str):
+        """シーンを変更"""
         try:
-            res = self.client.set_input_settings(source, {'text':text}, True)
-        except Exception:
-            logger.debug(traceback.format_exc())
-
+            if self.is_connected and self.client:
+                self.client.set_current_program_scene(name)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to change scene: {e}")
+        return False
+    
+    def change_text(self, source: str, text: str):
+        """テキストソースを変更"""
+        try:
+            if self.is_connected and self.client:
+                self.client.set_input_settings(source, {'text': text}, True)
+                return True
+        except Exception as e:
+            logger.debug(f"Failed to change text: {e}")
+        return False
+    
     def screenshot(self):
-        '''OBSソースのキャプチャをself.screenに格納'''
+        """OBSソースのキャプチャをself.screenに格納"""
+        import os
+        import sys
+        sys.path.append('infnotebook')
+        from screenshot import open_screenimage
+        
         if not os.path.exists('out'):
             os.makedirs('out')
         dst = os.path.abspath('out/capture.png')
-        try:
-            self.save_screenshot_dst(self.config.monitor_source_name, dst)
-            self.screen = open_screenimage(dst)
-        except:
-            logger.error(traceback.format_exc())
-            self.screen = None
-
-    # def save_screenshot(self):
-    #     #logger.debug(f'dst:{self.dst_screenshot}')
-    #     try:
-    #         res = self.client.save_source_screenshot(self.inf_source, 'png', self.dst_screenshot, self.picw, self.pich, 100)
-    #         return res
-    #     except Exception:
-    #         logger.debug(traceback.format_exc())
-    #         return False
-
-    def save_screenshot_dst(self, source, dst):
-        try:
-            res = self.client.save_source_screenshot(source, 'png', dst, self.picw, self.pich, 100)
-            return res
-        except Exception:
-            logger.debug(traceback.format_exc())
-            return False
-
-    # 設定されたソースを取得し、PIL.Image形式で返す
-    def get_screenshot(self):
-        img = self.client.get_source_screenshot(self.config.monitor_source_name, 'jpeg', None, None, 100)
-        return img
-
-    def enable_source(self, scenename, sourceid): # グループ内のitemはscenenameにグループ名を指定する必要があるので注意
-        try:
-            res = self.client.set_scene_item_enabled(scenename, sourceid, enabled=True)
-        except Exception as e:
-            return e
-
-    def disable_source(self, scenename, sourceid):
-        try:
-            res = self.client.set_scene_item_enabled(scenename, sourceid, enabled=False)
-        except Exception as e:
-            return e
         
-    def refresh_source(self, sourcename):
         try:
-            self.client.press_input_properties_button(sourcename, 'refreshnocache')
-        except Exception:
-            pass
-
-    def search_itemid(self, scene, target):
-        ret = scene, None # グループ名, ID
+            if self.save_screenshot_dst(self.config.monitor_source_name, dst):
+                self.screen = open_screenimage(dst)
+            else:
+                self.screen = None
+        except Exception as e:
+            logger.error(f"Screenshot failed: {e}")
+            self.screen = None
+    
+    def save_screenshot_dst(self, source: str, dst: str) -> bool:
+        """スクリーンショットを保存"""
         try:
+            if not self.is_connected or not self.client:
+                return False
+            
+            res = self.client.save_source_screenshot(
+                source, 'png', dst, 
+                self.picw, self.pich, 100
+            )
+            return True
+        except Exception as e:
+            logger.debug(f"Failed to save screenshot: {e}")
+            return False
+    
+    def enable_source(self, scenename: str, sourceid: int):
+        """ソースを有効化"""
+        try:
+            if self.is_connected and self.client:
+                self.client.set_scene_item_enabled(scenename, sourceid, enabled=True)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to enable source: {e}")
+        return False
+    
+    def disable_source(self, scenename: str, sourceid: int):
+        """ソースを無効化"""
+        try:
+            if self.is_connected and self.client:
+                self.client.set_scene_item_enabled(scenename, sourceid, enabled=False)
+                return True
+        except Exception as e:
+            logger.error(f"Failed to disable source: {e}")
+        return False
+    
+    def search_itemid(self, scene: str, target: str) -> tuple[str, Optional[int]]:
+        """ソースのIDを検索"""
+        ret = scene, None
+        try:
+            if not self.is_connected or not self.client:
+                return ret
+            
             allitem = self.client.get_scene_item_list(scene).scene_items
             for x in allitem:
                 if x['sourceName'] == target:
@@ -1855,45 +1914,20 @@ class OBSWebSocketManager:
                     for y in grp:
                         if y['sourceName'] == target:
                             ret = x['sourceName'], y['sceneItemId']
-
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to search item id: {e}")
+        
         return ret
     
-    def get_scene_collection_list(self):
-        """OBSに設定されたシーンコレクションの一覧をListで返す
-
-        Returns:
-            list: シーンコレクション名の文字列
-        """
-        try:
-            return self.client.get_scene_collection_list().scene_collections
-        except Exception:
-            logger.debug(traceback.format_exc())
-            return []
-        
-    def set_scene_collection(self, scene_collection:str):
-        """シーンコレクションを引数で指定したものに変更する。
-
-        Args:
-            scene_collection (str): シーンコレクション名
-
-        Returns:
-            bool: 成功ならTrue,失敗したらFalse
-        """
-        try:
-            self.client.set_current_scene_collection(scene_collection)
-            return True
-        except Exception:
-            logger.debug(traceback.format_exc())
-            return False
+    def __del__(self):
+        """デストラクタ"""
+        self.disconnect()
 
 # メイン関数（テスト用）
 if __name__ == "__main__":
     # テスト用のダミー設定
     class DummyConfig:
         def __init__(self):
-            self.enable_websocket = True
             self.websocket_host = "localhost"
             self.websocket_port = 4455
             self.websocket_password = ""

@@ -21,6 +21,8 @@ class ScreenReader:
     def __init__(self):
         self.songinfo = SongDatabase()
         self.screen = None
+        self.last_title_result = None
+        self.last_title_select = None
 
     def update_screen_from_file(self, _file:str):
         self.screen = open_screenimage(_file)
@@ -49,6 +51,7 @@ class ScreenReader:
             result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
                                judge=None,score=score,bp=bp)
             ret = DetailedResult(songinfo=songinfo, result=result)
+            self.last_title_result = title
         return ret
 
     def read_music_select_screen(self) -> DetailedResult:
@@ -57,6 +60,7 @@ class ScreenReader:
         np_value = self.screen.np_value[define.musicselect_trimarea_np]
         title = recog.MusicSelect.get_musicname(np_value)
         if title:
+            self.last_title_select = title
             diff = convert_difficulty(recog.MusicSelect.get_difficulty(np_value))
             lamp = convert_lamp(recog.MusicSelect.get_cleartype(np_value))
             score = recog.MusicSelect.get_score(np_value)

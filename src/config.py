@@ -12,7 +12,6 @@ class Config:
         self.websocket_host = "localhost"
         self.websocket_port = 4444
         self.websocket_password = ""
-        self.enable_websocket = False
         self.autoload_offset = 4
         self.enable_register_conditions = True  # 画面判定条件設定機能の有効/無効
 
@@ -47,7 +46,6 @@ class Config:
                     self.websocket_host = config_data.get("websocket_host", "localhost")
                     self.websocket_port = config_data.get("websocket_port", 4444)
                     self.websocket_password = config_data.get("websocket_password", "")
-                    self.enable_websocket = config_data.get("enable_websocket", False)
                     self.enable_autotweet = config_data.get("enable_autotweet", False)
                     self.enable_judge = config_data.get("enable_judge", True)
                     self.enable_folder_updates = config_data.get("enable_folder_updates", False)
@@ -79,7 +77,6 @@ class Config:
             "websocket_host": self.websocket_host,
             "websocket_port": self.websocket_port,
             "websocket_password": self.websocket_password,
-            "enable_websocket": self.enable_websocket,
             "enable_autotweet": self.enable_autotweet,
             "enable_judge": self.enable_judge,
             "enable_folder_updates": self.enable_folder_updates,
