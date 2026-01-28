@@ -1,5 +1,6 @@
 from enum import Enum
 from src.logger import logger
+from typing import List
 
 class clear_lamp(Enum):
     """クリアランプを表すための列挙型クラス"""
@@ -61,12 +62,25 @@ class Judge:
         self.score = pg*2 + gr
         self.bp = bd+pr
 
+    @classmethod
+    def from_list(cls, data: List[str]):
+        """
+        read_play_screenの出力をそのまま受けるためのファクトリメソッド
+        Judge.from_list(data) で呼び出せる
+        """
+        tmp = list(map(int, data))
+        # *tmp でリストを展開してメインのコンストラクタに渡す
+        return cls(*tmp)
+
     def get_score_rate(self) -> float:
         """現在の判定内訳に対するスコアレートを計算"""
         notes = self.pg+self.gr+self.gd+self.bd+self.pr-self.cb
-        max_score = notes*2
-        cur_score = self.pg*2+self.gr
-        return cur_score / max_score
+        if notes == 0:
+            return 0.0
+        else:
+            max_score = notes*2
+            cur_score = self.pg*2+self.gr
+            return cur_score / max_score
 
     def __str__(self):
         return f"PG:{self.pg}, GR:{self.gr}, GD:{self.gd}, BD:{self.bd}, PR:{self.pr}, CB:{self.cb},  score:{self.score}, bp:{self.bp},  rate:{self.get_score_rate()}"

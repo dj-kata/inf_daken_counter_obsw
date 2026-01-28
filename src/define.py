@@ -39,6 +39,8 @@ class PosJudge:
     @classmethod
     def get(self, mode:play_mode):
         '''モードに対する判定部分の位置を返す。img.crop()でそのまま使えるようにtupleで返す。'''
+        x = 0
+        y = 0
         if mode == play_mode.sp_1p_l:
             x = 632
             y = 969
