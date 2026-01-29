@@ -7,8 +7,8 @@ import sys
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                                QHBoxLayout, QLabel, QMenuBar, QMenu, QStatusBar,
                                QGroupBox, QGridLayout)
-from PySide6.QtCore import QTimer, QTime, Qt
-from PySide6.QtGui import QAction
+from PySide6.QtCore import QTimer, QTime, Qt, QRect
+from PySide6.QtGui import QAction, QScreen
 import time
 import traceback
 import datetime
@@ -71,13 +71,9 @@ class MainWindow(QMainWindow):
     
     def init_ui(self):
         """UI初期化"""
-        self.setWindowTitle("IIDX Helper")
-        self.setGeometry(
-            self.config.main_window_x,
-            self.config.main_window_y,
-            self.config.main_window_width,
-            self.config.main_window_height
-        )
+        self.setWindowTitle("INFINITAS daken counter")
+
+        self.restore_window_geometry()
         
         # メニューバーの作成
         self.create_menu_bar()
@@ -133,7 +129,28 @@ class MainWindow(QMainWindow):
         
         # ステータスバー
         self.statusBar().showMessage("準備完了")
-    
+    def restore_window_geometry(self):
+        """ウィンドウ位置とサイズを復元"""
+        if self.config.main_window_geometry:
+            import base64
+            from PySide6.QtCore import QByteArray
+
+            geometry_bytes = base64.b64decode(self.config.main_window_geometry)
+            geometry = QByteArray(geometry_bytes)
+            self.restoreGeometry(geometry)
+        else:
+            self.setGeometry(100, 100, 500, 300)
+
+    def save_window_geometry(self):
+        """ジオメトリを保存"""
+        import base64
+
+        geometry = self.saveGeometry()
+        geometry_str = base64.b64encode(geometry.data()).decode('ascii')
+
+        self.config.main_window_geometry = geometry_str
+        self.config.save_config()
+
     def create_menu_bar(self):
         """メニューバー作成"""
         menubar = self.menuBar()
@@ -389,10 +406,7 @@ class MainWindow(QMainWindow):
         self.obs_manager.disconnect()
 
         # ウィンドウ位置を保存
-        self.config.save_window_position(
-            self.x(), self.y(), 
-            self.width(), self.height()
-        )
+        self.save_window_geometry()
         
         # OBS切断
         if self.obs_manager.is_connected:

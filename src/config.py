@@ -13,7 +13,7 @@ class Config:
         self.websocket_port = 4444
         self.websocket_password = ""
         self.autoload_offset = 4
-        self.enable_register_conditions = True  # 画面判定条件設定機能の有効/無効
+        self.main_window_geometry = None
 
         # ツイート機能関連
         self.enable_autotweet = False # 終了時の自動ツイート
@@ -50,7 +50,7 @@ class Config:
                     self.enable_judge = config_data.get("enable_judge", True)
                     self.enable_folder_updates = config_data.get("enable_folder_updates", False)
                     self.autoload_offset = config_data.get("autoload_offset", 0)
-                    self.enable_register_conditions = config_data.get("enable_register_conditions", True)
+                    self.main_window_geometry = config_data.get("main_window_geometry", None)
                     
                     # ウィンドウ位置設定
                     window_config = config_data.get("window", {})
@@ -81,13 +81,7 @@ class Config:
             "enable_judge": self.enable_judge,
             "enable_folder_updates": self.enable_folder_updates,
             "autoload_offset": self.autoload_offset,
-            # "enable_register_conditions": self.enable_register_conditions,
-            "window": {
-                "x": self.main_window_x,
-                "y": self.main_window_y,
-                "width": self.main_window_width,
-                "height": self.main_window_height
-            },
+            "main_window_geometry": self.main_window_geometry,
             "obs_control_settings": self.obs_control_settings,
             "monitor_source_name": self.monitor_source_name,
             "image_save_path": self.image_save_path,
