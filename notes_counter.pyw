@@ -11,6 +11,7 @@ from PySide6.QtCore import QTimer, QTime, Qt
 from PySide6.QtGui import QAction
 import time
 import traceback
+import datetime
 
 from src.config import Config
 from src.classes import detect_mode, play_style, difficulty, clear_lamp
@@ -307,14 +308,23 @@ class MainWindow(QMainWindow):
         # OBS制御トリガーの実行
         trigger_map = {
             (detect_mode.init, detect_mode.select): "select_start",
-            (detect_mode.select, detect_mode.play): "play_start",
-            (detect_mode.play, detect_mode.result): "result_start",
             (detect_mode.result, detect_mode.select): "select_start",
+            (detect_mode.init, detect_mode.play): "play_start",
+            (detect_mode.select, detect_mode.play): "play_start",
+            (detect_mode.init, detect_mode.result): "result_start",
+            (detect_mode.play, detect_mode.result): "result_start",
+            (detect_mode.play, detect_mode.init): "play_end",
+            (detect_mode.result, detect_mode.init): "result_end",
+            (detect_mode.select, detect_mode.init): "select_end",
         }
         
         trigger = trigger_map.get((old_mode, new_mode))
         if trigger:
             self.execute_obs_triggers(trigger)
+
+        if trigger == 'result_start': # リザルト画面に移行したときに一度実行
+            self.result_timestamp = int(datetime.datetime.now().timestamp())
+            self.result_pre = None # 1つ前の認識結果
     
     def execute_obs_triggers(self, trigger: str):
         """指定されたトリガーのOBS制御を実行"""
@@ -341,32 +351,35 @@ class MainWindow(QMainWindow):
         # 例: リザルト読み取りと保存
         try:
             result = self.screen_reader.read_result_screen()
+            result.timestamp = self.result_timestamp # リザルト画面に移行した時間で固定, ヒステリシス確認のため
             if result and result.chart_id:
-                # リザルトを保存
-                self.result_database.add(
-                    judge=result.judge,
-                    lamp=result.lamp,
-                    option=result.option,
-                    _chart_id=result.chart_id,
-                    playspeed=result.playspeed
-                )
-                self.result_database.save()
-                
-                # 統計情報の更新
-                self.saved_result_count += 1
-                if result.judge:
-                    self.today_keystroke_count += (result.judge.pg + result.judge.gr + 
-                                                   result.judge.gd + result.judge.bd + result.judge.pr)
-                
-                # 曲名の更新
-                self.last_saved_song = f"{self.screen_reader.last_title_result}"
-                # TODO
-                # if result.songinfo:
-                    # self.last_saved_song = f"{result.songinfo.title} " \
-                                        #   f"({result.songinfo.play_style.name.upper()}" \
-                                        #   f"{result.songinfo.difficulty.name[0].upper()})"
-                
-                logger.info(f"リザルト保存: {result}")
+                if result == self.result_pre:
+                    # リザルトを保存
+                    self.result_database.add(
+                        judge=result.judge,
+                        lamp=result.lamp,
+                        option=result.option,
+                        _chart_id=result.chart_id,
+                        playspeed=result.playspeed
+                    )
+                    self.result_database.save()
+
+                    # 統計情報の更新
+                    self.saved_result_count += 1
+                    if result.judge:
+                        self.today_keystroke_count += (result.judge.pg + result.judge.gr + 
+                                                       result.judge.gd + result.judge.bd + result.judge.pr)
+
+                    # 曲名の更新
+                    self.last_saved_song = f"{self.screen_reader.last_title_result}"
+                    # TODO
+                    # if result.songinfo:
+                        # self.last_saved_song = f"{result.songinfo.title} " \
+                                            #   f"({result.songinfo.play_style.name.upper()}" \
+                                            #   f"{result.songinfo.difficulty.name[0].upper()})"
+
+                    logger.info(f"リザルト保存: {result}")
+                self.result_pre = result
         except Exception as e:
             logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
     
@@ -405,4 +418,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    app = QApplication(sys.argv)
+    app.setStyle("Fusion")  # モダンなスタイルを適用
+    
+    window = MainWindow()
+    window.show()
+    
+    sys.exit(app.exec())
