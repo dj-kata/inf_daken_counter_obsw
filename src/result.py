@@ -107,6 +107,15 @@ class OneResult:
         """全attrsを表示"""
         print(self.__dict__)
 
+    # 比較用
+    def __eq__(self, other):
+        if other is None or type(self) != type(other): return False
+        return self.__dict__ == other.__dict__
+    
+    # 比較用
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""
         if self.lamp and self.score:
