@@ -8,6 +8,9 @@
         <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&display=swap" rel="stylesheet">
         <style>
+            :root{
+                --skip-no-update: 0;
+            }
             iframe{
                 overflow: hidden;
             }
@@ -229,6 +232,10 @@
                 cache: false
             });
             getxml.done(function(xml){
+                var urlParams = new URLSearchParams(window.location.search);
+                var skipNoUpdate = getComputedStyle(document.documentElement).getPropertyValue('--skip-no-update').trim() || '0';
+                $('#right').contents().find(':root')[0].style.setProperty('--skip-no-update', skipNoUpdate);
+
                 // xmlデータからほしいデータをfindで探し処理
                 var out = "";
                 var date = $(xml).find("playdate").text();

@@ -24,6 +24,9 @@
                          2px -2px 0 #000,
                          -2px -2px 0 #000;
             }
+            :root{
+                --skip-no-update: 0; /* スコアが伸びていないものを飛ばす */
+            }
             div#all{
                 min-height:2000px;
                 background-color: rgba(0, 0, 0, 0.95);
@@ -188,6 +191,7 @@
             getxml.done(function(xml){
                 // xmlデータからほしいデータをfindで探し処理
                 var out = "";
+                var skip_no_update = getComputedStyle(document.documentElement).getPropertyValue('--skip-no-update');
                 $(xml).find("Results item").each(function(index, item){
                     var lv = "☆"+$(item).find('lv').text();
                     var lamp = $(item).find('lamp').text();
@@ -203,8 +207,13 @@
                     }
                     var title = $(item).find('title').text();
                     var score = $(item).find('score').text();
-                    var score_pre = $(item).find('score_pre').text();
-                    var score_cur = $(item).find('score_cur').text();
+                    var score_pre = Number($(item).find('score_pre').text()) || 0;
+                    var score_cur = Number($(item).find('score_cur').text()) || 0;
+                    if (skip_no_update == 1){
+                        if (score_pre > score_cur){
+                            return true;
+                        }
+                    }
                     var rank = $(item).find('rank').text();
                     var rank_pre = $(item).find('rank_pre').text();
                     var rankdiff = $(item).find('rankdiff').text(); // AAA+10のような表記
