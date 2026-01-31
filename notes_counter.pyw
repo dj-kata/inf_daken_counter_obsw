@@ -762,10 +762,11 @@ class DakenCounter:
             pre_success = True # 前の検出サイクルに取得が成功したかどうか
             while True: # 曲中の処理
                 #self.window.write_event_value('-DETECT_MODE-', self.detect_mode.name)
-                self.obs.save_screenshot()
-                self.img = Image.open(self.imgpath)
-                det = detect_judge(self.img, playside)
                 try:
+                    self.obs.save_screenshot()
+                    self.img = Image.open(self.imgpath)
+                    det = detect_judge(self.img, playside)
+
                     score = int(det[0])+int(det[1])+int(det[2])
                     self.window.write_event_value('-THREAD-', f"cur {score} {det[0]} {det[1]} {det[2]} {det[3]} {det[4]} {det[5]}")
                     pre_score = score
