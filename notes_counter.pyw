@@ -943,9 +943,9 @@ class DakenCounter:
             #logger.debug(f"s={s},m={m},z={z},k={k},sl={sl},kl={kl},zl={zl}")
             #logger.debug(f"sd={sd:.3f}; zd={zd:.3f}; bpi_coef={bpi_coef}")
             if s > k:
-                bpi = f"{(100 * (math.log(sd**bpi_coef))) / (math.log(zd**bpi_coef)):.2f}"
+                bpi = f"{(100 * (math.log(sd)**bpi_coef)) / (math.log(zd)**bpi_coef):.2f}"
             else:
-                bpi = f"{max((-100 * (-math.log(sd**bpi_coef))) / (math.log(zd**bpi_coef)),-15):.2f}"
+                bpi = f"{max((-100 * (-math.log(sd)**bpi_coef)) / (math.log(zd)**bpi_coef),-15):.2f}"
         return bpi
 
     def write_history_cursong_xml(self, result):
