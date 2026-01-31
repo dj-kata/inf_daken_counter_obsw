@@ -647,6 +647,7 @@ class DakenCounter:
         tmp_stats = ManageStats(date=self.startdate, todaylog=self.todaylog, judge=self.judge, plays=self.today_plays, from_alllog=self.settings['gen_dailylog_from_alllog'], target_srate=self.settings['target_score_rate'])
         tmp_stats.update(self.todaylog, self.judge, self.today_plays)
         tmp_stats.write_stats_to_xml()
+        pre_result = None # 1iteration前の認識結果
         print(f'スコア検出スレッド開始。')
         while True:
             while True: # 曲開始までを検出
@@ -710,23 +711,26 @@ class DakenCounter:
                             self.detect_mode = detect_mode.result
                             flg_result1 = False
 
-                        if result != False: # OCR成功時に統計情報を更新
-                            if result[1] != None:
-                                self.todaylog.append(result)
-                                self.alllog.append(result)
-                                key = f"{result[1]}({result[2]})"
-                                if not key in self.dict_alllog.keys():
-                                    self.dict_alllog[key] = []
-                                self.dict_alllog[key].append(result)
-                                is_pushed_to_alllog = True
-                                print(f"{result[1]}({result[2]}) - {result[7]},score:{result[9]:,},")
-                                logger.debug(f'result = {result}')
-                                # xml更新
-                                self.write_today_update_xml()
-                                self.write_history_cursong_xml(result)
-                                self.save_alllog() # ランプ内訳グラフ更新のため、alllogも保存する
-                                tmp_stats.update(self.todaylog, self.judge, self.today_plays)
-                                tmp_stats.write_stats_to_xml()
+                        if result == pre_result:
+                            if result != False: # OCR成功時に統計情報を更新
+                                if result[1] != None:
+                                    self.todaylog.append(result)
+                                    self.alllog.append(result)
+                                    key = f"{result[1]}({result[2]})"
+                                    if not key in self.dict_alllog.keys():
+                                        self.dict_alllog[key] = []
+                                    self.dict_alllog[key].append(result)
+                                    is_pushed_to_alllog = True
+                                    pre_result = None
+                                    print(f"{result[1]}({result[2]}) - {result[7]},score:{result[9]:,},")
+                                    logger.debug(f'result = {result}')
+                                    # xml更新
+                                    self.write_today_update_xml()
+                                    self.write_history_cursong_xml(result)
+                                    self.save_alllog() # ランプ内訳グラフ更新のため、alllogも保存する
+                                    tmp_stats.update(self.todaylog, self.judge, self.today_plays)
+                                    tmp_stats.write_stats_to_xml()
+                        pre_result = result
                     except Exception as e:
                         logger.debug(traceback.format_exc())
 
