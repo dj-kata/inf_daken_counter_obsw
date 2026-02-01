@@ -87,7 +87,7 @@ class OneResult:
                     dead:bool=None,
                 ):
         self.chart_id  = chart_id
-        """楽曲ID。無効なIDも設定可能とする(選曲画面から登録した場合)。"""
+        """楽曲ID。無効なIDも設定可能とする"""
         self.judge     = judge
         """判定内訳"""
         if judge:

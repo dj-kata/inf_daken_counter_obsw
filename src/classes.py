@@ -49,7 +49,7 @@ class difficulty(Enum):
     """はか譜面"""
 
 class Judge:
-    """判定内訳を格納するクラス"""
+    """判定内訳を格納するクラス。Judge.from_list()でListからの初期化も可能。"""
     def __init__(self, pg:int, gr:int, gd:int, bd:int, pr:int, cb:int):
         self.pg = pg
         """ピカグレ"""
@@ -96,7 +96,9 @@ class Judge:
         '''CB以外の判定値の合計を返す。CB補正用'''
         return self.pg + self.gr + self.gd + self.bd + self.pr
 
-    # 比較用
+    def __add__(self, other):
+        return Judge(self.pg+other.pg, self.gr+other.gr, self.gd+other.gd, self.bd+other.bd, self.pr+other.pr, self.cb+other.cb)
+
     def __eq__(self, other):
         if not isinstance(other, Judge):
             return False
@@ -107,7 +109,6 @@ class Judge:
                 self.pr == other.pr and
                 self.cb == other.cb)
     
-    # 比較用
     def __ne__(self, other):
         return not self.__eq__(other)
     

@@ -342,9 +342,9 @@ class MainWindow(QMainWindow):
         if trigger:
             self.execute_obs_triggers(trigger)
 
-        # if trigger == 'result_start': # リザルト画面に移行したときに一度実行
 
-        if trigger == 'play_end': # プレイ画面が終わるときにtimestamp取得
+        # if trigger == 'play_end': # プレイ画面が終わるときにtimestamp取得
+        if trigger == 'result_start': # リザルト画面に移行したときに一度実行
             self.result_pre = None # 1つ前の認識結果
             self.result_timestamp = int(datetime.datetime.now().timestamp())
     
@@ -386,12 +386,16 @@ class MainWindow(QMainWindow):
                         # 統計情報の更新
                         self.saved_result_count += 1
                         if result.judge:
+                            self.today_judge += result.judge
                             self.today_keystroke_count += (result.judge.pg + result.judge.gr + 
                                                            result.judge.gd + result.judge.bd)
 
 
                         # 曲名の更新
-                        self.last_saved_song = f"{self.screen_reader.last_title_result}"
+                        if detailed_result.songinfo:
+                            self.last_saved_song = f"{self.screen_reader.last_title_result} ({detailed_result.songinfo.play_style.name.upper()}{detailed_result.songinfo.difficulty.name[0].upper()})"
+                        else:
+                            self.last_saved_song = f"{self.screen_reader.last_title_result}"
                         # TODO
                         # if result.songinfo:
                             # self.last_saved_song = f"{result.songinfo.title} " \
