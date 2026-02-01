@@ -19,6 +19,7 @@ class OneSongInfo:
                     version:int=None,
                     min_bpm:int=None,
                     max_bpm:int=None,
+                    music_pack:str=None,
                     rader_notes:float=None,
                     rader_peak:float=None,
                     rader_scratch:float=None,
@@ -56,6 +57,8 @@ class OneSongInfo:
         """ノーツ数"""
         self.version        = version
         """収録バージョン。INF初出はなるべくINFとしたい。(inf=99999999にする)"""
+        self.music_pack     = music_pack
+        """楽曲パック"""
         self.min_bpm        = min_bpm
         self.max_bpm        = max_bpm
         # ノーツレーダー
