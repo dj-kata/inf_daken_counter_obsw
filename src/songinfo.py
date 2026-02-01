@@ -95,9 +95,9 @@ class OneSongInfo:
         self.chart_id       = calc_chart_id(title, play_style, difficulty)
         """譜面毎に割り当てるID"""
 
-    def disp(self):
+    def __str__(self):
         """内部情報を表示"""
-        print(self.__dict__)
+        return self.__dict__
 
 class SongDatabase:
     """全曲の情報を保持するクラス。検索もできる。"""
