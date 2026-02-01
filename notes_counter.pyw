@@ -47,6 +47,9 @@ class MainWindow(QMainWindow):
         # アプリケーション状態
         self.current_mode = detect_mode.init
         self.start_time = time.time()
+        self.today_judge = Judge(0,0,0,0,0,0)
+        self.result_timestamp = 0
+        '''本日の判定内訳(全曲合計)'''
         self.today_keystroke_count = 0
         self.saved_result_count = 0
         self.last_saved_song = "---"
@@ -339,9 +342,11 @@ class MainWindow(QMainWindow):
         if trigger:
             self.execute_obs_triggers(trigger)
 
-        if trigger == 'result_start': # リザルト画面に移行したときに一度実行
-            self.result_timestamp = int(datetime.datetime.now().timestamp())
+        # if trigger == 'result_start': # リザルト画面に移行したときに一度実行
+
+        if trigger == 'play_end': # プレイ画面が終わるときにtimestamp取得
             self.result_pre = None # 1つ前の認識結果
+            self.result_timestamp = int(datetime.datetime.now().timestamp())
     
     def execute_obs_triggers(self, trigger: str):
         """指定されたトリガーのOBS制御を実行"""
@@ -367,37 +372,34 @@ class MainWindow(QMainWindow):
         # ここにresult画面での処理を実装
         # 例: リザルト読み取りと保存
         try:
-            result = self.screen_reader.read_result_screen()
-            result.timestamp = self.result_timestamp # リザルト画面に移行した時間で固定, ヒステリシス確認のため
+            detailed_result = self.screen_reader.read_result_screen()
+            result = detailed_result.result
+            result.timestamp = self.result_timestamp
             if result and result.chart_id:
                 if result == self.result_pre:
+                    logger.debug(f"result == result_pre")
                     # リザルトを保存
-                    self.result_database.add(
-                        judge=result.judge,
-                        lamp=result.lamp,
-                        option=result.option,
-                        _chart_id=result.chart_id,
-                        playspeed=result.playspeed
-                    )
-                    self.result_database.save()
+                    if self.result_database.add(result):
+                        logger.info(f"added!, result={result}")
+                        self.result_database.save()
 
-                    # 統計情報の更新
-                    self.saved_result_count += 1
-                    if result.judge:
-                        self.today_keystroke_count += (result.judge.pg + result.judge.gr + 
-                                                       result.judge.gd + result.judge.bd + result.judge.pr)
+                        # 統計情報の更新
+                        self.saved_result_count += 1
+                        if result.judge:
+                            self.today_keystroke_count += (result.judge.pg + result.judge.gr + 
+                                                           result.judge.gd + result.judge.bd)
 
-                    # 曲名の更新
-                    self.last_saved_song = f"{self.screen_reader.last_title_result}"
-                    # TODO
-                    # if result.songinfo:
-                        # self.last_saved_song = f"{result.songinfo.title} " \
-                                            #   f"({result.songinfo.play_style.name.upper()}" \
-                                            #   f"{result.songinfo.difficulty.name[0].upper()})"
 
-                    logger.info(f"リザルト保存: {result}")
+                        # 曲名の更新
+                        self.last_saved_song = f"{self.screen_reader.last_title_result}"
+                        # TODO
+                        # if result.songinfo:
+                            # self.last_saved_song = f"{result.songinfo.title} " \
+                                                #   f"({result.songinfo.play_style.name.upper()}" \
+                                                #   f"{result.songinfo.difficulty.name[0].upper()})"
+
                 self.result_pre = result
-        except Exception as e:
+        except:
             logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
     
     def closeEvent(self, event):

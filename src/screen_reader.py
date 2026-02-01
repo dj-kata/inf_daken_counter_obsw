@@ -74,7 +74,7 @@ class ScreenReader:
                 style = convert_play_style(result.informations.play_mode)
                 level = result.informations.level
                 notes = result.informations.notes
-                option = result.details.options
+                option = PlayOption(result.details.options)
                 playspeed = result.informations.playspeed
                 score = result.details.score.current
                 bp = result.details.miss_count.current
@@ -97,6 +97,7 @@ class ScreenReader:
                 ret = DetailedResult(songinfo=songinfo, result=result)
                 self.last_title_result = title
         except:
+            logger.error(traceback.format_exc())
             return None
         return ret
 

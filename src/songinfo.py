@@ -1,25 +1,12 @@
 from .classes import *
 from .funcs import *
+from .logger import logger
 import os
 import bz2, pickle
 from typing import List
 import traceback
 import logging
 import logging, logging.handlers
-
-os.makedirs('log', exist_ok=True)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-hdl = logging.handlers.RotatingFileHandler(
-    f'log/{os.path.basename(__file__).split(".")[0]}.log',
-    encoding='utf-8',
-    maxBytes=1024*1024*2,
-    backupCount=1,
-)
-hdl.setLevel(logging.DEBUG)
-hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcName)s() [%(levelname)s] %(message)s')
-hdl.setFormatter(hdl_formatter)
-logger.addHandler(hdl)
 
 class OneSongInfo:
     """1譜面分の曲情報を表すクラス"""

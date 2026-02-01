@@ -70,7 +70,6 @@ class Judge:
         self.bp = bd+pr
 
         if self.cb < self.bd:
-            logger.info(f"cb < badなので補正します。(リザルト画面での認識ミス?)")
             self.cb = self.bp
 
     @classmethod
@@ -96,6 +95,24 @@ class Judge:
     def sum(self) -> int:
         '''CB以外の判定値の合計を返す。CB補正用'''
         return self.pg + self.gr + self.gd + self.bd + self.pr
+
+    # 比較用
+    def __eq__(self, other):
+        if not isinstance(other, Judge):
+            return False
+        return (self.pg == other.pg and
+                self.gr == other.gr and
+                self.gd == other.gd and
+                self.bd == other.bd and
+                self.pr == other.pr and
+                self.cb == other.cb)
+    
+    # 比較用
+    def __ne__(self, other):
+        return not self.__eq__(other)
+    
+    def __hash__(self):
+        return hash((self.pg, self.gr, self.gd, self.bd, self.pr, self.cb))
 
     def __str__(self):
         return f"PG:{self.pg}, GR:{self.gr}, GD:{self.gd}, BD:{self.bd}, PR:{self.pr}, CB:{self.cb},  score:{self.score}, bp:{self.bp},  rate:{self.get_score_rate()}"

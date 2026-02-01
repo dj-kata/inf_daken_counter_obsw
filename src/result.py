@@ -2,6 +2,7 @@
 from .classes import *
 from .funcs import *
 from .songinfo import *
+from .logger import logger
 import datetime
 import os
 import bz2, pickle
@@ -13,19 +14,8 @@ import sys
 from typing import List
 # リザルト用のクラスを定義
 
-os.makedirs('log', exist_ok=True)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-hdl = logging.handlers.RotatingFileHandler(
-    f'log/{os.path.basename(__file__).split(".")[0]}.log',
-    encoding='utf-8',
-    maxBytes=1024*1024*2,
-    backupCount=1,
-)
-hdl.setLevel(logging.DEBUG)
-hdl_formatter = logging.Formatter('%(asctime)s %(filename)s:%(lineno)5d %(funcName)s() [%(levelname)s] %(message)s')
-hdl.setFormatter(hdl_formatter)
-logger.addHandler(hdl)
+sys.path.append('infnotebook')
+from result import ResultOptions
 
 class PlayOption():
     """プレイオプション用のクラス。inf-notebook側が None==正規 となっていて非常に使いづらいので変えている。"""
@@ -42,7 +32,7 @@ class PlayOption():
     special = None
     '''H-RAN or BATTLE'''
 
-    def __init__(self, option=None):
+    def __init__(self, option:ResultOptions=None):
         if option:
             self.valid = True
             self.arrange: str = option.arrange
@@ -50,13 +40,22 @@ class PlayOption():
             self.assist: str = option.assist
             self.battle: bool = option.battle
             self.special: bool = (option.arrange is not None and 'H-RAN' in option.arrange) or self.battle
-    def __init__(self, arrange:str=None, flip:str=None, assist:str=None, battle:bool=None):
-        self.valid = True
-        self.arrange = arrange
-        self.flip = flip
-        self.assist = assist
-        self.battle = battle
-        self.special = (arrange is not None and 'H-RAN' in arrange) or self.battle
+
+    def __hash__(self):
+        return hash((self.valid, self.arrange, self.flip, self.assist, self.battle, self.special))
+
+    def __eq__(self, other):
+        if not isinstance(other, PlayOption):
+            return False
+        return (self.valid == other.valid and
+                self.arrange == other.arrange and
+                self.flip == other.flip and
+                self.assist == other.assist and
+                self.battle == other.battle and
+                self.special == other.special)
+    
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __str__(self):
         out = 'unknown'
@@ -90,6 +89,7 @@ class OneResult:
         self.chart_id  = chart_id
         """楽曲ID。無効なIDも設定可能とする(選曲画面から登録した場合)。"""
         self.judge     = judge
+        """判定内訳"""
         if judge:
             self.score = judge.score
             self.bp    = judge.bp
@@ -107,14 +107,28 @@ class OneResult:
         """全attrsを表示"""
         print(self.__dict__)
 
-    # 比較用
     def __eq__(self, other):
-        if other is None or type(self) != type(other): return False
-        return self.__dict__ == other.__dict__
+        if not isinstance(other, OneResult):
+            return False
+        # 同一リザルトとみなす条件を絞り込む (例: ID、ランプ、スコア、オプションが同じなら同一)
+        return (self.chart_id == other.chart_id and
+                self.lamp == other.lamp and
+                self.timestamp == other.timestamp and
+                self.playspeed == other.playspeed and
+                self.option == other.option and
+                self.is_arcade == other.is_arcade and
+                self.judge == other.judge and
+                self.score == other.score and
+                self.bp == other.bp and
+                self.dead == other.dead
+        )
     
-    # 比較用
     def __ne__(self, other):
         return not self.__eq__(other)
+    
+    def __hash__(self):
+        # 後日全く同じ判定内訳のリザルトを出したときに困るので、やはりtimestampは必須かも
+        return hash((self.chart_id, self.lamp, self.timestamp, self.playspeed, self.option, self.is_arcade, self.judge, self.score, self.bp, self.dead))
 
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""
@@ -123,25 +137,15 @@ class OneResult:
         else:
             return "not a result data!"
 
-class DetailedResult(OneResult):
+class DetailedResult():
     """1曲分のリザルトを表すクラス。スコアレート、BPIなどの詳細な情報を含む。ResultDatabase側からOneSongInfoを受け取る。"""
     def __init__(self,
                     songinfo:OneSongInfo,
                     result:OneResult,
                 ):
         """コンストラクタ。ResultDatabase側でsonginfoとresultを与えて初期化する。"""
+        self.result = result
         self.songinfo = songinfo
-        super().__init__(chart_id=result.chart_id,
-                         judge=result.judge,
-                         lamp=result.lamp,
-                         timestamp=result.timestamp,
-                         playspeed=result.playspeed,
-                         option=result.option,
-                         is_arcade=result.is_arcade,
-                         score=result.score,
-                         bp=result.bp,
-                         dead=result.dead,
-                        )
 
         self.score_rate = None
         """スコアレート(0.0-1.0; float)"""
@@ -218,7 +222,11 @@ class DetailedResult(OneResult):
                 msg += f"BPI: {self.bpi}, "
             msg += f"bp: {self.bp}, lamp: {self.lamp.name}, option: {self.option}, timestamp:{self.timestamp}\n"
             return msg
-
+        
+    def __eq__(self, other):
+        if not isinstance(other, DetailedResult):
+            return False
+        return (self.result == other.result)
 class ResultDatabase:
     """全リザルトを保存するためのクラス"""
     def __init__(self):
@@ -229,32 +237,21 @@ class ResultDatabase:
         self.load()
         self.save()
 
-    def add(self, judge:Judge, lamp:clear_lamp, option:PlayOption,
-            title:str=None, play_style:play_style=None, difficulty:difficulty=None, _chart_id:str=None,
-            playspeed=None
-        ):
+    def add(self, result:OneResult) -> bool:
         """リザルト登録用関数。chart_id情報を何も渡さなくても受ける(途中落ちのノーツ数保存用)
 
         Args:
-            judge (Judge): 判定内訳
-            lamp (clear_lamp): クリアランプ
-            option (PlayOption): プレーオプション
-            title (str, optional): 曲名. Defaults to None.
-            play_style (play_style, optional): SP/DP. Defaults to None.
-            difficulty (difficulty, optional): 譜面難易度. Defaults to None.
-            _chart_id (str, optional): 譜面ID. Defaults to None.
-            playspeed (_type_, optional): プレー速度. Defaults to None.
+            result (OneResult): リザルト
+
+        Return:
+            bool(True:登録された / False:登録済み等の理由で却下された)
         """
-        timestamp = int(datetime.datetime.now().timestamp())
-        if _chart_id:
-            chart_id = _chart_id
-        elif title is not None and play_style is not None and difficulty is not None:
-            chart_id = calc_chart_id(title, play_style, difficulty)
-        else: # chart_id不明(途中落ちなどの判定内訳も拾っておく)
-            chart_id = None
-        result = OneResult(chart_id=chart_id, judge=judge, lamp=lamp, timestamp=timestamp, option=option, playspeed=playspeed)
-        logger.info(f"result added! ({result})")
-        self.results.append(result)
+        if result not in self.results:
+            self.results.append(result)
+            logger.info(f"result added! hash:{hash(result)}, len:{len(self.results)}, result:{result}")
+            return True
+        else:
+            return False
 
     def __str__(self):
         out = ''
