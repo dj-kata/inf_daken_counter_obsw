@@ -301,7 +301,7 @@ class MainWindow(MainWindowUI):
                         self.result_database.save()
 
                         # 画像の保存
-                        if not self.config.autosave_image_mode ==config_autosave_image.invalid:
+                        if self.config.autosave_image_mode is not config_autosave_image.invalid:
                             self.save_image()
 
                         # 統計情報の更新
