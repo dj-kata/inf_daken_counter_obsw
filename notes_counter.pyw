@@ -132,7 +132,7 @@ class MainWindow(MainWindowUI):
                 if skip_no_update and (self.config.autosave_image_mode == config_autosave_image.only_updates): # 更新している場合のみ保存
                     best_score,best_bp,best_lamp = self.result_database.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=result.option.battle)
                     if result.score <= best_score and result.bp >= best_bp and result.lamp.value <= best_lamp:
-                        self.statusBar().showMessage(f"伸びていないのでスキップします。", 3000)
+                        self.statusBar().showMessage(f"伸びていないのでスキップします。", 10000)
                         return False
 
                 filename = f"inf_{detailed_result.result.title}_{get_chart_name(detailed_result.result.play_style, detailed_result.result.difficulty)}"
@@ -158,6 +158,7 @@ class MainWindow(MainWindowUI):
 
             # 画像を保存
             filename += '.png'
+            filename = escape_for_filename(filename)
             full_path = Path(self.config.image_save_path) / filename
             logger.info(f"autosaved! dst = {full_path}")
             screen.save(full_path)
@@ -279,7 +280,8 @@ class MainWindow(MainWindowUI):
         detailed_result = self.screen_reader.read_music_select_screen()
         result = detailed_result.result
         best_score,best_bp,best_lamp = self.result_database.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=result.option.battle)
-        if result.score > best_score or result.bp < best_bp or result.lamp.value > best_lamp:
+        logger.debug(f"best = score:{best_score},bp:{best_bp}, lamp:{best_lamp}")
+        if (result.score > best_score) or (result.bp and result.bp < best_bp) or result.lamp.value > best_lamp:
             self.result_database.add(result)
             self.result_database.save()
     
@@ -306,7 +308,9 @@ class MainWindow(MainWindowUI):
 
                         # 画像の保存
                         if self.config.autosave_image_mode is not config_autosave_image.invalid:
-                            self.save_image(skip_no_update=self.config.autosave_image_mode==config_autosave_image.only_updates)
+                            if self.save_image(skip_no_update=self.config.autosave_image_mode==config_autosave_image.only_updates):
+                                # 曲名の更新
+                                self.last_saved_song = get_title_with_chart(result.title, result.play_style, result.difficulty)
 
                         # 統計情報の更新
                         self.saved_result_count += 1
@@ -314,9 +318,6 @@ class MainWindow(MainWindowUI):
                             self.today_judge += result.judge
                             self.today_keystroke_count += (result.judge.pg + result.judge.gr + 
                                                            result.judge.gd + result.judge.bd)
-
-                        # 曲名の更新
-                        self.last_saved_song = get_title_with_chart(result.title, result.play_style, result.difficulty)
 
                 self.result_pre = result
         except:

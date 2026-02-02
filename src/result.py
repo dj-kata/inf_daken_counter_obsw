@@ -352,7 +352,8 @@ class ResultDatabase:
                 if option.arrange is not r.option.arrange or option.flip is not r.option.flip or option.special is not r.option.special:
                     continue
             ret[0] = max(ret[0], r.result.score)
-            ret[1] = min(ret[1], r.result.bp)
+            if r.result.judge:
+                ret[1] = min(ret[1], r.result.judge.bd + r.result.judge.pr)
             ret[2] = max(ret[2], r.result.lamp.value)
 
         return ret
