@@ -292,7 +292,7 @@ class ResultDatabase:
             pickle.dump(self.results, f)
 
     def search(self,
-                title:str=None, play_style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
+                title:str=None, style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
         ) -> List[DetailedResult]:
         """全リザルトの中から指定された譜面のプレーログのみを取り出してリストで返す
 
@@ -307,8 +307,8 @@ class ResultDatabase:
         """
         ret:List[DetailedResult] = []
         key = chart_id
-        if title is not None and play_style is not None and difficulty is not None:
-            key = calc_chart_id(title, play_style, difficulty)
+        if title is not None and style is not None and difficulty is not None:
+            key = calc_chart_id(title, style, difficulty)
         songinfo = self.song_database.search(key)
 
         for r in self.results:

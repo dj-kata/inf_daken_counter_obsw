@@ -61,6 +61,6 @@ if __name__ == '__main__':
         # break # debug
 
     rdb = ResultDatabase()
-    for r in rdb.search('青の洞窟', play_style=play_style.sp, difficulty=difficulty.normal):
+    for r in rdb.search('青の洞窟', style=play_style.sp, difficulty=difficulty.normal):
         print(r)
-    print(rdb.get_best('青の洞窟', play_style=play_style.sp, difficulty=difficulty.normal))
+    print(rdb.get_best('青の洞窟', style=play_style.sp, difficulty=difficulty.normal))
