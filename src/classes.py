@@ -1,5 +1,7 @@
 from enum import Enum
-from src.logger import logger
+from src.logger import get_logger
+logger = get_logger(__name__)
+
 from typing import List
 
 class clear_lamp(Enum):

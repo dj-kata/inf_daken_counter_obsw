@@ -7,7 +7,8 @@ import imagehash
 import glob
 
 from src.screen_reader import ScreenReader
-from src.logger import logger
+from src.logger import get_logger
+logger = get_logger(__name__)
 
 def gen_ocr_result(info, playdata):
     out = []
@@ -31,26 +32,29 @@ def gen_ocr_result(info, playdata):
 
 if __name__ == '__main__':
     reader = ScreenReader()
-    for f in glob.glob('debug/*.png'):
+    # for f in glob.glob('debug/*.png'):
     # for f in glob.glob('debug/select*.png'):
     # for f in glob.glob('debug/play_*.png'):
-    # for f in glob.glob('debug/result*.png'):
+    # for f in glob.glob('debug/2p_score.png'):
+    # for f in glob.glob('debug/result_1p_failed.png'):
+    # for f in glob.glob('debug/infinitas_20240316_002103.png'):
+    for f in glob.glob('debug/0126/*.png'):
         reader.update_screen_from_file(f)
         print('file=',f)
         if reader.is_result():
             r = reader.read_result_screen()
             if r:
                 print('[RESULT]', r)
-        elif reader.is_select():
-            r = reader.read_music_select_screen()
-            if r:
-                print('[SELECT]', r)
-        elif reader.is_play():
-            mode = reader.is_play()
-            r = reader.read_play_screen(mode)
-            if r:
-                print('[PLAY]', mode.name, r)
-
+        # elif reader.is_select():
+            # r = reader.read_music_select_screen()
+            # if r:
+                # print('[SELECT]', r)
+        # elif reader.is_play():
+            # mode = reader.is_play()
+            # r = reader.read_play_screen(mode)
+            # if r:
+                # print('[PLAY]', mode.name, r)
+# 
         # break # debug
 
 

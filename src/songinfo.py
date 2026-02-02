@@ -1,6 +1,7 @@
 from .classes import *
 from .funcs import *
-from .logger import logger
+from .logger import get_logger
+logger = get_logger(__name__)
 import os
 import bz2, pickle
 from typing import List

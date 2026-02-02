@@ -21,11 +21,12 @@ except ImportError:
 from src.config import Config
 from src.classes import detect_mode, play_style, difficulty, clear_lamp
 from src.funcs import *
-from src.obs_control import OBSWebSocketManager
+from src.obs_websocket_manager import OBSWebSocketManager
 from src.songinfo import SongDatabase
 from src.screen_reader import ScreenReader
 from src.result import ResultDatabase
-from src.logger import logger
+from src.logger import get_logger
+logger = get_logger(__name__)
 
 from src.config_dialog import ConfigDialog
 from src.obs_dialog import OBSControlDialog
@@ -262,7 +263,6 @@ class MainWindow(MainWindowUI):
             result.timestamp = self.result_timestamp
             if result and result.chart_id:
                 if result == self.result_pre:
-                    logger.debug(f"result == result_pre")
                     # リザルトを保存
                     if self.result_database.add(result):
                         logger.info(f"added!, result={result}")

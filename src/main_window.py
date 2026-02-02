@@ -14,7 +14,8 @@ except ImportError:
     KEYBOARD_AVAILABLE = False
 
 from src.classes import detect_mode
-from src.logger import logger
+from src.logger import get_logger
+logger = get_logger(__name__)
 
 
 class MainWindowUI(QMainWindow):

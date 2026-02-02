@@ -13,8 +13,9 @@ from PySide6.QtCore import Qt, Signal
 import traceback
 
 from src.config import Config
-from src.obs_control import OBSWebSocketManager
-from src.logger import logger
+from src.obs_websocket_manager import OBSWebSocketManager
+from src.logger import get_logger
+logger = get_logger(__name__)
 
 
 class OBSControlDialog(QDialog):

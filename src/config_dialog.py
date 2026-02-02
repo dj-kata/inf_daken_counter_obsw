@@ -13,8 +13,8 @@ import os
 
 from src.config import Config
 from src.classes import music_pack, config_autosave_image, config_modify_rivalarea
-from src.logger import logger
-
+from src.logger import get_logger
+logger = get_logger(__name__)
 
 class ConfigDialog(QDialog):
     """設定ダイアログクラス"""

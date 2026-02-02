@@ -8,14 +8,41 @@ LOG_DIR = "log"
 if not os.path.exists(LOG_DIR):
     os.makedirs(LOG_DIR)
 
-def get_logger():
-    '''呼び出し元のファイル名を取得してログファイル名にする'''
-    # 実行メインスクリプト名を取得
-    main_file = os.path.splitext(os.path.basename(sys.argv[0]))[0]
-    log_file = os.path.join(LOG_DIR, f"{main_file}.log")
+def get_logger(name=None):
+    '''
+    モジュール名に基づいてloggerを取得
+    
+    Args:
+        name: モジュール名（通常は __name__ を渡す）
+              Noneの場合はメインスクリプト名を使用
+    
+    Returns:
+        logging.Logger: 指定されたモジュール用のlogger
+    
+    使用例:
+        # 各モジュールで以下のように使用
+        from src.logger import get_logger
+        logger = get_logger(__name__)
+    '''
+    if name is None:
+        # nameが指定されていない場合はメインスクリプト名を使用
+        main_file = os.path.splitext(os.path.basename(sys.argv[0]))[0]
+        log_file = os.path.join(LOG_DIR, f"{main_file}.log")
+        logger_name = "app_logger"
+    else:
+        # モジュール名からファイル名を生成
+        # 例: 'src.result' -> 'result'
+        #     'result' -> 'result'
+        module_name = name.split('.')[-1] if '.' in name else name
+        log_file = os.path.join(LOG_DIR, f"{module_name}.log")
+        logger_name = name
 
-    logger = logging.getLogger("app_logger")
+    # 指定された名前でloggerを取得
+    logger = logging.getLogger(logger_name)
     logger.setLevel(logging.DEBUG)
+    
+    # 親loggerへの伝播を無効化（重複ログを防ぐ）
+    logger.propagate = False
 
     # 既にハンドラがある場合は追加しない（二重出力を防ぐ）
     if not logger.handlers:
@@ -40,5 +67,6 @@ def get_logger():
 
     return logger
 
-# インスタンスを作成しておく
+# デフォルトインスタンス（後方互換性のため）
+# 既存コードで `from src.logger import logger` を使っている場合に対応
 logger = get_logger()

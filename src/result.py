@@ -2,7 +2,8 @@
 from .classes import *
 from .funcs import *
 from .songinfo import *
-from .logger import logger
+from .logger import get_logger
+logger = get_logger(__name__)
 import datetime
 import os
 import bz2, pickle

@@ -1,7 +1,8 @@
 import json
 import os
 import traceback
-from src.logger import logger
+from src.logger import get_logger
+logger = get_logger(__name__)
 from src.classes import config_autosave_image, config_modify_rivalarea, music_pack
 
 class Config:
