@@ -62,6 +62,7 @@ class MainWindow(MainWindowUI):
         self.today_keystroke_count = 0
         self.saved_result_count = 0
         self.last_saved_song = "---"
+        self.result_pre = None # 1つ前の認識結果
         
         # UI初期化
         self.init_ui()
@@ -129,7 +130,7 @@ class MainWindow(MainWindowUI):
                 detailed_result = self.screen_reader.read_result_screen()
                 result = detailed_result.result
                 if self.config.autosave_image_mode == config_autosave_image.only_updates.value: # 更新している場合のみ保存
-                    best_score,best_bp,best_lamp = self.result_database.get_best(result.title, result.play_style, result.difficulty, result)
+                    best_score,best_bp,best_lamp = self.result_database.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=result.option.battle)
                     if result.score <= best_score and result.bp >= best_bp and result.lamp.value <= best_lamp:
                         self.statusBar().showMessage(f"伸びていないのでスキップします。", 3000)
                         return False
@@ -275,9 +276,12 @@ class MainWindow(MainWindowUI):
     
     def process_select_mode(self):
         """選曲画面での処理"""
-        # ここにselect画面での処理を実装
-        # 例: 選曲情報の読み取りなど
-        pass
+        detailed_result = self.screen_reader.read_music_select_screen()
+        result = detailed_result.result
+        best_score,best_bp,best_lamp = self.result_database.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=result.option.battle)
+        if result.score > best_score or result.bp < best_bp or result.lamp.value > best_lamp:
+            self.result_database.add(result)
+            self.result_database.save()
     
     def process_play_mode(self):
         """プレー画面での処理"""
