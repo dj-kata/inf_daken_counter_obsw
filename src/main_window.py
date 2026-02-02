@@ -180,7 +180,7 @@ class MainWindowUI(QMainWindow):
                 keyboard.remove_hotkey('f6')
                 logger.info("グローバルホットキー (F6) を解除しました")
             except Exception as e:
-                logger.debug(f"グローバルホットキー解除エラー: {e}")
+                logger.error(f"グローバルホットキー解除エラー: {e}")
     
     def update_display(self):
         """表示更新"""

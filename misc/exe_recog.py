@@ -9,6 +9,7 @@ import glob
 from src.screen_reader import ScreenReader
 from src.logger import get_logger
 from src.result import ResultDatabase
+from src.classes import detect_mode, play_style, difficulty, clear_lamp
 logger = get_logger(__name__)
 
 def gen_ocr_result(info, playdata):
@@ -60,3 +61,6 @@ if __name__ == '__main__':
         # break # debug
 
     rdb = ResultDatabase()
+    for r in rdb.search('青の洞窟', play_style=play_style.sp, difficulty=difficulty.normal):
+        print(r)
+    print(rdb.get_best('青の洞窟', play_style=play_style.sp, difficulty=difficulty.normal))

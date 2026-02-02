@@ -5,6 +5,7 @@ import sys
 import re
 from PIL import Image
 import numpy as np
+import imagehash
 
 sys.path.append('infnotebook')
 from screenshot import Screenshot,open_screenimage
@@ -114,7 +115,6 @@ def convert_difficulty(_difficulty) -> difficulty|None:
     return diff
 
 def convert_lamp(_lamp) -> clear_lamp|None:
-    lamp = None
     if _lamp == 'NOPLAY':
         lamp = clear_lamp.noplay
     elif _lamp == 'FAILED':
@@ -131,6 +131,8 @@ def convert_lamp(_lamp) -> clear_lamp|None:
         lamp = clear_lamp.exh
     elif _lamp == 'F-COMBO':
         lamp = clear_lamp.fc
+    else:
+        lamp = clear_lamp.noplay
     return lamp
 
 def convert_side(side:str) -> result_side:
@@ -154,12 +156,8 @@ def mosaic_rival_area(img:Image, side:result_side) -> Image:
     img_array = np.array(img)
     if side == result_side._1p: # ライバルエリアが右側
         sx=1375
-        det_rival_sx = 42
-        rival_name_sx = 226
     else:
         sx=35
-        det_rival_sx = 1392
-        rival_name_sx = 1576
     sy=270
     ex=sx+456
     ey=sy+618
@@ -168,23 +166,33 @@ def mosaic_rival_area(img:Image, side:result_side) -> Image:
     rivalarea = rivalarea.resize((456,618))
     rival_array = np.array(rivalarea)
     img_array[sy:ey, sx:ex] = rival_array
+    return Image.fromarray(img_array)
 
+def mosaic_other_rival_names(img:Image, side:result_side) -> Image:
+    '''挑戦状及びターゲットスコアにおけるライバル名を隠す'''
+    img_array = np.array(img)
+    if side == result_side._1p: # ライバルエリアが右側
+        det_rival_sx = 42
+        rival_name_sx = 226
+    else:
+        det_rival_sx = 1392
+        rival_name_sx = 1576
     # # 挑戦状エリアの処理
     # ### TODO 挑戦状日時の部分をひろうと、撃破とかのエフェクトが重なるのでライバル名のところに変更
-    # hash_target = imagehash.hex_to_hash('00007f7f7f7f1400')
-    # hash = imagehash.average_hash(img.crop((827,854,926,876)))
-    # if abs(hash - hash_target) < 5:
-    #     mailarea = img.crop((875,777,987,799))
-    #     mailarea = mailarea.resize((11,2))
-    #     mailarea = mailarea.resize((112,22))
-    #     mail_array = np.array(mailarea)
-    #     img_array[777:799, 875:987] = mail_array
-    # ## ターゲット名も隠す(ライバルの名前が入っている可能性があるため)
-    # hash_target = imagehash.hex_to_hash('00ffff000000ffff')
-    # hash = imagehash.average_hash(img.crop((det_rival_sx,690,det_rival_sx+15,699)))
-    # if abs(hash - hash_target) < 5: # ターゲットがライバル
-    #     targetarea = img.crop((rival_name_sx,690,rival_name_sx+82,707))
-    #     targetarea = targetarea.resize((8,2))
-    #     targetarea = targetarea.resize((82,20))
-    #     img_array[687:707, rival_name_sx:rival_name_sx+82] = targetarea
+    hash_target = imagehash.hex_to_hash('00007f7f7f7f1400')
+    hash = imagehash.average_hash(img.crop((827,854,926,876)))
+    if abs(hash - hash_target) < 5:
+        mailarea = img.crop((875,777,987,799))
+        mailarea = mailarea.resize((11,2))
+        mailarea = mailarea.resize((112,22))
+        mail_array = np.array(mailarea)
+        img_array[777:799, 875:987] = mail_array
+    ## ターゲット名も隠す(ライバルの名前が入っている可能性があるため)
+    hash_target = imagehash.hex_to_hash('00ffff000000ffff')
+    hash = imagehash.average_hash(img.crop((det_rival_sx,690,det_rival_sx+15,699)))
+    if abs(hash - hash_target) < 5: # ターゲットがライバル
+        targetarea = img.crop((rival_name_sx,690,rival_name_sx+82,707))
+        targetarea = targetarea.resize((8,2))
+        targetarea = targetarea.resize((82,20))
+        img_array[687:707, rival_name_sx:rival_name_sx+82] = targetarea
     return Image.fromarray(img_array)

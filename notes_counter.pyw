@@ -124,10 +124,17 @@ class MainWindow(MainWindowUI):
         ゲーム画面のキャプチャ画像を保存する。リザルト画面なら曲名などをファイル名に入れる。
         """
         try:
-            date = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
             if self.screen_reader.is_result():
+                date = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
                 detailed_result = self.screen_reader.read_result_screen()
-                filename = f"inf_{detailed_result.title}_{get_chart_name(detailed_result.play_style, detailed_result.difficulty)}"
+                result = detailed_result.result
+                if self.config.autosave_image_mode == config_autosave_image.only_updates.value: # 更新している場合のみ保存
+                    best_score,best_bp,best_lamp = self.result_database.get_best(result.title, result.play_style, result.difficulty)
+                    if result.score <= best_score and result.bp >= best_bp and result.lamp.value <= best_lamp:
+                        self.statusBar().showMessage(f"伸びていないのでスキップします。", 3000)
+                        return False
+
+                filename = f"inf_{detailed_result.result.title}_{get_chart_name(detailed_result.result.play_style, detailed_result.result.difficulty)}"
                 filename += f"_{detailed_result.result.lamp.name}"
                 filename += f"_ex{detailed_result.result.score}"
                 filename += f"_bp{detailed_result.result.bp}"
@@ -140,21 +147,26 @@ class MainWindow(MainWindowUI):
             # 保存対象となる画像データ
             screen = self.screen_reader.screen.original
 
-            if self.config.modify_rivalarea_mode == config_modify_rivalarea.cut.value: # カットする場合
+            if self.config.modify_rivalarea_mode == config_modify_rivalarea.mosaic.value: # モザイク処理する場合
+                screen = mosaic_rival_area(screen, detailed_result.result_side)
+                screen = mosaic_other_rival_names(screen, detailed_result.result_side)
+            elif self.config.modify_rivalarea_mode == config_modify_rivalarea.cut.value: # カットする場合
+                screen = mosaic_other_rival_names(screen, detailed_result.result_side)
                 screen = cut_rival_area(screen, detailed_result.result_side)
                 filename += f"_cut{detailed_result.result_side.name[1:]}"
-            elif self.config.modify_rivalarea_mode == config_modify_rivalarea.mosaic.value: # モザイク処理する場合
-                screen = mosaic_rival_area(screen, detailed_result.result_side)
 
             # 画像を保存
             filename += '.png'
             full_path = Path(self.config.image_save_path) / filename
-            logger.info(f"dst = {full_path}")
+            logger.info(f"autosaved! dst = {full_path}")
             screen.save(full_path)
+            self.statusBar().showMessage(f"保存しました -> {filename}", 10000)
+            return True
             
         except Exception as e:
             logger.error(f"画像保存エラー: {traceback.format_exc()}")
             self.statusBar().showMessage(f"画像保存エラー: {str(e)}", 3000)
+            return False
     
     def on_obs_connection_changed(self, is_connected: bool, message: str):
         """
@@ -289,7 +301,8 @@ class MainWindow(MainWindowUI):
                         self.result_database.save()
 
                         # 画像の保存
-                        self.save_image()
+                        if not self.config.autosave_image_mode ==config_autosave_image.invalid:
+                            self.save_image()
 
                         # 統計情報の更新
                         self.saved_result_count += 1
@@ -299,7 +312,7 @@ class MainWindow(MainWindowUI):
                                                            result.judge.gd + result.judge.bd)
 
                         # 曲名の更新
-                        self.last_saved_song = get_title_with_chart(detailed_result.title, detailed_result.play_style, detailed_result.difficulty)
+                        self.last_saved_song = get_title_with_chart(result.title, result.play_style, result.difficulty)
 
                 self.result_pre = result
         except:

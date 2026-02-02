@@ -138,7 +138,7 @@ class OneResult:
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""
         if self.lamp and self.score:
-            return f"song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_arcade:{self.is_arcade}, timestamp:{self.timestamp}"
+            return f"song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_arcade:{self.is_arcade}, timestamp:{datetime.date.fromtimestamp(self.timestamp)}"
         else:
             return "not a result data!"
 
@@ -306,9 +306,8 @@ class ResultDatabase:
             List[DetailedResult]: 検索結果(詳細付きリザルトのリスト)
         """
         ret:List[DetailedResult] = []
-        if chart_id:
-            key = chart_id
-        elif title is not None and play_style is not None and difficulty is not None:
+        key = chart_id
+        if title is not None and play_style is not None and difficulty is not None:
             key = calc_chart_id(title, play_style, difficulty)
         songinfo = self.song_database.search(key)
 
@@ -316,6 +315,32 @@ class ResultDatabase:
             if r.chart_id == key:
                 detail = DetailedResult(songinfo, r)
                 ret.append(detail)
+        return ret
+    
+    def get_best(self,
+                title:str=None, play_style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
+        ) -> List[int]:
+        """指定された曲の自己べ(スコア, BP, ランプ)を返す。見つからない場合は0,0を返す。
+
+        Args:
+            title (str, optional): _description_. Defaults to None.
+            play_style (play_style, optional): _description_. Defaults to None.
+            difficulty (difficulty, optional): _description_. Defaults to None.
+            chart_id (str, optional): _description_. Defaults to None.
+
+        Returns:
+            List[int]: score, bp, lamp
+        """
+        ret:List[int] = [0,99999999,0]
+        key = chart_id
+        if title is not None and play_style is not None and difficulty is not None:
+            key = calc_chart_id(title, play_style, difficulty)
+        results = self.search(chart_id=key)
+        for r in results:
+            ret[0] = max(ret[0], r.result.score)
+            ret[1] = min(ret[1], r.result.bp)
+            ret[2] = max(ret[2], r.result.lamp.value)
+
         return ret
     
 if __name__ == '__main__':
