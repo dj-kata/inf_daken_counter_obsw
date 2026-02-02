@@ -329,7 +329,8 @@ class ResultDatabase:
             style (play_style, optional): _description_. Defaults to None.
             difficulty (difficulty, optional): _description_. Defaults to None.
             chart_id (str, optional): _description_. Defaults to None.
-            result (OneResult, optional): DBx系の判定に使う、Defaults to None.
+            battle (bool, optional): DBx系の判定に使う、Defaults to False.
+            option (PlayOption, optional): 同一オプションのリザルトのみとしたい場合に指定、Defaults to False.
 
         Returns:
             List[int]: score, bp, lamp
@@ -348,7 +349,7 @@ class ResultDatabase:
                     if r.result.option.battle:
                         continue
             if option: # オプション指定がある場合は、arrangeが一致するもののみ通す
-                if option.arrange is not r.option.arrange:
+                if option.arrange is not r.option.arrange or option.flip is not r.option.flip or option.special is not r.option.special:
                     continue
             ret[0] = max(ret[0], r.result.score)
             ret[1] = min(ret[1], r.result.bp)
