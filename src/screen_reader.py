@@ -88,6 +88,8 @@ class ScreenReader:
                 bp = result.details.miss_count.current
                 diff = convert_difficulty(result.informations.difficulty)
                 lamp = convert_lamp(result.details.clear_type.current)
+                if lamp is None: # 認識失敗とみなす
+                    return None
                 chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
                 songinfo = self.songinfo.search(chart_id)
                 timestamp = int(datetime.datetime.now().timestamp())

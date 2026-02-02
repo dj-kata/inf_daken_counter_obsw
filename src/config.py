@@ -38,8 +38,8 @@ class Config:
         self.target_music_packs = [pack.name for pack in music_pack if pack != music_pack.unknown]
         
         # 画像保存設定
-        self.autosave_image_mode = config_autosave_image.only_updates.value  # 画像保存条件
-        self.modify_rivalarea_mode = config_modify_rivalarea.invalid.value  # ライバル欄編集方法
+        self.autosave_image_mode = config_autosave_image.only_updates  # 画像保存条件
+        self.modify_rivalarea_mode = config_modify_rivalarea.invalid  # ライバル欄編集方法
         self.write_statistics = False  # 統計情報を書き込むか
         
         self.load_config()
@@ -87,8 +87,8 @@ class Config:
                             self.target_music_packs.append(pack_name)
                     
                     # 画像保存設定
-                    self.autosave_image_mode = config_data.get('autosave_image_mode', config_autosave_image.invalid.value)
-                    self.modify_rivalarea_mode = config_data.get('modify_rivalarea_mode', config_modify_rivalarea.invalid.value)
+                    self.autosave_image_mode = config_autosave_image(config_data.get('autosave_image_mode', config_autosave_image.invalid.value))
+                    self.modify_rivalarea_mode = config_modify_rivalarea(config_data.get('modify_rivalarea_mode', config_modify_rivalarea.invalid.value))
                     self.write_statistics = config_data.get('write_statistics', False)
             except Exception as e:
                 logger.error(traceback.format_exc())
@@ -111,8 +111,8 @@ class Config:
             "monitor_source_name": self.monitor_source_name,
             "image_save_path": self.image_save_path,
             "target_music_packs": self.target_music_packs,
-            "autosave_image_mode": self.autosave_image_mode,
-            "modify_rivalarea_mode": self.modify_rivalarea_mode,
+            "autosave_image_mode": self.autosave_image_mode.value,
+            "modify_rivalarea_mode": self.modify_rivalarea_mode.value,
             "write_statistics": self.write_statistics,
         }
         

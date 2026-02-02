@@ -132,7 +132,7 @@ def convert_lamp(_lamp) -> clear_lamp|None:
     elif _lamp == 'F-COMBO':
         lamp = clear_lamp.fc
     else:
-        lamp = clear_lamp.noplay
+        lamp = None
     return lamp
 
 def convert_side(side:str) -> result_side:
