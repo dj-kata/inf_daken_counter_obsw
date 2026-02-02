@@ -8,6 +8,7 @@ import glob
 
 from src.screen_reader import ScreenReader
 from src.logger import get_logger
+from src.result import ResultDatabase
 logger = get_logger(__name__)
 
 def gen_ocr_result(info, playdata):
@@ -58,4 +59,4 @@ if __name__ == '__main__':
 # 
         # break # debug
 
-
+    rdb = ResultDatabase()

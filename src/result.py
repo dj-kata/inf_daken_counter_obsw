@@ -76,7 +76,9 @@ class PlayOption():
 class OneResult:
     """1曲分のリザルトを表すクラス。ファイルへの保存用。"""
     def __init__(self,
-                    chart_id:str,
+                    title:str,
+                    play_style:play_style,
+                    difficulty:difficulty,
                     lamp:clear_lamp,
                     timestamp:int,
                     playspeed:float | None,
@@ -87,7 +89,13 @@ class OneResult:
                     bp:int=None,
                     dead:bool=None,
                 ):
-        self.chart_id  = chart_id
+        self.title = title
+        '''曲名'''
+        self.play_style = play_style
+        '''SP/DP'''
+        self.difficulty = difficulty
+        '''譜面難易度'''
+        self.chart_id  = calc_chart_id(title, play_style, difficulty)
         """楽曲ID。無効なIDも設定可能とする"""
         self.judge     = judge
         """判定内訳"""
@@ -104,10 +112,6 @@ class OneResult:
         self.is_arcade = is_arcade
         self.dead      = dead
         
-    def disp_all(self):
-        """全attrsを表示"""
-        print(self.__dict__)
-
     def __eq__(self, other):
         if not isinstance(other, OneResult):
             return False
@@ -134,7 +138,7 @@ class OneResult:
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""
         if self.lamp and self.score:
-            return f"chart_id:{self.chart_id}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_arcade:{self.is_arcade}, timestamp:{self.timestamp}"
+            return f"song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_arcade:{self.is_arcade}, timestamp:{self.timestamp}"
         else:
             return "not a result data!"
 
@@ -143,9 +147,6 @@ class DetailedResult():
     def __init__(self,
                     songinfo:OneSongInfo,
                     result:OneResult,
-                    title:str=None,
-                    play_style:play_style=None,
-                    difficulty:difficulty=None,
                     result_side:result_side=None,
                     notes:int=None,
                 ):
@@ -155,12 +156,6 @@ class DetailedResult():
         self.songinfo = songinfo
         '''曲情報'''
 
-        self.title = title
-        '''曲名'''
-        self.play_style = play_style
-        '''SP/DP'''
-        self.difficulty = difficulty
-        '''譜面難易度'''
         self.result_side = result_side
         '''1P/2Pどちら側であるか'''
         self.notes = notes
@@ -231,7 +226,7 @@ class DetailedResult():
         return bpi
     def __str__(self):
         """主要情報の文字列を出力。ログ用(overrided)"""
-        msg = f"chart:{get_title_with_chart(self.title, self.play_style, self.difficulty)}"
+        msg = f"chart:{get_title_with_chart(self.result.title, self.result.play_style, self.result.difficulty)}"
         msg += f", score: {self.result.score}"
         if self.notes:
             msg += f"/{2*self.notes}"

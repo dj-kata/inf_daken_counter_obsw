@@ -100,9 +100,9 @@ class ScreenReader:
                 else: # 途中落ちの場合残りノーツを見逃しとして足しておく
                     judge.pr += (notes - judge_sum)
 
-                out_result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
+                out_result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
                                    judge=judge,score=score,bp=bp, dead=result.dead)
-                ret = DetailedResult(songinfo=songinfo, result=out_result, title=title, play_style=style, difficulty=diff, result_side=convert_side(result.play_side), notes=notes)
+                ret = DetailedResult(songinfo=songinfo, result=out_result, result_side=convert_side(result.play_side), notes=notes)
         except:
             logger.error(traceback.format_exc())
             return None
@@ -122,7 +122,7 @@ class ScreenReader:
             chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
             songinfo = self.songinfo.search(chart_id)
             timestamp = int(datetime.datetime.now().timestamp())
-            result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=None, option=PlayOption(None),
+            result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=None, option=PlayOption(None),
                                judge=None,score=score,bp=bp)
             ret = DetailedResult(songinfo=songinfo, result=result)
         return ret
