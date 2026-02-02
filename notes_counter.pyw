@@ -4,14 +4,19 @@ OBS連携による自動リザルト保存アプリケーション
 """
 
 import sys
-from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
-                               QHBoxLayout, QLabel, QMenuBar, QMenu, QStatusBar,
-                               QGroupBox, QGridLayout)
-from PySide6.QtCore import QTimer, QTime, Qt, QRect
-from PySide6.QtGui import QAction, QScreen
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QTimer
 import time
 import traceback
 import datetime
+
+try:
+    import keyboard
+    KEYBOARD_AVAILABLE = True
+except ImportError:
+    KEYBOARD_AVAILABLE = False
+    print("警告: keyboardライブラリがインストールされていません。グローバルホットキーは無効です。")
+    print("有効にするには: pip install keyboard")
 
 from src.config import Config
 from src.classes import detect_mode, play_style, difficulty, clear_lamp
@@ -24,9 +29,11 @@ from src.logger import logger
 
 from src.config_dialog import ConfigDialog
 from src.obs_dialog import OBSControlDialog
+from src.main_window import MainWindowUI
 
-class MainWindow(QMainWindow):
-    """メインウィンドウクラス"""
+
+class MainWindow(MainWindowUI):
+    """メインウィンドウクラス - 制御ロジックを担当"""
     
     def __init__(self):
         super().__init__()
@@ -70,119 +77,10 @@ class MainWindow(QMainWindow):
         self.display_timer.timeout.connect(self.update_display)
         self.display_timer.start(500)
         
+        # グローバルホットキーの登録
+        self.setup_global_hotkeys()
+        
         logger.info("アプリケーション起動完了")
-    
-    def init_ui(self):
-        """UI初期化"""
-        self.setWindowTitle("INFINITAS daken counter")
-
-        self.restore_window_geometry()
-        
-        # メニューバーの作成
-        self.create_menu_bar()
-        
-        # 中央ウィジェット
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        
-        # メインレイアウト
-        main_layout = QVBoxLayout()
-        central_widget.setLayout(main_layout)
-        
-        # OBS接続状態グループ
-        obs_group = QGroupBox("OBS接続状態")
-        obs_layout = QHBoxLayout()
-        self.obs_status_label = QLabel("未接続")
-        self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")
-        obs_layout.addWidget(self.obs_status_label)
-        obs_group.setLayout(obs_layout)
-        main_layout.addWidget(obs_group)
-        
-        # 状態情報グループ
-        status_group = QGroupBox("状態情報")
-        status_layout = QGridLayout()
-        
-        # ラベル作成
-        status_layout.addWidget(QLabel("現在のモード:"), 0, 0)
-        self.mode_label = QLabel("初期化中")
-        status_layout.addWidget(self.mode_label, 0, 1)
-        
-        status_layout.addWidget(QLabel("起動時間:"), 1, 0)
-        self.uptime_label = QLabel("00:00:00")
-        status_layout.addWidget(self.uptime_label, 1, 1)
-        
-        status_layout.addWidget(QLabel("本日の打鍵数:"), 2, 0)
-        self.keystroke_label = QLabel("0")
-        status_layout.addWidget(self.keystroke_label, 2, 1)
-        
-        status_layout.addWidget(QLabel("保存したリザルト数:"), 3, 0)
-        self.result_count_label = QLabel("0")
-        status_layout.addWidget(self.result_count_label, 3, 1)
-        
-        status_layout.addWidget(QLabel("最後に保存した曲:"), 4, 0)
-        self.last_song_label = QLabel("---")
-        self.last_song_label.setWordWrap(True)
-        status_layout.addWidget(self.last_song_label, 4, 1)
-        
-        status_group.setLayout(status_layout)
-        main_layout.addWidget(status_group)
-        
-        # ストレッチでスペースを埋める
-        main_layout.addStretch()
-        
-        # ステータスバー
-        self.statusBar().showMessage("準備完了")
-    def restore_window_geometry(self):
-        """ウィンドウ位置とサイズを復元"""
-        if self.config.main_window_geometry:
-            import base64
-            from PySide6.QtCore import QByteArray
-
-            geometry_bytes = base64.b64decode(self.config.main_window_geometry)
-            geometry = QByteArray(geometry_bytes)
-            self.restoreGeometry(geometry)
-        else:
-            self.setGeometry(100, 100, 500, 300)
-
-    def save_window_geometry(self):
-        """ジオメトリを保存"""
-        import base64
-
-        geometry = self.saveGeometry()
-        geometry_str = base64.b64encode(geometry.data()).decode('ascii')
-
-        self.config.main_window_geometry = geometry_str
-        self.config.save_config()
-
-    def create_menu_bar(self):
-        """メニューバー作成"""
-        menubar = self.menuBar()
-        
-        # ファイルメニュー
-        file_menu = menubar.addMenu("ファイル(&F)")
-        
-        exit_action = QAction("終了(&X)", self)
-        exit_action.setShortcut("Ctrl+Q")
-        exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
-        
-        # 設定メニュー
-        settings_menu = menubar.addMenu("設定(&S)")
-        
-        config_action = QAction("基本設定(&C)...", self)
-        config_action.triggered.connect(self.open_config_dialog)
-        settings_menu.addAction(config_action)
-        
-        obs_action = QAction("OBS制御設定(&O)...", self)
-        obs_action.triggered.connect(self.open_obs_dialog)
-        settings_menu.addAction(obs_action)
-        
-        # ヘルプメニュー
-        help_menu = menubar.addMenu("ヘルプ(&H)")
-        
-        about_action = QAction("バージョン情報(&A)", self)
-        about_action.triggered.connect(self.show_about)
-        help_menu.addAction(about_action)
     
     def open_config_dialog(self):
         """設定ダイアログを開く"""
@@ -219,36 +117,23 @@ class MainWindow(QMainWindow):
                          "IIDX Helper v1.0\n\n"
                          "OBS連携による自動リザルト保存アプリケーション")
     
-    def update_display(self):
-        """表示更新"""
-        # OBS接続状態
-        status_msg, is_connected = self.obs_manager.get_status()
-        self.obs_status_label.setText(status_msg)
-        if is_connected:
-            self.obs_status_label.setStyleSheet("color: green; font-weight: bold;")
-        else:
-            self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")
+    def save_image(self):
+        """
+        ゲーム画面のキャプチャ画像を保存する
         
-        # モード表示
-        mode_names = {
-            detect_mode.init: "初期化中",
-            detect_mode.play: "プレー中",
-            detect_mode.select: "選曲画面",
-            detect_mode.result: "リザルト"
-        }
-        self.mode_label.setText(mode_names.get(self.current_mode, "不明"))
-        
-        # 起動時間
-        elapsed = int(time.time() - self.start_time)
-        hours = elapsed // 3600
-        minutes = (elapsed % 3600) // 60
-        seconds = elapsed % 60
-        self.uptime_label.setText(f"{hours:02d}:{minutes:02d}:{seconds:02d}")
-        
-        # 統計情報
-        self.keystroke_label.setText(str(self.today_keystroke_count))
-        self.result_count_label.setText(str(self.saved_result_count))
-        self.last_song_label.setText(self.last_saved_song)
+        画像保存処理をここに実装してください。
+        - 現在のスクリーンショットを取得
+        - 設定に応じて編集（ライバル欄のモザイク/カット、統計情報の書き込み等）
+        - 指定されたフォルダに保存
+        """
+        try:
+            logger.info("画像保存ボタンが押されました")
+            # TODO: 画像保存処理を実装
+            
+            self.statusBar().showMessage("画像保存機能は未実装です", 3000)
+        except Exception as e:
+            logger.error(f"画像保存エラー: {traceback.format_exc()}")
+            self.statusBar().showMessage(f"画像保存エラー: {str(e)}", 3000)
     
     def on_obs_connection_changed(self, is_connected: bool, message: str):
         """
@@ -408,6 +293,9 @@ class MainWindow(QMainWindow):
     
     def closeEvent(self, event):
         """ウィンドウクローズイベント"""
+        # グローバルホットキーの解除
+        self.remove_global_hotkeys()
+        
         # OBS接続を切断（監視スレッドも停止）
         self.obs_manager.disconnect()
 
@@ -438,11 +326,5 @@ def main():
 
 
 if __name__ == "__main__":
-    # main()
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")  # モダンなスタイルを適用
-    
-    window = MainWindow()
-    window.show()
-    
-    sys.exit(app.exec())
+    main()
+
