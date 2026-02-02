@@ -2,6 +2,7 @@ import json
 import os
 import traceback
 from src.logger import logger
+from src.classes import config_autosave_image, config_modify_rivalarea, music_pack
 
 class Config:
     '''設定を管理するクラス'''
@@ -31,6 +32,14 @@ class Config:
         self.monitor_source_name = ""
 
         self.image_save_path = 'results'
+        
+        # 楽曲パック集計対象設定（デフォルトはunknown以外の全て）
+        self.target_music_packs = [pack.name for pack in music_pack if pack != music_pack.unknown]
+        
+        # 画像保存設定
+        self.autosave_image_mode = config_autosave_image.only_updates.value  # 画像保存条件
+        self.modify_rivalarea_mode = config_modify_rivalarea.invalid.value  # ライバル欄編集方法
+        self.write_statistics = False  # 統計情報を書き込むか
         
         self.load_config()
         self.save_config()
@@ -65,6 +74,21 @@ class Config:
 
                     # リザルト画像保存先フォルダ
                     self.image_save_path = config_data.get('image_save_path', 'results')
+                    
+                    # 楽曲パック集計対象設定
+                    self.target_music_packs = config_data.get('target_music_packs', [])
+                    
+                    # 設定ファイルに存在しない新しい楽曲パックを自動的に追加
+                    # (将来music_packに項目が追加された際の対応)
+                    all_packs = [pack.name for pack in music_pack if pack != music_pack.unknown]
+                    for pack_name in all_packs:
+                        if pack_name not in self.target_music_packs:
+                            self.target_music_packs.append(pack_name)
+                    
+                    # 画像保存設定
+                    self.autosave_image_mode = config_data.get('autosave_image_mode', config_autosave_image.invalid.value)
+                    self.modify_rivalarea_mode = config_data.get('modify_rivalarea_mode', config_modify_rivalarea.invalid.value)
+                    self.write_statistics = config_data.get('write_statistics', False)
             except Exception as e:
                 logger.error(traceback.format_exc())
                 print(f"設定ファイル読み込みエラー: {e}")
@@ -85,6 +109,10 @@ class Config:
             "obs_control_settings": self.obs_control_settings,
             "monitor_source_name": self.monitor_source_name,
             "image_save_path": self.image_save_path,
+            "target_music_packs": self.target_music_packs,
+            "autosave_image_mode": self.autosave_image_mode,
+            "modify_rivalarea_mode": self.modify_rivalarea_mode,
+            "write_statistics": self.write_statistics,
         }
         
         try:

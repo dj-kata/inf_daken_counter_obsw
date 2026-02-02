@@ -6,11 +6,13 @@
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
                                QLineEdit, QSpinBox, QCheckBox, QPushButton,
                                QGroupBox, QFileDialog, QTabWidget, QWidget,
-                               QListWidget, QLabel, QDialogButtonBox)
+                               QListWidget, QLabel, QDialogButtonBox, QRadioButton,
+                               QButtonGroup, QScrollArea, QGridLayout)
 from PySide6.QtCore import Qt
 import os
 
 from src.config import Config
+from src.classes import music_pack, config_autosave_image, config_modify_rivalarea
 from src.logger import logger
 
 
@@ -45,6 +47,8 @@ class ConfigDialog(QDialog):
         # 各タブを作成
         tab_widget.addTab(self.create_websocket_tab(), "OBS WebSocket")
         tab_widget.addTab(self.create_feature_tab(), "機能設定")
+        tab_widget.addTab(self.create_music_pack_tab(), "楽曲パック")
+        tab_widget.addTab(self.create_image_save_tab(), "画像保存")
         
         # ボタン
         button_box = QDialogButtonBox(
@@ -142,6 +146,128 @@ class ConfigDialog(QDialog):
         if dir_path:
             self.image_save_path_edit.setText(dir_path)
     
+    def create_music_pack_tab(self):
+        """楽曲パック設定タブ"""
+        widget = QWidget()
+        layout = QVBoxLayout()
+        widget.setLayout(layout)
+        
+        # 説明ラベル
+        label = QLabel("集計対象とする楽曲パックを選択してください")
+        layout.addWidget(label)
+        
+        # 全選択/全解除ボタン
+        button_layout = QHBoxLayout()
+        select_all_button = QPushButton("全て選択")
+        deselect_all_button = QPushButton("全て解除")
+        select_all_button.clicked.connect(self.on_select_all_music_packs)
+        deselect_all_button.clicked.connect(self.on_deselect_all_music_packs)
+        button_layout.addWidget(select_all_button)
+        button_layout.addWidget(deselect_all_button)
+        button_layout.addStretch()
+        layout.addLayout(button_layout)
+        
+        # スクロール可能なチェックボックスエリア
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_layout = QGridLayout()
+        scroll_widget.setLayout(scroll_layout)
+        
+        # music_packの各項目に対してチェックボックスを作成
+        self.music_pack_checkboxes = {}
+        row = 0
+        col = 0
+        max_cols = 3  # 3列表示
+        
+        for pack in music_pack:
+            # unknownは除外
+            if pack == music_pack.unknown:
+                continue
+            
+            checkbox = QCheckBox(pack.name)
+            self.music_pack_checkboxes[pack.name] = checkbox
+            scroll_layout.addWidget(checkbox, row, col)
+            
+            col += 1
+            if col >= max_cols:
+                col = 0
+                row += 1
+        
+        scroll_area.setWidget(scroll_widget)
+        layout.addWidget(scroll_area)
+        
+        return widget
+    
+    def on_select_all_music_packs(self):
+        """全ての楽曲パックを選択"""
+        for checkbox in self.music_pack_checkboxes.values():
+            checkbox.setChecked(True)
+    
+    def on_deselect_all_music_packs(self):
+        """全ての楽曲パックを解除"""
+        for checkbox in self.music_pack_checkboxes.values():
+            checkbox.setChecked(False)
+    
+    def create_image_save_tab(self):
+        """画像保存設定タブ"""
+        widget = QWidget()
+        layout = QVBoxLayout()
+        widget.setLayout(layout)
+        
+        # 画像保存条件グループ
+        save_condition_group = QGroupBox("画像保存条件")
+        save_condition_layout = QVBoxLayout()
+        save_condition_group.setLayout(save_condition_layout)
+        
+        self.autosave_button_group = QButtonGroup()
+        self.autosave_invalid_radio = QRadioButton("保存しない")
+        self.autosave_all_radio = QRadioButton("全て保存")
+        self.autosave_updates_radio = QRadioButton("更新時のみ保存")
+        
+        self.autosave_button_group.addButton(self.autosave_invalid_radio, config_autosave_image.invalid.value)
+        self.autosave_button_group.addButton(self.autosave_all_radio, config_autosave_image.all.value)
+        self.autosave_button_group.addButton(self.autosave_updates_radio, config_autosave_image.only_updates.value)
+        
+        save_condition_layout.addWidget(self.autosave_invalid_radio)
+        save_condition_layout.addWidget(self.autosave_all_radio)
+        save_condition_layout.addWidget(self.autosave_updates_radio)
+        
+        layout.addWidget(save_condition_group)
+        
+        # ライバル欄編集グループ
+        rival_edit_group = QGroupBox("ライバル欄の編集")
+        rival_edit_layout = QVBoxLayout()
+        rival_edit_group.setLayout(rival_edit_layout)
+        
+        self.rivalarea_button_group = QButtonGroup()
+        self.rivalarea_invalid_radio = QRadioButton("そのまま")
+        self.rivalarea_mosaic_radio = QRadioButton("モザイク")
+        self.rivalarea_cut_radio = QRadioButton("カット")
+        
+        self.rivalarea_button_group.addButton(self.rivalarea_invalid_radio, config_modify_rivalarea.invalid.value)
+        self.rivalarea_button_group.addButton(self.rivalarea_mosaic_radio, config_modify_rivalarea.mosaic.value)
+        self.rivalarea_button_group.addButton(self.rivalarea_cut_radio, config_modify_rivalarea.cut.value)
+        
+        rival_edit_layout.addWidget(self.rivalarea_invalid_radio)
+        rival_edit_layout.addWidget(self.rivalarea_mosaic_radio)
+        rival_edit_layout.addWidget(self.rivalarea_cut_radio)
+        
+        layout.addWidget(rival_edit_group)
+        
+        # その他の設定
+        other_group = QGroupBox("その他")
+        other_layout = QVBoxLayout()
+        other_group.setLayout(other_layout)
+        
+        self.write_statistics_check = QCheckBox("統計情報を書き込む")
+        other_layout.addWidget(self.write_statistics_check)
+        
+        layout.addWidget(other_group)
+        layout.addStretch()
+        
+        return widget
+    
     def load_config_values(self):
         """設定値を読み込んでUIに反映"""
         # WebSocket設定
@@ -158,6 +284,26 @@ class ConfigDialog(QDialog):
         # 画像保存先 (Configクラスに image_save_path プロパティがある前提)
         if hasattr(self.config, 'image_save_path'):
             self.image_save_path_edit.setText(self.config.image_save_path)
+        
+        # 楽曲パック設定
+        if hasattr(self.config, 'target_music_packs'):
+            for pack_name in self.config.target_music_packs:
+                if pack_name in self.music_pack_checkboxes:
+                    self.music_pack_checkboxes[pack_name].setChecked(True)
+        
+        # 画像保存設定
+        if hasattr(self.config, 'autosave_image_mode'):
+            button = self.autosave_button_group.button(self.config.autosave_image_mode)
+            if button:
+                button.setChecked(True)
+        
+        if hasattr(self.config, 'modify_rivalarea_mode'):
+            button = self.rivalarea_button_group.button(self.config.modify_rivalarea_mode)
+            if button:
+                button.setChecked(True)
+        
+        if hasattr(self.config, 'write_statistics'):
+            self.write_statistics_check.setChecked(self.config.write_statistics)
         
     def accept(self):
         """OKボタン押下時の処理"""
@@ -176,6 +322,17 @@ class ConfigDialog(QDialog):
         
         # 画像保存先
         self.config.image_save_path = self.image_save_path_edit.text()
+        
+        # 楽曲パック設定
+        self.config.target_music_packs = [
+            pack_name for pack_name, checkbox in self.music_pack_checkboxes.items()
+            if checkbox.isChecked()
+        ]
+        
+        # 画像保存設定
+        self.config.autosave_image_mode = self.autosave_button_group.checkedId()
+        self.config.modify_rivalarea_mode = self.rivalarea_button_group.checkedId()
+        self.config.write_statistics = self.write_statistics_check.isChecked()
         
         # 設定を保存
         self.config.save_config()
