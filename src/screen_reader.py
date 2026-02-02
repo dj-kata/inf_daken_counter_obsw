@@ -25,14 +25,21 @@ class ScreenReader:
     def __init__(self):
         self.songinfo = SongDatabase()
         self.screen = None
-        self.last_title_result = None
-        self.last_title_select = None
 
     def update_screen_from_file(self, _file:str):
         self.screen = open_screenimage(_file)
 
     def update_screen(self, screen):
+        '''OBSManagerから受け取ったscreenをセットする'''
         self.screen = screen
+
+    def save_image(self, dst):
+        '''最後に読み込んだゲーム画面を保存'''
+        if self.screen and self.screen.original:
+            self.screen.original.save(dst)
+            return True
+        else:
+            return False
 
     def read_judge_from_result(self, side:result_side) -> Judge:
         """リザルト画面から判定部分を読み取る"""
@@ -93,10 +100,9 @@ class ScreenReader:
                 else: # 途中落ちの場合残りノーツを見逃しとして足しておく
                     judge.pr += (notes - judge_sum)
 
-                result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
+                out_result = OneResult(chart_id=chart_id, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
                                    judge=judge,score=score,bp=bp, dead=result.dead)
-                ret = DetailedResult(songinfo=songinfo, result=result)
-                self.last_title_result = title
+                ret = DetailedResult(songinfo=songinfo, result=out_result, title=title, play_style=style, difficulty=diff, result_side=convert_side(result.play_side), notes=notes)
         except:
             logger.error(traceback.format_exc())
             return None
@@ -108,7 +114,6 @@ class ScreenReader:
         np_value = self.screen.np_value[define.musicselect_trimarea_np]
         title = recog.MusicSelect.get_musicname(np_value)
         if title:
-            self.last_title_select = title
             diff = convert_difficulty(recog.MusicSelect.get_difficulty(np_value))
             lamp = convert_lamp(recog.MusicSelect.get_cleartype(np_value))
             score = recog.MusicSelect.get_score(np_value)

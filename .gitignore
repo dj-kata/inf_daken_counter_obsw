@@ -18,3 +18,4 @@ log/*
 out/*
 *.infdc
 config.json
+pic/*

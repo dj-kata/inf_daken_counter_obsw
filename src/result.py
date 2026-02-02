@@ -143,10 +143,28 @@ class DetailedResult():
     def __init__(self,
                     songinfo:OneSongInfo,
                     result:OneResult,
+                    title:str=None,
+                    play_style:play_style=None,
+                    difficulty:difficulty=None,
+                    result_side:result_side=None,
+                    notes:int=None,
                 ):
         """コンストラクタ。ResultDatabase側でsonginfoとresultを与えて初期化する。"""
         self.result = result
+        '''OneResultの部分'''
         self.songinfo = songinfo
+        '''曲情報'''
+
+        self.title = title
+        '''曲名'''
+        self.play_style = play_style
+        '''SP/DP'''
+        self.difficulty = difficulty
+        '''譜面難易度'''
+        self.result_side = result_side
+        '''1P/2Pどちら側であるか'''
+        self.notes = notes
+        '''inf-notebook側で認識したノーツ数'''
 
         self.score_rate = None
         """スコアレート(0.0-1.0; float)"""
@@ -155,7 +173,7 @@ class DetailedResult():
         self.bpi = None
         """BPIの値"""
         self.update_details()
-    
+
     def update_details(self):
         """詳細情報を算出"""
         if self.songinfo and self.songinfo.notes and self.score:
@@ -213,16 +231,19 @@ class DetailedResult():
         return bpi
     def __str__(self):
         """主要情報の文字列を出力。ログ用(overrided)"""
-        if self.songinfo is None:
-            return super().__str__()
-        else:
-            msg = f"chart:{self.songinfo.title}({self.songinfo.play_style.name.upper()}{self.songinfo.difficulty.name[0].upper()}), "
-            msg += f""
-            msg += f"score: {self.score}({''.join(self.score_rate_with_rankdiff)}, {self.score_rate*100:.2f}%), "
-            if self.bpi:
-                msg += f"BPI: {self.bpi}, "
-            msg += f"bp: {self.bp}, lamp: {self.lamp.name}, option: {self.option}, timestamp:{self.timestamp}\n"
-            return msg
+        msg = f"chart:{get_title_with_chart(self.title, self.play_style, self.difficulty)}"
+        msg += f", score: {self.result.score}"
+        if self.notes:
+            msg += f"/{2*self.notes}"
+        if self.score_rate_with_rankdiff:
+            msg += f"({''.join(self.score_rate_with_rankdiff)}, {self.result.score_rate*100:.2f}%)"
+        msg += f", judge:[{self.result.judge}]"
+        if self.bpi:
+            msg += f", BPI: {self.bpi}, "
+        if self.result_side:
+            msg += f", side: {self.result_side.name[1:]}"
+        msg += f", bp: {self.result.bp}, lamp: {self.result.lamp.name}, option: {self.result.option}, timestamp:{self.result.timestamp}\n"
+        return msg
         
     def __eq__(self, other):
         if not isinstance(other, DetailedResult):

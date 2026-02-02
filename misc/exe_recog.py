@@ -31,6 +31,7 @@ def gen_ocr_result(info, playdata):
         pickle.dump(out, f)
 
 if __name__ == '__main__':
+    logger.info('start')
     reader = ScreenReader()
     # for f in glob.glob('debug/*.png'):
     # for f in glob.glob('debug/select*.png'):
@@ -40,11 +41,11 @@ if __name__ == '__main__':
     # for f in glob.glob('debug/infinitas_20240316_002103.png'):
     for f in glob.glob('debug/0126/*.png'):
         reader.update_screen_from_file(f)
-        print('file=',f)
+        logger.info(f'file={f}')
         if reader.is_result():
             r = reader.read_result_screen()
             if r:
-                print('[RESULT]', r)
+                logger.info(f'[RESULT] {r}')
         # elif reader.is_select():
             # r = reader.read_music_select_screen()
             # if r:

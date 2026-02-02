@@ -9,6 +9,7 @@ from PySide6.QtCore import QTimer
 import time
 import traceback
 import datetime
+from pathlib import Path
 
 try:
     import keyboard
@@ -120,18 +121,37 @@ class MainWindow(MainWindowUI):
     
     def save_image(self):
         """
-        ゲーム画面のキャプチャ画像を保存する
-        
-        画像保存処理をここに実装してください。
-        - 現在のスクリーンショットを取得
-        - 設定に応じて編集（ライバル欄のモザイク/カット、統計情報の書き込み等）
-        - 指定されたフォルダに保存
+        ゲーム画面のキャプチャ画像を保存する。リザルト画面なら曲名などをファイル名に入れる。
         """
         try:
-            logger.info("画像保存ボタンが押されました")
-            # TODO: 画像保存処理を実装
+            date = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            if self.screen_reader.is_result():
+                detailed_result = self.screen_reader.read_result_screen()
+                filename = f"inf_{detailed_result.title}_{get_chart_name(detailed_result.play_style, detailed_result.difficulty)}"
+                filename += f"_{detailed_result.result.lamp.name}"
+                filename += f"_ex{detailed_result.result.score}"
+                filename += f"_bp{detailed_result.result.bp}"
+                if detailed_result.result.playspeed:
+                    filename += f"_x{detailed_result.result.playspeed}" # 速度変更時
+                filename += f'_{date}'
+            else:
+                filename = f"inf_{date}"
+
+            # 保存対象となる画像データ
+            screen = self.screen_reader.screen.original
+
+            if self.config.modify_rivalarea_mode == config_modify_rivalarea.cut.value: # カットする場合
+                screen = cut_rival_area(screen, detailed_result.result_side)
+                filename += f"_cut{detailed_result.result_side.name[1:]}"
+            elif self.config.modify_rivalarea_mode == config_modify_rivalarea.mosaic.value: # モザイク処理する場合
+                screen = mosaic_rival_area(screen, detailed_result.result_side)
+
+            # 画像を保存
+            filename += '.png'
+            full_path = Path(self.config.image_save_path) / filename
+            logger.info(f"dst = {full_path}")
+            screen.save(full_path)
             
-            self.statusBar().showMessage("画像保存機能は未実装です", 3000)
         except Exception as e:
             logger.error(f"画像保存エラー: {traceback.format_exc()}")
             self.statusBar().showMessage(f"画像保存エラー: {str(e)}", 3000)
@@ -268,6 +288,9 @@ class MainWindow(MainWindowUI):
                         logger.info(f"added!, result={result}")
                         self.result_database.save()
 
+                        # 画像の保存
+                        self.save_image()
+
                         # 統計情報の更新
                         self.saved_result_count += 1
                         if result.judge:
@@ -275,17 +298,8 @@ class MainWindow(MainWindowUI):
                             self.today_keystroke_count += (result.judge.pg + result.judge.gr + 
                                                            result.judge.gd + result.judge.bd)
 
-
                         # 曲名の更新
-                        if detailed_result.songinfo:
-                            self.last_saved_song = f"{self.screen_reader.last_title_result} ({detailed_result.songinfo.play_style.name.upper()}{detailed_result.songinfo.difficulty.name[0].upper()})"
-                        else:
-                            self.last_saved_song = f"{self.screen_reader.last_title_result}"
-                        # TODO
-                        # if result.songinfo:
-                            # self.last_saved_song = f"{result.songinfo.title} " \
-                                                #   f"({result.songinfo.play_style.name.upper()}" \
-                                                #   f"{result.songinfo.difficulty.name[0].upper()})"
+                        self.last_saved_song = get_title_with_chart(detailed_result.title, detailed_result.play_style, detailed_result.difficulty)
 
                 self.result_pre = result
         except:
