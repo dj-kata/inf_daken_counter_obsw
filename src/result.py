@@ -318,25 +318,35 @@ class ResultDatabase:
         return ret
     
     def get_best(self,
-                title:str=None, play_style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
+                title:str=None, style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
+                result:OneResult=None
         ) -> List[int]:
         """指定された曲の自己べ(スコア, BP, ランプ)を返す。見つからない場合は0,0を返す。
 
         Args:
             title (str, optional): _description_. Defaults to None.
-            play_style (play_style, optional): _description_. Defaults to None.
+            style (play_style, optional): _description_. Defaults to None.
             difficulty (difficulty, optional): _description_. Defaults to None.
             chart_id (str, optional): _description_. Defaults to None.
+            result (OneResult, optional): DBx系の判定に使う、Defaults to None.
 
         Returns:
             List[int]: score, bp, lamp
         """
         ret:List[int] = [0,99999999,0]
         key = chart_id
-        if title is not None and play_style is not None and difficulty is not None:
-            key = calc_chart_id(title, play_style, difficulty)
+        if title is not None and style is not None and difficulty is not None:
+            key = calc_chart_id(title, style, difficulty)
         results = self.search(chart_id=key)
+        option = result.option if result else None
         for r in results:
+            if style == play_style.dp:
+                if option and option.battle: # 検索対象がDBxの場合
+                    if not r.result.option.battle:
+                        continue
+                else: # 検索対象が非DBxの場合
+                    if r.result.option.battle:
+                        continue
             ret[0] = max(ret[0], r.result.score)
             ret[1] = min(ret[1], r.result.bp)
             ret[2] = max(ret[2], r.result.lamp.value)

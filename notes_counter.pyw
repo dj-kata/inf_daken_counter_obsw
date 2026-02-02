@@ -129,7 +129,7 @@ class MainWindow(MainWindowUI):
                 detailed_result = self.screen_reader.read_result_screen()
                 result = detailed_result.result
                 if self.config.autosave_image_mode == config_autosave_image.only_updates.value: # 更新している場合のみ保存
-                    best_score,best_bp,best_lamp = self.result_database.get_best(result.title, result.play_style, result.difficulty)
+                    best_score,best_bp,best_lamp = self.result_database.get_best(result.title, result.play_style, result.difficulty, result)
                     if result.score <= best_score and result.bp >= best_bp and result.lamp.value <= best_lamp:
                         self.statusBar().showMessage(f"伸びていないのでスキップします。", 3000)
                         return False
