@@ -81,6 +81,7 @@ class ScreenReader:
 
     def read_result_screen(self) -> DetailedResult:
         """pngファイルを入力してDetailedResultを返す"""
+        ret = None
         try:
             result = recog.get_result(self.screen)
             if result:
@@ -101,19 +102,17 @@ class ScreenReader:
                 timestamp = int(datetime.datetime.now().timestamp())
                 judge = self.read_judge_from_result(convert_side(result.play_side))
 
-                judge_sum = judge.sum()
-                if judge_sum >= notes: # 完走した場合はCBを正確に計算
-                    cb = bp - (judge_sum - notes)
+                if judge.notes() >= notes: # 完走した場合はCBを正確に計算
+                    cb = bp - (judge.sum() - notes)
                     judge.cb = cb
                 else: # 途中落ちの場合残りノーツを見逃しとして足しておく
-                    judge.pr += (notes - judge_sum)
+                    judge.pr += (notes - judge.notes())
 
                 out_result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
                                    judge=judge,score=score,bp=bp, dead=result.dead)
                 ret = DetailedResult(songinfo=songinfo, result=out_result, result_side=convert_side(result.play_side), notes=notes, level=level)
         except:
             logger.error(traceback.format_exc())
-            return None
         return ret
 
     def read_music_select_screen(self) -> DetailedResult:

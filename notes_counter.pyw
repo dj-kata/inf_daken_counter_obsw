@@ -11,6 +11,7 @@ import traceback
 import datetime
 from pathlib import Path
 import webbrowser, urllib
+import os
 
 try:
     import keyboard
@@ -169,7 +170,7 @@ class MainWindow(MainWindowUI):
                 filename = f"inf_{detailed_result.result.title}_{get_chart_name(detailed_result.result.play_style, detailed_result.result.difficulty)}"
                 filename += f"_{detailed_result.result.lamp.name}"
                 filename += f"_ex{detailed_result.result.score}"
-                filename += f"_bp{detailed_result.result.bp}"
+                filename += f"_bp{result.judge.bd + result.judge.pr}"
                 if detailed_result.result.playspeed:
                     filename += f"_x{detailed_result.result.playspeed}" # 速度変更時
                 filename += f'_{date}'
@@ -187,6 +188,7 @@ class MainWindow(MainWindowUI):
                 elif self.config.modify_rivalarea_mode == config_modify_rivalarea.cut: # カットする場合
                     screen = mosaic_other_rival_names(screen, detailed_result.result_side)
                     screen = cut_rival_area(screen, detailed_result.result_side)
+                    # 統計情報ウィンドウを追加
                     screen = self.result_stats_writer.write_statistics(
                         screen,
                         title=result.title,
@@ -194,7 +196,7 @@ class MainWindow(MainWindowUI):
                         play_style=result.play_style.name.upper(),
                         difficulty=result.difficulty.name.upper()[0],
                         ex_score=result.score,
-                        bp=result.bp,
+                        bp=result.judge.bd + result.judge.pr,
                         max_notes=detailed_result.notes,
                         lamp=result.lamp.name.upper(),
                     )
@@ -203,6 +205,7 @@ class MainWindow(MainWindowUI):
             # 画像を保存
             filename += '.png'
             filename = escape_for_filename(filename)
+            os.makedirs(self.config.image_save_path, exist_ok=True)
             full_path = Path(self.config.image_save_path) / filename
             logger.info(f"autosaved! dst = {full_path}")
             screen.save(full_path)
@@ -310,6 +313,7 @@ class MainWindow(MainWindowUI):
         # if trigger == 'play_end': # プレイ画面が終わるときにtimestamp取得
         if trigger == 'play_start': # プレー画面の先頭で実行
             self.last_play_mode = self.screen_reader.detect_playside()
+            logger.debug(f"current_judge: {self.current_judge}")
             if self.current_judge:
                 self.today_judge += self.current_judge
                 # リスタートしている場合、選曲画面で最後に選択した曲として登録
@@ -327,6 +331,7 @@ class MainWindow(MainWindowUI):
                     )
                     self.result_database.add(result)
                     self.result_database.save()
+                self.current_judge = Judge(0,0,0,0,0,0)
 
         if trigger == 'result_start': # リザルト画面の先頭で実行
             self.result_pre = None # 1つ前の認識結果
@@ -351,8 +356,10 @@ class MainWindow(MainWindowUI):
     
     def process_play_mode(self):
         """プレー画面での処理"""
-        self.current_judge = self.screen_reader.read_play_screen(self.last_play_mode)
-        logger.debug(f"mode:{self.last_play_mode}, self.current_judge = {self.current_judge}")
+        tmp = self.screen_reader.read_play_screen(self.last_play_mode)
+        if tmp:
+            self.current_judge = self.screen_reader.read_play_screen(self.last_play_mode)
+        # logger.debug(f"mode:{self.last_play_mode}, self.current_judge = {self.current_judge}")
     
     def process_result_mode(self):
         """リザルト画面での処理"""
@@ -427,6 +434,11 @@ class MainWindow(MainWindowUI):
             pass
         ontime = datetime.datetime.now() - datetime.datetime.fromtimestamp(self.start_time)
         msg += f"uptime: {str(ontime).split('.')[0]}\n"
+        date = datetime.datetime.fromtimestamp(self.start_time)
+        logger.info(date.year)
+        logger.info(date.month)
+        logger.info(self.result_database.get_monthly_notes())
+        msg += f"({date.year}/{date.month:02d}: {self.result_database.get_monthly_notes():,})\n"
         msg += '#INFINITAS_daken_counter\n'
         encoded_msg = urllib.parse.quote(msg)
         webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_msg}")
