@@ -158,13 +158,14 @@ class MainWindow(MainWindowUI):
             # 保存対象となる画像データ
             screen = self.screen_reader.screen.original
 
-            if self.config.modify_rivalarea_mode == config_modify_rivalarea.mosaic: # モザイク処理する場合
-                screen = mosaic_rival_area(screen, detailed_result.result_side)
-                screen = mosaic_other_rival_names(screen, detailed_result.result_side)
-            elif self.config.modify_rivalarea_mode == config_modify_rivalarea.cut: # カットする場合
-                screen = mosaic_other_rival_names(screen, detailed_result.result_side)
-                screen = cut_rival_area(screen, detailed_result.result_side)
-                filename += f"_cut{detailed_result.result_side.name[1:]}"
+            if self.screen_reader.is_result():
+                if self.config.modify_rivalarea_mode == config_modify_rivalarea.mosaic: # モザイク処理する場合
+                    screen = mosaic_rival_area(screen, detailed_result.result_side)
+                    screen = mosaic_other_rival_names(screen, detailed_result.result_side)
+                elif self.config.modify_rivalarea_mode == config_modify_rivalarea.cut: # カットする場合
+                    screen = mosaic_other_rival_names(screen, detailed_result.result_side)
+                    screen = cut_rival_area(screen, detailed_result.result_side)
+                    filename += f"_cut{detailed_result.result_side.name[1:]}"
 
             # 画像を保存
             filename += '.png'
