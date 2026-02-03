@@ -386,18 +386,33 @@ class ResultDatabase:
 
         return ret
     
+    def get_monthly_notes(self, target:datetime.datetime=None):
+        '''その月のノーツ数を算出'''
+        if target is None:
+            target = datetime.datetime.now()
+        ret = 0
+        for r in reversed(self.results):
+            result_date = datetime.datetime.fromtimestamp(r.timestamp)
+            if (result_date.month == target.month) and (result_date.year == target.year):
+                if r.judge:
+                    ret += r.judge.notes()
+            else:
+                break
+        return ret
+    
 if __name__ == '__main__':
-    db = ResultDatabase()
-    a = OneSongInfo('THE BRAVE MUST DIE', play_style.sp, difficulty.another, 12, 2075)
-    a.bpi_top = 4135
-    a.bpi_ave = 3442
-    a.bpi_coef = 0.746675
-    db.song_database.songs.append(a)
-    a = OneSongInfo('KAMAITACHI', play_style.sp, difficulty.leggendaria, 12, 2000)
-    db.song_database.songs.append(a)
-    j = Judge(pg=1561, gr=414, gd=94, bd=3, pr=9, cb=6)
-    db.add(judge=j, lamp=clear_lamp.exh, option=PlayOption(arrange='RANDOM'), title='THE BRAVE MUST DIE', play_style=play_style.sp, difficulty=difficulty.another)
-    j = Judge(pg=750, gr=320, gd=33, bd=11, pr=20, cb=45)
-    db.add(judge=j, lamp=clear_lamp.failed, option='')
-    b = db.search('THE BRAVE MUST DIE', play_style.sp, difficulty.another)
-    print(b[0])
+    # db = ResultDatabase()
+    # a = OneSongInfo('THE BRAVE MUST DIE', play_style.sp, difficulty.another, 12, 2075)
+    # a.bpi_top = 4135
+    # a.bpi_ave = 3442
+    # a.bpi_coef = 0.746675
+    # db.song_database.songs.append(a)
+    # a = OneSongInfo('KAMAITACHI', play_style.sp, difficulty.leggendaria, 12, 2000)
+    # db.song_database.songs.append(a)
+    # j = Judge(pg=1561, gr=414, gd=94, bd=3, pr=9, cb=6)
+    # db.add(judge=j, lamp=clear_lamp.exh, option=PlayOption(arrange='RANDOM'), title='THE BRAVE MUST DIE', play_style=play_style.sp, difficulty=difficulty.another)
+    # j = Judge(pg=750, gr=320, gd=33, bd=11, pr=20, cb=45)
+    # db.add(judge=j, lamp=clear_lamp.failed, option='')
+    # b = db.search('THE BRAVE MUST DIE', play_style.sp, difficulty.another)
+    # print(b[0])
+    rdb = ResultDatabase()
