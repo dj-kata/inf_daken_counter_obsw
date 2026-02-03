@@ -135,8 +135,8 @@ class MainWindow(MainWindowUI):
         ゲーム画面のキャプチャ画像を保存する。リザルト画面なら曲名などをファイル名に入れる。
         """
         try:
+            date = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
             if self.screen_reader.is_result():
-                date = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
                 detailed_result = self.screen_reader.read_result_screen()
                 result = detailed_result.result
                 if skip_no_update and (self.config.autosave_image_mode == config_autosave_image.only_updates): # 更新している場合のみ保存
