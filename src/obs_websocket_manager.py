@@ -246,7 +246,10 @@ class OBSWebSocketManager(QObject):
         """接続状態変化を通知"""
         self.is_connected = is_connected
         logger.info(f"OBS status: {message} (connected={is_connected})")
-        self.connection_changed.emit(is_connected, message)
+        try:
+            self.connection_changed.emit(is_connected, message)
+        except: # アプリ終了時にエラーを吐かないようにする
+            pass
     
     def get_status(self) -> tuple[str, bool]:
         """現在のステータスを取得"""
