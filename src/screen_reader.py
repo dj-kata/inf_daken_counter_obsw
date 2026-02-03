@@ -149,8 +149,8 @@ class ScreenReader:
             print(traceback.format_exc())
             return None
 
-    ### 判定部分の切り出し
     def get_judge_img(self, playside:play_mode):
+        '''判定部分を切り出す'''
         img = self.screen.original
         # 判定内訳部分のみを切り取る
         sc = img.crop(PosPlayJudge.get(playside))
@@ -171,8 +171,8 @@ class ScreenReader:
             d.append(tmp_sec)
         return np.array(sc), d
 
-    ### プレー画面から判定内訳を取得
     def detect_judge(self, playside):
+        '''プレー画面から判定内訳を取得'''
         sc,digits = self.get_judge_img(playside)
         ret = []
         for jj in digits: # 各判定、ピカグレー>POORの順
