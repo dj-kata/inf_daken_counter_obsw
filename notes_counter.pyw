@@ -62,12 +62,17 @@ class MainWindow(MainWindowUI):
 
         # その他
         self.result_stats_writer = ResultStatsWriter()
+        self.start_time = datetime.datetime.now().timestamp()
+        '''起動時刻を覚えておく'''
 
         # アプリケーション状態
         self.current_mode = detect_mode.init
         self.start_time = time.time()
         self.today_judge = Judge(0,0,0,0,0,0)
         '''本日の判定内訳(全曲合計)'''
+        for r in reversed(self.result_database.results):
+            if r.judge and r.timestamp >= self.start_time - self.config.autoload_offset*3600:
+                self.today_judge += r.judge
         self.current_judge = Judge(0,0,0,0,0,0)
         '''このプレーの判定内訳。プレー画面終了後にプレー画面に移行していない場合に使う。'''
         self.result_timestamp = 0
@@ -122,6 +127,12 @@ class MainWindow(MainWindowUI):
         self.config.load_config()  # 最新の設定を読み込み
         self.obs_manager.set_config(self.config)
         self.result_database.song_database.load()  # 必要に応じて再読み込み
+
+        self.today_judge = Judge(0,0,0,0,0,0)
+        '''本日の判定内訳(全曲合計)'''
+        for r in reversed(self.result_database.results):
+            if r.timestamp >= self.start_time - self.config.autoload_offset*3600:
+                self.today_judge += r.judge
         
         # OBS接続状態の再評価
         if not self.obs_manager.is_connected:
@@ -295,8 +306,6 @@ class MainWindow(MainWindowUI):
             self.last_play_mode = self.screen_reader.detect_playside()
             if self.current_judge:
                 self.today_judge += self.current_judge
-                self.today_keystroke_count += ( self.current_judge.pg + self.current_judge.gr + 
-                                                self.current_judge.gd + self.current_judge.bd)
                 # リスタートしている場合、選曲画面で最後に選択した曲として登録
                 if self.current_judge.pg + self.current_judge.gr + self.current_judge.gd + self.current_judge.bd > 0:
                     result = OneResult(
@@ -365,8 +374,6 @@ class MainWindow(MainWindowUI):
                         self.saved_result_count += 1
                         if result.judge:
                             self.today_judge += result.judge
-                            self.today_keystroke_count += (result.judge.pg + result.judge.gr + 
-                                                           result.judge.gd + result.judge.bd)
 
                 self.result_pre = result
         except:

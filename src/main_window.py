@@ -209,6 +209,8 @@ class MainWindowUI(QMainWindow):
         self.uptime_label.setText(f"{hours:02d}:{minutes:02d}:{seconds:02d}")
         
         # 統計情報
+        self.today_keystroke_count = (self.today_judge.pg + self.today_judge.gr + 
+                                        self.today_judge.gd + self.today_judge.bd)
         self.keystroke_label.setText(str(self.today_keystroke_count))
         self.result_count_label.setText(str(self.saved_result_count))
         self.last_song_label.setText(self.last_saved_song)
