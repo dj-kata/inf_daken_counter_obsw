@@ -21,3 +21,4 @@ out/*
 *.infdc
 config.json
 pic/*
+qt.conf
