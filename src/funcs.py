@@ -145,11 +145,11 @@ def convert_side(side:str) -> result_side:
 
 def cut_rival_area(img:Image, side:result_side) -> Image:
     '''ライバルエリアをカットする'''
-    w=560 # ライバルエリアの幅
+    w=600 # 出力サイズ
     if side == result_side._1p:
-        return img.crop((0,0, 1920-w,1080))
+        return img.crop((0,0, w,1080))
     else:
-        return img.crop((w,0, 1920,1080))
+        return img.crop((1920-w,0, 1920,1080))
     
 def mosaic_rival_area(img:Image, side:result_side) -> Image:
     '''ライバルエリアをぼかす'''

@@ -360,7 +360,7 @@ class OBSWebSocketManager(QObject):
             else:
                 self.screen = None
         except Exception as e:
-            logger.error(f"Screenshot failed: {e}")
+            # logger.error(f"Screenshot failed: {e}")
             self.screen = None
     
     def save_screenshot_dst(self, source: str, dst: str) -> bool:

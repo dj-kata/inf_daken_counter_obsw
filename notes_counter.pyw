@@ -26,6 +26,7 @@ from src.obs_websocket_manager import OBSWebSocketManager
 from src.songinfo import SongDatabase
 from src.screen_reader import ScreenReader
 from src.result import ResultDatabase, OneResult
+from src.result_stats_writer import ResultStatsWriter
 from src.logger import get_logger
 logger = get_logger(__name__)
 
@@ -58,6 +59,9 @@ class MainWindow(MainWindowUI):
 
         # 接続状態変化のシグナルを接続
         self.obs_manager.connection_changed.connect(self.on_obs_connection_changed)
+
+        # その他
+        self.result_stats_writer = ResultStatsWriter()
 
         # アプリケーション状態
         self.current_mode = detect_mode.init
@@ -166,6 +170,17 @@ class MainWindow(MainWindowUI):
                 elif self.config.modify_rivalarea_mode == config_modify_rivalarea.cut: # カットする場合
                     screen = mosaic_other_rival_names(screen, detailed_result.result_side)
                     screen = cut_rival_area(screen, detailed_result.result_side)
+                    screen = self.result_stats_writer.write_statistics(
+                        screen,
+                        title=result.title,
+                        level=detailed_result.level,
+                        play_style=result.play_style.name.upper(),
+                        difficulty=result.difficulty.name.upper()[0],
+                        ex_score=result.score,
+                        bp=result.bp,
+                        max_notes=detailed_result.notes,
+                        lamp=result.lamp.name.upper(),
+                    )
                     filename += f"_cut{detailed_result.result_side.name[1:]}"
 
             # 画像を保存

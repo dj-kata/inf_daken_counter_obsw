@@ -172,6 +172,7 @@ class DetailedResult():
                     result:OneResult,
                     result_side:result_side=None,
                     notes:int=None,
+                    level:int=None,
                 ):
         """コンストラクタ。ResultDatabase側でsonginfoとresultを与えて初期化する。"""
         self.result = result
@@ -183,6 +184,8 @@ class DetailedResult():
         '''1P/2Pどちら側であるか'''
         self.notes = notes
         '''inf-notebook側で認識したノーツ数'''
+        self.level = level
+        '''inf-notebook側で認識したレベル'''
 
         self.score_rate = None
         """スコアレート(0.0-1.0; float)"""
