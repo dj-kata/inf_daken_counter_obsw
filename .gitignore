@@ -11,7 +11,9 @@ Makefile
 __pycache__/*
 tmp/*
 old/*
-src/service_account_info.py
+src/credentials.py
+src/credentials_encryptor.py
+src/credentials_encrypted.py
 */__pycache__/*
 infnotebook/*
 log/*
