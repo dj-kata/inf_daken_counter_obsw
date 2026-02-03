@@ -107,30 +107,36 @@ class MainWindowUI(QMainWindow):
         # ファイルメニュー
         file_menu = menubar.addMenu("ファイル(&F)")
         
+        config_action = QAction("基本設定(&C)...", self)
+        config_action.triggered.connect(self.open_config_dialog)
+        file_menu.addAction(config_action)
+        
+        obs_action = QAction("OBS制御設定(&O)...", self)
+        obs_action.triggered.connect(self.open_obs_dialog)
+        file_menu.addAction(obs_action)
+
+        file_menu.addSeparator() ##############################################
+        
         # 画像保存アクション
         save_image_action = QAction("画像保存(&S)", self)
         save_image_action.setShortcut("F6")
         save_image_action.triggered.connect(self.save_image)
         file_menu.addAction(save_image_action)
         
-        file_menu.addSeparator()
+        file_menu.addSeparator() ##############################################
         
         exit_action = QAction("終了(&X)", self)
         exit_action.setShortcut("Ctrl+Q")
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
+
+        # ツールメニュー
+        tool_menu = menubar.addMenu("ツール(&E)")
         
-        # 設定メニュー
-        settings_menu = menubar.addMenu("設定(&S)")
-        
-        config_action = QAction("基本設定(&C)...", self)
-        config_action.triggered.connect(self.open_config_dialog)
-        settings_menu.addAction(config_action)
-        
-        obs_action = QAction("OBS制御設定(&O)...", self)
-        obs_action.triggered.connect(self.open_obs_dialog)
-        settings_menu.addAction(obs_action)
-        
+        tweet_action = QAction("成果をツイート(&T)...", self)
+        tweet_action.triggered.connect(self.tweet)
+        tool_menu.addAction(tweet_action)
+
         # ヘルプメニュー
         help_menu = menubar.addMenu("ヘルプ(&H)")
         
@@ -209,8 +215,7 @@ class MainWindowUI(QMainWindow):
         self.uptime_label.setText(f"{hours:02d}:{minutes:02d}:{seconds:02d}")
         
         # 統計情報
-        self.today_keystroke_count = (self.today_judge.pg + self.today_judge.gr + 
-                                        self.today_judge.gd + self.today_judge.bd)
+        self.today_keystroke_count = self.today_judge.notes()
         self.keystroke_label.setText(str(self.today_keystroke_count))
         self.result_count_label.setText(str(self.saved_result_count))
         self.last_song_label.setText(self.last_saved_song)
@@ -230,4 +235,8 @@ class MainWindowUI(QMainWindow):
     
     def save_image(self):
         """画像保存処理（サブクラスで実装）"""
+        raise NotImplementedError
+    
+    def tweet(self):
+        """ツイート作成 (サブクラスで実装)"""
         raise NotImplementedError

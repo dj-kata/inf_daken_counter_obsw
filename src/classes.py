@@ -97,6 +97,10 @@ class Judge:
     def sum(self) -> int:
         '''CB以外の判定値の合計を返す。CB補正用'''
         return self.pg + self.gr + self.gd + self.bd + self.pr
+    
+    def notes(self) -> int:
+        '''判定からノーツ数(pr以外の和)を返す'''
+        return self.pg + self.gr + self.gd + self.bd
 
     def __add__(self, other):
         return Judge(self.pg+other.pg, self.gr+other.gr, self.gd+other.gd, self.bd+other.bd, self.pr+other.pr, self.cb+other.cb)

@@ -10,6 +10,7 @@ import time
 import traceback
 import datetime
 from pathlib import Path
+import webbrowser, urllib
 
 try:
     import keyboard
@@ -73,6 +74,8 @@ class MainWindow(MainWindowUI):
         for r in reversed(self.result_database.results):
             if r.judge and r.timestamp >= self.start_time - self.config.autoload_offset*3600:
                 self.today_judge += r.judge
+            else:
+                break
         self.current_judge = Judge(0,0,0,0,0,0)
         '''このプレーの判定内訳。プレー画面終了後にプレー画面に移行していない場合に使う。'''
         self.result_timestamp = 0
@@ -132,7 +135,10 @@ class MainWindow(MainWindowUI):
         '''本日の判定内訳(全曲合計)'''
         for r in reversed(self.result_database.results):
             if r.timestamp >= self.start_time - self.config.autoload_offset*3600:
-                self.today_judge += r.judge
+                if r.judge:
+                    self.today_judge += r.judge
+            else:
+                break
         
         # OBS接続状態の再評価
         if not self.obs_manager.is_connected:
@@ -389,6 +395,10 @@ class MainWindow(MainWindowUI):
 
         # ウィンドウ位置を保存
         self.save_window_geometry()
+
+        # 終了時ツイート
+        if self.config.enable_autotweet:
+            self.tweet()
         
         # OBS切断
         if self.obs_manager.is_connected:
@@ -400,6 +410,26 @@ class MainWindow(MainWindowUI):
 
         logger.info("アプリケーション終了")
         event.accept()
+
+    def tweet(self):
+        '''成果ツイート'''
+        # 対象となるリザルトを取り出す
+        today_results = []
+        for r in reversed(self.result_database.results): # 新しい順に探索
+            if r.judge and r.timestamp >= self.start_time - self.config.autoload_offset*3600:
+                today_results.append(r)
+            else:
+                break
+        msg = f"plays:{len(today_results)}, notes:{self.today_judge.notes():,}, {self.today_judge.get_score_rate()*100:.2f}%\n"
+        if self.config.enable_judge:
+            msg += f"(PG:{self.today_judge.pg:,}, GR:{self.today_judge.gr:,}, GD:{self.today_judge.gd:,}, BD:{self.today_judge.bd:,}, PR:{self.today_judge.pr:,}, CB:{self.today_judge.cb:,})\n"
+        if self.config.enable_folder_updates:
+            pass
+        ontime = datetime.datetime.now() - datetime.datetime.fromtimestamp(self.start_time)
+        msg += f"uptime: {str(ontime).split('.')[0]}\n"
+        msg += '#INFINITAS_daken_counter\n'
+        encoded_msg = urllib.parse.quote(msg)
+        webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_msg}")
 
 def check_resource():
     storage = StorageAccessor()
