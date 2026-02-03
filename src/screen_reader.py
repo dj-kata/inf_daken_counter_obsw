@@ -25,6 +25,12 @@ class ScreenReader:
     def __init__(self):
         self.songinfo = SongDatabase()
         self.screen = None
+        self.last_select_title = None
+        '''最後に選曲画面で認識した曲名'''
+        self.last_select_difficulty = None
+        '''最後に選曲画面で認識した難易度'''
+        self.last_select_style = None
+        '''最後に選曲画面で認識したプレイスタイル(SP/DP)'''
 
     def update_screen_from_file(self, _file:str):
         self.screen = open_screenimage(_file)
@@ -127,6 +133,11 @@ class ScreenReader:
             result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=None, option=PlayOption(None),
                                judge=None,score=score,bp=bp)
             ret = DetailedResult(songinfo=songinfo, result=result)
+
+            # 最後に認識したものを記憶
+            self.last_select_title = title
+            self.last_select_difficulty = diff
+            self.last_select_style = style
         return ret
         
     def read_play_screen(self, mode:play_mode):

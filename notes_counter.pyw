@@ -25,7 +25,7 @@ from src.funcs import *
 from src.obs_websocket_manager import OBSWebSocketManager
 from src.songinfo import SongDatabase
 from src.screen_reader import ScreenReader
-from src.result import ResultDatabase
+from src.result import ResultDatabase, OneResult
 from src.logger import get_logger
 logger = get_logger(__name__)
 
@@ -57,12 +57,16 @@ class MainWindow(MainWindowUI):
         self.current_mode = detect_mode.init
         self.start_time = time.time()
         self.today_judge = Judge(0,0,0,0,0,0)
-        self.result_timestamp = 0
         '''本日の判定内訳(全曲合計)'''
+        self.current_judge = Judge(0,0,0,0,0,0)
+        '''このプレーの判定内訳。プレー画面終了後にプレー画面に移行していない場合に使う。'''
+        self.result_timestamp = 0
         self.today_keystroke_count = 0
         self.saved_result_count = 0
         self.last_saved_song = "---"
         self.result_pre = None # 1つ前の認識結果
+        self.last_play_mode = None
+        '''現在のプレーモード。playの先頭でセットし、その後の検出で使用。'''
         
         # UI初期化
         self.init_ui()
@@ -264,7 +268,28 @@ class MainWindow(MainWindowUI):
 
 
         # if trigger == 'play_end': # プレイ画面が終わるときにtimestamp取得
-        if trigger == 'result_start': # リザルト画面に移行したときに一度実行
+        if trigger == 'play_start': # プレー画面の先頭で実行
+            self.today_judge += self.current_judge
+            self.today_keystroke_count += ( self.current_judge.pg + self.current_judge.gr + 
+                                            self.current_judge.gd + self.current_judge.bd)
+            self.last_play_mode = self.screen_reader.detect_playside()
+            # リスタートしている場合、選曲画面で最後に選択した曲として登録
+            if self.current_judge.pg + self.current_judge.gr + self.current_judge.gd + self.current_judge.bd > 0:
+                result = OneResult(
+                    title=self.screen_reader.last_select_title,
+                    play_style=self.screen_reader.last_select_style,
+                    difficulty=self.screen_reader.last_select_difficulty,
+                    lamp=clear_lamp.failed,
+                    timestamp=int(datetime.datetime.now().timestamp()),
+                    judge=self.current_judge,
+                    dead=True,
+                    playspeed=None, # 速度変更中のクイックリトライは正しく記録できないが、ノーツ数しか見ないのでOKとする。
+                    option=None,    # battle利用時のクイックリトライは正しく記録できないが、ノーツ数しか見ないのでOKとする。
+                )
+                self.result_database.add(result)
+                self.result_database.save()
+
+        if trigger == 'result_start': # リザルト画面の先頭で実行
             self.result_pre = None # 1つ前の認識結果
             self.result_timestamp = int(datetime.datetime.now().timestamp())
     
@@ -273,29 +298,28 @@ class MainWindow(MainWindowUI):
         # OBS制御設定から該当するトリガーの設定を取得して実行
         # この部分は実際のOBS制御ロジックに応じて実装
         logger.debug(f"OBSトリガー実行: {trigger}")
-        pass
     
     def process_select_mode(self):
         """選曲画面での処理"""
         detailed_result = self.screen_reader.read_music_select_screen()
         result = detailed_result.result
-        best_score,best_bp,best_lamp = self.result_database.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=result.option.battle)
-        logger.debug(f"best = score:{best_score},bp:{best_bp}, lamp:{best_lamp}")
+        best_score,best_bp,best_lamp = self.result_database.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty)
+        # logger.debug(f"best = score:{best_score},bp:{best_bp}, lamp:{best_lamp}")
         if (result.score > best_score) or (result.bp and result.bp < best_bp) or result.lamp.value > best_lamp:
-            self.result_database.add(result)
-            self.result_database.save()
+            if self.result_database.add(result):
+                self.statusBar().showMessage(f"選曲画面から自己ベストを登録しました。 -> {result}", 10000)
+                self.result_database.save()
     
     def process_play_mode(self):
         """プレー画面での処理"""
-        # ここにplay画面での処理を実装
-        # 例: プレー中の情報表示など
-        pass
+        self.current_judge = self.screen_reader.read_play_screen(self.last_play_mode)
     
     def process_result_mode(self):
         """リザルト画面での処理"""
         # ここにresult画面での処理を実装
         # 例: リザルト読み取りと保存
         try:
+            self.current_judge = Judge(0,0,0,0,0,0)
             detailed_result = self.screen_reader.read_result_screen()
             result = detailed_result.result
             result.timestamp = self.result_timestamp

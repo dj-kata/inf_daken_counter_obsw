@@ -138,7 +138,7 @@ class OneResult:
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""
         if self.lamp and self.score:
-            return f"song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_arcade:{self.is_arcade}, timestamp:{datetime.date.fromtimestamp(self.timestamp)}"
+            return f"song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_arcade:{self.is_arcade}, timestamp:{datetime.datetime.fromtimestamp(self.timestamp)}"
         else:
             return "not a result data!"
 
@@ -343,10 +343,10 @@ class ResultDatabase:
         for r in results:
             if style == play_style.dp:
                 if battle: # 検索対象がDBxの場合
-                    if not r.result.option.battle:
+                    if r.result.option and not r.result.option.battle:
                         continue
                 else: # 検索対象が非DBxの場合
-                    if r.result.option.battle:
+                    if r.result.option and r.result.option.battle:
                         continue
             if option: # オプション指定がある場合は、arrangeが一致するもののみ通す
                 if option.arrange is not r.option.arrange or option.flip is not r.option.flip or option.special is not r.option.special:
@@ -354,6 +354,8 @@ class ResultDatabase:
             ret[0] = max(ret[0], r.result.score)
             if r.result.judge:
                 ret[1] = min(ret[1], r.result.judge.bd + r.result.judge.pr)
+            elif r.result.bp: # 選曲画面から登録したものはこちら
+                ret[1] = min(ret[1], r.result.bp)
             ret[2] = max(ret[2], r.result.lamp.value)
 
         return ret
