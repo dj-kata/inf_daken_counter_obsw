@@ -8,12 +8,17 @@ from json import loads,dumps
 from uuid import uuid1
 from datetime import datetime,timezone
 from threading import Thread
-from logging import getLogger
+# from logging import getLogger
 
-logger = getLogger().getChild('storage')
-logger.debug('loaded storage.py')
+# logger = getLogger().getChild('storage')
+# logger.debug('loaded storage.py')
+from src.logger import get_logger
+logger = get_logger(__name__)
 
-from service_account_info import service_account_info
+import sys
+from src.credentials_loader import load_service_account_info
+service_account_info = load_service_account_info()
+sys.path.append('infnotebook')
 from define import define
 from result import Result
 

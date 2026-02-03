@@ -112,6 +112,10 @@ build_exe_options = {
     
     # 除外するパッケージ（サイズ削減のため）
     "excludes": [
+        # 認証情報の平文版は除外（暗号化版を使用）
+        "src.credentials",
+        "credentials",
+        # 以下既存の除外設定
         # tkinterとwinsoundは必要なので除外しない
         "matplotlib",
         "scipy",
@@ -122,7 +126,7 @@ build_exe_options = {
         "html",
         "http",
         # "urllib",
-        "xml",
+        # "xml",
         "pydoc",
         "distutils",
         "setuptools",

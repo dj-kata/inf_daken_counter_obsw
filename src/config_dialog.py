@@ -293,12 +293,12 @@ class ConfigDialog(QDialog):
         
         # 画像保存設定
         if hasattr(self.config, 'autosave_image_mode'):
-            button = self.autosave_button_group.button(self.config.autosave_image_mode)
+            button = self.autosave_button_group.button(self.config.autosave_image_mode.value)
             if button:
                 button.setChecked(True)
         
         if hasattr(self.config, 'modify_rivalarea_mode'):
-            button = self.rivalarea_button_group.button(self.config.modify_rivalarea_mode)
+            button = self.rivalarea_button_group.button(self.config.modify_rivalarea_mode.value)
             if button:
                 button.setChecked(True)
         
@@ -330,8 +330,8 @@ class ConfigDialog(QDialog):
         ]
         
         # 画像保存設定
-        self.config.autosave_image_mode = self.autosave_button_group.checkedId()
-        self.config.modify_rivalarea_mode = self.rivalarea_button_group.checkedId()
+        self.config.autosave_image_mode = config_autosave_image(self.autosave_button_group.checkedId())
+        self.config.modify_rivalarea_mode = config_modify_rivalarea(self.rivalarea_button_group.checkedId())
         self.config.write_statistics = self.write_statistics_check.isChecked()
         
         # 設定を保存

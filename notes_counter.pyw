@@ -32,7 +32,13 @@ logger = get_logger(__name__)
 from src.config_dialog import ConfigDialog
 from src.obs_dialog import OBSControlDialog
 from src.main_window import MainWindowUI
+from src.storage import StorageAccessor
 
+sys.path.append('infnotebook')
+from define import define
+# from src.resources import resource, check_latest
+from resources import resource, check_latest
+from record import musicnamechanges_filename
 
 class MainWindow(MainWindowUI):
     """メインウィンドウクラス - 制御ロジックを担当"""
@@ -369,9 +375,38 @@ class MainWindow(MainWindowUI):
         logger.info("アプリケーション終了")
         event.accept()
 
+def check_resource():
+    storage = StorageAccessor()
+    informations_filename = f'{define.informations_resourcename}.res'
+    logger.debug('check_resource start')
+    if check_latest(storage, informations_filename):
+        resource.load_resource_informations()
+    logger.debug('')
+
+    details_filename = f'{define.details_resourcename}.res'
+    if check_latest(storage, details_filename):
+        resource.load_resource_details()
+    logger.debug('')
+
+    musictable_filename = f'{define.musictable_resourcename}.res'
+    if check_latest(storage, musictable_filename):
+        resource.load_resource_musictable()
+    logger.debug('')
+
+    musicselect_filename = f'{define.musicselect_resourcename}.res'
+    if check_latest(storage, musicselect_filename):
+        resource.load_resource_musicselect()
+    logger.debug('')
+
+    check_latest(storage, musicnamechanges_filename)
+    logger.debug('end')
 
 def main():
     """メイン関数"""
+    import threading
+    threading.Thread(target=check_resource, daemon=True).start()
+    # check_resource()
+
     app = QApplication(sys.argv)
     app.setStyle("Fusion")  # モダンなスタイルを適用
     

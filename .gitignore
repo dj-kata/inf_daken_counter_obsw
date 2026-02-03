@@ -11,7 +11,7 @@ Makefile
 __pycache__/*
 tmp/*
 old/*
-service_account_info.py
+src/service_account_info.py
 */__pycache__/*
 infnotebook/*
 log/*
