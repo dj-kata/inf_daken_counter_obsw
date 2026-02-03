@@ -87,6 +87,9 @@ class OneResult:
                     judge:Judge=None,
                     score:int=None,
                     bp:int=None,
+                    pre_score:int=0,
+                    pre_lamp:clear_lamp=clear_lamp.noplay,
+                    pre_bp:int=99999999,
                     dead:bool=None,
                 ):
         self.title = title
@@ -99,18 +102,38 @@ class OneResult:
         """楽曲ID。無効なIDも設定可能とする"""
         self.judge     = judge
         """判定内訳"""
-        if judge:
+
+        self.score = score
+        '''現在のスコア'''
+        self.bp = bp
+        '''現在のBP'''
+        self.pre_score = pre_score
+        '''現在のランプ'''
+        self.pre_lamp = pre_lamp
+        '''現在のスコア'''
+        self.pre_bp = pre_bp
+        '''現在のBP'''
+        if judge: # 判定がある場合はこちら(打鍵カウンタv2のデータは上だけで受ける)
             self.score = judge.score
             self.bp    = judge.bp
-        else: # 判定内訳がない場合も受ける(打鍵カウンタv2のデータなど)
-            self.score = score
-            self.bp    = bp
         self.lamp      = lamp
         self.timestamp = timestamp
         self.option    = option
         self.playspeed = playspeed
         self.is_arcade = is_arcade
         self.dead      = dead
+
+    def is_updated(self) -> bool:
+        """更新があるかどうかを返す
+
+        Returns:
+            bool: ランプ、スコア、BPのいずれかが更新されていればTrue
+        """
+        ret = False
+        ret = True if self.pre_score and self.score > self.pre_score else ret
+        ret = True if self.pre_lamp and self.lamp.value > self.pre_lamp.value else ret
+        ret = True if self.pre_bp and self.bp < self.pre_bp else ret
+        return ret
         
     def __eq__(self, other):
         if not isinstance(other, OneResult):
@@ -320,7 +343,7 @@ class ResultDatabase:
     def get_best(self,
                 title:str=None, style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
                 battle:bool=False,option:PlayOption=None
-        ) -> List[int]:
+        ) -> List:
         """指定された曲の自己べ(スコア, BP, ランプ)を返す。見つからない場合は0,0を返す。
         battle=TrueかつDPの場合はDBx系のみ検索対象とする。optionが空でない場合は同一オプションのみ検索対象とする。
 
@@ -335,7 +358,7 @@ class ResultDatabase:
         Returns:
             List[int]: score, bp, lamp
         """
-        ret:List[int] = [0,99999999,0]
+        ret = [0,99999999,clear_lamp(0)]
         key = chart_id
         if title is not None and style is not None and difficulty is not None:
             key = calc_chart_id(title, style, difficulty)
@@ -356,7 +379,7 @@ class ResultDatabase:
                 ret[1] = min(ret[1], r.result.judge.bd + r.result.judge.pr)
             elif r.result.bp: # 選曲画面から登録したものはこちら
                 ret[1] = min(ret[1], r.result.bp)
-            ret[2] = max(ret[2], r.result.lamp.value)
+            ret[2] = clear_lamp(max(ret[2].value, r.result.lamp.value))
 
         return ret
     
