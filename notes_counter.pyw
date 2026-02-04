@@ -132,7 +132,7 @@ class MainWindow(MainWindowUI):
         # 警告がある場合はダイアログを表示
         if warnings:
             warning_message = "OBS設定に問題があります:\n\n" + "\n".join(warnings)
-            warning_message += "\n\n設定を確認してください。"
+            warning_message += "\n\nOBSが起動していること及び、本アプリの設定を確認してください。"
             warning_message += "\n(メニュー: ファイル → OBS制御設定)"
             
             msg_box = QMessageBox(self)
