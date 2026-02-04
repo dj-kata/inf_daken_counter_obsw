@@ -62,7 +62,7 @@ class OBSControlData:
     
     def get_settings_by_trigger(self, trigger: str) -> List[Dict[str, Any]]:
         """指定されたトリガーの設定一覧を取得"""
-        return [setting for setting in self.config.obs_control_settings if setting.get("trigger") == trigger]
+        return [setting for setting in self.config.obs_control_settings if setting.get("timing") == trigger]
     
     def set_monitor_source(self, source_name: str):
         """監視対象ソース名を設定"""

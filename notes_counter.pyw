@@ -93,6 +93,9 @@ class MainWindow(MainWindowUI):
         # OBS接続
         self.obs_manager.connect()
         
+        # アプリ起動時のOBS処理
+        self.execute_obs_triggers('app_start')
+
         # メインループタイマーの設定（100ms間隔）
         self.main_timer = QTimer()
         self.main_timer.timeout.connect(self.main_loop)
@@ -336,12 +339,66 @@ class MainWindow(MainWindowUI):
         if trigger == 'result_start': # リザルト画面の先頭で実行
             self.result_pre = None # 1つ前の認識結果
             self.result_timestamp = int(datetime.datetime.now().timestamp())
-    
+
     def execute_obs_triggers(self, trigger: str):
         """指定されたトリガーのOBS制御を実行"""
-        # OBS制御設定から該当するトリガーの設定を取得して実行
-        # この部分は実際のOBS制御ロジックに応じて実装
         logger.debug(f"OBSトリガー実行: {trigger}")
+        try:
+            # OBS制御ウィンドウが作成されていなくても設定は実行できるよう、
+            # 直接設定データを読み込んで実行
+            from src.obs_control import OBSControlData
+            
+            control_data = OBSControlData()
+            control_data.set_config(self.config)
+            settings = control_data.get_settings_by_trigger(trigger)
+            
+            if not settings:
+                logger.debug(f"制御設定がないのでスキップ")
+                return  # 該当する設定がない場合は何もしない
+            
+            if not self.obs_manager.is_connected:
+                logger.debug(f"OBS未接続のため、トリガー '{trigger}' をスキップ")
+                return
+            
+            for setting in settings:
+                try:
+                    action = setting["action"]
+                    logger.debug(f"action = {action}")
+                    
+                    if action == "switch_scene":
+                        target_scene = setting.get("scene")
+                        if target_scene:
+                            self.obs_manager.change_scene(target_scene)
+                            print(f"シーンを切り替え: {target_scene}")
+                    
+                    elif action == "show_source":
+                        scene_name = setting.get("scene")
+                        source_name = setting.get("source")
+                        if scene_name and source_name:
+                            mod_scene_name, scene_item_id = self.obs_manager.search_itemid(scene_name, source_name)
+                            if scene_item_id:
+                                self.obs_manager.enable_source(mod_scene_name, scene_item_id)
+                                print(f"ソースを表示: {scene_name}/{source_name} (id:{scene_item_id})")
+                    
+                    elif action == "hide_source":
+                        scene_name = setting.get("scene")
+                        source_name = setting.get("source")
+                        if scene_name and source_name:
+                            mod_scene_name, scene_item_id = self.obs_manager.search_itemid(scene_name, source_name)
+                            if scene_item_id:
+                                self.obs_manager.send_command("set_scene_item_enabled",
+                                                            scene_name=mod_scene_name,
+                                                            scene_item_id=scene_item_id,
+                                                            scene_item_enabled=False)
+                                self.obs_manager.disable_source(mod_scene_name, scene_item_id)
+                                print(f"ソースを非表示: {scene_name}/{source_name} (id:{scene_item_id})")
+                                
+                except Exception as e:
+                    print(f"制御実行エラー (trigger: {trigger}, setting: {setting}): {e}")
+                    
+        except Exception as e:
+            print(traceback.format_exc())
+            print(f"トリガー実行エラー ({trigger}): {e}")
     
     def process_select_mode(self):
         """選曲画面での処理"""
@@ -393,7 +450,10 @@ class MainWindow(MainWindowUI):
             logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
     
     def closeEvent(self, event):
-        """ウィンドウクローズイベント"""
+        """アプリ終了時に実行する処理"""
+        # アプリ終了時のOBS処理
+        self.execute_obs_triggers('app_end')
+
         # グローバルホットキーの解除
         self.remove_global_hotkeys()
         

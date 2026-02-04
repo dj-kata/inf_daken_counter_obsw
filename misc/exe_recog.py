@@ -10,6 +10,7 @@ from src.screen_reader import ScreenReader
 from src.logger import get_logger
 from src.result import ResultDatabase
 from src.classes import detect_mode, play_style, difficulty, clear_lamp
+from src.config import Config
 logger = get_logger('exe_recog')
 
 def gen_ocr_result(info, playdata):

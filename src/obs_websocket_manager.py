@@ -292,7 +292,7 @@ class OBSWebSocketManager(QObject):
             # 次の監視ループで自動的に検出・再接続される
             return None
     
-    def get_scenes(self) -> List[Dict]:
+    def get_scene_list(self) -> List[Dict]:
         """シーン一覧を取得"""
         try:
             if not self.is_connected or not self.client:
@@ -303,7 +303,7 @@ class OBSWebSocketManager(QObject):
             logger.debug(f"Failed to get scenes: {e}")
             return []
     
-    def get_sources(self, scene: str) -> List[str]:
+    def get_source_list(self, scene: str) -> List[str]:
         """指定シーンのソース一覧を取得"""
         ret = []
         try:

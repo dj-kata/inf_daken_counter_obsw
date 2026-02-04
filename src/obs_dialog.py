@@ -1,407 +1,490 @@
 """
-OBS制御設定ダイアログ
-OBS連携の詳細設定を行うためのダイアログウィンドウ
+OBS制御設定ダイアログ（PySide6版・改良版）
+既存のobs_websocket_manager.pyと完全互換
 """
 
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-                               QPushButton, QGroupBox, QComboBox, QLabel,
-                               QListWidget, QListWidgetItem, QMessageBox,
-                               QDialogButtonBox, QSpinBox, QWidget, QTabWidget,
-                               QTableWidget, QTableWidgetItem, QHeaderView,
-                               QAbstractItemView)
-from PySide6.QtCore import Qt, Signal
-import traceback
-
-from src.config import Config
-from src.obs_websocket_manager import OBSWebSocketManager
+from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTableWidget,
+                               QTableWidgetItem, QPushButton, QLabel, QComboBox,
+                               QGroupBox, QHeaderView, QMessageBox, QFormLayout)
+from PySide6.QtCore import Qt
 from src.logger import get_logger
+
 logger = get_logger(__name__)
 
 
 class OBSControlDialog(QDialog):
-    """OBS制御設定ダイアログクラス"""
+    """OBS制御設定ダイアログ"""
     
-    # トリガー定義
-    TRIGGERS = {
-        "app_start": "アプリ起動時",
-        "app_end": "アプリ終了時", 
-        "select_start": "選曲画面開始時",
-        "select_end": "選曲画面終了時",
-        "play_start": "プレー画面開始時",
-        "play_end": "プレー画面終了時",
-        "result_start": "リザルト画面開始時",
-        "result_end": "リザルト画面終了時"
-    }
+    # 実行タイミングの定義（既存コードと同じ）
+    TIMINGS = [
+        ("app_start", "アプリ起動時"),
+        ("app_end", "アプリ終了時"),
+        ("select_start", "選曲画面開始時"),
+        ("select_end", "選曲画面終了時"),
+        ("play_start", "プレー画面開始時"),
+        ("play_end", "プレー画面終了時"),
+        ("result_start", "リザルト画面開始時"),
+        ("result_end", "リザルト画面終了時"),
+    ]
     
-    # アクション定義
-    ACTIONS = {
-        "show_source": "ソースを表示",
-        "hide_source": "ソースを非表示",
-        "switch_scene": "シーンを切り替え",
-    }
+    # アクションの定義（既存コードと同じ）
+    ACTIONS = [
+        ("show_source", "ソースを表示"),
+        ("hide_source", "ソースを非表示"),
+        ("switch_scene", "シーンを切り替え"),
+        ("set_monitor_source", "監視対象ソース指定"),
+    ]
     
-    def __init__(self, config: Config, obs_manager: OBSWebSocketManager, parent=None):
+    def __init__(self, config, obs_manager, parent=None):
         super().__init__(parent)
-        
         self.config = config
         self.obs_manager = obs_manager
-
-        # 接続状態変化を監視
-        self.obs_manager.connection_changed.connect(self.on_connection_changed)
         
-        # OBSデータ
-        self.scenes_list = []
-        self.sources_dict = {}  # {scene_name: [source_list]}
-        self.all_sources_list = []
-        
-        # ダイアログ設定
         self.setWindowTitle("OBS制御設定")
-        self.setMinimumWidth(900)
-        self.setMinimumHeight(700)
+        self.setMinimumSize(900, 600)
         
-        # UI初期化
         self.init_ui()
+        self.load_settings()
         
-        # OBSデータを取得
-        self.refresh_obs_data()
-        
-        # 現在の設定を読み込み
-        self.load_current_settings()
+        # OBSのシーン一覧を取得
+        self.update_scene_list()
     
     def init_ui(self):
         """UI初期化"""
         layout = QVBoxLayout()
         self.setLayout(layout)
         
-        # OBS接続状態表示
-        status_group = QGroupBox("OBS接続状態")
-        status_layout = QHBoxLayout()
-        status_group.setLayout(status_layout)
+        # 監視対象ソース表示
+        monitor_group = QGroupBox("監視対象ソース")
+        monitor_layout = QHBoxLayout()
+        monitor_group.setLayout(monitor_layout)
         
-        self.status_label = QLabel("接続確認中...")
-        status_layout.addWidget(self.status_label)
+        self.monitor_label = QLabel("未設定")
+        self.monitor_label.setStyleSheet("font-weight: bold; color: blue;")
+        monitor_layout.addWidget(QLabel("現在の監視対象:"))
+        monitor_layout.addWidget(self.monitor_label)
+        monitor_layout.addStretch()
         
-        reconnect_btn = QPushButton("再接続")
-        reconnect_btn.clicked.connect(self.reconnect_obs)
-        status_layout.addWidget(reconnect_btn)
-        status_layout.addStretch()
+        # クリアボタンを追加
+        clear_monitor_button = QPushButton("クリア")
+        clear_monitor_button.clicked.connect(self.clear_monitor_source)
+        monitor_layout.addWidget(clear_monitor_button)
         
-        layout.addWidget(status_group)
+        layout.addWidget(monitor_group)
         
-        # タブウィジェット
-        tab_widget = QTabWidget()
-        layout.addWidget(tab_widget)
+        # 新しい制御設定を追加するグループ
+        add_group = QGroupBox("新しい制御設定を追加")
+        add_layout = QFormLayout()
+        add_group.setLayout(add_layout)
         
-        # 各タブを作成
-        tab_widget.addTab(self.create_control_settings_tab(), "制御設定")
-        tab_widget.addTab(self.create_monitor_source_tab(), "監視対象ソース")
+        # 実行タイミング
+        self.timing_combo = QComboBox()
+        for timing_id, timing_name in self.TIMINGS:
+            self.timing_combo.addItem(timing_name, timing_id)
+        add_layout.addRow("実行タイミング:", self.timing_combo)
         
-        # ボタン
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-        )
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
+        # アクション
+        self.action_combo = QComboBox()
+        for action_id, action_name in self.ACTIONS:
+            self.action_combo.addItem(action_name, action_id)
+        self.action_combo.currentIndexChanged.connect(self.on_action_changed)
+        add_layout.addRow("アクション:", self.action_combo)
         
-        # 接続状態を更新
-        self.update_connection_status()
-    
-    def create_control_settings_tab(self):
-        """制御設定タブ"""
-        widget = QWidget()
-        layout = QVBoxLayout()
-        widget.setLayout(layout)
+        # 対象シーン
+        self.target_scene_combo = QComboBox()
+        self.target_scene_combo.currentIndexChanged.connect(self.on_target_scene_changed)
+        add_layout.addRow("対象シーン:", self.target_scene_combo)
         
-        # 説明ラベル
-        info_label = QLabel(
-            "ゲーム画面の状態変化に応じてOBSを自動制御する設定を行います。"
-        )
-        info_label.setWordWrap(True)
-        layout.addWidget(info_label)
+        # 対象ソース
+        self.target_source_combo = QComboBox()
+        add_layout.addRow("対象ソース:", self.target_source_combo)
         
-        # 制御設定リスト
+        # 切り替え先シーン
+        self.switch_scene_combo = QComboBox()
+        add_layout.addRow("切り替え先シーン:", self.switch_scene_combo)
+        
+        # 設定追加ボタン
+        add_button_layout = QHBoxLayout()
+        self.add_button = QPushButton("設定を追加")
+        self.add_button.clicked.connect(self.add_setting)
+        add_button_layout.addStretch()
+        add_button_layout.addWidget(self.add_button)
+        add_layout.addRow("", add_button_layout)
+        
+        layout.addWidget(add_group)
+        
+        # 初期状態のコンボボックス有効/無効を設定
+        self.on_action_changed()
+        
+        # 登録済み制御設定一覧
         list_group = QGroupBox("登録済み制御設定")
         list_layout = QVBoxLayout()
         list_group.setLayout(list_layout)
         
         self.settings_table = QTableWidget()
         self.settings_table.setColumnCount(4)
-        self.settings_table.setHorizontalHeaderLabels(
-            ["トリガー", "アクション", "対象", "備考"]
-        )
-        self.settings_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.settings_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.settings_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.settings_table.setHorizontalHeaderLabels([
+            "実行タイミング", "アクション", "対象", ""
+        ])
+        
+        # テーブルを編集不可に設定
+        self.settings_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        
+        # 列幅を自動調整
+        header = self.settings_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        self.settings_table.setColumnWidth(1, 150)
+        self.settings_table.setColumnWidth(2, 150)
+        self.settings_table.setColumnWidth(3, 100)
+        
         list_layout.addWidget(self.settings_table)
         
-        # ボタン
-        button_layout = QHBoxLayout()
-        add_btn = QPushButton("追加")
-        add_btn.clicked.connect(self.add_control_setting)
-        button_layout.addWidget(add_btn)
+        # 一括削除ボタン
+        delete_layout = QHBoxLayout()
+        delete_layout.addStretch()
         
-        edit_btn = QPushButton("編集")
-        edit_btn.clicked.connect(self.edit_control_setting)
-        button_layout.addWidget(edit_btn)
+        self.delete_selected_button = QPushButton("選択した設定を削除")
+        self.delete_selected_button.clicked.connect(self.delete_selected)
+        delete_layout.addWidget(self.delete_selected_button)
         
-        remove_btn = QPushButton("削除")
-        remove_btn.clicked.connect(self.remove_control_setting)
-        button_layout.addWidget(remove_btn)
+        self.delete_all_button = QPushButton("すべて削除")
+        self.delete_all_button.clicked.connect(self.delete_all)
+        delete_layout.addWidget(self.delete_all_button)
         
-        button_layout.addStretch()
-        list_layout.addLayout(button_layout)
+        list_layout.addLayout(delete_layout)
         
         layout.addWidget(list_group)
         
-        return widget
+        # 更新・再接続・OK/キャンセルボタン
+        button_layout = QHBoxLayout()
+        
+        self.refresh_button = QPushButton("更新")
+        self.refresh_button.clicked.connect(self.update_scene_list)
+        button_layout.addWidget(self.refresh_button)
+        
+        self.reconnect_button = QPushButton("再接続")
+        self.reconnect_button.clicked.connect(self.reconnect_obs)
+        button_layout.addWidget(self.reconnect_button)
+        
+        button_layout.addStretch()
+        
+        ok_button = QPushButton("OK")
+        ok_button.clicked.connect(self.accept)
+        button_layout.addWidget(ok_button)
+        
+        cancel_button = QPushButton("キャンセル")
+        cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_button)
+        
+        layout.addLayout(button_layout)
     
-    def create_monitor_source_tab(self):
-        """監視対象ソースタブ"""
-        widget = QWidget()
-        layout = QVBoxLayout()
-        widget.setLayout(layout)
-        
-        # 説明
-        info_label = QLabel(
-            "ゲーム画面をキャプチャするOBSソースを指定してください。\n"
-            "このソースからゲーム画面を取得して状態判定を行います。"
-        )
-        info_label.setWordWrap(True)
-        layout.addWidget(info_label)
-        
-        # ソース選択
-        source_group = QGroupBox("監視対象ソース")
-        source_layout = QFormLayout()
-        source_group.setLayout(source_layout)
-        
-        self.monitor_source_combo = QComboBox()
-        source_layout.addRow("ソース名:", self.monitor_source_combo)
-        
-        # 現在の設定
-        current_label = QLabel()
-        if self.config.monitor_source_name:
-            current_label.setText(f"現在の設定: {self.config.monitor_source_name}")
-        else:
-            current_label.setText("現在の設定: (未設定)")
-        source_layout.addRow("", current_label)
-        
-        layout.addWidget(source_group)
-        
-        # 更新ボタン
-        refresh_btn = QPushButton("ソースリストを更新")
-        refresh_btn.clicked.connect(self.refresh_source_list)
-        layout.addWidget(refresh_btn)
-        
-        layout.addStretch()
-        
-        return widget
-    
-    def refresh_obs_data(self):
-        """OBSデータを取得"""
+    def update_scene_list(self):
+        """OBSからシーン一覧を取得してコンボボックスを更新"""
         if not self.obs_manager.is_connected:
-            logger.warning("OBS未接続のため、データを取得できません")
+            logger.warning("OBSに接続されていません")
             return
         
         try:
-            # シーン一覧を取得
-            self.scenes_list = self.obs_manager.get_scenes()
+            # OBSからシーン一覧を取得（List[Dict]）
+            scenes_data = self.obs_manager.get_scene_list()
             
-            # 各シーンのソースを取得
-            self.sources_dict.clear()
-            self.all_sources_list.clear()
+            self.target_scene_combo.clear()
+            self.switch_scene_combo.clear()
             
-            for scene_data in self.scenes_list:
-                scene_name = scene_data.get('sceneName', '')
+            # scenesデータからシーン名を抽出
+            for scene_dict in scenes_data:
+                scene_name = scene_dict.get('sceneName', '')
                 if scene_name:
-                    sources = self.obs_manager.get_sources(scene_name)
-                    self.sources_dict[scene_name] = sources
-                    self.all_sources_list.extend(sources)
+                    self.target_scene_combo.addItem(scene_name)
+                    self.switch_scene_combo.addItem(scene_name)
             
-            # 重複を除去
-            self.all_sources_list = list(set(self.all_sources_list))
+            logger.info(f"シーンリストを更新しました: {len(scenes_data)}件")
+                
+        except Exception as e:
+            logger.error(f"シーン一覧取得エラー: {e}")
+            QMessageBox.warning(self, "エラー", f"シーンリストの取得に失敗しました:\n{e}")
+    
+    def on_target_scene_changed(self):
+        """対象シーンが変更されたときにソース一覧を更新"""
+        scene_name = self.target_scene_combo.currentText()
+        if not scene_name or not self.obs_manager.is_connected:
+            return
+        
+        try:
+            # OBSから指定シーンのソース一覧を取得（List[str]）
+            sources = self.obs_manager.get_source_list(scene_name)
             
-            logger.info(f"OBSデータ取得完了: {len(self.scenes_list)}シーン, "
-                       f"{len(self.all_sources_list)}ソース")
+            self.target_source_combo.clear()
+            for source in sources:
+                self.target_source_combo.addItem(source)
+            
+            logger.debug(f"シーン '{scene_name}' のソースリストを更新: {len(sources)}件")
+                
+        except Exception as e:
+            logger.error(f"ソース一覧取得エラー: {e}")
+    
+    def on_action_changed(self):
+        """アクションが変更されたときにコンボボックスの有効/無効を切り替え"""
+        action = self.action_combo.currentData()
+        
+        if action == "set_monitor_source":
+            # 監視対象ソース設定: 実行タイミングも無効化
+            self.timing_combo.setEnabled(False)
+            self.target_scene_combo.setEnabled(True)
+            self.target_source_combo.setEnabled(True)
+            self.switch_scene_combo.setEnabled(False)
+            
+            # ソース一覧を更新
+            self.on_target_scene_changed()
+            
+        elif action == "show_source" or action == "hide_source":
+            # ソース表示・非表示
+            self.timing_combo.setEnabled(True)
+            self.target_scene_combo.setEnabled(True)
+            self.target_source_combo.setEnabled(True)
+            self.switch_scene_combo.setEnabled(False)
+            
+            # ソース一覧を更新
+            self.on_target_scene_changed()
+            
+        elif action == "switch_scene":
+            # シーン切り替え
+            self.timing_combo.setEnabled(True)
+            self.target_scene_combo.setEnabled(False)
+            self.target_source_combo.setEnabled(False)
+            self.switch_scene_combo.setEnabled(True)
+    
+    def add_setting(self):
+        """設定を追加"""
+        try:
+            # 選択内容を取得
+            timing_id = self.timing_combo.currentData()
+            timing_name = self.timing_combo.currentText()
+            action_id = self.action_combo.currentData()
+            action_name = self.action_combo.currentText()
+            
+            # 設定データを作成（既存コードと同じ形式）
+            setting = {
+                "timing": timing_id,
+                "action": action_id,
+            }
+            
+            if action_id == "show_source" or action_id == "hide_source":
+                # ソース表示・非表示
+                target_scene = self.target_scene_combo.currentText()
+                target_source = self.target_source_combo.currentText()
+                
+                if not target_scene or not target_source:
+                    QMessageBox.warning(self, "エラー", "対象シーンと対象ソースを選択してください")
+                    return
+                
+                setting["scene"] = target_scene
+                setting["source"] = target_source
+                
+                target_text = f"{target_scene} / {target_source}"
+                
+            elif action_id == "switch_scene":
+                # シーン切り替え
+                switch_scene = self.switch_scene_combo.currentText()
+                
+                if not switch_scene:
+                    QMessageBox.warning(self, "エラー", "切り替え先シーンを選択してください")
+                    return
+                
+                setting["scene"] = switch_scene
+                
+                target_text = switch_scene
+                
+            elif action_id == "set_monitor_source":
+                # 監視対象ソース設定
+                target_scene = self.target_scene_combo.currentText()
+                target_source = self.target_source_combo.currentText()
+                
+                if not target_scene or not target_source:
+                    QMessageBox.warning(self, "エラー", "対象シーンと対象ソースを選択してください")
+                    return
+                
+                # 既存の監視対象ソース設定を削除（1つのみ）
+                self.config.obs_control_settings = [
+                    s for s in self.config.obs_control_settings
+                    if s.get("action") != "set_monitor_source"
+                ]
+                
+                setting["scene"] = target_scene
+                setting["source"] = target_source
+                
+                # 監視対象ソース名を更新
+                self.config.monitor_source_name = target_source
+                self.monitor_label.setText(target_source)
+                
+                # 設定を追加（ただしテーブルには追加しない）
+                self.config.obs_control_settings.append(setting)
+                
+                logger.info(f"監視対象ソースを設定: {target_source} (シーン: {target_scene})")
+                QMessageBox.information(self, "設定完了", f"監視対象ソースを '{target_source}' に設定しました")
+                
+                # 早期リターン（テーブルに追加しない）
+                return
+            
+            # 設定を追加
+            self.config.obs_control_settings.append(setting)
+            
+            # テーブルに追加（引数の順序: timing, action, target）
+            self.add_table_row(timing_name, action_name, target_text, setting)
+            
+            logger.info(f"OBS制御設定を追加: {setting}")
             
         except Exception as e:
-            logger.error(f"OBSデータ取得エラー: {traceback.format_exc()}")
+            logger.error(f"設定追加エラー: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            QMessageBox.warning(self, "エラー", f"設定の追加に失敗しました:\n{e}")
     
-    def refresh_source_list(self):
-        """ソースリストを更新"""
-        self.refresh_obs_data()
-        
-        # コンボボックスを更新
-        self.monitor_source_combo.clear()
-        self.monitor_source_combo.addItems(sorted(self.all_sources_list))
-        
-        # 現在の設定値を選択
-        if self.config.monitor_source_name:
-            index = self.monitor_source_combo.findText(self.config.monitor_source_name)
-            if index >= 0:
-                self.monitor_source_combo.setCurrentIndex(index)
-        
-        QMessageBox.information(self, "更新完了", "ソースリストを更新しました。")
-    
-    def reconnect_obs(self):
-        """OBS再接続"""
-        # 自動再接続を一時的に停止
-        self.obs_manager.auto_reconnect = False
-        
-        # 再接続を試みる
-        self.obs_manager.disconnect()
-        success = self.obs_manager.connect()
-        
-        # 自動再接続を再有効化
-        self.obs_manager.auto_reconnect = True
-        
-        if success:
-            QMessageBox.information(self, "再接続", "OBSへの再接続に成功しました。")
-        else:
-            QMessageBox.warning(self, "再接続失敗", "OBSへの再接続に失敗しました。")
-    
-    def closeEvent(self, event):
-        """ダイアログクローズ時の処理"""
-        # シグナル接続を解除（メモリリーク防止）
-        try:
-            self.obs_manager.connection_changed.disconnect(self.on_connection_changed)
-        except:
-            pass
-        
-        event.accept()
-
-    def update_connection_status(self):
-        """接続状態表示を更新"""
-        status_msg, is_connected = self.obs_manager.get_status()
-        self.status_label.setText(status_msg)
-        
-        if is_connected:
-            self.status_label.setStyleSheet("color: green; font-weight: bold;")
-        else:
-            self.status_label.setStyleSheet("color: red; font-weight: bold;")
-
-    def on_connection_changed(self, is_connected: bool, message: str):
-        """接続状態変化時のハンドラ"""
-        # ステータスラベルを更新
-        self.status_label.setText(message)
-        
-        if is_connected:
-            self.status_label.setStyleSheet("color: green; font-weight: bold;")
-            # 接続成功時にOBSデータを再取得
-            self.refresh_obs_data()
-        else:
-            self.status_label.setStyleSheet("color: red; font-weight: bold;")
- 
-    def load_current_settings(self):
-        """現在の設定を読み込み"""
-        # 制御設定テーブルを更新
-        self.settings_table.setRowCount(0)
-        for setting in self.config.obs_control_settings:
-            self.add_setting_to_table(setting)
-        
-        # 監視対象ソースを更新
-        self.monitor_source_combo.clear()
-        self.monitor_source_combo.addItems(sorted(self.all_sources_list))
-        if self.config.monitor_source_name:
-            index = self.monitor_source_combo.findText(self.config.monitor_source_name)
-            if index >= 0:
-                self.monitor_source_combo.setCurrentIndex(index)
-        
-    def add_setting_to_table(self, setting: dict):
-        """制御設定をテーブルに追加"""
+    def add_table_row(self, timing, action, target, setting=None):
+        """テーブルに行を追加"""
         row = self.settings_table.rowCount()
         self.settings_table.insertRow(row)
         
-        trigger_text = self.TRIGGERS.get(setting.get("trigger", ""), "不明")
-        action_text = self.ACTIONS.get(setting.get("action", ""), "不明")
-        target_text = setting.get("target", "")
-        note_text = setting.get("note", "")
+        self.settings_table.setItem(row, 0, QTableWidgetItem(timing))
+        self.settings_table.setItem(row, 1, QTableWidgetItem(action))
+        self.settings_table.setItem(row, 2, QTableWidgetItem(target))
         
-        self.settings_table.setItem(row, 0, QTableWidgetItem(trigger_text))
-        self.settings_table.setItem(row, 1, QTableWidgetItem(action_text))
-        self.settings_table.setItem(row, 2, QTableWidgetItem(target_text))
-        self.settings_table.setItem(row, 3, QTableWidgetItem(note_text))
+        # 設定データを行に関連付け
+        if setting:
+            self.settings_table.item(row, 0).setData(Qt.ItemDataRole.UserRole, setting)
+        
+        # 削除ボタン
+        delete_button = QPushButton("削除")
+        delete_button.clicked.connect(lambda checked, r=row: self.delete_row(r))
+        self.settings_table.setCellWidget(row, 3, delete_button)
     
-    def add_control_setting(self):
-        """制御設定を追加"""
-        # 簡易的な追加ダイアログ（実際にはより詳細なダイアログが必要）
-        from PySide6.QtWidgets import QInputDialog
-        
-        # トリガー選択
-        trigger_items = list(self.TRIGGERS.values())
-        trigger_text, ok = QInputDialog.getItem(
-            self, "トリガー選択", "トリガーを選択:", trigger_items, 0, False
-        )
-        if not ok:
+    def delete_row(self, row):
+        """指定行を削除"""
+        # テーブルの行から設定データを取得
+        item = self.settings_table.item(row, 0)
+        if not item:
             return
         
-        trigger_key = [k for k, v in self.TRIGGERS.items() if v == trigger_text][0]
-        
-        # アクション選択
-        action_items = list(self.ACTIONS.values())
-        action_text, ok = QInputDialog.getItem(
-            self, "アクション選択", "アクションを選択:", action_items, 0, False
-        )
-        if not ok:
+        setting = item.data(Qt.ItemDataRole.UserRole)
+        if not setting:
             return
         
-        action_key = [k for k, v in self.ACTIONS.items() if v == action_text][0]
+        # config.obs_control_settingsから同じ設定を削除
+        try:
+            self.config.obs_control_settings.remove(setting)
+            logger.info(f"OBS制御設定を削除: {setting}")
+        except ValueError:
+            logger.warning(f"設定が見つかりません: {setting}")
         
-        # 対象入力
-        target, ok = QInputDialog.getText(
-            self, "対象入力", "対象（ソース名またはシーン名）:"
-        )
-        if not ok:
-            return
-        
-        # 設定を追加
-        new_setting = {
-            "trigger": trigger_key,
-            "action": action_key,
-            "target": target,
-            "note": ""
-        }
-        
-        self.config.obs_control_settings.append(new_setting)
-        self.add_setting_to_table(new_setting)
+        # テーブルから行を削除
+        self.settings_table.removeRow(row)
     
-    def edit_control_setting(self):
-        """制御設定を編集"""
-        current_row = self.settings_table.currentRow()
-        if current_row < 0:
-            QMessageBox.warning(self, "警告", "編集する設定を選択してください。")
+    def delete_selected(self):
+        """選択された行を削除"""
+        selected_rows = set()
+        for item in self.settings_table.selectedItems():
+            selected_rows.add(item.row())
+        
+        if not selected_rows:
+            QMessageBox.information(self, "情報", "削除する設定を選択してください")
             return
         
-        # 実装は add_control_setting と同様のダイアログを使用
-        QMessageBox.information(self, "未実装", "編集機能は今後実装予定です。")
+        # 後ろから削除
+        for row in sorted(selected_rows, reverse=True):
+            self.delete_row(row)
     
-    def remove_control_setting(self):
-        """制御設定を削除"""
-        current_row = self.settings_table.currentRow()
-        if current_row < 0:
-            QMessageBox.warning(self, "警告", "削除する設定を選択してください。")
-            return
-        
+    def delete_all(self):
+        """すべての設定を削除"""
         reply = QMessageBox.question(
-            self, "確認", "選択した設定を削除しますか?",
-            QMessageBox.Yes | QMessageBox.No
+            self, "確認",
+            "すべての設定を削除しますか？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
-        if reply == QMessageBox.Yes:
-            del self.config.obs_control_settings[current_row]
-            self.settings_table.removeRow(current_row)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.config.obs_control_settings.clear()
+            self.config.monitor_source_name = ""
+            self.monitor_label.setText("未設定")
+            self.settings_table.setRowCount(0)
+            logger.info("すべてのOBS制御設定を削除しました")
+    
+    def load_settings(self):
+        """設定を読み込んでテーブルに表示"""
+        self.settings_table.setRowCount(0)
+        
+        # 監視対象ソースを表示
+        if self.config.monitor_source_name:
+            self.monitor_label.setText(self.config.monitor_source_name)
+        else:
+            self.monitor_label.setText("未設定")
+        
+        # トリガーとアクションの逆引き辞書を作成
+        timing_dict = {timing_id: name for timing_id, name in self.TIMINGS}
+        action_dict = {action_id: name for action_id, name in self.ACTIONS}
+        
+        # 各設定をテーブルに追加（監視対象ソース設定は除外）
+        for setting in self.config.obs_control_settings:
+            timing_id = setting.get("timing", "")
+            action_id = setting.get("action", "")
+            
+            # 監視対象ソース設定はスキップ（画面上部のラベルのみに表示）
+            if action_id == "set_monitor_source":
+                continue
+            
+            timing_name = timing_dict.get(timing_id, timing_id)
+            action_name = action_dict.get(action_id, action_id)
+            
+            if action_id == "switch_scene":
+                target_text = setting.get("scene", "")
+            else:  # show_source or hide_source
+                scene = setting.get("scene", "")
+                source = setting.get("source", "")
+                target_text = f"{scene} / {source}"
+            
+            # 引数の順序: timing, action, target
+            self.add_table_row(timing_name, action_name, target_text, setting)
+    
+    def reconnect_obs(self):
+        """OBSに再接続"""
+        try:
+            self.obs_manager.disconnect()
+            success = self.obs_manager.connect()
+            if success:
+                self.update_scene_list()
+                QMessageBox.information(self, "成功", "OBSに再接続しました")
+            else:
+                QMessageBox.warning(self, "エラー", "OBSへの再接続に失敗しました")
+        except Exception as e:
+            logger.error(f"OBS再接続エラー: {e}")
+            QMessageBox.warning(self, "エラー", f"OBSへの再接続に失敗しました:\n{e}")
+    
+    def clear_monitor_source(self):
+        """監視対象ソースをクリア"""
+        reply = QMessageBox.question(
+            self, "確認",
+            "監視対象ソースをクリアしますか？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            # 設定から監視対象ソース設定を削除
+            self.config.obs_control_settings = [
+                s for s in self.config.obs_control_settings
+                if s.get("action") != "set_monitor_source"
+            ]
+            
+            # 監視対象ソース名をクリア
+            self.config.monitor_source_name = ""
+            self.monitor_label.setText("未設定")
+            
+            logger.info("監視対象ソースをクリアしました")
+            QMessageBox.information(self, "完了", "監視対象ソースをクリアしました")
     
     def accept(self):
-        """OKボタン押下時の処理"""
-        # 監視対象ソースを保存
-        monitor_source = self.monitor_source_combo.currentText()
-        if monitor_source:
-            self.config.monitor_source_name = monitor_source
-        
-        # 設定を保存
+        """OKボタン"""
         self.config.save_config()
-        
         logger.info("OBS制御設定を保存しました")
-        
-        # ダイアログを閉じる
         super().accept()
