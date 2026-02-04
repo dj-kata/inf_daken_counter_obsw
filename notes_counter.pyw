@@ -253,7 +253,7 @@ class MainWindow(MainWindowUI):
         """メインループ - 100ms毎に呼ばれる"""
         try:
             # OBS連携が有効な場合のみスクリーンショット取得
-            if self.obs_manager.is_connected:
+            if self.obs_manager.is_connected and self.config.monitor_source_name != "":
                 self.obs_manager.screenshot()
                 
                 if self.obs_manager.screen is not None:

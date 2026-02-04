@@ -262,16 +262,25 @@ class OBSControlDialog(QDialog):
         
         if action_id == "switch_scene":
             # シーン切り替え
+            self.timing_combo.setEnabled(True)
             self.target_scene_combo.setEnabled(False)
             self.target_source_combo.setEnabled(False)
             self.switch_scene_combo.setEnabled(True)
-        elif action_id in ("show_source", "hide_source", "set_monitor_source"):
-            # ソース表示/非表示/監視対象ソース指定
+        elif action_id in ("show_source", "hide_source"):
+            # ソース表示/非表示
+            self.timing_combo.setEnabled(True)
+            self.target_scene_combo.setEnabled(True)
+            self.target_source_combo.setEnabled(True)
+            self.switch_scene_combo.setEnabled(False)
+        elif action_id == 'set_monitor_source':
+            # 監視対象ソース指定
+            self.timing_combo.setEnabled(False)
             self.target_scene_combo.setEnabled(True)
             self.target_source_combo.setEnabled(True)
             self.switch_scene_combo.setEnabled(False)
         else:
             # 未定義のアクション
+            self.timing_combo.setEnabled(True)
             self.target_scene_combo.setEnabled(True)
             self.target_source_combo.setEnabled(True)
             self.switch_scene_combo.setEnabled(True)
@@ -285,8 +294,12 @@ class OBSControlDialog(QDialog):
             timing_name = self.timing_combo.currentText()
             
             # 基本的な未入力チェック
-            if not action_id or timing_id is None:
-                QMessageBox.warning(self, "エラー", "アクションと実行タイミングを選択してください")
+            logger.debug(f"{action_id}, {action_name}, {timing_id}, {timing_name}")
+            if action_id is None:
+                QMessageBox.warning(self, "エラー", "アクションを選択してください")
+                return
+            if action_id != "set_monitor_source" and not timing_id:
+                QMessageBox.warning(self, "エラー", "実行タイミングを選択してください")
                 return
             
             setting = {

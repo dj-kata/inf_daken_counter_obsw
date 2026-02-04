@@ -375,7 +375,7 @@ class OBSWebSocketManager(QObject):
             )
             return True
         except Exception as e:
-            logger.debug(f"Failed to save screenshot: {e}")
+            # logger.debug(f"Failed to save screenshot: {e}")
             return False
     
     def enable_source(self, scenename: str, sourceid: int):
