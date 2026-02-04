@@ -30,7 +30,7 @@ from src.screen_reader import ScreenReader
 from src.result import ResultDatabase, OneResult
 from src.result_stats_writer import ResultStatsWriter
 from src.logger import get_logger
-logger = get_logger(__name__)
+logger = get_logger('notes_counter')
 
 from src.config_dialog import ConfigDialog
 from src.obs_dialog import OBSControlDialog

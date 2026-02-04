@@ -10,7 +10,7 @@ from src.screen_reader import ScreenReader
 from src.logger import get_logger
 from src.result import ResultDatabase
 from src.classes import detect_mode, play_style, difficulty, clear_lamp
-logger = get_logger(__name__)
+logger = get_logger('exe_recog')
 
 def gen_ocr_result(info, playdata):
     out = []
@@ -35,13 +35,7 @@ def gen_ocr_result(info, playdata):
 if __name__ == '__main__':
     logger.info('start')
     reader = ScreenReader()
-    # for f in glob.glob('debug/*.png'):
-    # for f in glob.glob('debug/select*.png'):
-    # for f in glob.glob('debug/play_*.png'):
-    # for f in glob.glob('debug/2p_score.png'):
-    # for f in glob.glob('debug/result_1p_failed.png'):
-    # for f in glob.glob('debug/infinitas_20240316_002103.png'):
-    for f in glob.glob('debug/0126/*.png'):
+    for f in glob.glob('debug/result/*.png'):
         reader.update_screen_from_file(f)
         logger.info(f'file={f}')
         if reader.is_result():
@@ -60,7 +54,7 @@ if __name__ == '__main__':
 # 
         # break # debug
 
-    rdb = ResultDatabase()
-    for r in rdb.search('青の洞窟', style=play_style.sp, difficulty=difficulty.normal):
-        print(r)
-    print(rdb.get_best('青の洞窟', style=play_style.sp, difficulty=difficulty.normal))
+    # rdb = ResultDatabase()
+    # for r in rdb.search('青の洞窟', style=play_style.sp, difficulty=difficulty.normal):
+    #     print(r)
+    # print(rdb.get_best('青の洞窟', style=play_style.sp, difficulty=difficulty.normal))

@@ -102,11 +102,12 @@ class ScreenReader:
                 timestamp = int(datetime.datetime.now().timestamp())
                 judge = self.read_judge_from_result(convert_side(result.play_side))
 
-                if judge.notes() >= notes: # 完走した場合はCBを正確に計算
+                if not result.dead: # 完走した場合はCBを正確に計算
                     cb = bp - (judge.sum() - notes)
                     judge.cb = cb
                 else: # 途中落ちの場合残りノーツを見逃しとして足しておく
                     judge.pr += (notes - judge.notes())
+                    judge.bp = judge.pr + judge.bd
 
                 out_result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
                                    judge=judge,score=score,bp=bp, dead=result.dead)
