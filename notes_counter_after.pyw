@@ -230,155 +230,102 @@ class MainWindow(MainWindowUI):
                         level=detailed_result.level,
                         play_style=result.play_style.name.upper(),
                         difficulty=result.difficulty.name.upper()[0],
-                        ex_score=result.score,
-                        bp=result.judge.bd + result.judge.pr,
-                        max_notes=detailed_result.notes,
+                        score=result.score,
+                        score_rate=result.score_rate,
                         lamp=result.lamp.name.upper(),
+                        judge=result.judge,
+                        ex_play_options=result.option,
+                        pre_score=result.pre_score,
+                        pre_bp=result.pre_bp,
+                        pre_lamp=result.pre_lamp,
+                        database=self.result_database
                     )
-                    filename += f"_cut{detailed_result.result_side.name[1:]}"
 
-            # 画像を保存
-            filename += '.png'
-            filename = escape_for_filename(filename)
-            os.makedirs(self.config.image_save_path, exist_ok=True)
-            full_path = Path(self.config.image_save_path) / filename
-            logger.info(f"autosaved! dst = {full_path}")
-            screen.save(full_path)
-            self.statusBar().showMessage(f"保存しました -> {filename}", 10000)
+            # フォルダ作成
+            if not os.path.exists(self.config.output_folder_name):
+                os.makedirs(self.config.output_folder_name)
+
+            # ファイル名に使用できない文字を置換
+            filename = sanitize_filename(filename)
+            full_path = os.path.join(self.config.output_folder_name, f"{filename}.png")
+
+            # 保存
+            from PIL import Image
+            screen.save(full_path, format='PNG')
+            logger.info(f"画像を保存しました: {full_path}")
+            self.statusBar().showMessage(f"画像を保存しました: {filename}.png", 3000)
             return True
             
         except Exception as e:
-            logger.error(f"画像保存エラー: {traceback.format_exc()}")
-            self.statusBar().showMessage(f"画像保存エラー: {str(e)}", 3000)
+            logger.error(f"画像保存エラー: {e}\n{traceback.format_exc()}")
+            self.statusBar().showMessage(f"画像保存エラー: {e}", 5000)
             return False
     
     def on_obs_connection_changed(self, is_connected: bool, message: str):
-        """
-        OBS接続状態変化時のハンドラ
-
-        Args:
-            is_connected: 接続状態（True=接続中、False=切断）
-            message: ステータスメッセージ
-        """
-        logger.info(f"OBS connection changed: connected={is_connected}, message={message}")
-
-        # UIを更新（スレッドセーフに）
-        self.obs_status_label.setText(message)
-
-        if is_connected:
-            # 接続成功時
-            self.obs_status_label.setStyleSheet("color: green; font-weight: bold;")
-            logger.info("OBS接続が確立されました")
-
-            # 必要に応じて追加の処理
-            # 例: シーンリストを更新、自動制御を有効化など
-
-        else:
-            # 切断時
-            self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")
-            logger.warning("OBS接続が切断されました")
-
-            # 必要に応じて追加の処理
-            # 例: 自動制御を一時停止など
-
+        """OBS接続状態が変化したときに呼ばれる"""
+        logger.info(f"OBS connection changed: {message} (connected={is_connected})")
+        # 必要に応じて追加の処理をここに書く
+    
     def main_loop(self):
-        """メインループ - 100ms毎に呼ばれる"""
+        """メインループ（100ms間隔で実行）"""
         try:
-            # OBS連携が有効な場合のみスクリーンショット取得
-            if self.obs_manager.is_connected and self.config.monitor_source_name != "":
-                self.obs_manager.screenshot()
+            # OBSから画面キャプチャ
+            self.obs_manager.screenshot()
+            
+            if not self.obs_manager.screen:
+                return
+            
+            # スクリーンリーダーに画像をセット
+            self.screen_reader.set_screen(self.obs_manager.screen)
+            
+            # 前の状態を保存
+            prev_mode = self.current_mode
+            
+            # モード検出
+            self.current_mode = self.screen_reader.detect_mode()
+            
+            # モード変化時の処理
+            if prev_mode != self.current_mode:
+                logger.debug(f"Mode changed: {prev_mode} -> {self.current_mode}")
                 
-                if self.obs_manager.screen is not None:
-                    self.screen_reader.update_screen(self.obs_manager.screen)
-                    
-                    # 現在のゲーム画面状態を判定
-                    new_mode = self.detect_current_mode()
-                    
-                    # モードが変わった場合のイベント処理
-                    if new_mode != self.current_mode:
-                        self.on_mode_changed(self.current_mode, new_mode)
-                        self.current_mode = new_mode
-                    
-                    # 各モードでの処理
-                    if self.current_mode == detect_mode.select:
-                        self.process_select_mode()
-                    elif self.current_mode == detect_mode.play:
-                        self.process_play_mode()
-                    elif self.current_mode == detect_mode.result:
-                        self.process_result_mode()
-        
+                # モード遷移時の処理
+                if self.current_mode == detect_mode.play:
+                    # プレー画面に入った
+                    self.last_play_mode = self.screen_reader.get_play_mode()
+                    self.result_timestamp = time.time()
+                    logger.info(f"Play mode started: {self.last_play_mode}")
+                    self.execute_obs_triggers('play_start')
+                
+                elif prev_mode == detect_mode.play and self.current_mode == detect_mode.result:
+                    # プレー画面からリザルト画面へ
+                    logger.info("Result mode started")
+                    self.execute_obs_triggers('play_end')
+                
+                elif self.current_mode == detect_mode.select:
+                    # 選曲画面に入った
+                    logger.info("Select mode started")
+                    self.execute_obs_triggers('result_end')
+            
+            # 各モードでの処理
+            if self.current_mode == detect_mode.select:
+                self.process_select_mode()
+            elif self.current_mode == detect_mode.play:
+                self.process_play_mode()
+            elif self.current_mode == detect_mode.result:
+                self.process_result_mode()
+                
         except Exception as e:
-            logger.error(f"メインループエラー: {traceback.format_exc()}")
+            logger.error(f"Main loop error: {e}\n{traceback.format_exc()}")
     
-    def detect_current_mode(self) -> detect_mode:
-        """現在のゲーム画面状態を判定"""
-        if self.screen_reader.is_result():
-            return detect_mode.result
-        elif self.screen_reader.is_select():
-            return detect_mode.select
-        else:
-            play_mode = self.screen_reader.is_play()
-            if play_mode:
-                return detect_mode.play
-            else:
-                return detect_mode.init
-    
-    def on_mode_changed(self, old_mode: detect_mode, new_mode: detect_mode):
-        """モード変更時の処理"""
-        logger.info(f"モード変更: {old_mode.name} -> {new_mode.name}")
-        
-        # OBS制御トリガーの実行
-        trigger_map = {
-            (detect_mode.init, detect_mode.select): "select_start",
-            (detect_mode.result, detect_mode.select): "select_start",
-            (detect_mode.init, detect_mode.play): "play_start",
-            (detect_mode.select, detect_mode.play): "play_start",
-            (detect_mode.init, detect_mode.result): "result_start",
-            (detect_mode.play, detect_mode.result): "result_start",
-            (detect_mode.play, detect_mode.init): "play_end",
-            (detect_mode.result, detect_mode.init): "result_end",
-            (detect_mode.select, detect_mode.init): "select_end",
-        }
-        
-        trigger = trigger_map.get((old_mode, new_mode))
-        if trigger:
-            self.execute_obs_triggers(trigger)
-
-
-        # if trigger == 'play_end': # プレイ画面が終わるときにtimestamp取得
-        if trigger == 'play_start': # プレー画面の先頭で実行
-            self.last_play_mode = self.screen_reader.detect_playside()
-            logger.debug(f"current_judge: {self.current_judge}")
-            if self.current_judge:
-                self.today_judge += self.current_judge
-                # リスタートしている場合、選曲画面で最後に選択した曲として登録
-                if self.current_judge.pg + self.current_judge.gr + self.current_judge.gd + self.current_judge.bd > 0:
-                    result = OneResult(
-                        title=self.screen_reader.last_select_title,
-                        play_style=self.screen_reader.last_select_style,
-                        difficulty=self.screen_reader.last_select_difficulty,
-                        lamp=clear_lamp.failed,
-                        timestamp=int(datetime.datetime.now().timestamp()),
-                        judge=self.current_judge,
-                        dead=True,
-                        playspeed=None, # 速度変更中のクイックリトライは正しく記録できないが、ノーツ数しか見ないのでOKとする。
-                        option=None,    # battle利用時のクイックリトライは正しく記録できないが、ノーツ数しか見ないのでOKとする。
-                    )
-                    self.result_database.add(result)
-                    self.result_database.save()
-                self.current_judge = Judge(0,0,0,0,0,0)
-
-        if trigger == 'result_start': # リザルト画面の先頭で実行
-            self.result_pre = None # 1つ前の認識結果
-            self.result_timestamp = int(datetime.datetime.now().timestamp())
-
     def execute_obs_triggers(self, trigger: str):
-        """指定されたトリガーのOBS制御を実行"""
-        logger.debug(f"OBSトリガー実行: {trigger}")
+        """
+        OBS制御トリガーを実行
+        
+        Args:
+            trigger: トリガー名 ('app_start', 'app_end', 'play_start', 'play_end', 'result_end')
+        """
         try:
-            # OBS制御ウィンドウが作成されていなくても設定は実行できるよう、
-            # 直接設定データを読み込んで実行
-            from src.obs_control import OBSControlData
+            from src.obs_control_data import OBSControlData
             
             control_data = OBSControlData()
             control_data.set_config(self.config)

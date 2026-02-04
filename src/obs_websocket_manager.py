@@ -24,7 +24,8 @@ class OBSWebSocketManager(QObject):
     機能:
     - 自動再接続
     - 切断検出
-    - 接続状態変化通知（Qtシグナル）
+    - 接続状態変化通知(Qtシグナル)
+    - 監視対象ソース設定状態チェック
     """
     
     # Qtシグナル定義
@@ -251,16 +252,50 @@ class OBSWebSocketManager(QObject):
         except: # アプリ終了時にエラーを吐かないようにする
             pass
     
+    def is_monitor_source_configured(self) -> bool:
+        """監視対象ソースが設定されているかチェック"""
+        if not self.config:
+            return False
+        return bool(self.config.monitor_source_name and self.config.monitor_source_name.strip())
+    
     def get_status(self) -> tuple[str, bool]:
-        """現在のステータスを取得"""
+        """
+        現在のステータスを取得
+        
+        Returns:
+            tuple[str, bool]: (ステータスメッセージ, 正常状態かどうか)
+                正常状態 = OBS接続済み かつ 監視対象ソース設定済み
+        """
         if not OBSWS_AVAILABLE:
             return "obsws_python がインストールされていません", False
         elif not self.config:
             return "設定が読み込まれていません", False
-        elif self.is_connected:
-            return f"接続中 ({self.config.websocket_host}:{self.config.websocket_port})", True
+        elif not self.is_connected:
+            return "未接続", False
+        elif not self.is_monitor_source_configured():
+            return "監視対象ソース未設定", False
         else:
-            return "切断中", False
+            return f"接続中 ({self.config.websocket_host}:{self.config.websocket_port})", True
+    
+    def get_detailed_status(self) -> Dict[str, Any]:
+        """
+        詳細なステータス情報を取得
+        
+        Returns:
+            dict: {
+                'is_connected': bool,  # OBS接続状態
+                'is_source_configured': bool,  # 監視対象ソース設定状態
+                'is_ready': bool,  # 両方が正常
+                'message': str  # ステータスメッセージ
+            }
+        """
+        message, is_ready = self.get_status()
+        return {
+            'is_connected': self.is_connected,
+            'is_source_configured': self.is_monitor_source_configured(),
+            'is_ready': is_ready,
+            'message': message
+        }
     
     def send_command(self, command_name: str, **kwargs):
         """
@@ -375,7 +410,7 @@ class OBSWebSocketManager(QObject):
             )
             return True
         except Exception as e:
-            # logger.debug(f"Failed to save screenshot: {e}")
+            logger.debug(f"Failed to save screenshot: {e}")
             return False
     
     def enable_source(self, scenename: str, sourceid: int):
