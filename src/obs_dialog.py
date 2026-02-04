@@ -114,6 +114,7 @@ class OBSControlDialog(QDialog):
         
         # 実行タイミング
         self.timing_combo = QComboBox()
+        self.timing_combo.addItem("", None)  # 空白項目を追加
         for timing_id, timing_name in self.TIMINGS:
             self.timing_combo.addItem(timing_name, timing_id)
         add_layout.addRow("実行タイミング:", self.timing_combo)
@@ -283,6 +284,11 @@ class OBSControlDialog(QDialog):
             timing_id = self.timing_combo.currentData()
             timing_name = self.timing_combo.currentText()
             
+            # 基本的な未入力チェック
+            if not action_id or timing_id is None:
+                QMessageBox.warning(self, "エラー", "アクションと実行タイミングを選択してください")
+                return
+            
             setting = {
                 "timing": timing_id,
                 "action": action_id,
@@ -344,6 +350,9 @@ class OBSControlDialog(QDialog):
                 logger.info(f"監視対象ソースを設定: {target_source} (シーン: {target_scene})")
                 QMessageBox.information(self, "設定完了", f"監視対象ソースを '{target_source}' に設定しました")
                 
+                # フォームをリセット
+                self.reset_form()
+                
                 # 早期リターン(テーブルに追加しない)
                 return
             
@@ -354,6 +363,9 @@ class OBSControlDialog(QDialog):
             self.add_table_row(timing_name, action_name, scene_text, source_text, setting)
             
             logger.info(f"OBS制御設定を追加: {setting}")
+            
+            # フォームをリセット
+            self.reset_form()
             
         except Exception as e:
             logger.error(f"設定追加エラー: {e}")
@@ -390,6 +402,25 @@ class OBSControlDialog(QDialog):
                 scene_item.setBackground(bg_color)
                 source_item.setBackground(bg_color)
     
+    def reset_form(self):
+        """フォームをリセット"""
+        # アクションは現在のまま保持（初期化しない）
+        
+        # 実行タイミングは空白項目（インデックス0）を選択
+        self.timing_combo.setCurrentIndex(0)
+        
+        # シーンとソースのコンボボックスをクリア
+        self.target_source_combo.clear()
+        
+        # 対象シーンと切り替え先シーンは最初の項目を選択（項目がある場合）
+        if self.target_scene_combo.count() > 0:
+            self.target_scene_combo.setCurrentIndex(0)
+        if self.switch_scene_combo.count() > 0:
+            self.switch_scene_combo.setCurrentIndex(0)
+        
+        # アクション変更に伴うフィールドの有効/無効を更新
+        self.on_action_changed()
+    
     def delete_selected(self):
         """選択された行を削除"""
         selected_rows = set()
@@ -421,16 +452,22 @@ class OBSControlDialog(QDialog):
         """すべての設定を削除"""
         reply = QMessageBox.question(
             self, "確認",
-            "すべての設定を削除しますか?",
+            "すべての制御設定を削除しますか?\n(監視対象ソースは削除されません)",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
         if reply == QMessageBox.StandardButton.Yes:
-            self.config.obs_control_settings.clear()
-            self.config.monitor_source_name = ""
-            self.monitor_label.setText("未設定")
+            # 監視対象ソース設定は残して、それ以外を削除
+            self.config.obs_control_settings = [
+                s for s in self.config.obs_control_settings
+                if s.get("action") == "set_monitor_source"
+            ]
+            
+            # テーブルをクリア
             self.settings_table.setRowCount(0)
-            logger.info("すべてのOBS制御設定を削除しました")
+            
+            logger.info("すべてのOBS制御設定を削除しました(監視対象ソースは除く)")
+            QMessageBox.information(self, "完了", "すべての制御設定を削除しました\n(監視対象ソースは保持されています)")
     
     def load_settings(self):
         """設定を読み込んでテーブルに表示"""
