@@ -108,6 +108,7 @@ build_exe_options = {
         "obsws_python.events", 
         "obsws_python.subs",    # これも後で必要になる可能性が高いです
         # "obsws_python.base"
+        # 認識用
     ],
     
     # 除外するパッケージ（サイズ削減のため）
@@ -118,7 +119,7 @@ build_exe_options = {
         # 以下既存の除外設定
         # tkinterとwinsoundは必要なので除外しない
         "matplotlib",
-        "scipy",
+        # "scipy",
         "pandas",
         "test",
         "unittest",
@@ -127,7 +128,7 @@ build_exe_options = {
         "http",
         # "urllib",
         # "xml",
-        "pydoc",
+        # "pydoc",
         "distutils",
         "setuptools",
         "pip",
