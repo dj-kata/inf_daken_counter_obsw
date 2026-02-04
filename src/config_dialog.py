@@ -44,8 +44,7 @@ class ConfigDialog(QDialog):
         tab_widget = QTabWidget()
         layout.addWidget(tab_widget)
         
-        # 各タブを作成
-        tab_widget.addTab(self.create_websocket_tab(), "OBS WebSocket")
+        # 各タブを作成(OBS WebSocketタブを削除)
         tab_widget.addTab(self.create_feature_tab(), "機能設定")
         tab_widget.addTab(self.create_music_pack_tab(), "楽曲パック")
         tab_widget.addTab(self.create_image_save_tab(), "画像保存")
@@ -57,34 +56,6 @@ class ConfigDialog(QDialog):
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
-    
-    def create_websocket_tab(self):
-        """WebSocket設定タブ"""
-        widget = QWidget()
-        layout = QVBoxLayout()
-        widget.setLayout(layout)
-        
-        # 接続設定グループ
-        connection_group = QGroupBox("接続設定")
-        connection_layout = QFormLayout()
-        connection_group.setLayout(connection_layout)
-        
-        self.websocket_host_edit = QLineEdit()
-        connection_layout.addRow("ホスト:", self.websocket_host_edit)
-        
-        self.websocket_port_spin = QSpinBox()
-        self.websocket_port_spin.setRange(1, 65535)
-        self.websocket_port_spin.setValue(4444)
-        connection_layout.addRow("ポート:", self.websocket_port_spin)
-        
-        self.websocket_password_edit = QLineEdit()
-        self.websocket_password_edit.setEchoMode(QLineEdit.Password)
-        connection_layout.addRow("パスワード:", self.websocket_password_edit)
-        
-        layout.addWidget(connection_group)
-        layout.addStretch()
-        
-        return widget
     
     def create_feature_tab(self):
         """機能設定タブ"""
@@ -261,11 +232,6 @@ class ConfigDialog(QDialog):
     
     def load_config_values(self):
         """設定値を読み込んでUIに反映"""
-        # WebSocket設定
-        self.websocket_host_edit.setText(self.config.websocket_host)
-        self.websocket_port_spin.setValue(self.config.websocket_port)
-        self.websocket_password_edit.setText(self.config.websocket_password)
-        
         # 機能設定
         self.enable_autotweet_check.setChecked(self.config.enable_autotweet)
         self.enable_judge_check.setChecked(self.config.enable_judge)
@@ -296,11 +262,6 @@ class ConfigDialog(QDialog):
     def accept(self):
         """OKボタン押下時の処理"""
         # UIから設定値を取得してConfigに保存
-        
-        # WebSocket設定
-        self.config.websocket_host = self.websocket_host_edit.text()
-        self.config.websocket_port = self.websocket_port_spin.value()
-        self.config.websocket_password = self.websocket_password_edit.text()
         
         # 機能設定
         self.config.enable_autotweet = self.enable_autotweet_check.isChecked()
