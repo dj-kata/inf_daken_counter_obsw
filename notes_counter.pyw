@@ -27,7 +27,7 @@ from src.funcs import *
 from src.obs_websocket_manager import OBSWebSocketManager
 from src.songinfo import SongDatabase
 from src.screen_reader import ScreenReader
-from src.result import ResultDatabase, OneResult
+from src.result import ResultDatabase, OneResult, DetailedResult
 from src.result_stats_writer import ResultStatsWriter
 from src.logger import get_logger
 logger = get_logger('notes_counter')
@@ -73,8 +73,9 @@ class MainWindow(MainWindowUI):
         self.today_judge = Judge(0,0,0,0,0,0)
         '''本日の判定内訳(全曲合計)'''
         for r in reversed(self.result_database.results):
-            if r.judge and r.timestamp >= self.start_time - self.config.autoload_offset*3600:
-                self.today_judge += r.judge
+            if r.timestamp >= self.start_time - self.config.autoload_offset*3600:
+                if r.judge:
+                    self.today_judge += r.judge
             else:
                 break
         self.current_judge = Judge(0,0,0,0,0,0)
@@ -187,18 +188,18 @@ class MainWindow(MainWindowUI):
                          "IIDX Helper v1.0\n\n"
                          "OBS連携による自動リザルト保存アプリケーション")
     
-    def save_image(self, skip_no_update:bool=False):
+    def save_image(self, skip_no_update:bool=False, detailed_result:DetailedResult=None):
         """
         ゲーム画面のキャプチャ画像を保存する。リザルト画面なら曲名などをファイル名に入れる。
         """
         try:
             date = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
             if self.screen_reader.is_result():
-                detailed_result = self.screen_reader.read_result_screen()
+                detailed_result = detailed_result if detailed_result else self.screen_reader.read_result_screen()
                 result = detailed_result.result
                 if skip_no_update and (self.config.autosave_image_mode == config_autosave_image.only_updates): # 更新している場合のみ保存
-                    result.pre_score,result.pre_bp,result.pre_lamp = self.result_database.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=result.option.battle)
                     if not result.is_updated():
+                        logger.debug(f"skipped!, pre score:{result.pre_score}, bp:{result.pre_bp}, lamp:{result.pre_lamp}")
                         self.statusBar().showMessage(f"伸びていないのでスキップします。", 10000)
                         return False
 
@@ -468,7 +469,8 @@ class MainWindow(MainWindowUI):
 
                         # 画像の保存
                         if self.config.autosave_image_mode is not config_autosave_image.invalid:
-                            if self.save_image(skip_no_update=self.config.autosave_image_mode==config_autosave_image.only_updates):
+                            detailed_result.result = result # best_bpなどはaddで付与されるので渡しておく
+                            if self.save_image(skip_no_update=self.config.autosave_image_mode==config_autosave_image.only_updates, detailed_result=detailed_result):
                                 # 曲名の更新
                                 self.last_saved_song = get_title_with_chart(result.title, result.play_style, result.difficulty)
 

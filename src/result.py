@@ -161,7 +161,7 @@ class OneResult:
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""
         if self.lamp and self.score:
-            return f"song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_arcade:{self.is_arcade}, timestamp:{datetime.datetime.fromtimestamp(self.timestamp)}"
+            return f"song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_updated:{self.is_updated()}(pre score:{self.pre_score}, bp:{self.pre_bp}, lamp:{self.pre_lamp}), is_arcade:{self.is_arcade}, timestamp:{datetime.datetime.fromtimestamp(self.timestamp)}"
         else:
             return "not a result data!"
 
@@ -289,6 +289,7 @@ class ResultDatabase:
         Return:
             bool(True:登録された / False:登録済み等の理由で却下された)
         """
+        result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=result.option.battle)
         if result not in self.results:
             self.results.append(result)
             logger.info(f"result added! hash:{hash(result)}, len:{len(self.results)}, result:{result}")
