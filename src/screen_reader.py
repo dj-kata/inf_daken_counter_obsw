@@ -98,7 +98,7 @@ class ScreenReader:
                 if lamp is None: # 認識失敗とみなす
                     return None
                 chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
-                songinfo = self.songinfo.search(chart_id)
+                songinfo = self.songinfo.search(chart_id=chart_id)
                 timestamp = int(datetime.datetime.now().timestamp())
                 judge = self.read_judge_from_result(convert_side(result.play_side))
 

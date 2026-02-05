@@ -225,6 +225,13 @@ class MainWindow(MainWindowUI):
                     screen = mosaic_other_rival_names(screen, detailed_result.result_side)
                     screen = cut_rival_area(screen, detailed_result.result_side)
                     # 統計情報ウィンドウを追加
+                    logger.debug(f"detailed_result:{detailed_result}")
+                    logger.debug(f"songinfo:{detailed_result.songinfo}")
+                    sp12_clear = None
+                    sp12_hard = None
+                    if detailed_result.songinfo:
+                        sp12_clear = detailed_result.songinfo.sp12_clear
+                        sp12_hard = detailed_result.songinfo.sp12_hard
                     screen = self.result_stats_writer.write_statistics(
                         screen,
                         title=result.title,
@@ -236,8 +243,8 @@ class MainWindow(MainWindowUI):
                         max_notes=detailed_result.notes,
                         lamp=result.lamp.name.upper(),
                         bpi=detailed_result.bpi,
-                        sp12_clear=detailed_result.songinfo.sp12_clear,
-                        sp12_hard=detailed_result.songinfo.sp12_hard,
+                        sp12_clear=sp12_clear,
+                        sp12_hard=sp12_hard,
                     )
                     filename += f"_cut{detailed_result.result_side.name[1:]}"
 

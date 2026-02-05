@@ -10,7 +10,8 @@ import logging
 import logging, logging.handlers
 from pathlib import Path
 
-dbfile = Path('src')/'songinfo.infdc'
+# dbfile = Path('src')/'songinfo.infdc'
+dbfile = Path('.')/'songinfo.infdc'
 
 class OneSongInfo:
     """1譜面分の曲情報を表すクラス"""

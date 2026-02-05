@@ -217,7 +217,7 @@ class DetailedResult():
         else:
             return 1 + (score_rate - 0.5) / (1 - score_rate)
 
-    def get_bpi(self) -> str:
+    def get_bpi(self) -> float:
         """BPIを計算して返す。XMLにそのまま渡す都合上返り値は文字型なので注意。
 
         Args:
@@ -244,9 +244,9 @@ class DetailedResult():
                 # logger.debug(f"s={s},m={m},z={z},k={k},sl={sl},kl={kl},zl={zl}")
                 # logger.debug(f"sd={sd:.3f}; zd={zd:.3f}; bpi_coef={bpi_coef}")
                 if s > k:
-                    bpi = f"{(100 * (math.log(sd)**bpi_coef)) / (math.log(zd)**bpi_coef):.2f}"
+                    bpi = (100 * (math.log(sd)**bpi_coef)) / (math.log(zd)**bpi_coef)
                 else:
-                    bpi = f"{max((-100 * ((-math.log(sd))**bpi_coef)) / (math.log(zd)**bpi_coef),-15):.2f}"
+                    bpi = max((-100 * ((-math.log(sd))**bpi_coef)) / (math.log(zd)**bpi_coef),-15.0)
         except:
             logger.error(traceback.format_exc())
         return bpi
@@ -292,7 +292,8 @@ class ResultDatabase:
         Return:
             bool(True:登録された / False:登録済み等の理由で却下された)
         """
-        result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=result.option.battle)
+        battle = True if result.option and result.option.battle else False
+        result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=battle)
         if result not in self.results:
             self.results.append(result)
             logger.info(f"result added! hash:{hash(result)}, len:{len(self.results)}, result:{result}")
@@ -341,7 +342,7 @@ class ResultDatabase:
     
     def get_best(self,
                 title:str=None, style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
-                battle:bool=False,option:PlayOption=None
+                battle:bool=None,option:PlayOption=None
         ) -> List:
         """指定された曲の自己べ(スコア, BP, ランプ)を返す。見つからない場合は0,0を返す。
         battle=TrueかつDPの場合はDBx系のみ検索対象とする。optionが空でない場合は同一オプションのみ検索対象とする。
