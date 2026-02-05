@@ -235,6 +235,9 @@ class MainWindow(MainWindowUI):
                         bp=result.judge.bd + result.judge.pr,
                         max_notes=detailed_result.notes,
                         lamp=result.lamp.name.upper(),
+                        bpi=detailed_result.bpi,
+                        sp12_clear=detailed_result.songinfo.sp12_clear,
+                        sp12_hard=detailed_result.songinfo.sp12_hard,
                     )
                     filename += f"_cut{detailed_result.result_side.name[1:]}"
 

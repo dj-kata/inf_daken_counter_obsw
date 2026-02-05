@@ -1,5 +1,6 @@
 from PIL import Image, ImageDraw, ImageFont
 import os
+from src.classes import *
 
 class ResultStatsWriter:
     """リザルト画像に統計情報を埋め込むためのクラス"""
@@ -44,8 +45,8 @@ class ResultStatsWriter:
         max_notes,
         lamp,
         bpi=None,
-        power_level=None,
-        personal_level=None,
+        sp12_clear:clear_lamp=None,
+        sp12_hard:clear_lamp=None,
         position=(73, 165),  # (x, y) 座標で指定
         box_width=500,     # ボックス幅（Noneで画像幅）
         box_height=130,
@@ -100,7 +101,10 @@ class ResultStatsWriter:
         y += 45
         
         # 2行目: EXスコアとBP（明るい緑）
-        text = f"Lv: {level}, {lamp}"
+        text = f"Lv: {level}"
+        if sp12_clear and sp12_hard:
+            text += f" ({sp12_clear}/{sp12_hard})"
+        text += f', {lamp}'
         text = self._truncate_text(draw, text, self.main_font, box_width - 30)
         self._draw_text_with_glow(draw, (x, y), text, self.main_font,
                                    fill=(100, 155, 250), glow_color=(0, 80, 0))
@@ -118,13 +122,6 @@ class ResultStatsWriter:
         parts = [f"rate: {rate:.2f}%"]
         if bpi is not None:
             parts.append(f"BPI: {bpi:.2f}")
-        if power_level or personal_level:
-            level_text = []
-            if power_level:
-                level_text.append(f"地力{power_level}")
-            if personal_level:
-                level_text.append(f"個人差{personal_level}")
-            parts.append("/".join(level_text))
         
         text = ", ".join(parts)
         text = self._truncate_text(draw, text, self.sub_font, box_width - 30)
@@ -256,12 +253,16 @@ if __name__ == "__main__":
 
     img = writer.write_statistics(
         img,
-        title="罪と罰",
-        level=10,
+        title="Colors",
+        level=12,
         play_style="SP",
         difficulty="A",
-        ex_score=1958,
+        ex_score=2128,
         bp=15,
-        lamp="CLEAR",
+        max_notes=1258,
+        lamp="A-CLEAR",
+        bpi=1.22,
+        sp12_clear=unofficial_difficulty.jiriki_d,
+        sp12_hard=unofficial_difficulty.jiriki_e
     )
     img.save('test_result_custom.png')

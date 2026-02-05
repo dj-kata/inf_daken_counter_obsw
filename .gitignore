@@ -17,7 +17,7 @@ src/credentials_encrypted.py
 infnotebook/*
 log/*
 out/*
-*.infdc
+playlog.infdc
 config.json
 pic/*
 qt.conf
