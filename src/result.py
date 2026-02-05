@@ -197,9 +197,9 @@ class DetailedResult():
 
     def update_details(self):
         """詳細情報を算出"""
-        if self.songinfo and self.songinfo.notes and self.score:
-            self.score_rate = self.score / self.songinfo.notes / 2
-            self.score_rate_with_rankdiff = calc_rankdiff(notes=self.songinfo.notes, score=self.score)
+        if self.songinfo and self.songinfo.notes and self.result.score:
+            self.score_rate = self.result.score / self.songinfo.notes / 2
+            self.score_rate_with_rankdiff = calc_rankdiff(notes=self.songinfo.notes, score=self.result.score)
             self.bpi = self.get_bpi()
 
     def pgf(self, score_rate:float, notes:int):
@@ -229,10 +229,10 @@ class DetailedResult():
         """
         bpi = '??'
         try:
-            if self.songinfo and self.score:
+            if self.songinfo and self.result.score and self.songinfo.bpi_ave:
                 notes = self.songinfo.notes
                 bpi_coef = self.songinfo.bpi_coef if self.songinfo.bpi_coef>0 else 1.175
-                s = self.score
+                s = self.result.score
                 m = notes*2
                 z = self.songinfo.bpi_top
                 k = self.songinfo.bpi_ave
@@ -246,7 +246,7 @@ class DetailedResult():
                 if s > k:
                     bpi = f"{(100 * (math.log(sd)**bpi_coef)) / (math.log(zd)**bpi_coef):.2f}"
                 else:
-                    bpi = f"{max((-100 * (-math.log(sd)**bpi_coef)) / (math.log(zd)**bpi_coef),-15):.2f}"
+                    bpi = f"{max((-100 * ((-math.log(sd))**bpi_coef)) / (math.log(zd)**bpi_coef),-15):.2f}"
         except:
             logger.error(traceback.format_exc())
         return bpi
@@ -257,7 +257,10 @@ class DetailedResult():
         if self.notes:
             msg += f"/{2*self.notes}"
         if self.score_rate_with_rankdiff:
-            msg += f"({''.join(self.score_rate_with_rankdiff)}, {self.result.score_rate*100:.2f}%)"
+            if self.result.judge:
+                msg += f"({''.join(self.score_rate_with_rankdiff)}, {self.result.judge.get_score_rate()*100:.2f}%)"
+            else:
+                msg += f"({''.join(self.score_rate_with_rankdiff)})"
         msg += f", judge:[{self.result.judge}]"
         if self.bpi:
             msg += f", BPI: {self.bpi}, "
@@ -297,14 +300,6 @@ class ResultDatabase:
         else:
             return False
 
-    def __str__(self):
-        out = ''
-        for r in self.results:
-            songinfo = self.song_database.search(r.chart_id)
-            detail = DetailedResult(songinfo, r)
-            out += str(detail)
-        return out
-    
     def load(self):
         """保存済みリザルトをロードする"""
         try:
@@ -401,19 +396,19 @@ class ResultDatabase:
                 break
         return ret
     
+    def __str__(self):
+        out = ''
+        for r in self.results:
+            songinfo = self.song_database.search(chart_id=r.chart_id)
+            detail = DetailedResult(songinfo, r)
+            out += str(detail)
+            # out += str(detail) + f', {r.chart_id}, {songinfo}\n'
+        return out
+    
 if __name__ == '__main__':
-    # db = ResultDatabase()
-    # a = OneSongInfo('THE BRAVE MUST DIE', play_style.sp, difficulty.another, 12, 2075)
-    # a.bpi_top = 4135
-    # a.bpi_ave = 3442
-    # a.bpi_coef = 0.746675
-    # db.song_database.songs.append(a)
-    # a = OneSongInfo('KAMAITACHI', play_style.sp, difficulty.leggendaria, 12, 2000)
-    # db.song_database.songs.append(a)
-    # j = Judge(pg=1561, gr=414, gd=94, bd=3, pr=9, cb=6)
-    # db.add(judge=j, lamp=clear_lamp.exh, option=PlayOption(arrange='RANDOM'), title='THE BRAVE MUST DIE', play_style=play_style.sp, difficulty=difficulty.another)
-    # j = Judge(pg=750, gr=320, gd=33, bd=11, pr=20, cb=45)
-    # db.add(judge=j, lamp=clear_lamp.failed, option='')
-    # b = db.search('THE BRAVE MUST DIE', play_style.sp, difficulty.another)
-    # print(b[0])
     rdb = ResultDatabase()
+    chart_id = calc_chart_id('煉獄のエルフェリア', play_style.sp, difficulty.another)
+    results = rdb.search(chart_id=chart_id)
+    s = rdb.song_database.search(chart_id=chart_id)
+
+    print(rdb)

@@ -543,22 +543,18 @@ def check_resource():
     logger.debug('check_resource start')
     if check_latest(storage, informations_filename):
         resource.load_resource_informations()
-    logger.debug('')
 
     details_filename = f'{define.details_resourcename}.res'
     if check_latest(storage, details_filename):
         resource.load_resource_details()
-    logger.debug('')
 
     musictable_filename = f'{define.musictable_resourcename}.res'
     if check_latest(storage, musictable_filename):
         resource.load_resource_musictable()
-    logger.debug('')
 
     musicselect_filename = f'{define.musicselect_resourcename}.res'
     if check_latest(storage, musicselect_filename):
         resource.load_resource_musicselect()
-    logger.debug('')
 
     check_latest(storage, musicnamechanges_filename)
     logger.debug('end')

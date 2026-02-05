@@ -243,3 +243,60 @@ class music_pack(Enum):
 
     # 東方 (9000-)
     th1 = 9001
+
+class unofficial_difficulty(Enum):
+    '''非公式難易度'''
+    unknown = 0
+    '''難易度未定'''
+    jiriki_f = 1
+    '''地力F'''
+    kojinsa_e = 2
+    '''個人差E'''
+    jiriki_e = 3
+    '''地力E'''
+    kojinsa_d = 4
+    '''個人差D'''
+    jiriki_d = 5
+    '''地力D'''
+    kojinsa_c = 6
+    '''個人差C'''
+    jiriki_c = 7
+    '''地力C'''
+    kojinsa_b = 8
+    '''個人差B'''
+    jiriki_b = 9
+    '''地力B'''
+    kojinsa_b_plus = 10
+    '''個人差B+'''
+    jiriki_b_plus = 11
+    '''地力B+'''
+    kojinsa_a = 12
+    '''個人差A'''
+    jiriki_a = 13 
+    '''地力A'''
+    kojinsa_a_plus = 14
+    '''個人差A+'''
+    jiriki_a_plus = 15
+    '''地力A+'''
+    kojinsa_s = 16
+    '''個人差S'''
+    jiriki_s = 17
+    '''地力S'''
+    kojinsa_s_plus = 18
+    '''個人差S+'''
+    jiriki_s_plus = 19
+    '''地力S+'''
+
+    def __str__(self):
+        if self.value == 0:
+            return '難易度不明'
+        else:
+            tmp = self.name
+            diff = tmp.split('_')[1:]
+            ret = '地力' if tmp.split('_')[0] == 'jiriki' else '個人差'
+            ret += diff[0].upper()
+            if len(diff) == 2:
+                ret += '+'
+            return ret
+
+        

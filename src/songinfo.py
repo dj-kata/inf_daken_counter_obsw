@@ -4,10 +4,13 @@ from .logger import get_logger
 logger = get_logger(__name__)
 import os
 import bz2, pickle
-from typing import List
+from typing import List, Dict
 import traceback
 import logging
 import logging, logging.handlers
+from pathlib import Path
+
+dbfile = Path('src')/'songinfo.infdc'
 
 class OneSongInfo:
     """1譜面分の曲情報を表すクラス"""
@@ -16,7 +19,7 @@ class OneSongInfo:
                     play_style:play_style,
                     difficulty:difficulty,
                     level:int,
-                    notes:int,
+                    notes:int=None,
                     version:int=None,
                     min_bpm:int=None,
                     max_bpm:int=None,
@@ -27,10 +30,11 @@ class OneSongInfo:
                     rader_soflan:float=None,
                     rader_charge:float=None,
                     rader_chord:float=None,
-                    sp12_hard:str=None,
-                    sp12_clear:str=None,
-                    sp11_hard:str=None,
-                    sp11_clear:str=None,
+                    sp12_hard:unofficial_difficulty=None,
+                    sp12_clear:unofficial_difficulty=None,
+                    sp12_title:str=None,
+                    sp11_hard:unofficial_difficulty=None,
+                    sp11_clear:unofficial_difficulty=None,
                     cpi_easy:float=None,
                     cpi_clear:float=None,
                     cpi_hard:float=None,
@@ -41,6 +45,7 @@ class OneSongInfo:
                     bpi_ave:int=None,
                     bpi_top:int=None,
                     bpi_coef:float=None,
+                    bpi_title:str=None,
                     dp_unofficial:str=None,
                     dp_ereter_easy:str=None,
                     dp_ereter_hard:str=None,
@@ -72,6 +77,8 @@ class OneSongInfo:
         # 非公式の難易度
         self.sp12_hard      = sp12_hard
         self.sp12_clear     = sp12_clear
+        self.sp12_title     = sp12_title
+        '''非公式難易度表側の曲名。表記ゆれ対策'''
         self.sp11_hard      = sp11_hard
         self.sp11_clear     = sp11_clear
         self.cpi_easy       = cpi_easy
@@ -87,6 +94,8 @@ class OneSongInfo:
         """BPI計算用 歴代全1"""
         self.bpi_coef       = bpi_coef
         """BPI計算用 補正係数"""
+        self.bpi_title      = bpi_title
+        """BPI用db上の曲名"""
         self.dp_unofficial  = dp_unofficial
         """DP非公式難易度"""
         self.dp_ereter_easy = dp_ereter_easy
@@ -98,13 +107,19 @@ class OneSongInfo:
 
     def __str__(self):
         """内部情報を表示"""
-        return self.__dict__
+        ret = f"title:{get_title_with_chart(self.title, self.play_style, self.difficulty)}"
+        if self.sp12_clear:
+            ret += f", {self.sp12_clear}/{self.sp12_hard}"
+        if self.bpi_ave:
+            ret += f", bpi_ave:{self.bpi_ave}, bpi_top:{self.bpi_top}, bpi_coef:{self.bpi_coef}"
+        ret += f", Lv:{self.level}, notes:{self.notes}, version:{self.version}"
+        return ret
 
 class SongDatabase:
     """全曲の情報を保持するクラス。検索もできる。"""
     def __init__(self):
-        self.songs:List[OneSongInfo] = []
-        """曲情報(OneSongInfo)を格納するリスト"""
+        self.songs:Dict[str, OneSongInfo] = {}
+        """曲情報(OneSongInfo)を格納するリスト.keyはchart_idとする。"""
         self.load()
         self.save()
 
@@ -117,25 +132,49 @@ class SongDatabase:
             key = chart_id
         elif title is not None and play_style is not None and difficulty is not None:
             key = calc_chart_id(title, play_style, difficulty)
-        ret = None
-        for s in self.songs:
-            if key == s.chart_id:
-                ret = s
-                break
+        ret = self.songs.get(key, None)
+        # logger.debug(f"title:{title}, {play_style}, {difficulty}, key:{key}, ret:{ret}")
         return ret
+    
+    def filter(self, title:str=None, play_style:play_style=None, difficulty:difficulty=None, level:int=None) -> List[OneSongInfo]:
+        '''条件に合う曲情報を検索し、結果をリストで返す'''
+        ret:List[OneSongInfo] = []
+        for v in self.songs.values():
+            if title and v.title != title:
+                continue
+            if play_style and v.play_style != play_style:
+                continue
+            if difficulty and v.difficulty != difficulty:
+                continue
+            if level and v.level and level != v.level:
+                continue
+            ret.append(v)
+        return ret
+
+
+    def add(self, songinfo:OneSongInfo):
+        '''曲情報を追加'''
+        self.songs[songinfo.chart_id] = songinfo
 
     def load(self):
         """pklファイルから曲情報を読み出す"""
         try:
-            with bz2.BZ2File('songinfo.infdc', 'rb', compresslevel=9) as f:
+            with bz2.BZ2File(dbfile, 'rb', compresslevel=9) as f:
                 self.songs = pickle.load(f)
         except:
             logger.error(traceback.format_exc())
 
     def save(self):
         """曲情報をpklへ書き出す"""
-        with bz2.BZ2File('songinfo.infdc', 'wb', compresslevel=9) as f:
+        with bz2.BZ2File(dbfile, 'wb', compresslevel=9) as f:
             pickle.dump(self.songs, f)
+
+    def __str__(self):
+        '''全データを表示'''
+        ret = ''
+        for v in self.songs.values():
+            ret += v.__str__()+'\n'
+        return ret
 
 
 if __name__ == '__main__':
