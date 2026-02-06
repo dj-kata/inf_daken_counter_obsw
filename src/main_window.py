@@ -217,7 +217,7 @@ class MainWindowUI(QMainWindow):
         # 統計情報
         self.today_keystroke_count = self.today_judge.notes()
         self.keystroke_label.setText(str(self.today_keystroke_count))
-        self.result_count_label.setText(str(self.saved_result_count))
+        self.result_count_label.setText(str(self.play_count))
         self.last_song_label.setText(self.last_saved_song)
     
     # 以下のメソッドはサブクラスで実装される

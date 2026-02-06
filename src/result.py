@@ -152,7 +152,11 @@ class OneResult:
                 self.judge == other.judge and
                 self.score == other.score and
                 self.bp == other.bp and
-                self.dead == other.dead
+                self.dead == other.dead and
+                self.pre_score == other.pre_score and
+                self.pre_lamp == other.pre_lamp and
+                self.pre_bp == other.pre_bp and
+                self.detect_mode == other.detect_mode
         )
     
     def __ne__(self, other):
@@ -165,7 +169,7 @@ class OneResult:
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""
         if self.lamp and self.score:
-            return f"song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_updated:{self.is_updated()}(pre score:{self.pre_score}, bp:{self.pre_bp}, lamp:{self.pre_lamp}), is_arcade:{self.is_arcade}, timestamp:{datetime.datetime.fromtimestamp(self.timestamp)}"
+            return f"song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_updated:{self.is_updated()}(pre score:{self.pre_score}, bp:{self.pre_bp}, lamp:{self.pre_lamp}), is_arcade:{self.is_arcade}, detect_mode:{self.detect_mode}, timestamp:{datetime.datetime.fromtimestamp(self.timestamp)}"
         else:
             return "not a result data!"
 
@@ -265,7 +269,7 @@ class DetailedResult():
                 msg += f"({''.join(self.score_rate_with_rankdiff)}, {self.result.judge.get_score_rate()*100:.2f}%)"
             else:
                 msg += f"({''.join(self.score_rate_with_rankdiff)})"
-        msg += f", judge:[{self.result.judge}]"
+        msg += f", detect_mode:{self.result.detect_mode}, judge:[{self.result.judge}]"
         if self.bpi:
             msg += f", BPI: {self.bpi}, "
         if self.result_side:
@@ -296,14 +300,19 @@ class ResultDatabase:
         Return:
             bool(True:登録された / False:登録済み等の理由で却下された)
         """
-        battle = True if result.option and result.option.battle else False
-        result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=battle)
-        if result not in self.results:
+        if result.detect_mode==detect_mode.play:
             self.results.append(result)
             logger.info(f"result added! hash:{hash(result)}, len:{len(self.results)}, result:{result}")
             return True
         else:
-            return False
+            battle = True if result.option and result.option.battle else False
+            result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=battle)
+            if result not in self.results:
+                self.results.append(result)
+                logger.info(f"result added! hash:{hash(result)}, len:{len(self.results)}, result:{result}")
+                return True
+            else:
+                return False
 
     def load(self):
         """保存済みリザルトをロードする"""
@@ -416,4 +425,7 @@ if __name__ == '__main__':
     results = rdb.search(chart_id=chart_id)
     s = rdb.song_database.search(chart_id=chart_id)
 
-    print(rdb)
+    # print(rdb)
+    print(rdb.results[-3],'\n')
+    print(rdb.results[-2],'\n')
+    print(rdb.results[-1])

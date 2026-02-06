@@ -19,8 +19,10 @@ logger = get_logger(__name__)
 
 def calc_chart_id(title:str, play_style:play_style, difficulty:difficulty):
     """楽曲IDを計算する。曲名、スタイル、難易度をキーとしたsha256とする。"""
-    key = title + play_style.name + difficulty.name
-    hash = hashlib.sha256(key.encode('utf-8')).hexdigest()
+    hash = None
+    if title and play_style and difficulty:
+        key = title + play_style.name + difficulty.name
+        hash = hashlib.sha256(key.encode('utf-8')).hexdigest()
     return hash
 
 def get_chart_name(play_style:play_style, difficulty:difficulty):

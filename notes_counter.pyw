@@ -11,6 +11,7 @@ import traceback
 import datetime
 from pathlib import Path
 import webbrowser, urllib
+import copy
 import os
 
 try:
@@ -77,7 +78,7 @@ class MainWindow(MainWindowUI):
         self.set_today_judge()
         self.result_timestamp = 0
         self.today_keystroke_count = 0
-        self.saved_result_count = 0
+        self.play_count = 0
         self.last_saved_song = "---"
         self.result_pre = None # 1つ前の認識結果
         self.last_play_mode = None
@@ -160,9 +161,11 @@ class MainWindow(MainWindowUI):
     def set_today_judge(self):
         '''本日の判定内訳(play中の判定合計)を対象ログから集計'''
         self.today_judge.reset()
+        self.play_count = 0
         for r in reversed(self.result_database.results):
             if r.timestamp >= self.start_time - self.config.autoload_offset*3600:
                 if r.detect_mode == detect_mode.play and r.judge:
+                    self.play_count += 1
                     self.today_judge += r.judge
             else:
                 break
@@ -361,7 +364,6 @@ class MainWindow(MainWindowUI):
             self.last_play_mode = self.screen_reader.detect_playside()
             logger.debug(f"current_judge: {self.current_judge}")
             if self.current_judge:
-                self.today_judge += self.current_judge
                 # リスタートしている場合、選曲画面で最後に選択した曲として登録
                 if self.current_judge.notes() > 0:
                     result = OneResult(
@@ -370,19 +372,19 @@ class MainWindow(MainWindowUI):
                         difficulty=self.screen_reader.last_select_difficulty,
                         lamp=clear_lamp.failed,
                         timestamp=int(datetime.datetime.now().timestamp()),
-                        judge=self.current_judge,
+                        judge=copy.deepcopy(self.current_judge),
                         dead=False, # 不明だがとりあえず全てFalseとしておく
                         playspeed=None, # 速度変更中のクイックリトライは正しく記録できないが、ノーツ数しか見ないのでOKとする。
                         option=None,    # battle利用時のクイックリトライは正しく記録できないが、ノーツ数しか見ないのでOKとする。
                         detect_mode=detect_mode.play
                     )
-                    self.result_database.add(result)
+                    add_result = self.result_database.add(result)
+                    logger.debug(f"add_result:{add_result}, result:{result}")
                     self.result_database.save()
 
                     # 統計情報の更新
-                    self.saved_result_count += 1
-                    if result.judge:
-                        self.today_judge += self.current_judge
+                    self.play_count += 1
+                    self.today_judge += self.current_judge
                     self.current_judge.reset()
 
         if trigger == 'result_start': # リザルト画面の先頭で実行
@@ -479,7 +481,6 @@ class MainWindow(MainWindowUI):
                 if result == self.result_pre:
                     # リザルトを保存
                     if self.result_database.add(result):
-                        logger.info(f"added!, result={result}")
                         self.result_database.save()
 
                         # 画像の保存
@@ -490,9 +491,9 @@ class MainWindow(MainWindowUI):
                                 self.last_saved_song = get_title_with_chart(result.title, result.play_style, result.difficulty)
 
                 self.result_pre = result
-            self.current_judge.reset()
         except:
-            logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
+            pass
+            # logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
     
     def closeEvent(self, event):
         """アプリ終了時に実行する処理"""
@@ -525,14 +526,7 @@ class MainWindow(MainWindowUI):
 
     def tweet(self):
         '''成果ツイート'''
-        # 対象となるリザルトを取り出す
-        today_results = []
-        for r in reversed(self.result_database.results): # 新しい順に探索
-            if r.judge and r.timestamp >= self.start_time - self.config.autoload_offset*3600:
-                today_results.append(r)
-            else:
-                break
-        msg = f"plays:{len(today_results)}, notes:{self.today_judge.notes():,}, {self.today_judge.get_score_rate()*100:.2f}%\n"
+        msg = f"plays:{self.play_count}, notes:{self.today_judge.notes():,}, {self.today_judge.get_score_rate()*100:.2f}%\n"
         if self.config.enable_judge:
             msg += f"(PG:{self.today_judge.pg:,}, GR:{self.today_judge.gr:,}, GD:{self.today_judge.gd:,}, BD:{self.today_judge.bd:,}, PR:{self.today_judge.pr:,}, CB:{self.today_judge.cb:,})\n"
         if self.config.enable_folder_updates:
