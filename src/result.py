@@ -83,6 +83,7 @@ class OneResult:
                     timestamp:int,
                     playspeed:float | None,
                     option:PlayOption,
+                    detect_mode:detect_mode,
                     is_arcade:bool=False,
                     judge:Judge=None,
                     score:int=None,
@@ -102,6 +103,9 @@ class OneResult:
         """楽曲ID。無効なIDも設定可能とする"""
         self.judge     = judge
         """判定内訳"""
+
+        self.detect_mode = detect_mode
+        '''登録時のモード。曲数・ノーツ数の計算はselectからのもののみ利用。'''
 
         self.score = score
         '''現在のスコア'''

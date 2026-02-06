@@ -70,16 +70,11 @@ class MainWindow(MainWindowUI):
         # アプリケーション状態
         self.current_mode = detect_mode.init
         self.start_time = time.time()
-        self.today_judge = Judge(0,0,0,0,0,0)
-        '''本日の判定内訳(全曲合計)'''
-        for r in reversed(self.result_database.results):
-            if r.timestamp >= self.start_time - self.config.autoload_offset*3600:
-                if r.judge:
-                    self.today_judge += r.judge
-            else:
-                break
-        self.current_judge = Judge(0,0,0,0,0,0)
-        '''このプレーの判定内訳。プレー画面終了後にプレー画面に移行していない場合に使う。'''
+        self.today_judge = Judge()
+        '''本日のプレーの判定内訳'''
+        self.current_judge = Judge()
+        '''このプレーの判定内訳'''
+        self.set_today_judge()
         self.result_timestamp = 0
         self.today_keystroke_count = 0
         self.saved_result_count = 0
@@ -162,20 +157,22 @@ class MainWindow(MainWindowUI):
             logger.info("OBS制御設定を更新しました")
             self.statusBar().showMessage("OBS制御設定を更新しました", 3000)
     
+    def set_today_judge(self):
+        '''本日の判定内訳(play中の判定合計)を対象ログから集計'''
+        self.today_judge.reset()
+        for r in reversed(self.result_database.results):
+            if r.timestamp >= self.start_time - self.config.autoload_offset*3600:
+                if r.detect_mode == detect_mode.play and r.judge:
+                    self.today_judge += r.judge
+            else:
+                break
+
     def update_all_configs(self):
         """全てのクラスに設定を反映"""
         self.config.load_config()  # 最新の設定を読み込み
         self.obs_manager.set_config(self.config)
         self.result_database.song_database.load()  # 必要に応じて再読み込み
-
-        self.today_judge = Judge(0,0,0,0,0,0)
-        '''本日の判定内訳(全曲合計)'''
-        for r in reversed(self.result_database.results):
-            if r.timestamp >= self.start_time - self.config.autoload_offset*3600:
-                if r.judge:
-                    self.today_judge += r.judge
-            else:
-                break
+        self.set_today_judge()
         
         # OBS接続状態の再評価
         if not self.obs_manager.is_connected:
@@ -359,11 +356,14 @@ class MainWindow(MainWindowUI):
         # if trigger == 'play_end': # プレイ画面が終わるときにtimestamp取得
         if trigger == 'play_start': # プレー画面の先頭で実行
             self.last_play_mode = self.screen_reader.detect_playside()
+
+        if trigger == 'play_end': # プレー画面の終わりに実行
+            self.last_play_mode = self.screen_reader.detect_playside()
             logger.debug(f"current_judge: {self.current_judge}")
             if self.current_judge:
                 self.today_judge += self.current_judge
                 # リスタートしている場合、選曲画面で最後に選択した曲として登録
-                if self.current_judge.pg + self.current_judge.gr + self.current_judge.gd + self.current_judge.bd > 0:
+                if self.current_judge.notes() > 0:
                     result = OneResult(
                         title=self.screen_reader.last_select_title,
                         play_style=self.screen_reader.last_select_style,
@@ -371,13 +371,19 @@ class MainWindow(MainWindowUI):
                         lamp=clear_lamp.failed,
                         timestamp=int(datetime.datetime.now().timestamp()),
                         judge=self.current_judge,
-                        dead=True,
+                        dead=False, # 不明だがとりあえず全てFalseとしておく
                         playspeed=None, # 速度変更中のクイックリトライは正しく記録できないが、ノーツ数しか見ないのでOKとする。
                         option=None,    # battle利用時のクイックリトライは正しく記録できないが、ノーツ数しか見ないのでOKとする。
+                        detect_mode=detect_mode.play
                     )
                     self.result_database.add(result)
                     self.result_database.save()
-                self.current_judge = Judge(0,0,0,0,0,0)
+
+                    # 統計情報の更新
+                    self.saved_result_count += 1
+                    if result.judge:
+                        self.today_judge += self.current_judge
+                    self.current_judge.reset()
 
         if trigger == 'result_start': # リザルト画面の先頭で実行
             self.result_pre = None # 1つ前の認識結果
@@ -466,7 +472,6 @@ class MainWindow(MainWindowUI):
         # ここにresult画面での処理を実装
         # 例: リザルト読み取りと保存
         try:
-            self.current_judge = Judge(0,0,0,0,0,0)
             detailed_result = self.screen_reader.read_result_screen()
             result = detailed_result.result
             result.timestamp = self.result_timestamp
@@ -484,12 +489,8 @@ class MainWindow(MainWindowUI):
                                 # 曲名の更新
                                 self.last_saved_song = get_title_with_chart(result.title, result.play_style, result.difficulty)
 
-                        # 統計情報の更新
-                        self.saved_result_count += 1
-                        if result.judge:
-                            self.today_judge += result.judge
-
                 self.result_pre = result
+            self.current_judge.reset()
         except:
             logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
     

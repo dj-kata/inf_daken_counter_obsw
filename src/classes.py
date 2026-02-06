@@ -52,7 +52,7 @@ class difficulty(Enum):
 
 class Judge:
     """判定内訳を格納するクラス。Judge.from_list()でListからの初期化も可能。"""
-    def __init__(self, pg:int, gr:int, gd:int, bd:int, pr:int, cb:int):
+    def __init__(self, pg:int=0, gr:int=0, gd:int=0, bd:int=0, pr:int=0, cb:int=0):
         self.pg = pg
         """ピカグレ"""
         self.gr = gr
@@ -94,6 +94,18 @@ class Judge:
             cur_score = self.pg*2+self.gr
             return cur_score / max_score
         
+    def reset(self):
+        '''判定を初期化'''
+        self.pg = 0
+        self.gr = 0
+        self.gd = 0
+        self.pr = 0
+        self.bd = 0
+        self.cb = 0
+        self.kpr = 0
+        self.score = 0
+        self.bp = 0
+
     def sum(self) -> int:
         '''CB以外の判定値の合計を返す。CB補正用'''
         return self.pg + self.gr + self.gd + self.bd + self.pr

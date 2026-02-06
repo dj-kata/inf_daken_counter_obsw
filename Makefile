@@ -23,6 +23,7 @@ $(target_zip): $(target) $(html_files) version.txt
 $(target): $(srcs)
 	@rm -rf $(project_name)
 	@$(wuv) run setup.py build
+	@cp songinfo.infdc $(project_name)
 	@echo "不要なファイルを削除中..."
 
 # 	# Tcl/Tk関連

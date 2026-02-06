@@ -110,7 +110,7 @@ class ScreenReader:
                     judge.bp = judge.pr + judge.bd
 
                 out_result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
-                                   judge=judge,score=score,bp=bp, dead=result.dead)
+                                   judge=judge,score=score,bp=bp, dead=result.dead, detect_mode=detect_mode.result)
                 ret = DetailedResult(songinfo=songinfo, result=out_result, result_side=convert_side(result.play_side), notes=notes, level=level)
         except:
             logger.error(traceback.format_exc())
@@ -131,7 +131,7 @@ class ScreenReader:
             songinfo = self.songinfo.search(chart_id)
             timestamp = int(datetime.datetime.now().timestamp())
             result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=None, option=PlayOption(None),
-                               judge=None,score=score,bp=bp)
+                               judge=None,score=score,bp=bp,detect_mode=detect_mode.select)
             ret = DetailedResult(songinfo=songinfo, result=result)
 
             # 最後に認識したものを記憶
