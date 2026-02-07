@@ -205,13 +205,13 @@ class DetailedResult():
         self.bpi = None
         """BPIの値"""
         self.update_details()
+        self.bpi = self.get_bpi()
 
     def update_details(self):
         """詳細情報を算出"""
-        if self.songinfo and self.songinfo.notes and self.result.score:
-            self.score_rate = self.result.score / self.songinfo.notes / 2
-            self.score_rate_with_rankdiff = calc_rankdiff(notes=self.songinfo.notes, score=self.result.score)
-            self.bpi = self.get_bpi()
+        if self.result.notes and self.result.score:
+            self.score_rate = self.result.score / self.result.notes / 2
+            self.score_rate_with_rankdiff = calc_rankdiff(notes=self.result.notes, score=self.result.score)
 
     def pgf(self, score_rate:float, notes:int):
         """BPI計算用。入力スコアレートに対して許容されるKG率を求める。
@@ -238,10 +238,10 @@ class DetailedResult():
         Returns:
             str: フォーマット後BPIもしくは??(未定義の場合)
         """
-        bpi = '??'
+        bpi = None
         try:
             if self.songinfo and self.result.score and self.songinfo.bpi_ave:
-                notes = self.songinfo.notes
+                notes = self.result.notes
                 bpi_coef = self.songinfo.bpi_coef if self.songinfo.bpi_coef>0 else 1.175
                 s = self.result.score
                 m = notes*2
