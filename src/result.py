@@ -92,6 +92,7 @@ class OneResult:
                     pre_lamp:clear_lamp=clear_lamp.noplay,
                     pre_bp:int=99999999,
                     dead:bool=None,
+                    average_release:average_release=None,
                 ):
         self.title = title
         '''曲名'''
@@ -126,6 +127,8 @@ class OneResult:
         self.playspeed = playspeed
         self.is_arcade = is_arcade
         self.dead      = dead
+        self.average_release = average_release
+        '''平均リリース時間のログ。Otoge Input Viewerと連携する時のために準備している。'''
 
     def is_updated(self) -> bool:
         """更新があるかどうかを返す

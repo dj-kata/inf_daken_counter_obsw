@@ -136,6 +136,17 @@ class Judge:
     def __str__(self):
         return f"PG:{self.pg}, GR:{self.gr}, GD:{self.gd}, BD:{self.bd}, PR:{self.pr}, CB:{self.cb},  score:{self.score}, bp:{self.bp},  rate:{self.get_score_rate()*100:.1f}%"
 
+class average_release:
+    '''キー入力の平均リリース時間保存用。100ノーツ平均のリスト(長さ不定)を持つ?'''
+    def __init__(self, hist:List[float]):
+        self.histogram = hist
+        '''平均リリース時間のヒストグラム。1要素が100ノーツ平均を表す。'''
+        self.total = sum(hist) / len(hist) if len(hist) > 0 else 0.0
+        '''トータルの平均リリース時間'''
+
+    def __str__(self):
+        return f"total:{self.total:.1f}ms"
+
 class detect_mode(Enum):
     """検出モード用のEnum"""
     init = 0
