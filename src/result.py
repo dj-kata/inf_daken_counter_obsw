@@ -419,7 +419,7 @@ class ResultDatabase:
         """本日のプレー履歴のXMLを出力
 
         Args:
-            start_time (int): これ以降のリザルトを集計
+            start_time (int): タイムスタンプ形式。これ以降のリザルトを集計する。
         """
         target:List[OneResult] = []
         for r in reversed(self.results):
@@ -435,7 +435,6 @@ class ResultDatabase:
         for r in target:
             songinfo = self.song_database.search(title=r.title, play_style=r.play_style, difficulty=r.difficulty)
             detailed_result = DetailedResult(songinfo, r, None, songinfo.level if hasattr(songinfo, 'level') else None)
-            logger.debug(r)
             item = ET.SubElement(root, 'item')
             elem_lv = ET.SubElement(item, 'lv')
             elem_lv.text = str(songinfo.level) if hasattr(songinfo, 'level') else ""
@@ -471,7 +470,7 @@ class ResultDatabase:
             elem_opt = ET.SubElement(item, 'opt')
             elem_opt.text = r.option.__str__()
             elem_score_rate = ET.SubElement(item, 'scorerate')
-            elem_score_rate.text = str(r.judge.get_score_rate())
+            elem_score_rate.text = str(r.score / r.notes / 2) # リザルト画面からのものしか使わないためnotesがある
             if detailed_result.bpi:
                 elem_bpi = ET.SubElement(item, 'bpi')
                 elem_bpi.text = f"{detailed_result.bpi:.2f}"
@@ -487,6 +486,16 @@ class ResultDatabase:
         tree = ET.ElementTree(root)
         ET.indent(tree, space="    ")
         tree.write(Path('out')/'today_update.xml', encoding='utf-8', xml_declaration=True)
+
+    def write_history_cursong_xml(title:str, style:play_style, difficulty:difficulty):
+        """指定された曲のプレーログを出力
+
+        Args:
+            title (str): _description_
+            style (play_style): _description_
+            difficulty (difficulty): _description_
+        """
+        pass
 
     def __str__(self):
         out = ''
