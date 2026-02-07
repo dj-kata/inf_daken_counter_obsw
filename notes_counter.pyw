@@ -363,7 +363,7 @@ class MainWindow(MainWindowUI):
         if trigger == 'play_end': # プレー画面の終わりに実行
             if self.current_judge and  self.current_judge.notes() > 0:
                 result = self.screen_reader.read_play_screen(self.current_judge)
-                add_result = self.result_database.add(result)
+                self.result_database.add(result)
                 self.result_database.save()
 
                 # 統計情報の更新
