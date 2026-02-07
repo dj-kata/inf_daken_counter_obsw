@@ -355,7 +355,7 @@ class ResultDatabase:
     
     def get_best(self,
                 title:str=None, style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
-                battle:bool=None,option:PlayOption=None
+                battle:bool=None,option:PlayOption=None,playspeed:float=None
         ) -> List:
         """指定された曲の自己べ(スコア, BP, ランプ)を返す。見つからない場合は0,0を返す。
         battle=TrueかつDPの場合はDBx系のみ検索対象とする。optionが空でない場合は同一オプションのみ検索対象とする。
@@ -377,6 +377,8 @@ class ResultDatabase:
             key = calc_chart_id(title, style, difficulty)
         results = self.search(chart_id=key)
         for r in results:
+            if playspeed != r.result.playspeed: # 再生速度が異なる場合は落とす。選曲画面から呼ぶ場合は等速しか対象にしないので存在確認はしない。
+                continue
             if style == play_style.dp:
                 if battle: # 検索対象がDBxの場合
                     if r.result.option and not r.result.option.battle:
@@ -425,7 +427,7 @@ if __name__ == '__main__':
     results = rdb.search(chart_id=chart_id)
     s = rdb.song_database.search(chart_id=chart_id)
 
-    # print(rdb)
-    print(rdb.results[-3],'\n')
-    print(rdb.results[-2],'\n')
-    print(rdb.results[-1])
+    print(rdb)
+    # print(rdb.results[-3],'\n')
+    # print(rdb.results[-2],'\n')
+    # print(rdb.results[-1])
