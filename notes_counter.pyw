@@ -218,15 +218,8 @@ class MainWindow(MainWindowUI):
 
             # モザイク処理
             if self.screen_reader.is_result(): # リザルト
-                if self.config.modify_rivalarea_mode == config_modify_rivalarea.mosaic: # モザイク処理する場合
-                    screen = mosaic_rival_area(screen, detailed_result.result_side)
-                    screen = mosaic_other_rival_names(screen, detailed_result.result_side)
-                elif self.config.modify_rivalarea_mode == config_modify_rivalarea.cut: # カットする場合
-                    screen = mosaic_other_rival_names(screen, detailed_result.result_side)
-                    screen = cut_rival_area(screen, detailed_result.result_side)
+                if self.config.write_statistics:
                     # 統計情報ウィンドウを追加
-                    logger.debug(f"detailed_result:{detailed_result}")
-                    logger.debug(f"songinfo:{detailed_result.songinfo}")
                     sp12_clear = None
                     sp12_hard = None
                     if detailed_result.songinfo:
@@ -236,16 +229,23 @@ class MainWindow(MainWindowUI):
                         screen,
                         title=result.title,
                         level=detailed_result.level,
-                        play_style=result.play_style.name.upper(),
-                        difficulty=result.difficulty.name.upper()[0],
+                        play_style=result.play_style,
+                        difficulty=result.difficulty,
                         ex_score=result.score,
                         bp=result.judge.bd + result.judge.pr,
                         max_notes=detailed_result.result.notes,
-                        lamp=result.lamp.name.upper(),
+                        lamp=result.lamp,
                         bpi=detailed_result.bpi,
                         sp12_clear=sp12_clear,
                         sp12_hard=sp12_hard,
                     )
+                if self.config.modify_rivalarea_mode == config_modify_rivalarea.mosaic: # モザイク処理する場合
+                    screen = mosaic_rival_area(screen, detailed_result.result_side)
+                    screen = mosaic_other_rival_names(screen, detailed_result.result_side)
+                elif self.config.modify_rivalarea_mode == config_modify_rivalarea.cut: # カットする場合
+                    screen = mosaic_other_rival_names(screen, detailed_result.result_side)
+                    screen = cut_rival_area(screen, detailed_result.result_side)
+
                     filename += f"_cut{detailed_result.result_side.name[1:]}"
 
             # 画像を保存

@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont
 import os
 from src.classes import *
+from src.funcs import *
 
 class ResultStatsWriter:
     """リザルト画像に統計情報を埋め込むためのクラス"""
@@ -11,9 +12,9 @@ class ResultStatsWriter:
             font_dir: フォントファイルを保存するディレクトリ（未使用）
         """
         # フォント読み込み
-        self.title_font = self._load_font(size=35, bold=True)
-        self.main_font = self._load_font(size=22)
-        self.sub_font = self._load_font(size=22)
+        self.title_font = self._load_font(size=55, bold=True)
+        self.main_font = self._load_font(size=44)
+        self.sub_font = self._load_font(size=36)
     
     def _load_font(self, size=28, bold=False):
         """システムフォントを読み込む"""
@@ -38,22 +39,22 @@ class ResultStatsWriter:
         img,
         title,
         level,
-        play_style,
-        difficulty,
+        play_style:play_style,
+        difficulty:difficulty,
         ex_score,
         bp,
         max_notes,
-        lamp,
+        lamp:clear_lamp,
         bpi=None,
         sp12_clear:clear_lamp=None,
         sp12_hard:clear_lamp=None,
-        position=(73, 165),  # (x, y) 座標で指定
-        box_width=500,     # ボックス幅（Noneで画像幅）
-        box_height=130,
+        position=(600, 405),  # (x, y) 座標で指定
+        box_width=790,     # ボックス幅（Noneで画像幅）
+        box_height=400,
         box_alpha=230       # 背景の透明度 (0-255)
     ):
         """
-        リザルト画像に統計情報を書き込む（見た目改良版）
+        リザルト画像に統計情報を書き込む。
         
         Args:
             position: 描画位置 (x, y) のタプル。"top"/"bottom"も可
@@ -83,39 +84,82 @@ class ResultStatsWriter:
         if box_width is None:
             box_width = img.width - x * 2
         
-        line_height = 40
+        line_height = self.main_font.size + 15
         
         # 背景ボックスを描画（半透明、透明度を指定可能）
         self._draw_rounded_rectangle(
             draw, 
-            (x - 25, y - 10, x - 25 + box_width, y + box_height),
+            (x - 40, y - 10, x - 40 + box_width, y + box_height),
             radius=5,
             fill=(0, 0, 0, box_alpha)  # 透明度を引数で指定
         )
         
         # 1行目: 曲名と難易度（難易度部分は必ず表示）
+        y+=20
         difficulty_part = f" ({play_style}{difficulty})"
-        text = self._truncate_title_with_difficulty(draw, title, difficulty_part, self.title_font, box_width - 30)
+        text = self._truncate_title_with_difficulty(draw, title, '', self.title_font, box_width - 30)
         self._draw_text_with_glow(draw, (x, y), text, self.title_font, 
-                                   fill=(255, 255, 255), glow_color=(0, 0, 0))
-        y += 45
+                                   fill=(255, 255, 255), glow_color=(70, 70, 70))
+        y += self.title_font.size+40
         
-        # 2行目: EXスコアとBP（明るい緑）
-        text = f"Lv: {level}"
-        if sp12_clear and sp12_hard:
-            text += f" ({sp12_clear}/{sp12_hard})"
-        text += f', {lamp}'
+        # Lv, その他難易度
+        text = f"{get_chart_name(play_style,difficulty)} "
+        text = self._truncate_text(draw, text, self.sub_font, box_width - 30)
+        if difficulty == difficulty.another:
+            self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
+                                       fill=(250, 100, 100), glow_color=(150, 0, 0))
+        elif difficulty == difficulty.leggendaria:
+            self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
+                                       fill=(250, 100, 250), glow_color=(80, 0, 80))
+        elif difficulty == difficulty.hyper:
+            self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
+                                       fill=(250, 250, 100), glow_color=(80, 80, 0))
+        elif difficulty == difficulty.normal:
+            self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
+                                       fill=(100, 100, 250), glow_color=(0, 0, 80))
+        elif difficulty == difficulty.beginner:
+            self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
+                                       fill=(100, 250, 100), glow_color=(0, 80, 0))
+        text = f"Lv{level} "
         text = self._truncate_text(draw, text, self.main_font, box_width - 30)
-        self._draw_text_with_glow(draw, (x, y), text, self.main_font,
-                                   fill=(100, 155, 250), glow_color=(0, 80, 0))
-        y += 26
+        self._draw_text_with_glow(draw, (x+100, y), text, self.sub_font,
+                                   fill=(100, 255, 250), glow_color=(0, 150, 150))
+        if sp12_clear and sp12_hard:
+            text = f" ({sp12_clear}/{sp12_hard})"
+            text = self._truncate_text(draw, text, self.sub_font, box_width - 30)
+            self._draw_text_with_glow(draw, (x+200, y), text, self.sub_font,
+                                       fill=(250, 255, 255), glow_color=(50, 50, 50))
+        y += self.sub_font.size + 30
 
-        # 3行目: クリアランプ
+        # クリアランプ
+        text = f'{lamp.name.upper()}'
+        text = self._truncate_text(draw, text, self.main_font, box_width - 30)
+        if lamp == clear_lamp.assist:
+            self._draw_text_with_glow(draw, (x, y), 'A-CLEAR', self.main_font,
+                                       fill=(255, 155, 250), glow_color=(80, 0, 80))
+        elif lamp == clear_lamp.easy:
+            self._draw_text_with_glow(draw, (x, y), 'E-CLEAR', self.main_font,
+                                       fill=(100, 255, 100), glow_color=(80, 150, 80))
+        elif lamp == clear_lamp.clear:
+            self._draw_text_with_glow(draw, (x, y), text, self.main_font,
+                                       fill=(100, 190, 255), glow_color=(80, 100, 150))
+        elif lamp == clear_lamp.hard:
+            self._draw_text_with_glow(draw, (x, y), 'H-CLEAR', self.main_font,
+                                       fill=(255, 50, 100), glow_color=(150, 30, 50))
+        elif lamp == clear_lamp.exh:
+            self._draw_text_with_glow(draw, (x, y), 'EXH-CLEAR', self.main_font,
+                                       fill=(255, 255, 100), glow_color=(150, 150, 50))
+        elif lamp == clear_lamp.fc:
+            self._draw_text_with_glow(draw, (x, y), 'F-COMBO', self.main_font,
+                                       fill=(255, 170, 250), glow_color=(200, 50, 150))
+        y += line_height
+
+        # スコア,BP
         text = f"ex: {ex_score}/{max_score}, bp: {bp}/{max_notes}"
         text = self._truncate_text(draw, text, self.main_font, box_width - 30)
         self._draw_text_with_glow(draw, (x, y), text, self.main_font,
                                    fill=(100, 255, 100), glow_color=(0, 80, 0))
-        y += 26
+        y += line_height
         
         # 4行目: レート、BPI、レベル（明るい黄色）
         rate = ex_score / max_score*100
@@ -124,8 +168,8 @@ class ResultStatsWriter:
             parts.append(f"BPI: {bpi:.2f}")
         
         text = ", ".join(parts)
-        text = self._truncate_text(draw, text, self.sub_font, box_width - 30)
-        self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
+        text = self._truncate_text(draw, text, self.main_font, box_width - 30)
+        self._draw_text_with_glow(draw, (x, y), text, self.main_font,
                                    fill=(255, 255, 100), glow_color=(80, 80, 0))
         
         # オーバーレイを合成
@@ -255,14 +299,15 @@ if __name__ == "__main__":
         img,
         title="Colors",
         level=12,
-        play_style="SP",
-        difficulty="A",
+        play_style=play_style.sp,
+        difficulty=difficulty.another,
         ex_score=2128,
         bp=15,
         max_notes=1258,
-        lamp="A-CLEAR",
+        lamp=clear_lamp.fc,
         bpi=1.22,
         sp12_clear=unofficial_difficulty.jiriki_d,
         sp12_hard=unofficial_difficulty.jiriki_e
     )
+    img = img.crop((560,0,1920,1080))
     img.save('test_result_custom.png')

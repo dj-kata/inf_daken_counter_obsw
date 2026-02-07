@@ -150,7 +150,7 @@ def convert_side(side:str) -> result_side:
 
 def cut_rival_area(img:Image, side:result_side) -> Image:
     '''ライバルエリアをカットする'''
-    w=600 # 出力サイズ
+    w=1360 # 出力サイズ
     if side == result_side._1p:
         return img.crop((0,0, w,1080))
     else:

@@ -226,6 +226,15 @@ class ConfigDialog(QDialog):
         
         layout.addWidget(rival_edit_group)
         
+        # その他の設定
+        other_group = QGroupBox("その他")
+        other_layout = QVBoxLayout()
+        other_group.setLayout(other_layout)
+        
+        self.write_statistics_check = QCheckBox("統計情報を書き込む")
+        other_layout.addWidget(self.write_statistics_check)
+        
+        layout.addWidget(other_group)
         layout.addStretch()
         
         return widget
@@ -258,6 +267,9 @@ class ConfigDialog(QDialog):
             button = self.rivalarea_button_group.button(self.config.modify_rivalarea_mode.value)
             if button:
                 button.setChecked(True)
+
+        if hasattr(self.config, 'write_statistics'):
+            self.write_statistics_check.setChecked(self.config.write_statistics)
         
     def accept(self):
         """OKボタン押下時の処理"""
@@ -281,6 +293,7 @@ class ConfigDialog(QDialog):
         # 画像保存設定
         self.config.autosave_image_mode = config_autosave_image(self.autosave_button_group.checkedId())
         self.config.modify_rivalarea_mode = config_modify_rivalarea(self.rivalarea_button_group.checkedId())
+        self.config.write_statistics = self.write_statistics_check.isChecked()
         
         # 設定を保存
         self.config.save_config()
