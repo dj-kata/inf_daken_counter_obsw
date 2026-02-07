@@ -2,116 +2,288 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <title>hoge</title>
+        <title>IIDX Score History</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
         <style>
+            * {
+                box-sizing: border-box;
+            }
+            
             body { 
-            background-color: rgba(0, 0, 0, 0.85);
-            margin: 0px;
-            padding: 0px;
-            overflow: hidden;
-            font-family:"RocknRoll One";
-            color:#2196F3;   
-            font-size: 40px;
-            color: #fff;
-            text-shadow: 6px 6px 0 #000,
-                         -2px 2px 0 #000,
-                         2px -2px 0 #000,
-                         -2px -2px 0 #000;
+                background: linear-gradient(135deg, #0a0a1f 0%, #1a1a3e 50%, #0a0a1f 100%);
+                margin: 0;
+                padding: 10px;
+                overflow: hidden;
+                font-family: "RocknRoll One", sans-serif;
+                color: #fff;
             }
-            div#all{
-                min-height:2000px;
-                background-color: rgba(0, 0, 0, 0.95);
+            
+            #all {
+                max-width: 1900px;
+                margin: 0 auto;
             }
-            table#title {
-                padding-left: 20px;
+            
+            /* タイトルセクション - 新レイアウト */
+            .title-card {
+                background: linear-gradient(135deg, rgba(0, 20, 100, 0.9), rgba(0, 40, 120, 0.9));
+                border-radius: 12px;
+                padding: 12px 25px;
+                margin-bottom: 10px;
+                box-shadow: 0 5px 20px rgba(33, 150, 243, 0.3);
+                border: 2px solid rgba(33, 150, 243, 0.3);
+            }
+            
+            .title-content {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 30px;
+            }
+            
+            .title-name {
+                font-size: 48px;
+                flex-grow: 1;
+                text-shadow: 3px 3px 0 #000,
+                            -2px 2px 0 #000,
+                            2px -2px 0 #000,
+                            -2px -2px 0 #000;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
                 color: #ffffff;
-                background-color: rgba(0, 0, 80, 0.95);
-                font-size: 80px;
-                line-height: 130%;
-                width:100%;
             }
-            table#title td{
-            	white-space:nowrap;
-            }
-            table#title td:nth-child(1){
-                color: #ffffaa;
-                width:13%;
-            }
-            table#title td:nth-child(2){
-                max-width: 10px;
-            	overflow:hidden;
-            	text-overflow:ellipsis;
-                padding-left:60px;
-            }
-            table#title td:nth-child(3){
+            
+            .title-info {
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+                min-width: 280px;
                 text-align: right;
-                width:10%;
             }
-            table#best td {
-            	white-space:nowrap;
+            
+            .title-level-difficulty {
+                font-size: 40px;
+                text-shadow: 3px 3px 0 #000,
+                            -2px 2px 0 #000,
+                            2px -2px 0 #000,
+                            -2px -2px 0 #000;
+                white-space: nowrap;
             }
-            table#best td:nth-child(1) {
-                color:#ffccff;
-                width:20%;
+            
+            .title-level {
+                color: #ffeb3b;
+                text-shadow: 0 0 20px rgba(255, 235, 59, 0.5),
+                            3px 3px 0 #000,
+                            -2px 2px 0 #000,
+                            2px -2px 0 #000,
+                            -2px -2px 0 #000;
             }
-            table#best td:nth-child(2) {
-                color:#ffffff;
-                width:15%;
-                padding-right:3%;
-                text-align:right;
+            
+            .title-difficulty {
+                margin-left: 15px;
             }
-            table#best td:nth-child(3) {
-                color:#cccccc;
-                width:20%;
-                padding-right:3%;
-                text-align:center;
+            
+            /* 難易度の色分け */
+            .diff-a { color: #ff4444; }  /* Another - 赤 */
+            .diff-b { color: #44ff44; }  /* Beginner - 緑 */
+            .diff-n { color: #4444ff; }  /* Normal - 青 */
+            .diff-h { color: #ffff44; }  /* Hyper - 黄色 */
+            .diff-l { color: #ff44ff; }  /* Leggendaria - 紫 */
+            
+            .title-notes {
+                font-size: 28px;
+                color: #aaaaff;
+                text-shadow: 2px 2px 0 #000,
+                            -1px 1px 0 #000,
+                            1px -1px 0 #000,
+                            -1px -1px 0 #000;
             }
-            table#best td:nth-child(4) {
+            
+            /* BESTセクション - 横並びレイアウト */
+            .best-section {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 10px;
+            }
+            
+            .best-card {
+                background: linear-gradient(135deg, rgba(30, 30, 60, 0.9), rgba(20, 20, 40, 0.9));
+                border-radius: 12px;
+                padding: 12px 20px;
+                box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+                border: 2px solid rgba(100, 100, 200, 0.3);
+                flex: 1;
+            }
+            
+            .best-card h2 {
+                font-size: 26px;
+                margin: 0 0 8px 0;
+                color: #ce93d8;
+                text-shadow: 2px 2px 0 #000;
+            }
+            
+            .best-item {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 20px;
+                align-items: center;
+            }
+            
+            .best-value {
+                font-size: 48px;
+                color: #fff;
+                text-shadow: 2px 2px 0 #000;
+                font-weight: bold;
                 text-align: center;
-                max-width:10px;
-                overflow:hidden;
-                text-overflow:ellipsis;
-                color:#77bb77;
             }
+            
+            .best-right-column {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                text-align: right;
+            }
+            
+            .best-detail {
+                font-size: 28px;
+                color: #aaa;
+            }
+            
+            .best-option {
+                font-size: 22px;
+                color: #77bb77;
+                text-shadow: 2px 2px 0 #000;
+            }
+            
+            /* BPI専用カード - 横並びレイアウト */
+            .bpi-card {
+                background: linear-gradient(135deg, rgba(50, 30, 80, 0.9), rgba(30, 20, 50, 0.9));
+                border: 2px solid rgba(206, 147, 216, 0.5);
+                flex: 1.5;
+                display: none; /* デフォルトで非表示 */
+            }
+            
+            .bpi-card.visible {
+                display: block; /* BPIデータがある場合に表示 */
+            }
+            
+            .bpi-card h2 {
+                color: #e1bee7;
+            }
+            
+            .bpi-grid {
+                display: flex;
+                gap: 15px;
+                justify-content: space-between;
+            }
+            
+            .bpi-item {
+                flex: 1;
+                text-align: center;
+            }
+            
+            .bpi-item-label {
+                font-size: 20px;
+                color: #ce93d8;
+                margin-bottom: 5px;
+            }
+            
+            .bpi-item-value {
+                font-size: 30px;
+                color: #fff;
+                text-shadow: 0 0 10px rgba(206, 147, 216, 0.5),
+                            2px 2px 0 #000;
+                font-weight: bold;
+            }
+            
+            .bpi-comparison {
+                font-size: 18px;
+                margin-top: 3px;
+                font-weight: bold;
+            }
+            
+            .bpi-comparison.positive {
+                color: #44ff44;
+                text-shadow: 0 0 5px rgba(68, 255, 68, 0.5);
+            }
+            
+            .bpi-comparison.negative {
+                color: #ff4444;
+                text-shadow: 0 0 5px rgba(255, 68, 68, 0.5);
+            }
+            
+            /* リザルトテーブル - コンパクト化 */
+            .result-card {
+                background: linear-gradient(135deg, rgba(30, 30, 60, 0.9), rgba(20, 20, 40, 0.9));
+                border-radius: 12px;
+                padding: 12px 20px;
+                box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+                border: 2px solid rgba(100, 100, 200, 0.3);
+            }
+            
+            .result-card h2 {
+                font-size: 28px;
+                margin: 0 0 8px 0;
+                color: #81d4fa;
+                text-shadow: 2px 2px 0 #000;
+            }
+            
             table#result {
-                font-size: 64px;
-            	width:100%;
+                width: 100%;
+                border-collapse: collapse;
             }
+            
+            table#result tr {
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                transition: background-color 0.2s;
+            }
+            
+            table#result tr:hover {
+                background-color: rgba(255, 255, 255, 0.05);
+            }
+            
             table#result td {
-            	white-space:nowrap;
+                padding: 6px 5px;
+                white-space: nowrap;
+                font-size: 32px;
+                text-shadow: 2px 2px 0 #000;
             }
+            
             table#result td:nth-child(1) {
-            	width:22%;
+                width: 20%;
+                color: #ffffaa;
             }
+            
             table#result td:nth-child(2) {
-            	width:5%;
-            	margin-right:1%;
+                width: 4%;
             }
+            
             table#result td:nth-child(3) {
-            	width:12%;
-                text-align:right;
+                width: 14%;
+                text-align: right;
+                font-weight: bold;
             }
+            
             table#result td:nth-child(4) {
-            	width:22%;
-                text-align:center;
+                width: 18%;
+                text-align: center;
             }
+            
             table#result td:nth-child(5) {
-            	max-width:10px;
-            	overflow:hidden;
-            	text-overflow:ellipsis;
+                width: 44%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                color: #aaffaa;
             }
-            table#best {
-                font-size: 50px;
-            	width:100%;
+            
+            /* ランクカラー */
+            .MAX {
+                animation: flashmax 0.4s infinite;
+                font-weight: bold;
             }
-            .MAX{
-                animation-name: flashmax;
-                animation-duration: 0.4s;
-                animation-iteration-count: infinite;
-            }
+            
             @keyframes flashmax {
                 0%   { color: #ff2828; }
                 20%  { color: #d5ff28; }
@@ -120,35 +292,22 @@
                 80%  { color: #d528ff; }
                 100% { color: #ff2828; }
             }
-            .AAA{
-                color:#ffff28;
+            
+            .AAA { color: #ffff28; font-weight: bold; }
+            .AA { color: #c3c3c3; font-weight: bold; }
+            .A { color: #2ddf71; }
+            .B { color: #7777ff; }
+            
+            /* クリアランプ */
+            .lamp-box {
+                display: inline-block;
+                width: 25px;
+                height: 25px;
+                border-radius: 4px;
+                vertical-align: middle;
             }
-            .AA{
-                color:#c3c3c3;
-            }
-            .A{
-                color:#2ddf71;
-            }
-            .B{
-                color:#7777ff;
-            }
-            .C{
-                color:#7777ff;
-            }
-            .D{
-                color:#7777ff;
-            }
-            .E{
-                color:#7777ff;
-            }
-            .F{
-                color:#7777ff;
-            }
-            .fc{
-                animation-name: flashfc;
-                animation-duration: 0.2s;
-                animation-iteration-count: infinite;
-            }
+            
+            .fc { animation: flashfc 0.2s infinite; }
             @keyframes flashfc {
                 0%   { background-color: #ff2828; }
                 20%  { background-color: #d5ff28; }
@@ -157,262 +316,315 @@
                 80%  { background-color: #d528ff; }
                 100% { background-color: #ff2828; }
             }
-            .failed{
-                animation-name: flashfailed;
-                animation-duration: 0.08s;
-                animation-iteration-count: infinite;
-            }
+            
+            .failed { animation: flashfailed 0.08s infinite; }
             @keyframes flashfailed {
                 0%   { background-color: #ff2828; }
                 50%  { background-color: #282828; }
                 100% { background-color: #ff2828; }
             }
-            .ac{background-color: #ff66ff;}
-            .ec{background-color: #22ff22;}
-            .nc{background-color: #22ccff;}
-            .hc{background-color: #ffffff;}
-            .exh{
-                animation-name: flashexh;
-                animation-duration: 0.08s;
-                animation-iteration-count: infinite;
-            }
+            
+            .ac { background-color: #ff66ff; }
+            .ec { background-color: #22ff22; }
+            .nc { background-color: #22ccff; }
+            .hc { background-color: #ffffff; }
+            
+            .exh { animation: flashexh 0.08s infinite; }
             @keyframes flashexh {
                 0%   { background-color: #ff2828; }
                 50%  { background-color: #ffff28; }
                 100% { background-color: #ff2828; }
             }
-            sp12hard{
-                color:#ff86b4;
-                padding: 0px;
-            }
-            sp12clear{
-                color:#9ee7ff;
-                padding: 0px;
-                display: none;
-            }
         </style>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
         <script>
-        var isHard = 1;
+        function getDifficultyColor(difficulty) {
+            // 難易度の3文字目を取得
+            if (!difficulty || difficulty.length < 3) return '';
+            var diffType = difficulty.charAt(2).toUpperCase();
+            
+            switch(diffType) {
+                case 'A': return 'diff-a';  // Another - 赤
+                case 'B': return 'diff-b';  // Beginner - 緑
+                case 'N': return 'diff-n';  // Normal - 青
+                case 'H': return 'diff-h';  // Hyper - 黄色
+                case 'L': return 'diff-l';  // Leggendaria - 紫
+                default: return '';
+            }
+        }
+        
         function loadXml() {
             var getxml = $.ajax({
                 url: '../out/history_cursong.xml',
                 type: 'GET',
                 dataType: 'xml',
-                cache: false
+                timeout: 10000,
+                cache: false,
             });
-            getxml.done(function(xml){
-                // xmlデータからほしいデータをfindで探し処理
-                var out = "";
-                var title = $(xml).find('Results music').text();
-                var lv = $(xml).find('Results lv').text();
-                if($(xml).find('Results dp_unofficial_lv').text().length){
-                    var unoff_lv = $(xml).find('Results dp_unofficial_lv').text();
-                    lv = lv + "(" + unoff_lv + ") ";
-                }
-                //// today_resultと同様のアニメーション、いまいちなのでコメントアウトしている
-                //if($(xml).find('Results sp_12hard').text().length){
-                //    lv = lv+' <sp12hard>('+$(xml).find('Results sp_12hard').text()+')</sp12hard>';
-                //    lv += '<sp12clear>('+$(xml).find('Results sp_12clear').text()+')</sp12clear>';
-                //}
-                var difficulty = $(xml).find('Results difficulty').text();
+            
+            getxml.done(function(xml) {
+                var out = '';
+                var title = $(xml).find('music').text();
+                var difficulty = $(xml).find('difficulty').text();
+                var lv = $(xml).find('lv').text();
+                var notes = Number($(xml).find('notes').text());
                 var best_lamp = $(xml).find('best_lamp').text();
                 var best_score = Number($(xml).find('best_score').text());
                 var best_bp = $(xml).find('best_bp').text();
                 var best_lamp_opt = $(xml).find('best_lamp_opt').text();
                 var best_score_opt = $(xml).find('best_score_opt').text();
                 var best_bp_opt = $(xml).find('best_bp_opt').text();
-                var best_lamp_date = $(xml).find('best_lamp_date').text();
-                var best_score_date = $(xml).find('best_score_date').text();
                 var best_score_rate = Number($(xml).find('best_score_rate').text());
-                var best_bp_date = $(xml).find('best_bp_date').text();
-                var best_notes = Number($(xml).find('best_notes').text());
+                var best_notes = Number($(xml).find('notes').text());
+                var best_bpi = $(xml).find('best_bpi').text();
+                var bpi_ave = $(xml).find('bpi_ave').text();
+                var bpi_top = $(xml).find('bpi_top').text();
+                var best_bp_rate = $(xml).find('best_bp_rate').text();
+                
+                // ランク判定
                 var best_rank = "B";
-                if (best_score_rate*18 > 16){
-                    best_rank = 'AAA'
-                }else if(best_score_rate*18 > 14){
-                    best_rank = 'AA'
-                }else if(best_score_rate*18 > 12){
-                    best_rank = 'A'
+                if (best_score_rate * 18 > 16) {
+                    best_rank = 'AAA';
+                } else if (best_score_rate * 18 > 14) {
+                    best_rank = 'AA';
+                } else if (best_score_rate * 18 > 12) {
+                    best_rank = 'A';
                 }
+                
                 var best_rankdiff0 = $(xml).find('best_rankdiff0').text();
                 var best_rankdiff1 = $(xml).find('best_rankdiff1').text();
-                var best_bpi = $(xml).find('best_bpi').text();
-                var best_rankdiff = '-'
-                var best_rankdiff = '<span class="' + best_rank +'">'+best_rankdiff0+'</span>'+best_rankdiff1; // 到達ランクの色をつける
-                var best_bp_rate = $(xml).find('best_bp_rate').text();
-                var notes = 0;
-                $("#title tbody").html('<tr><td>☆'+lv+'</td><td>'+title+'</td><td>('+difficulty+')</td></tr>');
-                $(xml).find("Results item").each(function(index, item){
+                var best_rankdiff = '<span class="' + best_rank + '">' + best_rankdiff0 + '</span>' + best_rankdiff1;
+                
+                // MAXチェック
+                if (best_score == best_notes * 2 && best_notes > 0) {
+                    best_rankdiff = '<span class="MAX">MAX</span>';
+                }
+                
+                // タイトル表示
+                $('.title-name').text(title);
+                
+                // 難易度の色を取得
+                var diffColorClass = getDifficultyColor(difficulty);
+                $('.title-level-difficulty').html(
+                    '<span class="title-level">☆' + lv + '</span>' +
+                    '<span class="title-difficulty ' + diffColorClass + '">' + difficulty + '</span>'
+                );
+                
+                // ノーツ数表示
+                $('.title-notes').text(notes.toLocaleString() + ' notes');
+                
+                // BESTスコア表示
+                var best_html = '';
+                best_html += '<div class="best-item">';
+                best_html += '<div class="best-value">' + best_score + '</div>';
+                best_html += '<div class="best-right-column">';
+                best_html += '<div class="best-detail">' + best_rankdiff + '</div>';
+                best_html += '<div class="best-option">' + best_score_opt + '</div>';
+                best_html += '</div>';
+                best_html += '</div>';
+                $('.score-info').html(best_html);
+                
+                // BEST BP表示
+                var bp_html = '';
+                bp_html += '<div class="best-item">';
+                bp_html += '<div class="best-value">' + best_bp + '</div>';
+                bp_html += '<div class="best-right-column">';
+                bp_html += '<div class="best-detail">(' + best_bp_rate + '%)</div>';
+                bp_html += '<div class="best-option">' + best_bp_opt + '</div>';
+                bp_html += '</div>';
+                bp_html += '</div>';
+                $('.bp-info').html(bp_html);
+                
+                // BPI情報の表示判定
+                var hasBpiData = bpi_ave && bpi_ave !== '' && bpi_ave !== '0' && 
+                                 bpi_top && bpi_top !== '' && bpi_top !== '0';
+                
+                if (hasBpiData) {
+                    $('.bpi-card').addClass('visible');
+                    
+                    var bpi_ave_num = Number(bpi_ave);
+                    var bpi_top_num = Number(bpi_top);
+                    
+                    // BPI情報表示
+                    var bpi_html = '';
+                    bpi_html += '<div class="bpi-item">';
+                    bpi_html += '<div class="bpi-item-label">自己ベスト</div>';
+                    bpi_html += '<div class="bpi-item-value">' + best_bpi + '</div>';
+                    bpi_html += '</div>';
+                    
+                    bpi_html += '<div class="bpi-item">';
+                    bpi_html += '<div class="bpi-item-label">皆伝平均</div>';
+                    bpi_html += '<div class="bpi-item-value">' + bpi_ave_num.toLocaleString() + '</div>';
+                    var diff_ave = best_score - bpi_ave_num;
+                    var diff_ave_str = (diff_ave >= 0 ? '+' : '') + diff_ave;
+                    var diff_ave_class = diff_ave >= 0 ? 'positive' : 'negative';
+                    bpi_html += '<div class="bpi-comparison ' + diff_ave_class + '">' + diff_ave_str + '</div>';
+                    bpi_html += '</div>';
+                    
+                    bpi_html += '<div class="bpi-item">';
+                    bpi_html += '<div class="bpi-item-label">全国TOP</div>';
+                    bpi_html += '<div class="bpi-item-value">' + bpi_top_num.toLocaleString() + '</div>';
+                    var diff_top = best_score - bpi_top_num;
+                    var diff_top_str = (diff_top >= 0 ? '+' : '') + diff_top;
+                    var diff_top_class = diff_top >= 0 ? 'positive' : 'negative';
+                    bpi_html += '<div class="bpi-comparison ' + diff_top_class + '">' + diff_top_str + '</div>';
+                    bpi_html += '</div>';
+                    
+                    $('.bpi-info').html(bpi_html);
+                } else {
+                    $('.bpi-card').removeClass('visible');
+                }
+                
+                // プレイ履歴
+                $(xml).find("Results item").each(function(index, item) {
                     var date = $(item).find('date').text();
                     var lamp = Number($(item).find('lamp').text());
                     var score = Number($(item).find('score').text());
                     var score_rate = Number($(item).find('score_rate').text());
                     var opt = $(item).find('opt').text();
                     var bp = $(item).find('bp').text();
-                    notes = Number($(item).find('notes').text());
-
-                    var score_pre = $(item).find('score_pre').text();
-                    // var rank = $(item).find('rank').text();
+                    var notes = Number($(item).find('notes').text());
+                    
                     var rank = "B";
-                    if (score_rate*18 > 16){
-                        rank = 'AAA'
-                    }else if(score_rate*18 > 14){
-                        rank = 'AA'
-                    }else if(score_rate*18 > 12){
-                        rank = 'A'
+                    if (score_rate * 18 > 16) {
+                        rank = 'AAA';
+                    } else if (score_rate * 18 > 14) {
+                        rank = 'AA';
+                    } else if (score_rate * 18 > 12) {
+                        rank = 'A';
                     }
-                    var rank_pre = $(item).find('rank_pre').text();
-                    var rankdiff0 = $(item).find('rankdiff0').text(); // AAA
-                    rankdiff0 = '<span class="' + rank +'">'+rankdiff0+'</span>'; // 到達ランクの色をつける
-                    var rankdiff1 = $(item).find('rankdiff1').text(); // +10
-                    var rankdiff = rankdiff0+rankdiff1;
-                    // 初AAAなどの達成時のみ表示する変数
-                    var rank_update = '<span class="' + rank +'">'+rank+'</span>';
-                    if ((score > score_pre) && (rank != rank_pre)){ // スコア伸び&ランク初到達
-                        rank_update = '<span class="' + rank +'">'+rank+'</span>';
+                    
+                    var rankdiff0 = $(item).find('rankdiff0').text();
+                    var rankdiff1 = $(item).find('rankdiff1').text();
+                    var rankdiff = '<span class="' + rank + '">' + rankdiff0 + '</span>' + rankdiff1;
+                    
+                    if (score == notes * 2 && notes > 0) {
+                        rankdiff = '<span class="MAX">MAX</span>';
                     }
-                    if ((score == notes*2) && (notes > 0)){
-                        rank_update = '<span class="MAX">MAX</span>';
-                        rankdiff = '<span class="MAX">MAX</span>'
+                    
+                    // ランプ表示
+                    var lamp_html = '';
+                    if (lamp == 1) {
+                        lamp_html = '<span class="lamp-box failed"></span>';
+                    } else if (lamp == 2) {
+                        lamp_html = '<span class="lamp-box ac"></span>';
+                    } else if (lamp == 3) {
+                        lamp_html = '<span class="lamp-box ec"></span>';
+                    } else if (lamp == 4) {
+                        lamp_html = '<span class="lamp-box nc"></span>';
+                    } else if (lamp == 5) {
+                        lamp_html = '<span class="lamp-box hc"></span>';
+                    } else if (lamp == 6) {
+                        lamp_html = '<span class="lamp-box exh"></span>';
+                    } else if (lamp == 7) {
+                        lamp_html = '<span class="lamp-box fc"></span>';
                     }
-                    // 毎回表示する場合の変数
-                    rank = '<span class="' + rank +'">'+rank+'</span>';
-
+                    
                     var dbflg = false;
-                    if (lamp == 1){
-                        lamp = '<span class="failed">　</span>'
-                    }
-                    else if (lamp == 2){
-                        lamp = '<span class="ac">　</span>'
-                    }
-                    else if (lamp == 3){
-                        lamp = '<span class="ec">　</span>'
-                    }
-                    else if (lamp == 4){
-                        lamp = '<span class="nc">　</span>'
-                    }
-                    else if (lamp == 5){
-                        lamp = '<span class="hc">　</span>'
-                    }
-                    else if (lamp == 6){
-                        lamp = '<span class="exh">　</span>'
-                    }
-                    else if (lamp == 7){
-                        lamp = '<span class="fc">　</span>'
-                    }
-                    else{ // Failed, No playは何も表示しない
-                        lamp = ''
-                    }
                     var with_scratch = "";
-                    if (opt.indexOf("BATTLE")>=0){
+                    if (opt.indexOf("BATTLE") >= 0) {
                         dbflg = true;
-                        if (opt.indexOf("A-SCR")<0){
-                            with_scratch = ", 皿あり"; // 皿あり表記を無効にする場合はこの行を消せばOK
+                        if (opt.indexOf("A-SCR") < 0) {
+                            with_scratch = ", 皿あり";
                         }
                     }
-                    // 長いオプションを省略する(字をデカくするための施策,お好みで消してください)
-                    if (opt.indexOf("BATTLE, OFF / MIR")>=0){
-                        opt = '(DBM;右M' + with_scratch + ')'
+                    
+                    // オプション省略
+                    if (opt.indexOf("BATTLE, OFF / MIR") >= 0) {
+                        opt = '(DBM;右M' + with_scratch + ')';
+                    } else if (opt.indexOf("BATTLE, MIR / OFF") >= 0) {
+                        opt = '(DBM;左M' + with_scratch + ')';
+                    } else if (opt.indexOf("BATTLE, OFF / OFF") >= 0) {
+                        opt = '(DB' + with_scratch + ')';
+                    } else if (opt.indexOf("BATTLE, RAN / RAN") >= 0) {
+                        opt = '(DBR' + with_scratch + ')';
+                    } else if (opt.indexOf("BATTLE, S-RAN / S-RAN") >= 0) {
+                        opt = '(DBSR' + with_scratch + ')';
+                    } else if (opt.indexOf("BATTLE, H-RAN / H-RAN") >= 0) {
+                        opt = '(DBHR' + with_scratch + ')';
+                    } else if (opt.indexOf("S-RAN / S-RAN, FLIP, LEGACY") >= 0) {
+                        opt = '(全裸' + with_scratch + ')';
                     }
-                    else if (opt.indexOf("BATTLE, MIR / OFF")>=0){
-                        opt = '(DBM;左M' + with_scratch + ')'
-                    }
-                    else if (opt.indexOf("BATTLE, OFF / OFF")>=0){
-                        opt = '(DB' + with_scratch + ')'
-                    }
-                    else if (opt.indexOf("BATTLE, RAN / RAN")>=0){
-                        opt = '(DBR' + with_scratch + ')'
-                    }
-                    else if (opt.indexOf("BATTLE, S-RAN / S-RAN")>=0){
-                        opt = '(DBSR' + with_scratch + ')'
-                    }
-                    else if (opt.indexOf("BATTLE, H-RAN / H-RAN")>=0){
-                        opt = '(DBHR' + with_scratch + ')'
-                    }
-                    else if (opt.indexOf("S-RAN / S-RAN, FLIP, LEGACY")>=0){
-                        opt = '(全裸' + with_scratch + ')'
-                    }
-                    // テーブルに追加
-                    if (dbflg == true){ // DBx系オプションの場合、スコアの所にbp250のようにミスカンを入れておく
-                        out += '<tr><td><font color="#ffffaa">'+date+'</font></td>';
-                        out += '<td>'+lamp+'</td>';
-                        out += '<td>bp'+bp+'</td>';
+                    
+                    // テーブル行追加
+                    if (dbflg) {
+                        out += '<tr>';
+                        out += '<td>' + date + '</td>';
+                        out += '<td>' + lamp_html + '</td>';
+                        out += '<td>bp' + bp + '</td>';
                         out += '<td></td>';
-                        out += '<td><font color="#aaffaa">'+opt+'</font></td>';
-                        out += '</tr>'
-                    }else{
-                        out += '<tr><td><font color="#ffffaa">'+date+'</font></td>';
-                        out += '<td>'+lamp+'</td>';
-                        out += '<td>'+score+'</td>';
+                        out += '<td>' + opt + '</td>';
+                        out += '</tr>';
+                    } else {
+                        out += '<tr>';
+                        out += '<td>' + date + '</td>';
+                        out += '<td>' + lamp_html + '</td>';
+                        out += '<td>' + score + '</td>';
                         out += '<td>' + rankdiff + '</td>';
-                        out += '<td><font color="#aaffaa">'+opt+'</font></td>';
-                        out += '</tr>'
+                        out += '<td>' + opt + '</td>';
+                        out += '</tr>';
                     }
-                    if (index == 19){ // 直近の20プレイだけ表示としている。曲数はここから変更可能。
+                    
+                    if (index == 19) {
                         return false;
                     }
                 });
-                if ((best_score == best_notes*2) && (best_notes > 0)){
-                    best_rankdiff = '<span class="MAX">MAX</span>'
-                }
-                var best_html = "";
-                best_html += "<tr>";
-                best_html += "<td>best(score)</td>";
-                best_html += "<td>"+best_score+"</td>";
-                best_html += "<td>("+best_rankdiff+")</td>";
-                best_html += "<td>"+best_score_opt+"</td></tr>";
-                // bpi(ある場合のみ)
-                if (best_bpi != "??"){
-                    best_html += "<tr>";
-                    best_html += "<td>BPI</td>";
-                    best_html += "<td>"+best_bpi+"</td>";
-                    best_html += "<td></td>";
-                    best_html += "<td></td></tr>";
-                }
-                // bp
-                best_html += "<tr>";
-                best_html += "<td>best(bp)</td>";
-                best_html += "<td>"+best_bp+"</td>";
-                best_html += "<td>("+best_bp_rate+"%)</td>";
-                best_html += "<td>"+best_bp_opt+"</td></tr>";
-                $('#best tbody').html(best_html);
+                
                 $('#result tbody').html(out);
-                if (isHard == 1){
-                    $('sp12hard').css('display', 'none');
-                    $('sp12clear').css('display', 'block');
-                }else{
-                    $('sp12clear').css('display', 'none');
-                    $('sp12hard').css('display', 'block');
-                }
-                isHard = 1 - isHard;
             });
+            
             getxml.fail(function(err) {
-                $(songtitle).text("ERROR!!!"+err);
-                //alert('failed');
+                console.error('XMLロードエラー:', err);
             });
         }
-
+        
         window.addEventListener('DOMContentLoaded', function() {
-            var roopTimer = setInterval(loadXml, 1000);
+            loadXml();
+            setInterval(loadXml, 1000);
         });
-
-</script>
-</head>
-<body>
-  <div id="all">
-    <table id="title">
-      <tbody>
-      </tbody>
-    </table>
-    <table id="best">
-      <tbody>
-      </tbody>
-    </table>
-    <table id="result">
-      <tbody>
-      </tbody>
-    </table>
-  </div>
-</body>
+        </script>
+    </head>
+    <body>
+        <div id="all">
+            <!-- タイトルカード -->
+            <div class="title-card">
+                <div class="title-content">
+                    <div class="title-name"></div>
+                    <div class="title-info">
+                        <div class="title-level-difficulty"></div>
+                        <div class="title-notes"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- BESTセクション - 横並び -->
+            <div class="best-section">
+                <!-- スコアカード -->
+                <div class="best-card">
+                    <h2>📊 SCORE</h2>
+                    <div class="score-info"></div>
+                </div>
+                
+                <!-- BPカード -->
+                <div class="best-card">
+                    <h2>💔 BP</h2>
+                    <div class="bp-info"></div>
+                </div>
+                
+                <!-- BPIカード - 条件付き表示 -->
+                <div class="best-card bpi-card">
+                    <h2>📈 BPI INFO</h2>
+                    <div class="bpi-grid bpi-info"></div>
+                </div>
+            </div>
+            
+            <!-- リザルトカード -->
+            <div class="result-card">
+                <h2>📜 HISTORY</h2>
+                <table id="result">
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </body>
 </html>
