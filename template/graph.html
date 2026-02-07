@@ -21,8 +21,8 @@
         }
         
         .container {
-            background: linear-gradient(135deg, rgba(0, 20, 100, 0.9), rgba(0, 40, 120, 0.9));
-            padding: 15px 20px;
+            background: linear-gradient(135deg, rgba(0, 20, 100, 0.95), rgba(0, 40, 120, 0.95));
+            padding: 1px 20px;
             box-shadow: 0 5px 20px rgba(33, 150, 243, 0.3);
             border: 2px solid rgba(33, 150, 243, 0.3);
             width: 100%;
@@ -37,7 +37,7 @@
         }
         
         .today-label {
-            font-size: 36px;
+            font-size: 25px;
             color: #ffffff;
             text-shadow: 3px 3px 0 #000,
                         -2px 2px 0 #000,
@@ -46,7 +46,8 @@
         }
         
         .today-notes {
-            font-size: 42px;
+            text-align: right;
+            font-size: 30px;
             color: #ffeb3b;
             text-shadow: 0 0 20px rgba(255, 235, 59, 0.5),
                         3px 3px 0 #000,
@@ -56,8 +57,8 @@
             font-weight: bold;
         }
         
-        /* グラフエリア */
-        .graph-area {
+        /* 全体の判定内訳グラフ */
+        .total-graph-area {
             background: rgba(0, 0, 0, 0.3);
             border-radius: 8px;
             padding: 12px 15px;
@@ -66,7 +67,7 @@
         
         .bar-container {
             display: flex;
-            height: 35px;
+            height: 20px;
             border-radius: 5px;
             overflow: hidden;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
@@ -74,13 +75,6 @@
         
         .bar-segment {
             transition: width 0.5s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            font-weight: bold;
-            color: #fff;
-            text-shadow: 1px 1px 2px #000;
         }
         
         .bar-pg {
@@ -97,6 +91,78 @@
         
         .bar-bad {
             background: linear-gradient(180deg, #DD4445, #BB2222);
+        }
+        
+        /* 曲ごとのグラフエリア */
+        .songs-graph-area {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px 15px 12px 0;
+            margin-bottom: 12px;
+        }
+        
+        .songs-graph-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            height: 110px;
+            gap: 30px;
+            overflow: hidden;
+        }
+        
+        .song-bar {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            width: 50px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        
+        .song-bar-stack {
+            width: 30px;
+            display: flex;
+            flex-direction: column;
+            border-radius: 4px 4px 0 0;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            transition: all 0.5s ease;
+            min-height: 5px;
+        }
+        
+        .song-segment {
+            width: 100%;
+            transition: height 0.5s ease;
+        }
+        
+        .song-segment-pg {
+            background: linear-gradient(180deg, #44ff44, #22dd22);
+        }
+        
+        .song-segment-gr {
+            background: linear-gradient(180deg, #bbff44, #99dd22);
+        }
+        
+        .song-segment-gd {
+            background: linear-gradient(180deg, #ffaa44, #dd8822);
+        }
+        
+        .song-total {
+            text-align: center;
+            font-size: 15px;
+            color: #ffffaa;
+            margin-bottom: 5px;
+            text-shadow: 2px 2px 0 #000;
+            font-weight: bold;
+        }
+        
+        .song-index {
+            text-align: center;
+            font-size: 16px;
+            color: #aaddff;
+            margin-top: 5px;
+            text-shadow: 2px 2px 0 #000;
         }
         
         /* 統計情報 */
@@ -126,6 +192,11 @@
             color: #aaa;
             font-size: 20px;
         }
+
+        #today-notes{
+            font-size: 28px;
+            color: #ff77ff;
+        }
     </style>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script>
@@ -137,40 +208,109 @@
             cache: false,
             timeout: 10000
         }).done(function(xml) {
-            // データ取得
-            var pg = Number($(xml).find('pg').text()) || 0;
-            var gr = Number($(xml).find('gr').text()) || 0;
-            var gd = Number($(xml).find('gd').text()) || 0;
-            var bd = Number($(xml).find('bd').text()) || 0;
-            var pr = Number($(xml).find('pr').text()) || 0;
+            // 今日の合計データ取得
+            var today_pg = Number($(xml).find('today_judge pg').text()) || 0;
+            var today_gr = Number($(xml).find('today_judge gr').text()) || 0;
+            var today_gd = Number($(xml).find('today_judge gd').text()) || 0;
+            var today_bd = Number($(xml).find('today_judge bd').text()) || 0;
+            var today_pr = Number($(xml).find('today_judge pr').text()) || 0;
+            
             var playcount = Number($(xml).find('playcount').text()) || 0;
             var today_notes = Number($(xml).find('today_notes').text()) || 0;
             var today_score_rate = $(xml).find('today_score_rate').text() || '0%';
             var current_score_rate = $(xml).find('current_score_rate').text() || '0%';
             
             // BAD判定の合計
-            var bad_total = bd + pr;
+            var today_bad_total = today_bd + today_pr;
             
             // 合計ノーツ（グラフ用）
-            var total = pg + gr + gd + bad_total;
+            var today_total = today_pg + today_gr + today_gd + today_bad_total;
             
             // パーセンテージ計算
-            var pg_percent = total > 0 ? (pg / total * 100) : 0;
-            var gr_percent = total > 0 ? (gr / total * 100) : 0;
-            var gd_percent = total > 0 ? (gd / total * 100) : 0;
-            var bad_percent = total > 0 ? (bad_total / total * 100) : 0;
+            var today_pg_percent = today_total > 0 ? (today_pg / today_total * 100) : 0;
+            var today_gr_percent = today_total > 0 ? (today_gr / today_total * 100) : 0;
+            var today_gd_percent = today_total > 0 ? (today_gd / today_total * 100) : 0;
+            var today_bad_percent = today_total > 0 ? (today_bad_total / today_total * 100) : 0;
             
             // 表示更新
-            $('.today-notes').text(today_notes.toLocaleString());
+            $('#today-notes').text(today_notes.toLocaleString());
             $('#play-value').text(playcount);
             $('#rate-value').text(today_score_rate);
             $('#cur-value').text('(' + current_score_rate + ')');
             
-            // グラフ更新
-            $('#bar-pg').css('width', pg_percent + '%');
-            $('#bar-gr').css('width', gr_percent + '%');
-            $('#bar-gd').css('width', gd_percent + '%');
-            $('#bar-bad').css('width', bad_percent + '%');
+            // 全体グラフ更新
+            $('#bar-pg').css('width', today_pg_percent + '%');
+            $('#bar-gr').css('width', today_gr_percent + '%');
+            $('#bar-gd').css('width', today_gd_percent + '%');
+            $('#bar-bad').css('width', today_bad_percent + '%');
+            
+            // 各曲の判定データを取得
+            var songs = [];
+            $(xml).find('judge').each(function() {
+                var idx = Number($(this).find('idx').text());
+                var pg = Number($(this).find('pg').text()) || 0;
+                var gr = Number($(this).find('gr').text()) || 0;
+                var gd = Number($(this).find('gd').text()) || 0;
+                var bd = Number($(this).find('bd').text()) || 0;
+                var pr = Number($(this).find('pr').text()) || 0;
+                
+                songs.push({
+                    idx: idx,
+                    pg: pg,
+                    gr: gr,
+                    gd: gd,
+                    total: pg + gr + gd + bd + pr
+                });
+            });
+            
+            // 画面幅から表示可能な曲数を計算
+            var containerWidth = $('.songs-graph-container').width();
+            var barWidth = 50; // song-barの幅
+            var gapWidth = 20; // グラフ間の余白
+            var rightMargin = 15; // 右端の余白
+            var barTotalWidth = barWidth + gapWidth; // 1本あたりの合計幅
+            var availableWidth = containerWidth - rightMargin; // 利用可能な幅
+            var visibleCount = Math.floor((availableWidth + gapWidth) / barTotalWidth); // 表示可能な曲数
+            
+            // 表示する曲（右端から表示可能な曲数分）
+            var recentSongs = songs.slice(-visibleCount);
+            
+            // 表示される曲の中での最大値を計算（スケーリング用）
+            var maxTotal = 0;
+            recentSongs.forEach(function(song) {
+                if (song.total > maxTotal) maxTotal = song.total;
+            });
+            
+            // 曲ごとのグラフを生成
+            var containerHeight = 100; // コンテナの高さ
+            var indexHeight = 23; // 曲番号の高さ
+            var totalTextHeight = 24; // 合計値テキストの高さ（余裕を持たせる）
+            var maxGraphHeight = containerHeight - indexHeight - totalTextHeight; // グラフ本体の最大高さ（約123px）
+            var songsGraphHtml = '';
+            
+            if (recentSongs.length === 0) {
+                // データがない場合の表示
+                songsGraphHtml = '<div style="text-align: center; color: #aaa; padding: 50px;">データがありません</div>';
+            } else {
+                recentSongs.forEach(function(song) {
+                    var pg_height = maxTotal > 0 ? (song.pg / maxTotal * maxGraphHeight) : 0;
+                    var gr_height = maxTotal > 0 ? (song.gr / maxTotal * maxGraphHeight) : 0;
+                    var gd_height = maxTotal > 0 ? (song.gd / maxTotal * maxGraphHeight) : 0;
+                    
+                    songsGraphHtml += '<div class="song-bar">';
+                    songsGraphHtml += '<div class="song-total">' + song.total.toLocaleString() + '</div>';
+                    songsGraphHtml += '<div class="song-bar-stack">';
+                    songsGraphHtml += '<div class="song-segment song-segment-pg" style="height: ' + pg_height + 'px"></div>';
+                    songsGraphHtml += '<div class="song-segment song-segment-gr" style="height: ' + gr_height + 'px"></div>';
+                    songsGraphHtml += '<div class="song-segment song-segment-gd" style="height: ' + gd_height + 'px"></div>';
+                    songsGraphHtml += '</div>';
+                    songsGraphHtml += '<div class="song-index">#' + song.idx + '</div>';
+                    songsGraphHtml += '</div>';
+                });
+            }
+            
+            $('.songs-graph-container').html(songsGraphHtml);
+            
         }).fail(function(err) {
             console.error('XMLロードエラー:', err);
         });
@@ -184,22 +324,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- ヘッダー -->
-        <div class="header">
-            <div class="today-label">today</div>
-            <div class="today-notes">0</div>
-        </div>
-        
-        <!-- グラフ -->
-        <div class="graph-area">
-            <div class="bar-container">
-                <div id="bar-bad" class="bar-segment bar-bad" style="width: 0%"></div>
-                <div id="bar-gd" class="bar-segment bar-gd" style="width: 0%"></div>
-                <div id="bar-gr" class="bar-segment bar-gr" style="width: 0%"></div>
-                <div id="bar-pg" class="bar-segment bar-pg" style="width: 0%"></div>
-            </div>
-        </div>
-        
         <!-- 統計情報 -->
         <div class="stats">
             <div class="stat-item">
@@ -210,8 +334,26 @@
                 <span class="stat-label">rate:</span>
                 <span class="stat-value" id="rate-value">0%</span>
             </div>
-            <div class="stat-item">
-                <span class="stat-cur" id="cur-value">(0%)</span>
+            <div class="stat-item" style="margin-left: auto">
+                <!-- <div class="today-notes">0</div> -->
+                <span class="stat-value" id="today-notes">0</span>
+            </div>
+        </div>
+
+        <!-- 今日の全体グラフ -->
+        <div class="total-graph-area">
+            <div class="bar-container">
+                <div id="bar-bad" class="bar-segment bar-bad" style="width: 0%"></div>
+                <div id="bar-gd" class="bar-segment bar-gd" style="width: 0%"></div>
+                <div id="bar-gr" class="bar-segment bar-gr" style="width: 0%"></div>
+                <div id="bar-pg" class="bar-segment bar-pg" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <!-- 曲ごとのグラフ -->
+        <div class="songs-graph-area">
+            <div class="songs-graph-container">
+                <!-- JavaScriptで動的に生成 -->
             </div>
         </div>
     </div>
