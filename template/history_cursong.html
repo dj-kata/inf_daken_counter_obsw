@@ -1,0 +1,418 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>hoge</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
+        <style>
+            body { 
+            background-color: rgba(0, 0, 0, 0.85);
+            margin: 0px;
+            padding: 0px;
+            overflow: hidden;
+            font-family:"RocknRoll One";
+            color:#2196F3;   
+            font-size: 40px;
+            color: #fff;
+            text-shadow: 6px 6px 0 #000,
+                         -2px 2px 0 #000,
+                         2px -2px 0 #000,
+                         -2px -2px 0 #000;
+            }
+            div#all{
+                min-height:2000px;
+                background-color: rgba(0, 0, 0, 0.95);
+            }
+            table#title {
+                padding-left: 20px;
+                color: #ffffff;
+                background-color: rgba(0, 0, 80, 0.95);
+                font-size: 80px;
+                line-height: 130%;
+                width:100%;
+            }
+            table#title td{
+            	white-space:nowrap;
+            }
+            table#title td:nth-child(1){
+                color: #ffffaa;
+                width:13%;
+            }
+            table#title td:nth-child(2){
+                max-width: 10px;
+            	overflow:hidden;
+            	text-overflow:ellipsis;
+                padding-left:60px;
+            }
+            table#title td:nth-child(3){
+                text-align: right;
+                width:10%;
+            }
+            table#best td {
+            	white-space:nowrap;
+            }
+            table#best td:nth-child(1) {
+                color:#ffccff;
+                width:20%;
+            }
+            table#best td:nth-child(2) {
+                color:#ffffff;
+                width:15%;
+                padding-right:3%;
+                text-align:right;
+            }
+            table#best td:nth-child(3) {
+                color:#cccccc;
+                width:20%;
+                padding-right:3%;
+                text-align:center;
+            }
+            table#best td:nth-child(4) {
+                text-align: center;
+                max-width:10px;
+                overflow:hidden;
+                text-overflow:ellipsis;
+                color:#77bb77;
+            }
+            table#result {
+                font-size: 64px;
+            	width:100%;
+            }
+            table#result td {
+            	white-space:nowrap;
+            }
+            table#result td:nth-child(1) {
+            	width:22%;
+            }
+            table#result td:nth-child(2) {
+            	width:5%;
+            	margin-right:1%;
+            }
+            table#result td:nth-child(3) {
+            	width:12%;
+                text-align:right;
+            }
+            table#result td:nth-child(4) {
+            	width:22%;
+                text-align:center;
+            }
+            table#result td:nth-child(5) {
+            	max-width:10px;
+            	overflow:hidden;
+            	text-overflow:ellipsis;
+            }
+            table#best {
+                font-size: 50px;
+            	width:100%;
+            }
+            .MAX{
+                animation-name: flashmax;
+                animation-duration: 0.4s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashmax {
+                0%   { color: #ff2828; }
+                20%  { color: #d5ff28; }
+                40%  { color: #28ff7e; }
+                60%  { color: #2872ff; }
+                80%  { color: #d528ff; }
+                100% { color: #ff2828; }
+            }
+            .AAA{
+                color:#ffff28;
+            }
+            .AA{
+                color:#c3c3c3;
+            }
+            .A{
+                color:#2ddf71;
+            }
+            .B{
+                color:#7777ff;
+            }
+            .C{
+                color:#7777ff;
+            }
+            .D{
+                color:#7777ff;
+            }
+            .E{
+                color:#7777ff;
+            }
+            .F{
+                color:#7777ff;
+            }
+            .fc{
+                animation-name: flashfc;
+                animation-duration: 0.2s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashfc {
+                0%   { background-color: #ff2828; }
+                20%  { background-color: #d5ff28; }
+                40%  { background-color: #28ff7e; }
+                60%  { background-color: #2872ff; }
+                80%  { background-color: #d528ff; }
+                100% { background-color: #ff2828; }
+            }
+            .failed{
+                animation-name: flashfailed;
+                animation-duration: 0.08s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashfailed {
+                0%   { background-color: #ff2828; }
+                50%  { background-color: #282828; }
+                100% { background-color: #ff2828; }
+            }
+            .ac{background-color: #ff66ff;}
+            .ec{background-color: #22ff22;}
+            .nc{background-color: #22ccff;}
+            .hc{background-color: #ffffff;}
+            .exh{
+                animation-name: flashexh;
+                animation-duration: 0.08s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashexh {
+                0%   { background-color: #ff2828; }
+                50%  { background-color: #ffff28; }
+                100% { background-color: #ff2828; }
+            }
+            sp12hard{
+                color:#ff86b4;
+                padding: 0px;
+            }
+            sp12clear{
+                color:#9ee7ff;
+                padding: 0px;
+                display: none;
+            }
+        </style>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script>
+        var isHard = 1;
+        function loadXml() {
+            var getxml = $.ajax({
+                url: '../out/history_cursong.xml',
+                type: 'GET',
+                dataType: 'xml',
+                cache: false
+            });
+            getxml.done(function(xml){
+                // xmlデータからほしいデータをfindで探し処理
+                var out = "";
+                var title = $(xml).find('Results music').text();
+                var lv = $(xml).find('Results lv').text();
+                if($(xml).find('Results dp_unofficial_lv').text().length){
+                    var unoff_lv = $(xml).find('Results dp_unofficial_lv').text();
+                    lv = lv + "(" + unoff_lv + ") ";
+                }
+                //// today_resultと同様のアニメーション、いまいちなのでコメントアウトしている
+                //if($(xml).find('Results sp_12hard').text().length){
+                //    lv = lv+' <sp12hard>('+$(xml).find('Results sp_12hard').text()+')</sp12hard>';
+                //    lv += '<sp12clear>('+$(xml).find('Results sp_12clear').text()+')</sp12clear>';
+                //}
+                var difficulty = $(xml).find('Results difficulty').text();
+                var best_lamp = $(xml).find('best_lamp').text();
+                var best_score = Number($(xml).find('best_score').text());
+                var best_bp = $(xml).find('best_bp').text();
+                var best_lamp_opt = $(xml).find('best_lamp_opt').text();
+                var best_score_opt = $(xml).find('best_score_opt').text();
+                var best_bp_opt = $(xml).find('best_bp_opt').text();
+                var best_lamp_date = $(xml).find('best_lamp_date').text();
+                var best_score_date = $(xml).find('best_score_date').text();
+                var best_score_rate = Number($(xml).find('best_score_rate').text());
+                var best_bp_date = $(xml).find('best_bp_date').text();
+                var best_notes = Number($(xml).find('best_notes').text());
+                var best_rank = "B";
+                if (best_score_rate*18 > 16){
+                    best_rank = 'AAA'
+                }else if(best_score_rate*18 > 14){
+                    best_rank = 'AA'
+                }else if(best_score_rate*18 > 12){
+                    best_rank = 'A'
+                }
+                var best_rankdiff0 = $(xml).find('best_rankdiff0').text();
+                var best_rankdiff1 = $(xml).find('best_rankdiff1').text();
+                var best_bpi = $(xml).find('best_bpi').text();
+                var best_rankdiff = '-'
+                var best_rankdiff = '<span class="' + best_rank +'">'+best_rankdiff0+'</span>'+best_rankdiff1; // 到達ランクの色をつける
+                var best_bp_rate = $(xml).find('best_bp_rate').text();
+                var notes = 0;
+                $("#title tbody").html('<tr><td>☆'+lv+'</td><td>'+title+'</td><td>('+difficulty+')</td></tr>');
+                $(xml).find("Results item").each(function(index, item){
+                    var date = $(item).find('date').text();
+                    var lamp = Number($(item).find('lamp').text());
+                    var score = Number($(item).find('score').text());
+                    var score_rate = Number($(item).find('score_rate').text());
+                    var opt = $(item).find('opt').text();
+                    var bp = $(item).find('bp').text();
+                    notes = Number($(item).find('notes').text());
+
+                    var score_pre = $(item).find('score_pre').text();
+                    // var rank = $(item).find('rank').text();
+                    var rank = "B";
+                    if (score_rate*18 > 16){
+                        rank = 'AAA'
+                    }else if(score_rate*18 > 14){
+                        rank = 'AA'
+                    }else if(score_rate*18 > 12){
+                        rank = 'A'
+                    }
+                    var rank_pre = $(item).find('rank_pre').text();
+                    var rankdiff0 = $(item).find('rankdiff0').text(); // AAA
+                    rankdiff0 = '<span class="' + rank +'">'+rankdiff0+'</span>'; // 到達ランクの色をつける
+                    var rankdiff1 = $(item).find('rankdiff1').text(); // +10
+                    var rankdiff = rankdiff0+rankdiff1;
+                    // 初AAAなどの達成時のみ表示する変数
+                    var rank_update = '<span class="' + rank +'">'+rank+'</span>';
+                    if ((score > score_pre) && (rank != rank_pre)){ // スコア伸び&ランク初到達
+                        rank_update = '<span class="' + rank +'">'+rank+'</span>';
+                    }
+                    if ((score == notes*2) && (notes > 0)){
+                        rank_update = '<span class="MAX">MAX</span>';
+                        rankdiff = '<span class="MAX">MAX</span>'
+                    }
+                    // 毎回表示する場合の変数
+                    rank = '<span class="' + rank +'">'+rank+'</span>';
+
+                    var dbflg = false;
+                    if (lamp == 1){
+                        lamp = '<span class="failed">　</span>'
+                    }
+                    else if (lamp == 2){
+                        lamp = '<span class="ac">　</span>'
+                    }
+                    else if (lamp == 3){
+                        lamp = '<span class="ec">　</span>'
+                    }
+                    else if (lamp == 4){
+                        lamp = '<span class="nc">　</span>'
+                    }
+                    else if (lamp == 5){
+                        lamp = '<span class="hc">　</span>'
+                    }
+                    else if (lamp == 6){
+                        lamp = '<span class="exh">　</span>'
+                    }
+                    else if (lamp == 7){
+                        lamp = '<span class="fc">　</span>'
+                    }
+                    else{ // Failed, No playは何も表示しない
+                        lamp = ''
+                    }
+                    var with_scratch = "";
+                    if (opt.indexOf("BATTLE")>=0){
+                        dbflg = true;
+                        if (opt.indexOf("A-SCR")<0){
+                            with_scratch = ", 皿あり"; // 皿あり表記を無効にする場合はこの行を消せばOK
+                        }
+                    }
+                    // 長いオプションを省略する(字をデカくするための施策,お好みで消してください)
+                    if (opt.indexOf("BATTLE, OFF / MIR")>=0){
+                        opt = '(DBM;右M' + with_scratch + ')'
+                    }
+                    else if (opt.indexOf("BATTLE, MIR / OFF")>=0){
+                        opt = '(DBM;左M' + with_scratch + ')'
+                    }
+                    else if (opt.indexOf("BATTLE, OFF / OFF")>=0){
+                        opt = '(DB' + with_scratch + ')'
+                    }
+                    else if (opt.indexOf("BATTLE, RAN / RAN")>=0){
+                        opt = '(DBR' + with_scratch + ')'
+                    }
+                    else if (opt.indexOf("BATTLE, S-RAN / S-RAN")>=0){
+                        opt = '(DBSR' + with_scratch + ')'
+                    }
+                    else if (opt.indexOf("BATTLE, H-RAN / H-RAN")>=0){
+                        opt = '(DBHR' + with_scratch + ')'
+                    }
+                    else if (opt.indexOf("S-RAN / S-RAN, FLIP, LEGACY")>=0){
+                        opt = '(全裸' + with_scratch + ')'
+                    }
+                    // テーブルに追加
+                    if (dbflg == true){ // DBx系オプションの場合、スコアの所にbp250のようにミスカンを入れておく
+                        out += '<tr><td><font color="#ffffaa">'+date+'</font></td>';
+                        out += '<td>'+lamp+'</td>';
+                        out += '<td>bp'+bp+'</td>';
+                        out += '<td></td>';
+                        out += '<td><font color="#aaffaa">'+opt+'</font></td>';
+                        out += '</tr>'
+                    }else{
+                        out += '<tr><td><font color="#ffffaa">'+date+'</font></td>';
+                        out += '<td>'+lamp+'</td>';
+                        out += '<td>'+score+'</td>';
+                        out += '<td>' + rankdiff + '</td>';
+                        out += '<td><font color="#aaffaa">'+opt+'</font></td>';
+                        out += '</tr>'
+                    }
+                    if (index == 19){ // 直近の20プレイだけ表示としている。曲数はここから変更可能。
+                        return false;
+                    }
+                });
+                if ((best_score == best_notes*2) && (best_notes > 0)){
+                    best_rankdiff = '<span class="MAX">MAX</span>'
+                }
+                var best_html = "";
+                best_html += "<tr>";
+                best_html += "<td>best(score)</td>";
+                best_html += "<td>"+best_score+"</td>";
+                best_html += "<td>("+best_rankdiff+")</td>";
+                best_html += "<td>"+best_score_opt+"</td></tr>";
+                // bpi(ある場合のみ)
+                if (best_bpi != "??"){
+                    best_html += "<tr>";
+                    best_html += "<td>BPI</td>";
+                    best_html += "<td>"+best_bpi+"</td>";
+                    best_html += "<td></td>";
+                    best_html += "<td></td></tr>";
+                }
+                // bp
+                best_html += "<tr>";
+                best_html += "<td>best(bp)</td>";
+                best_html += "<td>"+best_bp+"</td>";
+                best_html += "<td>("+best_bp_rate+"%)</td>";
+                best_html += "<td>"+best_bp_opt+"</td></tr>";
+                $('#best tbody').html(best_html);
+                $('#result tbody').html(out);
+                if (isHard == 1){
+                    $('sp12hard').css('display', 'none');
+                    $('sp12clear').css('display', 'block');
+                }else{
+                    $('sp12clear').css('display', 'none');
+                    $('sp12hard').css('display', 'block');
+                }
+                isHard = 1 - isHard;
+            });
+            getxml.fail(function(err) {
+                $(songtitle).text("ERROR!!!"+err);
+                //alert('failed');
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            var roopTimer = setInterval(loadXml, 1000);
+        });
+
+</script>
+</head>
+<body>
+  <div id="all">
+    <table id="title">
+      <tbody>
+      </tbody>
+    </table>
+    <table id="best">
+      <tbody>
+      </tbody>
+    </table>
+    <table id="result">
+      <tbody>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

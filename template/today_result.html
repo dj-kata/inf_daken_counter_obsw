@@ -1,0 +1,394 @@
+<!doctype html>
+<!-- スコアラー向け？ -->
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>hoge</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
+
+        <style>
+            body { 
+            
+            background-color: rgba(0, 0, 0, 0.99);
+            margin: 0px;
+            padding: 0px;
+            overflow: hidden;
+            font-family: 'RocknRoll One', sans-serif;
+            color:#aaddff;   
+            font-size: 48px;
+            color: #fff;
+            text-shadow: 6px 6px 0 #000,
+                         -2px 2px 0 #000,
+                         2px -2px 0 #000,
+                         -2px -2px 0 #000;
+            }
+            :root{
+                --skip-no-update: 0; /* スコアが伸びていないものを飛ばす */
+            }
+            div#all{
+                min-height:2000px;
+                background-color: rgba(0, 0, 0, 0.95);
+            }
+            table#title {
+                padding-left: 20px;
+                color: #aaddff;
+                background-color: rgba(0, 0, 100, 0.95);
+                font-size: 50px;
+                line-height: 130%;
+                width:100%;
+            }
+            table#result {
+            	width:100%;
+            }
+            table#result td {
+            	white-space:nowrap;
+            }
+            table#result td:nth-child(1) {
+            	width:225px;
+                color: #ffddaa;
+                text-align: center;
+                padding-right:20px;
+            }
+            table#result td:nth-child(3) {
+            	overflow:hidden;
+            	text-overflow:ellipsis;
+            	max-width:90px;
+                color: #ffffff;
+            }
+            table#result td:nth-child(2) {
+            	width:40px;
+                padding-right:20px;
+            }
+            table#result td:nth-child(4) {
+            	width:1px;
+            }
+            table#result td:nth-child(5) {
+                text-align:center;
+            	width:320px;
+            }
+            table#result td:nth-child(6) {
+                text-align:center;
+                padding-right: 30px;
+            	width:1px;
+                font-size: 42px;
+                color: #ffffaa;
+            }
+            .MAX{
+                animation-name: flashmax;
+                animation-duration: 0.4s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashmax {
+                0%   { color: #ff2828; }
+                20%  { color: #d5ff28; }
+                40%  { color: #28ff7e; }
+                60%  { color: #2872ff; }
+                80%  { color: #d528ff; }
+                100% { color: #ff2828; }
+            }
+            .AAA{
+                color:#ffff28;
+            }
+            .AA{
+                color:#c3c3c3;
+            }
+            .A{
+                color:#2ddf71;
+            }
+            .B{
+                color:#7777ff;
+            }
+            .C{
+                color:#7777ff;
+            }
+            .D{
+                color:#7777ff;
+            }
+            .E{
+                color:#7777ff;
+            }
+            .F{
+                color:#7777ff;
+            }
+            .normal{
+                /*background-color: rgba(70,70,255,0.3);*/
+                color: rgb(170,170,255);
+            }
+            .hyper{
+                /*background-color: rgba(255,255,100,0.3);*/
+                color: rgb(255,255,170);
+            }
+            .another{
+                /*background-color: rgba(255,70,70,0.3);*/
+                color: rgb(255,170,170);
+            }
+            .leggendaria{
+                /*background-color: rgba(255,100,255,0.3);*/
+                color: rgb(255,170,255);
+            }
+            .fc{
+                animation-name: flashfc;
+                animation-duration: 0.2s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashfc {
+                0%   { background-color: #ff2828; }
+                20%  { background-color: #d5ff28; }
+                40%  { background-color: #28ff7e; }
+                60%  { background-color: #2872ff; }
+                80%  { background-color: #d528ff; }
+                100% { background-color: #ff2828; }
+            }
+            .failed{
+                animation-name: flashfailed;
+                animation-duration: 0.08s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashfailed {
+                0%   { background-color: #ff2828; }
+                50%  { background-color: #282828; }
+                100% { background-color: #ff2828; }
+            }
+            .ac{background-color: #ff66ff;}
+            .ec{background-color: #22ff22;}
+            .nc{background-color: #22ccff;}
+            .hc{background-color: #ffffff;}
+            .exh{
+                animation-name: flashexh;
+                animation-duration: 0.08s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashexh {
+                0%   { background-color: #ff2828; }
+                50%  { background-color: #ffff28; }
+                100% { background-color: #ff2828; }
+            }
+            /* SP☆12地力表用のスタイル */
+            sp12hard{
+                color:#ff86b4;
+                padding: 0px;
+                font-size: 50px;
+            }
+            sp12clear{
+                color:#9ee7ff;
+                padding: 0px;
+                display: none;
+                font-size: 50px;
+            }
+            score_plus{
+                color: #ffcccc;
+            }
+            score_minus{
+                color: #777799;
+            }
+            bpi_plus{
+                color: #ffffaa;
+            }
+            bpi_minus{
+                color: #777733;
+            }
+        </style>
+    <body>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script>
+        var isHard = 1;
+        function loadXml() {
+            var getxml = $.ajax({
+                url: '../out/today_update.xml',
+                type: 'GET',
+                dataType: 'xml',
+                cache: false
+            });
+            getxml.done(function(xml){
+                // xmlデータからほしいデータをfindで探し処理
+                var out = "";
+                var skip_no_update = getComputedStyle(document.documentElement).getPropertyValue('--skip-no-update');
+                $(xml).find("Results item").each(function(index, item){
+                    var lv = "☆"+$(item).find('lv').text();
+                    var lamp = Number($(item).find('lamp').text());
+                    var difficulty = $(item).find('difficulty').text();
+                    var difficulty_org = $(item).find('difficulty').text();
+                    if($(item).find('dp_unofficial_lv').text().length){
+                        lv = $(item).find('dp_unofficial_lv').text();
+                    }
+                    // SP☆12で地力表の難易度を表示(H/Cを時間で切り替える)
+                    if($(item).find('sp_12hard').text().length){
+                        lv = $(item).find('sp_12hard').text();
+                        lv = '<sp12hard>'+$(item).find('sp_12hard').text()+'</sp12hard>';
+                        lv += '<sp12clear>'+$(item).find('sp_12clear').text()+'</sp12clear>';
+                    }
+                    var title = $(item).find('title').text();
+                    var score = Number($(item).find('score').text());
+                    var score_rate = Number($(item).find('score_rate').text()) || 0;
+                    var pre_score = Number($(item).find('pre_score').text()) || 0;
+                    if (skip_no_update == 1){
+                        if (pre_score >= score){
+                            return true;
+                        }
+                    }
+                    var rank = "B";
+                    if (score_rate*18 > 16){
+                        rank = 'AAA'
+                    }else if(score_rate*18 > 14){
+                        rank = 'AA'
+                    }else if(score_rate*18 > 12){
+                        rank = 'A'
+                    }
+                    var rank_pre = $(item).find('rank_pre').text();
+                    var rankdiff = $(item).find('rankdiff').text(); // AAA+10のような表記
+                    var rankdiff0 = $(item).find('rankdiff0').text(); // AAA
+                    rankdiff0 = '<span class="' + rank +'">'+rankdiff0+'</span>';
+                    var rankdiff1 = $(item).find('rankdiff1').text(); // AAA+10のような表記
+                    var rank_update = '<span class="' + rank +'">'+rankdiff+'</span>';
+                    rank_update = rankdiff0+rankdiff1;
+                    if (rankdiff == "MAX+0"){
+                        rank_update = '<span class="MAX">MAX!!</span>';
+                    }
+                    var opt = $(item).find('opt').text();
+                    var bp = $(item).find('bp').text();
+                    var bpi = $(item).find('bpi').text();
+                    if (bpi == "??"){
+                        bpi='';
+                    }
+                    if (lamp == 1){
+                        lamp = '<span class="failed">　</span>'
+                    }
+                    else if (lamp == 2){
+                        lamp = '<span class="ac">　</span>'
+                    }
+                    else if (lamp == 3){
+                        lamp = '<span class="ec">　</span>'
+                    }
+                    else if (lamp == 4){
+                        lamp = '<span class="nc">　</span>'
+                    }
+                    else if (lamp == 5){
+                        lamp = '<span class="hc">　</span>'
+                    }
+                    else if (lamp == 6){
+                        lamp = '<span class="exh">　</span>'
+                    }
+                    else if (lamp == 7){
+                        lamp = '<span class="fc">　</span>'
+                    }
+                    else{ // Failed, No playは何も表示しない
+                        lamp = ''
+                    }
+                    // テーブルに追加
+                    if (opt.indexOf("BATTLE") >= 0){ // DBx系オプションの場合、スコアの所にbp250のようにミスカンを入れておく
+                        var with_scratch = "";
+                        if (opt.indexOf("A-SCR")<0){
+                            with_scratch = "皿あり"; // 皿あり表記を無効にする場合はこの行を消せばOK
+                        }
+                        if ((opt.indexOf("MIR / OFF")>=0) || (opt.indexOf("OFF / MIR")>=0)){
+                            title = '('+with_scratch+'DBM) ' + title
+                        }
+                        else if (opt.indexOf("OFF / OFF")>=0){
+                            title = '('+with_scratch+'DB) ' + title
+                        }
+                        else if (opt.indexOf("RAN / RAN")>=0){
+                            title = '('+with_scratch+'DBR) ' + title
+                        }
+                        else if (opt.indexOf("S-RAN / S-RAN")>=0){
+                            title = '('+with_scratch+'DBSR) ' + title
+                        }
+                        else if (opt.indexOf("H-RAN / H-RAN")>=0){
+                            title = '('+with_scratch+'DBHR) ' + title
+                        }
+                        out += '<tr><td>'+lv+'</td>';
+                        out += '<td>'+lamp+'</td>';
+                        if (difficulty_org == "DPA"){
+                            out += '<td><span class="another">'+title+'</span></td>';
+                        }
+                        else if (difficulty_org == "DPH"){
+                            out += '<td><span class="hyper">'+title+'</span></td>';
+                        }
+                        else if (difficulty_org == "DPN"){
+                            out += '<td><span class="normal">'+title+'</span></td>';
+                        }
+                        else if (difficulty_org == "DPL"){
+                            out += '<td><span class="leggendaria">'+title+'</span></td>';
+                        }
+                        else{
+                            out += '<td>'+title+'</td>';
+                        }
+                        out += '<td>bp'+bp+'</td>';
+                        out += '<td></td></tr>';
+                    } else{
+                        out += '<tr><td>'+lv+'</td>';
+                        out += '<td>'+lamp+'</td>';
+                        if ((difficulty_org == "DPA") || (difficulty_org == "SPA")){
+                            out += '<td><span class="another">'+title+'</span></td>';
+                        }
+                        else if ((difficulty_org == "DPH") || (difficulty_org == "SPH")){
+                            out += '<td><span class="hyper">'+title+'</span></td>';
+                        }
+                        else if ((difficulty_org == "DPN") || (difficulty_org == "SPN")){
+                            out += '<td><span class="normal">'+title+'</span></td>';
+                        }
+                        else if ((difficulty_org == "DPL") || (difficulty_org == "SPL")){
+                            out += '<td><span class="leggendaria">'+title+'</span></td>';
+                        }
+                        else{
+                            out += '<td>'+title+'</td>';
+                        }
+                        if (score > pre_score){
+                            out += '<td><score_plus>'+score+'</score_plus></td>';
+                        }else{
+                            out += '<td><score_minus>'+score+'</score_minus></td>';
+                        }
+                        out += '<td>'+rank_update+'</td>';
+                        if (bpi.includes('-')){
+                            out += '<td><bpi_minus>'+bpi+'</bpi_minus></td></tr>';
+                        }else{
+                            out += '<td><bpi_plus>'+bpi+'</bpi_plus></td></tr>';
+                        }
+                    }
+                    if (index == 26){ // 直近の27曲だけ表示としている。曲数はここから変更可能。
+                        return false;
+                    }
+                    });
+                $('#result tbody').html(out);
+                if (isHard == 1){
+                    $('sp12hard').css('display', 'none');
+                    $('sp12clear').css('display', 'block');
+                }else{
+                    $('sp12clear').css('display', 'none');
+                    $('sp12hard').css('display', 'block');
+                }
+                isHard = 1 - isHard;
+            });
+            getxml.fail(function(err) {
+                // alert('failed');
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            var roopTimer = setInterval(loadXml, 1000);
+        });
+
+</script>
+</head>
+<body>
+  <div id="all">
+    <table id="title">
+      <tr><td>Recent update</td></tr>
+    </table>
+    <table id="result">
+      <thead>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
