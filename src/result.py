@@ -91,6 +91,7 @@ class OneResult:
                     pre_score:int=0,
                     pre_lamp:clear_lamp=clear_lamp.noplay,
                     pre_bp:int=99999999,
+                    notes:int=None,
                     dead:bool=None,
                     average_release:average_release=None,
                 ):
@@ -126,6 +127,8 @@ class OneResult:
         self.option    = option
         self.playspeed = playspeed
         self.is_arcade = is_arcade
+        self.notes     = notes
+        '''ノーツ数。リザルト画面からの場合は埋め込む。'''
         self.dead      = dead
         self.average_release = average_release
         '''平均リリース時間のログ。Otoge Input Viewerと連携する時のために準備している。'''
@@ -182,7 +185,6 @@ class DetailedResult():
                     songinfo:OneSongInfo,
                     result:OneResult,
                     result_side:result_side=None,
-                    notes:int=None,
                     level:int=None,
                 ):
         """コンストラクタ。ResultDatabase側でsonginfoとresultを与えて初期化する。"""
@@ -193,8 +195,6 @@ class DetailedResult():
 
         self.result_side = result_side
         '''1P/2Pどちら側であるか'''
-        self.notes = notes
-        '''inf-notebook側で認識したノーツ数'''
         self.level = level
         '''inf-notebook側で認識したレベル'''
 
@@ -261,12 +261,11 @@ class DetailedResult():
         except:
             logger.error(traceback.format_exc())
         return bpi
+
     def __str__(self):
         """主要情報の文字列を出力。ログ用(overrided)"""
         msg = f"chart:{get_title_with_chart(self.result.title, self.result.play_style, self.result.difficulty)}"
         msg += f", score: {self.result.score}"
-        if self.notes:
-            msg += f"/{2*self.notes}"
         if self.score_rate_with_rankdiff:
             if self.result.judge:
                 msg += f"({''.join(self.score_rate_with_rankdiff)}, {self.result.judge.get_score_rate()*100:.2f}%)"
@@ -284,6 +283,7 @@ class DetailedResult():
         if not isinstance(other, DetailedResult):
             return False
         return (self.result == other.result)
+
 class ResultDatabase:
     """全リザルトを保存するためのクラス"""
     def __init__(self):
@@ -415,6 +415,79 @@ class ResultDatabase:
                 break
         return ret
     
+    def write_today_updates_xml(self, start_time:int):
+        """本日のプレー履歴のXMLを出力
+
+        Args:
+            start_time (int): これ以降のリザルトを集計
+        """
+        target:List[OneResult] = []
+        for r in reversed(self.results):
+            if r.timestamp >= start_time:
+                if r.detect_mode == detect_mode.result:
+                    target.append(r)
+            else:
+                break
+
+        os.makedirs('out', exist_ok=True)
+        root = ET.Element('Results')
+        
+        for r in target:
+            songinfo = self.song_database.search(title=r.title, play_style=r.play_style, difficulty=r.difficulty)
+            detailed_result = DetailedResult(songinfo, r, None, songinfo.level if hasattr(songinfo, 'level') else None)
+            logger.debug(r)
+            item = ET.SubElement(root, 'item')
+            elem_lv = ET.SubElement(item, 'lv')
+            elem_lv.text = str(songinfo.level) if hasattr(songinfo, 'level') else ""
+            elem_title = ET.SubElement(item, 'title')
+            elem_title.text = escape_for_xml(r.title)
+            elem_diff = ET.SubElement(item, 'difficulty')
+            elem_diff.text = get_chart_name(r.play_style, r.difficulty)
+            elem_notes = ET.SubElement(item, 'notes')
+            elem_notes.text = str(r.notes)
+            elem_score_cur = ET.SubElement(item, 'score')
+            elem_score_cur.text = str(r.score)
+            elem_bp = ET.SubElement(item, 'bp')
+            elem_bp.text = str(r.judge.pr + r.judge.bd)
+            elem_lamp = ET.SubElement(item, 'lamp')
+            elem_lamp.text = str(r.lamp.value)
+            elem_pre_score_cur = ET.SubElement(item, 'pre_score')
+            elem_pre_score_cur.text = str(r.pre_score)
+            elem_pre_bp = ET.SubElement(item, 'pre_bp')
+            elem_pre_bp.text = str(r.pre_bp)
+            elem_pre_lamp = ET.SubElement(item, 'pre_lamp')
+            elem_pre_lamp.text = str(r.pre_lamp.value)
+            elem_dp_unof = ET.SubElement(item, 'dp_unofficial_lv')
+            if songinfo:
+                elem_dp_unof.text = songinfo.dp_unofficial
+                elem_sp_12hard = ET.SubElement(item, 'sp_12hard')
+                elem_sp_12hard.text = songinfo.sp12_hard.__str__() if songinfo.sp12_hard else ""
+                elem_sp_12clear = ET.SubElement(item, 'sp_12clear')
+                elem_sp_12clear.text = songinfo.sp12_clear.__str__() if songinfo.sp12_clear else ""
+                elem_sp_11hard = ET.SubElement(item, 'sp_11hard')
+                elem_sp_11hard.text = songinfo.sp11_hard.__str__() if songinfo.sp11_hard else ""
+                elem_sp_11clear = ET.SubElement(item, 'sp_11clear')
+                elem_sp_11clear.text = songinfo.sp11_clear.__str__() if songinfo.sp11_clear else ""
+            elem_opt = ET.SubElement(item, 'opt')
+            elem_opt.text = r.option.__str__()
+            elem_score_rate = ET.SubElement(item, 'scorerate')
+            elem_score_rate.text = str(r.judge.get_score_rate())
+            if detailed_result.bpi:
+                elem_bpi = ET.SubElement(item, 'bpi')
+                elem_bpi.text = f"{detailed_result.bpi:.2f}"
+            elem_rankdiff = ET.SubElement(item, 'rankdiff')
+            if detailed_result.score_rate_with_rankdiff:
+                elem_rankdiff.text = ''.join(detailed_result.score_rate_with_rankdiff)
+                elem_rankdiff0 = ET.SubElement(item, 'rankdiff0')
+                elem_rankdiff0.text = detailed_result.score_rate_with_rankdiff[0]
+                elem_rankdiff1 = ET.SubElement(item, 'rankdiff1')
+                elem_rankdiff1.text = detailed_result.score_rate_with_rankdiff[1]
+    
+        # xml出力
+        tree = ET.ElementTree(root)
+        ET.indent(tree, space="    ")
+        tree.write(Path('out')/'today_update.xml', encoding='utf-8', xml_declaration=True)
+
     def __str__(self):
         out = ''
         for r in self.results:
@@ -430,9 +503,6 @@ if __name__ == '__main__':
     results = rdb.search(chart_id=chart_id)
     s = rdb.song_database.search(chart_id=chart_id)
 
-    print(rdb)
-    # print(rdb.results[-3],'\n')
-    # print(rdb.results[-2],'\n')
-    # print(rdb.results[-1])
+    # print(rdb)
 
-    write_notescount_xml(15, Judge(), Judge())
+    rdb.write_today_updates_xml(0)

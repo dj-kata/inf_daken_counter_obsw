@@ -240,7 +240,7 @@ class MainWindow(MainWindowUI):
                         difficulty=result.difficulty.name.upper()[0],
                         ex_score=result.score,
                         bp=result.judge.bd + result.judge.pr,
-                        max_notes=detailed_result.notes,
+                        max_notes=detailed_result.result.notes,
                         lamp=result.lamp.name.upper(),
                         bpi=detailed_result.bpi,
                         sp12_clear=sp12_clear,
@@ -464,6 +464,7 @@ class MainWindow(MainWindowUI):
                     # リザルトを保存
                     if self.result_database.add(result):
                         self.result_database.save()
+                        self.result_database.write_today_updates_xml(self.start_time - self.config.autoload_offset*3600)
 
                         # 画像の保存
                         if self.config.autosave_image_mode is not config_autosave_image.invalid:
