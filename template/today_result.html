@@ -1,85 +1,166 @@
 <!doctype html>
-<!-- スコアラー向け？ -->
 <html>
     <head>
         <meta charset="utf-8">
-        <title>hoge</title>
+        <title>Today's Results</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
-
         <style>
-            body { 
+            * {
+                box-sizing: border-box;
+            }
             
-            background-color: rgba(0, 0, 0, 0.99);
-            margin: 0px;
-            padding: 0px;
-            overflow: hidden;
-            font-family: 'RocknRoll One', sans-serif;
-            color:#aaddff;   
-            font-size: 48px;
-            color: #fff;
-            text-shadow: 6px 6px 0 #000,
-                         -2px 2px 0 #000,
-                         2px -2px 0 #000,
-                         -2px -2px 0 #000;
+            body { 
+                background: linear-gradient(135deg, #0a0a1f 0%, #1a1a3e 50%, #0a0a1f 100%);
+                margin: 0;
+                padding: 10px;
+                overflow-x: hidden;
+                font-family: 'RocknRoll One', sans-serif;
+                color: #fff;
             }
-            :root{
-                --skip-no-update: 0; /* スコアが伸びていないものを飛ばす */
+            
+            :root {
+                --skip-no-update: 0;
             }
-            div#all{
-                min-height:2000px;
-                background-color: rgba(0, 0, 0, 0.95);
+            
+            #all {
+                max-width: 1900px;
+                margin: 0 auto;
             }
-            table#title {
-                padding-left: 20px;
-                color: #aaddff;
-                background-color: rgba(0, 0, 100, 0.95);
-                font-size: 50px;
-                line-height: 130%;
-                width:100%;
+            
+            /* ヘッダー */
+            .header {
+                background: linear-gradient(135deg, rgba(0, 20, 100, 0.9), rgba(0, 40, 120, 0.9));
+                border-radius: 12px;
+                padding: 15px 25px;
+                margin-bottom: 15px;
+                box-shadow: 0 5px 20px rgba(33, 150, 243, 0.3);
+                border: 2px solid rgba(33, 150, 243, 0.3);
             }
-            table#result {
-            	width:100%;
-            }
-            table#result td {
-            	white-space:nowrap;
-            }
-            table#result td:nth-child(1) {
-            	width:225px;
-                color: #ffddaa;
-                text-align: center;
-                padding-right:20px;
-            }
-            table#result td:nth-child(3) {
-            	overflow:hidden;
-            	text-overflow:ellipsis;
-            	max-width:90px;
-                color: #ffffff;
-            }
-            table#result td:nth-child(2) {
-            	width:40px;
-                padding-right:20px;
-            }
-            table#result td:nth-child(4) {
-            	width:1px;
-            }
-            table#result td:nth-child(5) {
-                text-align:center;
-            	width:320px;
-            }
-            table#result td:nth-child(6) {
-                text-align:center;
-                padding-right: 30px;
-            	width:1px;
+            
+            .header h1 {
                 font-size: 42px;
-                color: #ffffaa;
+                margin: 0;
+                color: #aaddff;
+                text-shadow: 3px 3px 0 #000,
+                            -2px 2px 0 #000,
+                            2px -2px 0 #000,
+                            -2px -2px 0 #000;
             }
-            .MAX{
-                animation-name: flashmax;
-                animation-duration: 0.4s;
-                animation-iteration-count: infinite;
+            
+            /* テーブルコンテナ */
+            .results-container {
+                background: linear-gradient(135deg, rgba(30, 30, 60, 0.9), rgba(20, 20, 40, 0.9));
+                border-radius: 12px;
+                padding: 15px;
+                box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+                border: 2px solid rgba(100, 100, 200, 0.3);
             }
+            
+            /* テーブルスタイル */
+            .results-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            
+            .results-table tr {
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            }
+            
+            .results-table tr.score-updated {
+                background-color: rgba(255, 100, 100, 0.1);
+            }
+            
+            .results-table td {
+                padding: 8px 10px;
+                white-space: nowrap;
+                text-shadow: 2px 2px 0 #000;
+            }
+            
+            /* レベル列 */
+            .results-table td:nth-child(1) {
+                width: 180px;
+                text-align: center;
+                font-size: 36px;
+                color: #ffeb3b;
+                text-shadow: 0 0 10px rgba(255, 235, 59, 0.5),
+                            2px 2px 0 #000;
+            }
+            
+            /* ランプ列 */
+            .results-table td:nth-child(2) {
+                width: 40px;
+                text-align: center;
+            }
+            
+            /* タイトル列 */
+            .results-table td:nth-child(3) {
+                font-size: 36px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 450px;
+            }
+            
+            /* スコア列 */
+            .results-table td:nth-child(4) {
+                width: 200px;
+                text-align: right;
+                font-size: 38px;
+                font-weight: bold;
+            }
+            
+            /* ランク列 */
+            .results-table td:nth-child(5) {
+                width: 200px;
+                text-align: center;
+                font-size: 36px;
+            }
+            
+            /* BPI列 */
+            .results-table td:nth-child(6) {
+                width: 150px;
+                text-align: center;
+                font-size: 32px;
+            }
+            
+            /* オプション列 */
+            .results-table td:nth-child(7) {
+                width: 250px;
+                text-align: right;
+                font-size: 28px;
+                color: #77bb77;
+            }
+            
+            /* 難易度の色分け */
+            .diff-a { color: #ff4444; }  /* Another - 赤 */
+            .diff-h { color: #ffff44; }  /* Hyper - 黄色 */
+            .diff-n { color: #4444ff; }  /* Normal - 青 */
+            .diff-l { color: #ff44ff; }  /* Leggendaria - 紫 */
+            
+            /* ランプボックス */
+            .lamp-box {
+                display: inline-block;
+                width: 25px;
+                height: 25px;
+                border-radius: 4px;
+            }
+            
+            /* スコア更新 */
+            .score-updated {
+                color: #ffcccc;
+            }
+            
+            .score-not-updated {
+                color: #999;
+            }
+            
+            /* ランクカラー */
+            .MAX {
+                animation: flashmax 0.4s infinite;
+                font-weight: bold;
+            }
+            
             @keyframes flashmax {
                 0%   { color: #ff2828; }
                 20%  { color: #d5ff28; }
@@ -88,51 +169,34 @@
                 80%  { color: #d528ff; }
                 100% { color: #ff2828; }
             }
-            .AAA{
-                color:#ffff28;
+            
+            .AAA { color: #ffff28; font-weight: bold; }
+            .AA { color: #c3c3c3; font-weight: bold; }
+            .A { color: #2ddf71; }
+            .B { color: #7777ff; }
+            .F { color: #888; }
+            
+            /* BPI */
+            .bpi-positive {
+                color: #44ff44;
+                text-shadow: 0 0 5px rgba(68, 255, 68, 0.5);
             }
-            .AA{
-                color:#c3c3c3;
+            
+            .bpi-negative {
+                color: #777733;
             }
-            .A{
-                color:#2ddf71;
+            
+            /* オプション */
+            .card-option {
+                font-size: 18px;
+                color: #77bb77;
+                text-shadow: 2px 2px 0 #000;
+                margin-top: 5px;
+                text-align: right;
             }
-            .B{
-                color:#7777ff;
-            }
-            .C{
-                color:#7777ff;
-            }
-            .D{
-                color:#7777ff;
-            }
-            .E{
-                color:#7777ff;
-            }
-            .F{
-                color:#7777ff;
-            }
-            .normal{
-                /*background-color: rgba(70,70,255,0.3);*/
-                color: rgb(170,170,255);
-            }
-            .hyper{
-                /*background-color: rgba(255,255,100,0.3);*/
-                color: rgb(255,255,170);
-            }
-            .another{
-                /*background-color: rgba(255,70,70,0.3);*/
-                color: rgb(255,170,170);
-            }
-            .leggendaria{
-                /*background-color: rgba(255,100,255,0.3);*/
-                color: rgb(255,170,255);
-            }
-            .fc{
-                animation-name: flashfc;
-                animation-duration: 0.2s;
-                animation-iteration-count: infinite;
-            }
+            
+            /* クリアランプ */
+            .fc { animation: flashfc 0.2s infinite; }
             @keyframes flashfc {
                 0%   { background-color: #ff2828; }
                 20%  { background-color: #d5ff28; }
@@ -141,254 +205,235 @@
                 80%  { background-color: #d528ff; }
                 100% { background-color: #ff2828; }
             }
-            .failed{
-                animation-name: flashfailed;
-                animation-duration: 0.08s;
-                animation-iteration-count: infinite;
-            }
+            
+            .failed { animation: flashfailed 0.08s infinite; }
             @keyframes flashfailed {
                 0%   { background-color: #ff2828; }
                 50%  { background-color: #282828; }
                 100% { background-color: #ff2828; }
             }
-            .ac{background-color: #ff66ff;}
-            .ec{background-color: #22ff22;}
-            .nc{background-color: #22ccff;}
-            .hc{background-color: #ffffff;}
-            .exh{
-                animation-name: flashexh;
-                animation-duration: 0.08s;
-                animation-iteration-count: infinite;
-            }
+            
+            .ac { background-color: #ff66ff; }
+            .ec { background-color: #22ff22; }
+            .nc { background-color: #22ccff; }
+            .hc { background-color: #ffffff; }
+            
+            .exh { animation: flashexh 0.08s infinite; }
             @keyframes flashexh {
                 0%   { background-color: #ff2828; }
                 50%  { background-color: #ffff28; }
                 100% { background-color: #ff2828; }
             }
-            /* SP☆12地力表用のスタイル */
-            sp12hard{
-                color:#ff86b4;
-                padding: 0px;
-                font-size: 50px;
+            
+            /* SP☆12地力表 */
+            .sp12-clear {
+                color: #9ee7ff;
+                font-size: 24px;
             }
-            sp12clear{
-                color:#9ee7ff;
-                padding: 0px;
-                display: none;
-                font-size: 50px;
+            
+            .sp12-hard {
+                color: #ff86b4;
+                font-size: 24px;
             }
-            score_plus{
-                color: #ffcccc;
-            }
-            score_minus{
-                color: #777799;
-            }
-            bpi_plus{
-                color: #ffffaa;
-            }
-            bpi_minus{
-                color: #777733;
+            
+            .sp12-slash {
+                color: #ffffff;
+                font-size: 24px;
             }
         </style>
+    </head>
     <body>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
         <script>
-        var isHard = 1;
+        function getDifficultyColor(difficulty) {
+            if (!difficulty || difficulty.length < 3) return '';
+            var diffType = difficulty.charAt(2).toUpperCase();
+            
+            switch(diffType) {
+                case 'A': return 'diff-a';
+                case 'H': return 'diff-h';
+                case 'N': return 'diff-n';
+                case 'L': return 'diff-l';
+                default: return '';
+            }
+        }
+        
         function loadXml() {
             var getxml = $.ajax({
                 url: '../out/today_update.xml',
                 type: 'GET',
                 dataType: 'xml',
-                cache: false
+                cache: false,
+                timeout: 10000
             });
-            getxml.done(function(xml){
-                // xmlデータからほしいデータをfindで探し処理
-                var out = "";
+            
+            getxml.done(function(xml) {
+                var out = '';
                 var skip_no_update = getComputedStyle(document.documentElement).getPropertyValue('--skip-no-update');
-                $(xml).find("Results item").each(function(index, item){
-                    var lv = "☆"+$(item).find('lv').text();
+                
+                $(xml).find("Results item").each(function(index, item) {
+                    var lv = $(item).find('lv').text();
                     var lamp = Number($(item).find('lamp').text());
                     var difficulty = $(item).find('difficulty').text();
-                    var difficulty_org = $(item).find('difficulty').text();
-                    if($(item).find('dp_unofficial_lv').text().length){
-                        lv = $(item).find('dp_unofficial_lv').text();
-                    }
-                    // SP☆12で地力表の難易度を表示(H/Cを時間で切り替える)
-                    if($(item).find('sp_12hard').text().length){
-                        lv = $(item).find('sp_12hard').text();
-                        lv = '<sp12hard>'+$(item).find('sp_12hard').text()+'</sp12hard>';
-                        lv += '<sp12clear>'+$(item).find('sp_12clear').text()+'</sp12clear>';
-                    }
                     var title = $(item).find('title').text();
                     var score = Number($(item).find('score').text());
                     var score_rate = Number($(item).find('score_rate').text()) || 0;
                     var pre_score = Number($(item).find('pre_score').text()) || 0;
-                    if (skip_no_update == 1){
-                        if (pre_score >= score){
-                            return true;
-                        }
-                    }
-                    var rank = "B";
-                    if (score_rate*18 > 16){
-                        rank = 'AAA'
-                    }else if(score_rate*18 > 14){
-                        rank = 'AA'
-                    }else if(score_rate*18 > 12){
-                        rank = 'A'
-                    }
-                    var rank_pre = $(item).find('rank_pre').text();
-                    var rankdiff = $(item).find('rankdiff').text(); // AAA+10のような表記
-                    var rankdiff0 = $(item).find('rankdiff0').text(); // AAA
-                    rankdiff0 = '<span class="' + rank +'">'+rankdiff0+'</span>';
-                    var rankdiff1 = $(item).find('rankdiff1').text(); // AAA+10のような表記
-                    var rank_update = '<span class="' + rank +'">'+rankdiff+'</span>';
-                    rank_update = rankdiff0+rankdiff1;
-                    if (rankdiff == "MAX+0"){
-                        rank_update = '<span class="MAX">MAX!!</span>';
-                    }
-                    var opt = $(item).find('opt').text();
                     var bp = $(item).find('bp').text();
                     var bpi = $(item).find('bpi').text();
-                    if (bpi == "??"){
-                        bpi='';
+                    var opt = $(item).find('opt').text();
+                    var sp_12hard = $(item).find('sp_12hard').text();
+                    var sp_12clear = $(item).find('sp_12clear').text();
+                    
+                    // スコア更新なしをスキップ
+                    if (skip_no_update == 1 && pre_score >= score) {
+                        return true;
                     }
-                    if (lamp == 1){
-                        lamp = '<span class="failed">　</span>'
+                    
+                    // ランク判定
+                    var rank = "B";
+                    if (score_rate * 18 > 16) {
+                        rank = 'AAA';
+                    } else if (score_rate * 18 > 14) {
+                        rank = 'AA';
+                    } else if (score_rate * 18 > 12) {
+                        rank = 'A';
+                    } else if (score_rate * 18 > 0) {
+                        rank = 'F';
                     }
-                    else if (lamp == 2){
-                        lamp = '<span class="ac">　</span>'
+                    
+                    var rankdiff0 = $(item).find('rankdiff0').text();
+                    var rankdiff1 = $(item).find('rankdiff1').text();
+                    var rankdiff = '<span class="' + rank + '">' + rankdiff0 + '</span>' + rankdiff1;
+                    
+                    if (rankdiff0 + rankdiff1 == "MAX+0") {
+                        rankdiff = '<span class="MAX">MAX</span>';
                     }
-                    else if (lamp == 3){
-                        lamp = '<span class="ec">　</span>'
+                    
+                    // ランプ表示
+                    var lamp_html = '';
+                    if (lamp == 1) {
+                        lamp_html = '<span class="lamp-box failed"></span>';
+                    } else if (lamp == 2) {
+                        lamp_html = '<span class="lamp-box ac"></span>';
+                    } else if (lamp == 3) {
+                        lamp_html = '<span class="lamp-box ec"></span>';
+                    } else if (lamp == 4) {
+                        lamp_html = '<span class="lamp-box nc"></span>';
+                    } else if (lamp == 5) {
+                        lamp_html = '<span class="lamp-box hc"></span>';
+                    } else if (lamp == 6) {
+                        lamp_html = '<span class="lamp-box exh"></span>';
+                    } else if (lamp == 7) {
+                        lamp_html = '<span class="lamp-box fc"></span>';
                     }
-                    else if (lamp == 4){
-                        lamp = '<span class="nc">　</span>'
+                    
+                    // BPIの色分け
+                    var bpi_class = '';
+                    if (bpi && bpi !== '??') {
+                        bpi_class = bpi.includes('-') ? 'bpi-negative' : 'bpi-positive';
+                    } else {
+                        bpi = '';
                     }
-                    else if (lamp == 5){
-                        lamp = '<span class="hc">　</span>'
+                    
+                    // スコア更新チェック
+                    var score_class = score > pre_score ? 'score-updated' : 'score-not-updated';
+                    var row_class = score > pre_score ? 'score-updated' : '';
+                    
+                    // 難易度の色
+                    var diff_color = getDifficultyColor(difficulty);
+                    
+                    // レベル表示（SP☆12地力表対応）
+                    var level_display = '☆' + lv;
+                    if (sp_12clear || sp_12hard) {
+                        // clearとhardの両方を表示（略さない）
+                        var clear_text = sp_12clear || '?';
+                        var hard_text = sp_12hard || '?';
+                        
+                        level_display = '<span class="sp12-clear">' + clear_text + '</span>' +
+                                       '<span class="sp12-slash">/</span>' +
+                                       '<span class="sp12-hard">' + hard_text + '</span>';
                     }
-                    else if (lamp == 6){
-                        lamp = '<span class="exh">　</span>'
-                    }
-                    else if (lamp == 7){
-                        lamp = '<span class="fc">　</span>'
-                    }
-                    else{ // Failed, No playは何も表示しない
-                        lamp = ''
-                    }
-                    // テーブルに追加
-                    if (opt.indexOf("BATTLE") >= 0){ // DBx系オプションの場合、スコアの所にbp250のようにミスカンを入れておく
-                        var with_scratch = "";
-                        if (opt.indexOf("A-SCR")<0){
-                            with_scratch = "皿あり"; // 皿あり表記を無効にする場合はこの行を消せばOK
-                        }
-                        if ((opt.indexOf("MIR / OFF")>=0) || (opt.indexOf("OFF / MIR")>=0)){
-                            title = '('+with_scratch+'DBM) ' + title
-                        }
-                        else if (opt.indexOf("OFF / OFF")>=0){
-                            title = '('+with_scratch+'DB) ' + title
-                        }
-                        else if (opt.indexOf("RAN / RAN")>=0){
-                            title = '('+with_scratch+'DBR) ' + title
-                        }
-                        else if (opt.indexOf("S-RAN / S-RAN")>=0){
-                            title = '('+with_scratch+'DBSR) ' + title
-                        }
-                        else if (opt.indexOf("H-RAN / H-RAN")>=0){
-                            title = '('+with_scratch+'DBHR) ' + title
-                        }
-                        out += '<tr><td>'+lv+'</td>';
-                        out += '<td>'+lamp+'</td>';
-                        if (difficulty_org == "DPA"){
-                            out += '<td><span class="another">'+title+'</span></td>';
-                        }
-                        else if (difficulty_org == "DPH"){
-                            out += '<td><span class="hyper">'+title+'</span></td>';
-                        }
-                        else if (difficulty_org == "DPN"){
-                            out += '<td><span class="normal">'+title+'</span></td>';
-                        }
-                        else if (difficulty_org == "DPL"){
-                            out += '<td><span class="leggendaria">'+title+'</span></td>';
-                        }
-                        else{
-                            out += '<td>'+title+'</td>';
-                        }
-                        out += '<td>bp'+bp+'</td>';
-                        out += '<td></td></tr>';
-                    } else{
-                        out += '<tr><td>'+lv+'</td>';
-                        out += '<td>'+lamp+'</td>';
-                        if ((difficulty_org == "DPA") || (difficulty_org == "SPA")){
-                            out += '<td><span class="another">'+title+'</span></td>';
-                        }
-                        else if ((difficulty_org == "DPH") || (difficulty_org == "SPH")){
-                            out += '<td><span class="hyper">'+title+'</span></td>';
-                        }
-                        else if ((difficulty_org == "DPN") || (difficulty_org == "SPN")){
-                            out += '<td><span class="normal">'+title+'</span></td>';
-                        }
-                        else if ((difficulty_org == "DPL") || (difficulty_org == "SPL")){
-                            out += '<td><span class="leggendaria">'+title+'</span></td>';
-                        }
-                        else{
-                            out += '<td>'+title+'</td>';
-                        }
-                        if (score > pre_score){
-                            out += '<td><score_plus>'+score+'</score_plus></td>';
-                        }else{
-                            out += '<td><score_minus>'+score+'</score_minus></td>';
-                        }
-                        out += '<td>'+rank_update+'</td>';
-                        if (bpi.includes('-')){
-                            out += '<td><bpi_minus>'+bpi+'</bpi_minus></td></tr>';
-                        }else{
-                            out += '<td><bpi_plus>'+bpi+'</bpi_plus></td></tr>';
+                    
+                    // DBx系オプションの処理
+                    var is_battle = opt.indexOf("BATTLE") >= 0;
+                    var title_prefix = '';
+                    if (is_battle) {
+                        var with_scratch = opt.indexOf("A-SCR") < 0 ? "皿" : "";
+                        if ((opt.indexOf("MIR / OFF") >= 0) || (opt.indexOf("OFF / MIR") >= 0)) {
+                            title_prefix = '(' + with_scratch + 'DBM)';
+                        } else if (opt.indexOf("OFF / OFF") >= 0) {
+                            title_prefix = '(' + with_scratch + 'DB)';
+                        } else if (opt.indexOf("RAN / RAN") >= 0) {
+                            title_prefix = '(' + with_scratch + 'DBR)';
+                        } else if (opt.indexOf("S-RAN / S-RAN") >= 0) {
+                            title_prefix = '(' + with_scratch + 'DBSR)';
+                        } else if (opt.indexOf("H-RAN / H-RAN") >= 0) {
+                            title_prefix = '(' + with_scratch + 'DBHR)';
                         }
                     }
-                    if (index == 26){ // 直近の27曲だけ表示としている。曲数はここから変更可能。
+                    
+                    // テーブル行HTML生成
+                    out += '<tr class="' + row_class + '">';
+                    
+                    // レベル
+                    out += '<td>' + level_display + '</td>';
+                    
+                    // ランプ
+                    out += '<td>' + lamp_html + '</td>';
+                    
+                    // タイトル
+                    out += '<td class="' + diff_color + '">';
+                    if (title_prefix) out += title_prefix + ' ';
+                    out += title + '</td>';
+                    
+                    if (is_battle) {
+                        // BATTLE系の場合
+                        out += '<td class="' + score_class + '">bp' + bp + '</td>';
+                        out += '<td></td>';
+                        out += '<td></td>';
+                    } else {
+                        // 通常の場合
+                        out += '<td class="' + score_class + '">' + score + '</td>';
+                        out += '<td>' + rankdiff + '</td>';
+                        out += '<td class="' + bpi_class + '">' + bpi + '</td>';
+                    }
+                    
+                    // オプション
+                    out += '<td>' + opt + '</td>';
+                    
+                    out += '</tr>';
+                    
+                    if (index == 26) {
                         return false;
                     }
-                    });
-                $('#result tbody').html(out);
-                if (isHard == 1){
-                    $('sp12hard').css('display', 'none');
-                    $('sp12clear').css('display', 'block');
-                }else{
-                    $('sp12clear').css('display', 'none');
-                    $('sp12hard').css('display', 'block');
-                }
-                isHard = 1 - isHard;
+                });
+                
+                $('#results-tbody').html(out);
             });
+            
             getxml.fail(function(err) {
-                // alert('failed');
+                console.error('XMLロードエラー:', err);
             });
         }
-
+        
         window.addEventListener('DOMContentLoaded', function() {
-            var roopTimer = setInterval(loadXml, 1000);
+            loadXml();
+            setInterval(loadXml, 1000);
         });
-
-</script>
-</head>
-<body>
-  <div id="all">
-    <table id="title">
-      <tr><td>Recent update</td></tr>
-    </table>
-    <table id="result">
-      <thead>
-        <tr>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-          <td></td>
-        </tr>
-      </thead>
-      <tbody>
-      </tbody>
-    </table>
-  </div>
-</body>
+        </script>
+        
+        <div id="all">
+            <div class="header">
+                <h1>📊 Recent Update</h1>
+            </div>
+            
+            <div class="results-container">
+                <table class="results-table">
+                    <tbody id="results-tbody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </body>
 </html>

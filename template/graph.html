@@ -1,214 +1,219 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
-  <meta charset="utf-8">
-  <title>Google Charts</title>
-  <style>
-    body {
-      background-color: rbga(0, 0, 50, 0.0);
-      margin: 0px;
-      padding: 0px;
-      overflow: hidden;
-      font-family:"LINE Seed JP App_TTF ExtraBold";
-      color: #000;
-      font-size: 32px;
-      text-shadow:
-        1px 1px 1px #000, -1px -1px 1px #000,
-        -1px 1px 1px #000, 1px -1px 1px #000,
-        1px 1px 1px #000, -1px -1px 1px #000,
-        1px 1px 1px #000, 1px -1px 1px #000;
+    <meta charset="utf-8">
+    <title>Today's Stats</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body { 
+            background: transparent;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'RocknRoll One', sans-serif;
+            color: #fff;
+        }
+        
+        .container {
+            background: linear-gradient(135deg, rgba(0, 20, 100, 0.9), rgba(0, 40, 120, 0.9));
+            padding: 15px 20px;
+            box-shadow: 0 5px 20px rgba(33, 150, 243, 0.3);
+            border: 2px solid rgba(33, 150, 243, 0.3);
+            width: 100%;
+        }
+        
+        /* ヘッダー */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        
+        .today-label {
+            font-size: 36px;
+            color: #ffffff;
+            text-shadow: 3px 3px 0 #000,
+                        -2px 2px 0 #000,
+                        2px -2px 0 #000,
+                        -2px -2px 0 #000;
+        }
+        
+        .today-notes {
+            font-size: 42px;
+            color: #ffeb3b;
+            text-shadow: 0 0 20px rgba(255, 235, 59, 0.5),
+                        3px 3px 0 #000,
+                        -2px 2px 0 #000,
+                        2px -2px 0 #000,
+                        -2px -2px 0 #000;
+            font-weight: bold;
+        }
+        
+        /* グラフエリア */
+        .graph-area {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin-bottom: 12px;
+        }
+        
+        .bar-container {
+            display: flex;
+            height: 35px;
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+        
+        .bar-segment {
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 1px 1px 2px #000;
+        }
+        
+        .bar-pg {
+            background: linear-gradient(180deg, #00AAFF, #0088DD);
+        }
+        
+        .bar-gr {
+            background: linear-gradient(180deg, #00DDFF, #00BBDD);
+        }
+        
+        .bar-gd {
+            background: linear-gradient(180deg, #FFBB00, #DD9900);
+        }
+        
+        .bar-bad {
+            background: linear-gradient(180deg, #DD4445, #BB2222);
+        }
+        
+        /* 統計情報 */
+        .stats {
+            display: flex;
+            gap: 15px;
+            font-size: 24px;
+            text-shadow: 2px 2px 0 #000;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .stat-label {
+            color: #aaddff;
+        }
+        
+        .stat-value {
+            color: #ffffaa;
+            font-weight: bold;
+        }
+        
+        .stat-cur {
+            color: #aaa;
+            font-size: 20px;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+    function updateGraph() {
+        $.ajax({
+            url: "../out/graph.xml",
+            type: 'GET',
+            dataType: 'xml',
+            cache: false,
+            timeout: 10000
+        }).done(function(xml) {
+            // データ取得
+            var pg = Number($(xml).find('pg').text()) || 0;
+            var gr = Number($(xml).find('gr').text()) || 0;
+            var gd = Number($(xml).find('gd').text()) || 0;
+            var bd = Number($(xml).find('bd').text()) || 0;
+            var pr = Number($(xml).find('pr').text()) || 0;
+            var playcount = Number($(xml).find('playcount').text()) || 0;
+            var today_notes = Number($(xml).find('today_notes').text()) || 0;
+            var today_score_rate = $(xml).find('today_score_rate').text() || '0%';
+            var current_score_rate = $(xml).find('current_score_rate').text() || '0%';
+            
+            // BAD判定の合計
+            var bad_total = bd + pr;
+            
+            // 合計ノーツ（グラフ用）
+            var total = pg + gr + gd + bad_total;
+            
+            // パーセンテージ計算
+            var pg_percent = total > 0 ? (pg / total * 100) : 0;
+            var gr_percent = total > 0 ? (gr / total * 100) : 0;
+            var gd_percent = total > 0 ? (gd / total * 100) : 0;
+            var bad_percent = total > 0 ? (bad_total / total * 100) : 0;
+            
+            // 表示更新
+            $('.today-notes').text(today_notes.toLocaleString());
+            $('#play-value').text(playcount);
+            $('#rate-value').text(today_score_rate);
+            $('#cur-value').text('(' + current_score_rate + ')');
+            
+            // グラフ更新
+            $('#bar-pg').css('width', pg_percent + '%');
+            $('#bar-gr').css('width', gr_percent + '%');
+            $('#bar-gd').css('width', gd_percent + '%');
+            $('#bar-bad').css('width', bad_percent + '%');
+        }).fail(function(err) {
+            console.error('XMLロードエラー:', err);
+        });
     }
-
-    .titlearea {
-      position: absolute;
-      text-align: center;
-      display: inline-block;
-      /* top: -43px; タブ調整 */
-      /* left: 3px; タブ調整 */
-      padding-top: 0px;
-      padding-bottom: 13px;
-      padding-left: 0px;
-      height: 23px;
-      width: 220px;
-      font-size: 24px;
-      font-weight: bold;
-      color: #ffffff; /* タイトル色 */
-      /*background-color: #eeeeee;  タイトル背景色 */
-      /*border: 1px solid #999999;  タイトル枠線 */
-      background-color: #160eac; /* タイトル背景色 */
-      border: 1px solid #02144a; /* タイトル枠線 */
-      border-radius: 10px 10px 0 0;
-      font-family:"LINE Seed JP App_TTF ExtraBold";
-      bottom: 100%;
-      text-shadow:
-        1px 1px 1px #000, -1px -1px 1px #000,
-        -1px 1px 1px #000, 1px -1px 1px #000,
-        1px 1px 1px #000, -1px -1px 1px #000,
-        1px 1px 1px #000, 1px -1px 1px  #000;
-    }
-    .kakomiarea {
-      position: relative;
-      /* margin: 2em auto; */
-      padding: 0px;
-      width: 90%;
-      /*background-color: rgba(0,0,0,0.9);*/
-      /*border: 4px solid #999999;*/ /* 枠線の太さ・色 */
-      border: 6px solid #02144a; /* 枠線の太さ・色 */
-      background: linear-gradient(
-        180deg
-        ,rgba(0,0,60,0.9)
-        ,rgba(35,85,155,0.9)
-      ); 
-    }
-    table#stats {
-      font-size: 20px;
-      padding-left: 10px;
-      color: #ffffff;
-    }
-    .value{
-      color: #ffffbb;
-    }
-
-  </style>
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-
-  <script type="text/javascript">
-    var data;
-    var chart;
-    var options;
-    google.charts.load('current', { 'packages': ['corechart', 'bar'], 'language': 'ja' });
-    google.charts.setOnLoadCallback(drawChart);
-    function drawChart() {
-      data = google.visualization.arrayToDataTable([
-        ['pr', 'ran', 'gd', 'gr', 'pg', { role: 'annotation' }],
-        ['today', 0, 0, 0, 0, 0],
-        // ['両乱', 0, 0, 0, 0, 0],
-        //['僧', 0, 0, 0, 0, 0],
-      ]);
-      options = {
-        //width: 600,
-        chartArea:{left:100,right:80,top:6,width:'80%',height:'90%'},
-        height: 50,
-        legend: { position: 'none' },
-        bar: { groupWidth: '40%' },
-        isStacked: true,
-        backgroundColor: { color: "#000000", fill: 'transparent' },
-        series: {
-          0: { color: '#DD4445' },
-          1: { color: '#77FF00' },
-          2: { color: '#FFBB00' },
-          3: { color: '#00AAFF' }
-        },
-        annotations: {
-          textStyle: {
-            color: 'white',
-            fontName: 'ラノベPOP v2',
-            fontSize: 28,
-          },
-          alwaysOutside: true
-        },
-        hAxis: {
-          textStyle: { fontSize: 30, color: '#FFFFFF',
-            fontName: 'ラノベPOP v2',
-        },
-          format: '#,###', minValue: 0
-          ,maxValue: 100000
-          ,gridlines: { count: 4 }
-          ,ticks: [100000]
-        },
-        vAxis: {
-          textStyle: { fontSize: 30, color: '#FFFFFF' , fontName:'ラノベPOP v2'},
-        },
-      };
-      // Instantiate and draw our chart, passing in some options.
-      chart = new google.visualization.BarChart(document.getElementById('chart_div'));
-      chart.draw(data, options);
-
-    }
-    function update() {
-      var pg = 0;
-      var gr = 0;
-      var gd = 0;
-      var bd = 0;
-      var pr = 0;
-      var cb = 0;
-      var ran = 0;
-
-      var getxml = $.ajax({
-        url: "../out/graph.xml",
-        type: 'GET',
-        dataType: 'xml',
-        cache: false
-      });
-      getxml.done(function (xml) {
-
-        pg = Number($(xml).find('pg').text()) || 0;
-        gr = Number($(xml).find('gr').text()) || 0;
-        gd = Number($(xml).find('gd').text()) || 0;
-        bd = Number($(xml).find('bd').text()) || 0;
-        pr = Number($(xml).find('pr').text()) || 0;
-        cb = Number($(xml).find('cb').text()) || 0;
-        ran = Number($(xml).find('notes_ran').text()) || 0;
-        dbx = Number($(xml).find('notes_battle').text()) || 0;
-        xmax = Math.max(100000,(Math.floor((pg + gr + gd) / 25000) + 1) * 25000);
-        playcount = Number($(xml).find('playcount').text()) || 0;
-        cur_notes = Number($(xml).find('cur_notes').text()) || 0;
-        today_notes = Number($(xml).find('today_notes').text()) || 0;
-        notes_ran = Number($(xml).find('notes_ran').text()) || 0;
-        notes_battle = Number($(xml).find('notes_battle').text()) || 0;
-        today_score_rate = $(xml).find('today_score_rate').text() || 0;
-        current_score_rate = $(xml).find('current_score_rate').text() || 0;
-        $('playcount').text(playcount.toLocaleString());
-        $('cur_notes').text(cur_notes.toLocaleString());
-        $('today_score_rate').text(today_score_rate);
-        $('current_score_rate').text(current_score_rate);
-        $('today_notes').text(today_notes);
-
-        data.setValue(0, 2, gd);
-        data.setValue(0, 3, gr);
-        data.setValue(0, 4, pg);
-        data.setValue(0, 5, pg+gd+gr+bd);
-        // data.setValue(1, 1, ran);
-        // data.setValue(1, 5, ran);
-        //data.setValue(1, 1, dbx);
-        //data.setValue(1, 5, dbx);
-        options.hAxis.maxValue = xmax;
-        options.hAxis.ticks = [xmax];
-        options.hAxis.ticks = [];
-        chart.draw(data, options)
-      });
-      getxml.fail(function (error) {
-        //alert("読み込み失敗");
-      });
-    }
-
-    window.addEventListener('DOMContentLoaded', function () {
-      var roopTimer = setInterval(update, 300);
+    
+    window.addEventListener('DOMContentLoaded', function() {
+        updateGraph();
+        setInterval(updateGraph, 300);
     });
-  </script>
+    </script>
 </head>
-
 <body>
-  <div class="kakomiarea">
-    <!--
-      <span class="titlearea">
-      notes counter
-    -->
-    </span>
-    <div id="chart_div"></div>
-    <table id="stats">
-      <tr>
-        <td>play:</td>
-        <td><span class="value"><playcount></playcount></span>,&nbsp;</td>
-        <td>rate:</td>
-        <td><span class="value"><today_score_rate></today_score_rate></span>,&nbsp;</td>
-        <td>(cur:</td>
-        <td><span class="value"><current_score_rate></current_score_rate></span>)&nbsp;</td>
-      </tr>
-    </table>
-  </div>
+    <div class="container">
+        <!-- ヘッダー -->
+        <div class="header">
+            <div class="today-label">today</div>
+            <div class="today-notes">0</div>
+        </div>
+        
+        <!-- グラフ -->
+        <div class="graph-area">
+            <div class="bar-container">
+                <div id="bar-bad" class="bar-segment bar-bad" style="width: 0%"></div>
+                <div id="bar-gd" class="bar-segment bar-gd" style="width: 0%"></div>
+                <div id="bar-gr" class="bar-segment bar-gr" style="width: 0%"></div>
+                <div id="bar-pg" class="bar-segment bar-pg" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <!-- 統計情報 -->
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-label">play:</span>
+                <span class="stat-value" id="play-value">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">rate:</span>
+                <span class="stat-value" id="rate-value">0%</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-cur" id="cur-value">(0%)</span>
+            </div>
+        </div>
+    </div>
 </body>
-
 </html>
