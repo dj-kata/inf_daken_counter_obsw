@@ -38,16 +38,19 @@ if __name__ == '__main__':
     logger.info('start')
     rdb = ResultDatabase()
     reader = ScreenReader()
-    for f in glob.glob('debug/0126/*.png'):
-        reader.update_screen_from_file(f)
-        logger.info(f'file={f}')
-        if reader.is_result():
-            r = reader.read_result_screen()
-            if r:
-                logger.info(f'[RESULT] {r}')
-                # rdb.add(r.result)
-    rdb.save()
+    # for f in glob.glob('debug/0126/*.png'):
+    #     # logger.info(f'file={f}')
+    #     reader.update_screen_from_file(f)
+    #     if reader.is_result():
+    #         r = reader.read_result_screen()
+    #         if r:
+    #             # logger.info(f'[RESULT] {r}')
+    #             r.result.timestamp = os.path.getmtime(f)
+    #             rdb.add(r.result)
+    # rdb.save()
+    # print(len(rdb.results))
 
-    write_notescount_xml(15, Judge(), Judge())
-    rdb.write_today_updates_xml(0)
-    # r = rdb.search('Mira', play_style.sp, difficulty.another)[0]
+    write_notescount_xml(15, Judge(770, 150, 20, 1, 3, 4),Judge(12310, 3400, 500, 33, 55, 120))
+    rdb.write_today_updates_xml(datetime.datetime.now().timestamp() - 4*3600)
+    # rdb.write_history_cursong_xml('DISPARATE', play_style.sp, difficulty.another)
+    rdb.write_graph_xml(datetime.datetime.now().timestamp()-4*3600)

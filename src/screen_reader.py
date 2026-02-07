@@ -144,9 +144,9 @@ class ScreenReader:
     def read_play_screen(self, judge:Judge) -> OneResult:
         '''プレー画面からOneResultを作成'''
         result = OneResult(
-            title=self.screen_reader.last_select_title,
-            play_style=self.screen_reader.last_select_style,
-            difficulty=self.screen_reader.last_select_difficulty,
+            title=self.last_select_title,
+            play_style=self.last_select_style,
+            difficulty=self.last_select_difficulty,
             lamp=clear_lamp.failed,
             timestamp=int(datetime.datetime.now().timestamp()),
             judge=copy.deepcopy(judge), # copy使わなくてもいいかも? TODO

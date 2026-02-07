@@ -76,6 +76,7 @@ class MainWindow(MainWindowUI):
         self.current_judge = Judge()
         '''このプレーの判定内訳'''
         self.set_today_judge()
+        self.result_database.write_today_updates_xml(self.start_time - self.config.autoload_offset*3600)
         self.result_timestamp = 0
         self.today_keystroke_count = 0
         self.play_count = 0
@@ -163,18 +164,19 @@ class MainWindow(MainWindowUI):
         self.today_judge.reset()
         self.play_count = 0
         for r in reversed(self.result_database.results):
-            if r.timestamp >= self.start_time - self.config.autoload_offset*3600:
-                if r.detect_mode == detect_mode.play and r.judge:
+            if r.detect_mode == detect_mode.play and r.judge:
+                if r.timestamp >= self.start_time - self.config.autoload_offset*3600:
                     self.play_count += 1
                     self.today_judge += r.judge
-            else:
-                break
+                else:
+                    break
 
     def update_all_configs(self):
         """全てのクラスに設定を反映"""
         self.config.load_config()  # 最新の設定を読み込み
         self.obs_manager.set_config(self.config)
         self.result_database.song_database.load()  # 必要に応じて再読み込み
+        self.result_database.write_graph_xml(self.start_time - self.config.autoload_offset*3600)
         self.set_today_judge()
         
         # OBS接続状態の再評価
@@ -365,6 +367,8 @@ class MainWindow(MainWindowUI):
                 self.result_database.add(result)
                 self.result_database.save()
 
+                self.result_database.write_graph_xml(self.start_time - self.config.autoload_offset*3600)
+
                 # 統計情報の更新
                 self.play_count += 1
                 self.today_judge += self.current_judge
@@ -388,11 +392,11 @@ class MainWindow(MainWindowUI):
             settings = control_data.get_settings_by_trigger(trigger)
             
             if not settings:
-                logger.debug(f"制御設定がないのでスキップ")
+                # logger.debug(f"制御設定がないのでスキップ")
                 return  # 該当する設定がない場合は何もしない
             
             if not self.obs_manager.is_connected:
-                logger.debug(f"OBS未接続のため、トリガー '{trigger}' をスキップ")
+                # logger.debug(f"OBS未接続のため、トリガー '{trigger}' をスキップ")
                 return
             
             for setting in settings:
@@ -438,6 +442,8 @@ class MainWindow(MainWindowUI):
     def process_select_mode(self):
         """選曲画面での処理"""
         detailed_result = self.screen_reader.read_music_select_screen()
+        if not detailed_result:
+            return False
         result = detailed_result.result
         result.timestamp = 0 # 更新日は不明という扱いにする
         # xml更新
@@ -450,9 +456,9 @@ class MainWindow(MainWindowUI):
     def process_play_mode(self):
         """プレー画面での処理"""
         tmp = self.screen_reader.get_judge_from_play_screen(self.last_play_mode)
+        # logger.debug(f"mode:{self.last_play_mode}, self.current_judge = {self.current_judge}")
         if tmp:
             self.current_judge = tmp
-        # logger.debug(f"mode:{self.last_play_mode}, self.current_judge = {self.current_judge}")
     
     def process_result_mode(self):
         """リザルト画面での処理"""

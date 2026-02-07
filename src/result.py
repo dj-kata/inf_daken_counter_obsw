@@ -416,6 +416,48 @@ class ResultDatabase:
                 break
         return ret
     
+    def write_graph_xml(self, start_time:int):
+        '''本日のノーツ数用xmlを出力'''
+        os.makedirs('out', exist_ok=True)
+        root = ET.Element('Results')
+        target:List[OneResult] = []
+        total = Judge()
+        for r in reversed(self.results):
+            if r.detect_mode == detect_mode.play:
+                if r.timestamp >= start_time:
+                    target.append(r)
+                    if r.judge:
+                        total += r.judge
+                else:
+                    break
+        
+        add_new_element(root, 'playcount', str(len(target)))
+        add_new_element(root, 'today_notes', str(total.pg+total.gr+total.gd+total.bd))
+        add_new_element(root, 'today_score_rate', f"{total.get_score_rate()*100:.2f}%")
+        elem_today = ET.SubElement(root, 'today_judge')
+        add_new_element(elem_today, 'pg', str(total.pg))
+        add_new_element(elem_today, 'gr', str(total.gr))
+        add_new_element(elem_today, 'gd', str(total.gd))
+        add_new_element(elem_today, 'bd', str(total.bd))
+        add_new_element(elem_today, 'pr', str(total.pr))
+        add_new_element(elem_today, 'cb', str(total.cb))
+        
+        for i,r in enumerate(reversed(target)): # 古いものを一番下にするために逆順にする
+            elem = ET.SubElement(root, 'judge')
+            add_new_element(elem, 'idx', str(i+1))
+            add_new_element(elem, 'pg', str(r.judge.pg))
+            add_new_element(elem, 'gr', str(r.judge.gr))
+            add_new_element(elem, 'gd', str(r.judge.gd))
+            add_new_element(elem, 'bd', str(r.judge.bd))
+            add_new_element(elem, 'pr', str(r.judge.pr))
+            add_new_element(elem, 'cb', str(r.judge.cb))
+        
+        # xml出力
+        tree = ET.ElementTree(root)
+        ET.indent(tree, space="    ")
+        tree.write(Path('out')/'graph.xml', encoding='utf-8', xml_declaration=True)
+        
+
     def write_today_updates_xml(self, start_time:int):
         """本日のプレー履歴のXMLを出力
 
@@ -424,11 +466,11 @@ class ResultDatabase:
         """
         target:List[OneResult] = []
         for r in reversed(self.results):
-            if r.timestamp >= start_time:
-                if r.detect_mode == detect_mode.result:
+            if r.detect_mode == detect_mode.result: # selectの時刻が適当なので注意
+                if r.timestamp >= start_time:
                     target.append(r)
-            else:
-                break
+                else:
+                    break
 
         os.makedirs('out', exist_ok=True)
         root = ET.Element('Results')
@@ -534,7 +576,8 @@ class ResultDatabase:
             add_new_element(root, 'best_bp_rate', f"{100*best_bp / detail.result.notes:.2}")
             add_new_element(root, 'best_rankdiff0', detail.score_rate_with_rankdiff[0])
             add_new_element(root, 'best_rankdiff1', detail.score_rate_with_rankdiff[1])
-            add_new_element(root, 'best_bpi', f"{detail.bpi:.2f}")
+            if detail.bpi:
+                add_new_element(root, 'best_bpi', f"{detail.bpi:.2f}")
             if detail.score_rate_with_rankdiff:
                 add_new_element(root, 'rankdiff', ''.join(detail.score_rate_with_rankdiff))
                 add_new_element(root, 'rankdiff0', detail.score_rate_with_rankdiff[0])
@@ -545,11 +588,12 @@ class ResultDatabase:
             add_new_element(root, 'sp_12clear', songinfo.sp12_clear.__str__() if songinfo.sp12_clear else "")
             add_new_element(root, 'sp_11hard',  songinfo.sp11_hard.__str__() if songinfo.sp11_hard else "")
             add_new_element(root, 'sp_11clear', songinfo.sp11_clear.__str__() if songinfo.sp11_clear else "")
-        for r in target: # プレイごとの出力
+        for r in reversed(target): # プレイごとの出力
             item = ET.SubElement(root, 'item')
             add_new_element(item, 'date', str(datetime.datetime.fromtimestamp(r.result.timestamp).strftime('%Y/%m/%d')))
             add_new_element(item, 'lamp', str(r.result.lamp.value))
-            add_new_element(item, 'bpi', f"{r.bpi:.2f}")
+            if r.bpi:
+                add_new_element(item, 'bpi', f"{r.bpi:.2f}")
             add_new_element(item, 'score', str(r.result.score))
             add_new_element(item, 'score_rate', str(r.result.score/r.result.notes/2))
             add_new_element(item, 'bp', str(r.result.bp))
