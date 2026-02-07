@@ -385,8 +385,7 @@ class OBSWebSocketManager(QObject):
         sys.path.append('infnotebook')
         from screenshot import open_screenimage
         
-        if not os.path.exists('out'):
-            os.makedirs('out')
+        os.makedirs('out', exist_ok=True)
         dst = os.path.abspath('out/capture.png')
         
         try:

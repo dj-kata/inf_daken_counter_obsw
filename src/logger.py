@@ -5,8 +5,7 @@ from logging.handlers import RotatingFileHandler
 
 # ログ保存ディレクトリの作成
 LOG_DIR = "log"
-if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR)
+os.makedirs(LOG_DIR, exist_ok=True)
 
 def get_logger(name=None):
     '''

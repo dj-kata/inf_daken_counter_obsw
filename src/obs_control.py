@@ -95,8 +95,7 @@ class ImageRecognitionData:
         self.image_dir = image_dir
         
         # 画像保存ディレクトリを作成
-        if not os.path.exists(self.image_dir):
-            os.makedirs(self.image_dir)
+        os.makedirs(self.image_dir, exist_ok=True)
         
     def save_condition(self, screen_type: str, image: Image.Image, coordinates: Dict[str, int], 
                       hash_value: str, threshold: int):

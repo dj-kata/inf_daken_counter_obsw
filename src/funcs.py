@@ -1,11 +1,14 @@
 from .classes import *
 import hashlib
 import math
+import os
 import sys
 import re
 from PIL import Image
 import numpy as np
 import imagehash
+from pathlib import Path
+import xml.etree.ElementTree as ET
 
 sys.path.append('infnotebook')
 from screenshot import Screenshot,open_screenimage
@@ -198,3 +201,22 @@ def mosaic_other_rival_names(img:Image, side:result_side) -> Image:
         targetarea = targetarea.resize((82,20))
         img_array[687:707, rival_name_sx:rival_name_sx+82] = targetarea
     return Image.fromarray(img_array)
+
+def write_notescount_xml(play_count:int, current_judge:Judge, today_judge:Judge):
+    '''判定内訳を受け取ってノーツ数関係のxmlを出力'''
+    os.makedirs('out', exist_ok=True)
+    root = ET.Element('items')
+    elem_playcount = ET.SubElement(root, 'playcount')
+    elem_playcount.text = str(play_count)
+    elem_today_notes = ET.SubElement(root, 'today_notes')
+    elem_today_notes.text = str(today_judge.notes())
+    elem_current_notes = ET.SubElement(root, 'current_notes')
+    elem_current_notes.text = str(current_judge.notes())
+    elem_today_score_rate = ET.SubElement(root, 'today_score_rate')
+    elem_today_score_rate.text = str(today_judge.get_score_rate())
+    elem_current_score_rate = ET.SubElement(root, 'current_score_rate')
+    elem_current_score_rate.text = str(current_judge.get_score_rate())
+
+    tree = ET.ElementTree(root)
+    ET.indent(tree, space="    ")
+    tree.write(Path('out')/'notes.xml', encoding='utf-8', xml_declaration=True)

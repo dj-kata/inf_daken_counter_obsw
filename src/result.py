@@ -434,3 +434,5 @@ if __name__ == '__main__':
     # print(rdb.results[-3],'\n')
     # print(rdb.results[-2],'\n')
     # print(rdb.results[-1])
+
+    write_notescount_xml(15, Judge(), Judge())

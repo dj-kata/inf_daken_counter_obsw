@@ -356,7 +356,6 @@ class MainWindow(MainWindowUI):
             self.execute_obs_triggers(trigger)
 
 
-        # if trigger == 'play_end': # プレイ画面が終わるときにtimestamp取得
         if trigger == 'play_start': # プレー画面の先頭で実行
             self.last_play_mode = self.screen_reader.detect_playside()
 
@@ -369,6 +368,7 @@ class MainWindow(MainWindowUI):
                 # 統計情報の更新
                 self.play_count += 1
                 self.today_judge += self.current_judge
+                write_notescount_xml(self.play_count, self.current_judge, self.today_judge)
                 self.current_judge.reset()
 
         if trigger == 'result_start': # リザルト画面の先頭で実行
