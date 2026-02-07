@@ -259,7 +259,8 @@ class DetailedResult():
                 else:
                     bpi = max((-100 * ((-math.log(sd))**bpi_coef)) / (math.log(zd)**bpi_coef),-15.0)
         except:
-            logger.error(traceback.format_exc())
+            pass
+            # logger.error(traceback.format_exc())
         return bpi
 
     def __str__(self):
@@ -477,7 +478,7 @@ class ResultDatabase:
         """
         os.makedirs('out', exist_ok=True)
         root = ET.Element('Results')
-        
+        songinfo = self.song_database.search(title=title, play_style=style, difficulty=difficulty)
         results = self.search(title=title, style=style, difficulty=difficulty)
         best_score = 0
         best_score_opt = None
@@ -505,39 +506,45 @@ class ResultDatabase:
             if r.result.judge.pr+r.result.judge.bd < best_bp:
                 best_bp = r.result.judge.pr+r.result.judge.bd
                 best_bp_opt = r.result.option
+        if len(results) == 0:
+            tree = ET.ElementTree(root)
+            ET.indent(tree, space="    ")
+            tree.write(Path('out')/'history_cursong.xml', encoding='utf-8', xml_declaration=True)
+            return
         last_played_time = results[0].result.timestamp
 
         # 出力
         # add_new_element(root, '', )
-        add_new_element(root, 'lv', str(detail.songinfo.level) if hasattr(detail.songinfo, 'level') else "")
+        add_new_element(root, 'lv', str(songinfo.level) if hasattr(songinfo, 'level') else "")
         add_new_element(root, 'music', escape_for_xml(title))
         add_new_element(root, 'difficulty', get_chart_name(style, difficulty))
-        add_new_element(root, 'notes', str(detail.result.notes))
         add_new_element(root, 'last_played', str(datetime.datetime.fromtimestamp(last_played_time).strftime('%Y/%m/%d')))
         add_new_element(root, 'best_lamp', str(best_lamp))
         add_new_element(root, 'best_lamp_opt', best_lamp_opt.__str__())
         add_new_element(root, 'best_bp', str(best_bp))
         add_new_element(root, 'best_bp_opt', best_bp_opt.__str__())
-        add_new_element(root, 'best_bp_rate', f"{100*best_bp / detail.result.notes:.2}")
         add_new_element(root, 'best_score', str(best_score))
         add_new_element(root, 'best_score_opt', best_score_opt.__str__())
-        add_new_element(root, 'best_score_rate', str(best_score / detail.result.notes / 2))
-        add_new_element(root, 'best_rankdiff0', detail.score_rate_with_rankdiff[0])
-        add_new_element(root, 'best_rankdiff1', detail.score_rate_with_rankdiff[1])
-        add_new_element(root, 'best_bpi', f"{detail.bpi:.2f}")
-        add_new_element(root, 'bpi_ave', f"{detail.songinfo.bpi_ave}")
-        add_new_element(root, 'bpi_top', f"{detail.songinfo.bpi_top}")
-        add_new_element(root, 'bpi_coef', f"{detail.songinfo.bpi_coef}")
-        if detail.score_rate_with_rankdiff:
-            add_new_element(root, 'rankdiff', ''.join(detail.score_rate_with_rankdiff))
-            add_new_element(root, 'rankdiff0', detail.score_rate_with_rankdiff[0])
-            add_new_element(root, 'rankdiff1', detail.score_rate_with_rankdiff[1])
-        if detail.songinfo:
-            add_new_element(root, 'dp_unofficial_lv', detail.songinfo.dp_unofficial)
-            add_new_element(root, 'sp_12hard', detail.songinfo.sp12_hard.__str__() if detail.songinfo.sp12_hard else "")
-            add_new_element(root, 'sp_12clear', detail.songinfo.sp12_clear.__str__() if detail.songinfo.sp12_clear else "")
-            add_new_element(root, 'sp_11hard', detail.songinfo.sp11_hard.__str__() if detail.songinfo.sp11_hard else "")
-            add_new_element(root, 'sp_11clear', detail.songinfo.sp11_clear.__str__() if detail.songinfo.sp11_clear else "")
+        add_new_element(root, 'bpi_ave', f"{songinfo.bpi_ave}")
+        add_new_element(root, 'bpi_top', f"{songinfo.bpi_top}")
+        add_new_element(root, 'bpi_coef', f"{songinfo.bpi_coef}")
+        if detail:
+            add_new_element(root, 'notes', str(detail.result.notes))
+            add_new_element(root, 'best_score_rate', str(best_score / detail.result.notes / 2))
+            add_new_element(root, 'best_bp_rate', f"{100*best_bp / detail.result.notes:.2}")
+            add_new_element(root, 'best_rankdiff0', detail.score_rate_with_rankdiff[0])
+            add_new_element(root, 'best_rankdiff1', detail.score_rate_with_rankdiff[1])
+            add_new_element(root, 'best_bpi', f"{detail.bpi:.2f}")
+            if detail.score_rate_with_rankdiff:
+                add_new_element(root, 'rankdiff', ''.join(detail.score_rate_with_rankdiff))
+                add_new_element(root, 'rankdiff0', detail.score_rate_with_rankdiff[0])
+                add_new_element(root, 'rankdiff1', detail.score_rate_with_rankdiff[1])
+        if songinfo:
+            add_new_element(root, 'dp_unofficial_lv', songinfo.dp_unofficial)
+            add_new_element(root, 'sp_12hard',  songinfo.sp12_hard.__str__() if songinfo.sp12_hard else "")
+            add_new_element(root, 'sp_12clear', songinfo.sp12_clear.__str__() if songinfo.sp12_clear else "")
+            add_new_element(root, 'sp_11hard',  songinfo.sp11_hard.__str__() if songinfo.sp11_hard else "")
+            add_new_element(root, 'sp_11clear', songinfo.sp11_clear.__str__() if songinfo.sp11_clear else "")
         for r in target: # プレイごとの出力
             item = ET.SubElement(root, 'item')
             add_new_element(item, 'date', str(datetime.datetime.fromtimestamp(r.result.timestamp).strftime('%Y/%m/%d')))

@@ -371,6 +371,9 @@
                 var best_lamp = $(xml).find('best_lamp').text();
                 var best_score = Number($(xml).find('best_score').text());
                 var best_bp = $(xml).find('best_bp').text();
+                if (best_bp == '99999999'){
+                    best_bp = "";
+                }
                 var best_lamp_opt = $(xml).find('best_lamp_opt').text();
                 var best_score_opt = $(xml).find('best_score_opt').text();
                 var best_bp_opt = $(xml).find('best_bp_opt').text();
@@ -437,7 +440,8 @@
                 
                 // BPI情報の表示判定
                 var hasBpiData = bpi_ave && bpi_ave !== '' && bpi_ave !== '0' && 
-                                 bpi_top && bpi_top !== '' && bpi_top !== '0';
+                                 bpi_top && bpi_top !== '' && bpi_top !== '0' &&
+                                 best_bpi && best_bpi !== '';
                 
                 if (hasBpiData) {
                     $('.bpi-card').addClass('visible');
