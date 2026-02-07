@@ -159,9 +159,9 @@ class OneResult:
                 self.score == other.score and
                 self.bp == other.bp and
                 self.dead == other.dead and
-                self.pre_score == other.pre_score and
-                self.pre_lamp == other.pre_lamp and
-                self.pre_bp == other.pre_bp and
+                # self.pre_score == other.pre_score and
+                # self.pre_lamp == other.pre_lamp and
+                # self.pre_bp == other.pre_bp and
                 self.detect_mode == other.detect_mode
         )
     
@@ -348,7 +348,7 @@ class ResultDatabase:
         key = chart_id
         if title is not None and style is not None and difficulty is not None:
             key = calc_chart_id(title, style, difficulty)
-        songinfo = self.song_database.search(key)
+        songinfo = self.song_database.search(chart_id=key)
 
         for r in self.results:
             if r.chart_id == key:
@@ -436,58 +436,43 @@ class ResultDatabase:
             songinfo = self.song_database.search(title=r.title, play_style=r.play_style, difficulty=r.difficulty)
             detailed_result = DetailedResult(songinfo, r, None, songinfo.level if hasattr(songinfo, 'level') else None)
             item = ET.SubElement(root, 'item')
-            elem_lv = ET.SubElement(item, 'lv')
-            elem_lv.text = str(songinfo.level) if hasattr(songinfo, 'level') else ""
-            elem_title = ET.SubElement(item, 'title')
-            elem_title.text = escape_for_xml(r.title)
-            elem_diff = ET.SubElement(item, 'difficulty')
-            elem_diff.text = get_chart_name(r.play_style, r.difficulty)
-            elem_notes = ET.SubElement(item, 'notes')
-            elem_notes.text = str(r.notes)
-            elem_score_cur = ET.SubElement(item, 'score')
-            elem_score_cur.text = str(r.score)
-            elem_bp = ET.SubElement(item, 'bp')
-            elem_bp.text = str(r.judge.pr + r.judge.bd)
-            elem_lamp = ET.SubElement(item, 'lamp')
-            elem_lamp.text = str(r.lamp.value)
-            elem_pre_score_cur = ET.SubElement(item, 'pre_score')
-            elem_pre_score_cur.text = str(r.pre_score)
-            elem_pre_bp = ET.SubElement(item, 'pre_bp')
-            elem_pre_bp.text = str(r.pre_bp)
-            elem_pre_lamp = ET.SubElement(item, 'pre_lamp')
-            elem_pre_lamp.text = str(r.pre_lamp.value)
-            elem_dp_unof = ET.SubElement(item, 'dp_unofficial_lv')
+            # self.add_new_element(item, '', )
+            self.add_new_element(item, 'lv', str(songinfo.level) if hasattr(songinfo, 'level') else "")
+            self.add_new_element(item, 'title', escape_for_xml(r.title))
+            self.add_new_element(item, 'difficulty', get_chart_name(r.play_style, r.difficulty))
+            self.add_new_element(item, 'notes', str(r.notes))
+            self.add_new_element(item, 'score', str(r.score))
+            self.add_new_element(item, 'bp', str(r.judge.pr + r.judge.bd))
+            self.add_new_element(item, 'lamp', str(r.lamp.value))
+            self.add_new_element(item, 'pre_score', str(r.pre_score))
+            self.add_new_element(item, 'pre_bp', str(r.pre_bp))
+            self.add_new_element(item, 'pre_lamp', str(r.pre_lamp.value))
             if songinfo:
-                elem_dp_unof.text = songinfo.dp_unofficial
-                elem_sp_12hard = ET.SubElement(item, 'sp_12hard')
-                elem_sp_12hard.text = songinfo.sp12_hard.__str__() if songinfo.sp12_hard else ""
-                elem_sp_12clear = ET.SubElement(item, 'sp_12clear')
-                elem_sp_12clear.text = songinfo.sp12_clear.__str__() if songinfo.sp12_clear else ""
-                elem_sp_11hard = ET.SubElement(item, 'sp_11hard')
-                elem_sp_11hard.text = songinfo.sp11_hard.__str__() if songinfo.sp11_hard else ""
-                elem_sp_11clear = ET.SubElement(item, 'sp_11clear')
-                elem_sp_11clear.text = songinfo.sp11_clear.__str__() if songinfo.sp11_clear else ""
-            elem_opt = ET.SubElement(item, 'opt')
-            elem_opt.text = r.option.__str__()
-            elem_score_rate = ET.SubElement(item, 'scorerate')
-            elem_score_rate.text = str(r.score / r.notes / 2) # リザルト画面からのものしか使わないためnotesがある
+                self.add_new_element(item, 'dp_unofficial_lv', songinfo.dp_unofficial)
+                self.add_new_element(item, 'sp_12hard', songinfo.sp12_hard.__str__() if songinfo.sp12_hard else "")
+                self.add_new_element(item, 'sp_12clear', songinfo.sp12_clear.__str__() if songinfo.sp12_clear else "")
+                self.add_new_element(item, 'sp_11hard', songinfo.sp11_hard.__str__() if songinfo.sp11_hard else "")
+                self.add_new_element(item, 'sp_11clear', songinfo.sp11_clear.__str__() if songinfo.sp11_clear else "")
+            self.add_new_element(item, 'opt', r.option.__str__())
+            self.add_new_element(item, 'scorerate', str(r.score / r.notes / 2)) # リザルト画面からのものしか使わないためnotesがある
             if detailed_result.bpi:
-                elem_bpi = ET.SubElement(item, 'bpi')
-                elem_bpi.text = f"{detailed_result.bpi:.2f}"
-            elem_rankdiff = ET.SubElement(item, 'rankdiff')
+                self.add_new_element(item, 'bpi', f"{detailed_result.bpi:.2f}")
             if detailed_result.score_rate_with_rankdiff:
-                elem_rankdiff.text = ''.join(detailed_result.score_rate_with_rankdiff)
-                elem_rankdiff0 = ET.SubElement(item, 'rankdiff0')
-                elem_rankdiff0.text = detailed_result.score_rate_with_rankdiff[0]
-                elem_rankdiff1 = ET.SubElement(item, 'rankdiff1')
-                elem_rankdiff1.text = detailed_result.score_rate_with_rankdiff[1]
+                self.add_new_element(item, 'rankdiff', ''.join(detailed_result.score_rate_with_rankdiff))
+                self.add_new_element(item, 'rankdiff0', detailed_result.score_rate_with_rankdiff[0])
+                self.add_new_element(item, 'rankdiff1', detailed_result.score_rate_with_rankdiff[1])
     
         # xml出力
         tree = ET.ElementTree(root)
         ET.indent(tree, space="    ")
         tree.write(Path('out')/'today_update.xml', encoding='utf-8', xml_declaration=True)
 
-    def write_history_cursong_xml(title:str, style:play_style, difficulty:difficulty):
+    def add_new_element(self, root, name, value):
+        elem = ET.SubElement(root, name)
+        if value:
+            elem.text = value
+
+    def write_history_cursong_xml(self, title:str, style:play_style, difficulty:difficulty, battle:bool=None):
         """指定された曲のプレーログを出力
 
         Args:
@@ -495,7 +480,80 @@ class ResultDatabase:
             style (play_style): _description_
             difficulty (difficulty): _description_
         """
-        pass
+        os.makedirs('out', exist_ok=True)
+        root = ET.Element('Results')
+        
+        results = self.search(title=title, style=style, difficulty=difficulty)
+        best_score = 0
+        best_score_opt = None
+        detail = None
+        '''best scoreのもののみでよいのでdetailed resultを残す'''
+        best_bp = 99999999
+        best_bp_opt = None
+        best_lamp = 0
+        best_lamp_opt = None
+        # 集計
+        target:List[DetailedResult] = []
+        for r in results:
+            if r.result.detect_mode != detect_mode.result:
+                continue
+            if battle and style == play_style.dp and r.result.option.battle != battle:
+                continue
+            target.append(r)
+            if r.result.score > best_score:
+                best_score = r.result.score
+                best_score_opt = r.result.option
+                detail = r
+            if r.result.lamp.value > best_lamp:
+                best_lamp = r.result.lamp.value
+                best_lamp_opt = r.result.option
+            if r.result.judge.pr+r.result.judge.bd < best_bp:
+                best_bp = r.result.judge.pr+r.result.judge.bd
+                best_bp_opt = r.result.option
+        last_played_time = results[0].result.timestamp
+
+        # 出力
+        # self.add_new_element(root, '', )
+        self.add_new_element(root, 'lv', str(detail.songinfo.level) if hasattr(detail.songinfo, 'level') else "")
+        self.add_new_element(root, 'music', escape_for_xml(title))
+        self.add_new_element(root, 'difficulty', get_chart_name(style, difficulty))
+        self.add_new_element(root, 'notes', str(detail.result.notes))
+        self.add_new_element(root, 'last_played', str(datetime.datetime.fromtimestamp(last_played_time).strftime('%Y/%m/%d')))
+        self.add_new_element(root, 'best_lamp', str(best_lamp))
+        self.add_new_element(root, 'best_lamp_opt', best_lamp_opt.__str__())
+        self.add_new_element(root, 'best_bp', str(best_bp))
+        self.add_new_element(root, 'best_bp_opt', best_bp_opt.__str__())
+        self.add_new_element(root, 'best_bprate', str(best_bp / detail.result.notes))
+        self.add_new_element(root, 'best_score', str(best_score))
+        self.add_new_element(root, 'best_score_opt', best_score_opt.__str__())
+        self.add_new_element(root, 'best_scorerate', str(best_score / detail.result.notes / 2))
+        if detail.score_rate_with_rankdiff:
+            self.add_new_element(root, 'rankdiff', ''.join(detail.score_rate_with_rankdiff))
+            self.add_new_element(root, 'rankdiff0', detail.score_rate_with_rankdiff[0])
+            self.add_new_element(root, 'rankdiff1', detail.score_rate_with_rankdiff[1])
+        if detail.songinfo:
+            self.add_new_element(root, 'dp_unofficial_lv', detail.songinfo.dp_unofficial)
+            self.add_new_element(root, 'sp_12hard', detail.songinfo.sp12_hard.__str__() if detail.songinfo.sp12_hard else "")
+            self.add_new_element(root, 'sp_12clear', detail.songinfo.sp12_clear.__str__() if detail.songinfo.sp12_clear else "")
+            self.add_new_element(root, 'sp_11hard', detail.songinfo.sp11_hard.__str__() if detail.songinfo.sp11_hard else "")
+            self.add_new_element(root, 'sp_11clear', detail.songinfo.sp11_clear.__str__() if detail.songinfo.sp11_clear else "")
+        for r in target:
+            item = ET.SubElement(root, 'item')
+            self.add_new_element(item, 'date', str(datetime.datetime.fromtimestamp(r.result.timestamp).strftime('%Y/%m/%d')))
+            self.add_new_element(item, 'lamp', str(r.result.lamp.value))
+            self.add_new_element(item, 'score', str(r.result.score))
+            self.add_new_element(item, 'scorerate', str(r.result.score/r.result.notes/2))
+            self.add_new_element(item, 'bp', str(r.result.bp))
+            self.add_new_element(item, 'bprate', str(r.result.bp/r.result.notes))
+            self.add_new_element(item, 'opt', r.result.option.__str__())
+            self.add_new_element(item, 'rankdiff', ''.join(r.score_rate_with_rankdiff))
+            self.add_new_element(item, 'rankdiff0', r.score_rate_with_rankdiff[0])
+            self.add_new_element(item, 'rankdiff1', r.score_rate_with_rankdiff[1])
+
+        # xml出力
+        tree = ET.ElementTree(root)
+        ET.indent(tree, space="    ")
+        tree.write(Path('out')/'history_cursong.xml', encoding='utf-8', xml_declaration=True)
 
     def __str__(self):
         out = ''

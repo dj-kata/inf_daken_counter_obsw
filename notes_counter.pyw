@@ -440,6 +440,9 @@ class MainWindow(MainWindowUI):
         detailed_result = self.screen_reader.read_music_select_screen()
         result = detailed_result.result
         result.timestamp = 0 # 更新日は不明という扱いにする
+        # xml更新
+        self.result_database.write_history_cursong_xml(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=False)
+        # 自己べ登録
         if self.result_database.add(result):
             self.statusBar().showMessage(f"選曲画面から自己ベストを登録しました。 -> {result}", 10000)
             self.result_database.save()
@@ -461,6 +464,9 @@ class MainWindow(MainWindowUI):
             result.timestamp = self.result_timestamp
             if result and result.chart_id:
                 if result == self.result_pre:
+                    # xml更新
+                    self.result_database.write_history_cursong_xml(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=result.option.battle)
+
                     # リザルトを保存
                     if self.result_database.add(result):
                         self.result_database.save()
