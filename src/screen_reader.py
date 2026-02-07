@@ -5,6 +5,7 @@ from PIL import Image
 import numpy as np
 import imagehash
 import glob
+import copy
 
 import cv2
 
@@ -139,8 +140,24 @@ class ScreenReader:
             self.last_select_difficulty = diff
             self.last_select_style = style
         return ret
+    
+    def read_play_screen(self, judge:Judge) -> OneResult:
+        '''プレー画面からOneResultを作成'''
+        result = OneResult(
+            title=self.screen_reader.last_select_title,
+            play_style=self.screen_reader.last_select_style,
+            difficulty=self.screen_reader.last_select_difficulty,
+            lamp=clear_lamp.failed,
+            timestamp=int(datetime.datetime.now().timestamp()),
+            judge=copy.deepcopy(judge), # copy使わなくてもいいかも? TODO
+            dead=False, # 不明だがとりあえず全てFalseとしておく
+            playspeed=None, # 速度変更中のクイックリトライは正しく記録できないが、ノーツ数しか見ないのでOKとする。
+            option=None,    # battle利用時のクイックリトライは正しく記録できないが、ノーツ数しか見ないのでOKとする。
+            detect_mode=detect_mode.play
+        )
+        return result
         
-    def read_play_screen(self, mode:play_mode):
+    def get_judge_from_play_screen(self, mode:play_mode):
         """プレー画面から判定を取得"""
         try:
             judge = self.detect_judge(mode)

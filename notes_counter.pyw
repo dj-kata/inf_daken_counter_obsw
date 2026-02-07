@@ -361,31 +361,15 @@ class MainWindow(MainWindowUI):
             self.last_play_mode = self.screen_reader.detect_playside()
 
         if trigger == 'play_end': # プレー画面の終わりに実行
-            self.last_play_mode = self.screen_reader.detect_playside()
-            logger.debug(f"current_judge: {self.current_judge}")
-            if self.current_judge:
-                # リスタートしている場合、選曲画面で最後に選択した曲として登録
-                if self.current_judge.notes() > 0:
-                    result = OneResult(
-                        title=self.screen_reader.last_select_title,
-                        play_style=self.screen_reader.last_select_style,
-                        difficulty=self.screen_reader.last_select_difficulty,
-                        lamp=clear_lamp.failed,
-                        timestamp=int(datetime.datetime.now().timestamp()),
-                        judge=copy.deepcopy(self.current_judge),
-                        dead=False, # 不明だがとりあえず全てFalseとしておく
-                        playspeed=None, # 速度変更中のクイックリトライは正しく記録できないが、ノーツ数しか見ないのでOKとする。
-                        option=None,    # battle利用時のクイックリトライは正しく記録できないが、ノーツ数しか見ないのでOKとする。
-                        detect_mode=detect_mode.play
-                    )
-                    add_result = self.result_database.add(result)
-                    logger.debug(f"add_result:{add_result}, result:{result}")
-                    self.result_database.save()
+            if self.current_judge and  self.current_judge.notes() > 0:
+                result = self.screen_reader.read_play_screen(self.current_judge)
+                add_result = self.result_database.add(result)
+                self.result_database.save()
 
-                    # 統計情報の更新
-                    self.play_count += 1
-                    self.today_judge += self.current_judge
-                    self.current_judge.reset()
+                # 統計情報の更新
+                self.play_count += 1
+                self.today_judge += self.current_judge
+                self.current_judge.reset()
 
         if trigger == 'result_start': # リザルト画面の先頭で実行
             self.result_pre = None # 1つ前の認識結果
@@ -455,18 +439,16 @@ class MainWindow(MainWindowUI):
         """選曲画面での処理"""
         detailed_result = self.screen_reader.read_music_select_screen()
         result = detailed_result.result
-        result.pre_score,result.pre_bp,result.pre_lamp = self.result_database.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=result.option.battle)
-        # logger.debug(f"best = score:{best_score},bp:{best_bp}, lamp:{best_lamp}")
-        if result.is_updated():
-            if self.result_database.add(result):
-                self.statusBar().showMessage(f"選曲画面から自己ベストを登録しました。 -> {result}", 10000)
-                self.result_database.save()
+        result.timestamp = 0 # 更新日は不明という扱いにする
+        if self.result_database.add(result):
+            self.statusBar().showMessage(f"選曲画面から自己ベストを登録しました。 -> {result}", 10000)
+            self.result_database.save()
     
     def process_play_mode(self):
         """プレー画面での処理"""
-        tmp = self.screen_reader.read_play_screen(self.last_play_mode)
+        tmp = self.screen_reader.get_judge_from_play_screen(self.last_play_mode)
         if tmp:
-            self.current_judge = self.screen_reader.read_play_screen(self.last_play_mode)
+            self.current_judge = tmp
         # logger.debug(f"mode:{self.last_play_mode}, self.current_judge = {self.current_judge}")
     
     def process_result_mode(self):

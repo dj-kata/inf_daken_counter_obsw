@@ -77,7 +77,7 @@ class Judge:
     @classmethod
     def from_list(cls, data: List[str]):
         """
-        read_play_screenの出力をそのまま受けるためのファクトリメソッド
+        get_judge_from_play_screenの出力をそのまま受けるためのファクトリメソッド
         Judge.from_list(data) で呼び出せる
         """
         tmp = list(map(int, data))
