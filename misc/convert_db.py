@@ -211,6 +211,12 @@ def set_lvall(style:play_style, lv:int, titles:dict, sdb:SongDatabase):
             diff = difficulty.another
         elif tmp_d == 'LEGGENDARIA':
             diff = difficulty.leggendaria
+        elif tmp_d == 'BEGINNER':
+            diff = difficulty.beginner
+        elif tmp_d == 'NORMAL':
+            diff = difficulty.normal
+        elif tmp_d == 'HYPER':
+            diff = difficulty.hyper
         new = OneSongInfo(
             title = title,
             play_style = style,
@@ -299,5 +305,10 @@ print(sdb.search(chart_id))
 # sdb.songs[chart_id].bpi_title=None
 # sdb.songs[chart_id].bpi_coef=None
 # sdb.songs[chart_id].level = 11
+
+# 10以下も登録
+for i in range(1, 11):
+    set_lvall(play_style.sp, i, levels, sdb)
+    set_lvall(play_style.dp, i, levels, sdb)
 
 sdb.save()
