@@ -18,8 +18,8 @@
             --color-upper-border: #055;
             --game-area-ratio: 5;
             --info-area-ratio: 1;
-            --clock-ratio: 1;
-            --comment-ratio: 6;
+            --clock-ratio: 0.6;
+            --comment-ratio: 6.4;
             --bottom-left-ratio: 5;
             --bottom-right-ratio: 5.7;
             
@@ -141,169 +141,13 @@
             border: 10px solid var(--color-bg);
             overflow: hidden;
             position: relative;
-            padding-bottom: 2px;
             display: flex;
             justify-content: center;
             align-items: center;
         }
-
-        /* 時計のスタイル */
-        .clock-container {
-            background: transparent;
-            border: 2px solid var(--color-frame);
-            border-radius: 15px;
-            padding: 15px 25px;
-            box-shadow: 0 0 20px var(--color-shadow1);
-            position: relative;
-            animation: pulse-border 3s ease-in-out infinite;
-            text-align: center;
-            width: 90%;
-            height: 90%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
         
-        @keyframes pulse-border {
-            0%, 100% {
-                box-shadow: 0 0 20px var(--color-shadow1);
-            }
-            50% {
-                box-shadow: 0 0 20px var(--color-shadow2);
-            }
-        }
-        
-        .live-indicator {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 8px;
-        }
-        
-        .live-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--color-live);
-            border-radius: 50%;
-            margin-right: 6px;
-            box-shadow: 0 0 15px var(--color-live);
-            animation: blink 1.5s ease-in-out infinite;
-        }
-        
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-        
-        .live-text {
-            color: var(--color-live);
-            font-size: 16px;
-            font-weight: 900;
-            text-shadow: 0 0 15px var(--color-live);
-            letter-spacing: 2px;
-            font-family: 'Orbitron', monospace;
-        }
-        
-        .time-display {
-            color: var(--color-time);
-            font-size: 32px;
-            font-weight: 700;
-            text-align: center;
-            text-shadow: 
-                0 0 15px var(--color-time),
-                0 0 30px var(--color-time);
-            letter-spacing: 2px;
-            font-variant-numeric: tabular-nums;
-            font-family: 'dseg14classic-bold', 'Orbitron', monospace;
-            margin-bottom: 5px;
-        }
-        td.clock{
-            min-width: 24px;
-            max-width: 24px;
-            text-align: right;
-        }
-        
-        .flash {
-            color: var(--color-flash) !important;
-            text-shadow: 
-                0 0 15px var(--color-flash),
-                0 0 30px var(--color-flash) !important;
-            animation: flash-glow 0.5s ease-in-out infinite alternate;
-        }
-        
-        @keyframes flash-glow {
-            0% { 
-                text-shadow: 
-                    0 0 15px var(--color-flash),
-                    0 0 30px var(--color-flash);
-            }
-            100% { 
-                text-shadow: 
-                    0 0 25px var(--color-flash),
-                    0 0 50px var(--color-flash);
-            }
-        }
-        
-        .date-display {
-            color: var(--color-date);
-            font-size: 12px;
-            text-align: center;
-            font-weight: 400;
-            text-shadow: 0 0 10px var(--color-date);
-            letter-spacing: 1px;
-            font-family: 'Orbitron', monospace;
-        }
-        
-        .corner-decoration {
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            border: 1px solid var(--color-frame);
-        }
-        
-        .corner-decoration.top-left {
-            top: 5px;
-            left: 5px;
-            border-right: none;
-            border-bottom: none;
-        }
-        
-        .corner-decoration.top-right {
-            top: 5px;
-            right: 5px;
-            border-left: none;
-            border-bottom: none;
-        }
-        
-        .corner-decoration.bottom-left {
-            bottom: 5px;
-            left: 5px;
-            border-right: none;
-            border-top: none;
-        }
-        
-        .corner-decoration.bottom-right {
-            bottom: 5px;
-            right: 5px;
-            border-left: none;
-            border-top: none;
-        }
-        
-        .scanning-line {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--color-scanning-line), transparent);
-            animation: scan 4s linear infinite;
-            z-index: 10;
-        }
-        
-        @keyframes scan {
-            0% { top: 0; opacity: 1; }
-            100% { top: 100%; opacity: 0; }
+        .clock-area .scaled-iframe {
+            border: none;
         }
 
         .comment-area {
@@ -336,11 +180,11 @@
             flex-direction: row;
             background-color: var(--color-bg);
             padding: 10px;
-            gap: 20px;
+            gap: 10px;
         }
 
         .bottom-today {
-            flex: 10;
+            flex: 6;
             border-radius: 8px;
             overflow: hidden;
             position: relative;
@@ -354,7 +198,7 @@
         }
 
         .bottom-history {
-            flex: 9;
+            flex: 5;
             overflow: hidden;
             position: relative;
             background-color: transparent;
@@ -363,7 +207,7 @@
         }
 
         .bottom-graph {
-            flex: 7;
+            flex: 3;
             overflow: hidden;
             position: relative;
             background-color: transparent;
@@ -455,35 +299,9 @@
             
             <!-- 右上：時計・コメントエリア -->
             <div class="info-area">
-                <!-- 時計エリア（直接埋め込み） -->
-                <div class="clock-area">
-                    <div class="clock-container">
-                        <div class="corner-decoration top-left"></div>
-                        <div class="corner-decoration top-right"></div>
-                        <div class="corner-decoration bottom-left"></div>
-                        <div class="corner-decoration bottom-right"></div>
-                        
-                        <div class="scanning-line"></div>
-                        
-                        <div class="live-indicator">
-                            <div class="live-dot"></div>
-                            <div class="live-text">LIVE</div>
-                        </div>
-                        
-                        <div class="time-display" id="time">
-                            <table>
-                                <td class="clock" id="hour1"></td>
-                                <td class="clock" id="hour2"></td>
-                                <td>:</td>
-                                <td class="clock" id="min1"></td>
-                                <td class="clock" id="min2"></td>
-                                <td>:</td>
-                                <td class="clock" id="sec1"></td>
-                                <td class="clock" id="sec2"></td>
-                            </table>
-                        </div>
-                        <div class="date-display" id="date">2024.01.01</div>
-                    </div>
+                <!-- 時計エリア（外部iframe、スケーリング対応） -->
+                <div class="clock-area" id="scaled-container-clock">
+                    <iframe class="scaled-iframe" id="scaled-iframe-clock" src="./clock.html" scrolling="no"></iframe>
                 </div>
 
                 <div class="comment-area">
@@ -532,7 +350,7 @@
     </div>
 
     <script>
-        // 時計更新関数
+        // 時計更新関数（シンプル版）
         function updateTime() {
             const now = new Date();
             
@@ -540,15 +358,6 @@
             const enableFlash = getComputedStyle(document.documentElement).getPropertyValue('--enable-flash').trim();
             const flashHHRaw = getComputedStyle(document.documentElement).getPropertyValue('--flash-hh').trim();
             const flashMMRaw = getComputedStyle(document.documentElement).getPropertyValue('--flash-mm').trim();
-            const enableScanLine = getComputedStyle(document.documentElement).getPropertyValue('--enable-scanning-line').trim();
-            
-            if (enableScanLine==='1'){
-                const scanLine = document.querySelector('.scanning-line');
-                if (scanLine) scanLine.style.display = 'block';
-            } else {
-                const scanLine = document.querySelector('.scanning-line');
-                if (scanLine) scanLine.style.display = 'none';
-            }
             
             // 数値として解釈してから2桁文字列に変換
             const flashHH = String(parseInt(flashHHRaw, 10)).padStart(2, '0');
@@ -559,59 +368,27 @@
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
             
-            console.log('Clock Update:', hours + ':' + minutes + ':' + seconds);
-            
             // 日付を取得
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const day = String(now.getDate()).padStart(2, '0');
 
-            // 時計の各セルに値を設定（要素存在チェック付き）
-            const hour1El = document.getElementById('hour1');
-            const hour2El = document.getElementById('hour2');
-            const min1El = document.getElementById('min1');
-            const min2El = document.getElementById('min2');
-            const sec1El = document.getElementById('sec1');
-            const sec2El = document.getElementById('sec2');
-            const dateEl = document.getElementById('date');
-            
-            if (hour1El) hour1El.textContent = hours[0];
-            if (hour2El) hour2El.textContent = hours[1];
-            if (min1El) min1El.textContent = minutes[0];
-            if (min2El) min2El.textContent = minutes[1];
-            if (sec1El) sec1El.textContent = seconds[0];
-            if (sec2El) sec2El.textContent = seconds[1];
-            
-            // フラッシュクラスをリセット
-            document.querySelectorAll('.time-cell').forEach(cell => {
-                cell.classList.remove('flash');
-            });
+            let timeHTML = '';
             
             // フラッシュ機能が有効で、指定時刻と一致する場合
             if (enableFlash === '1' && hours === flashHH && minutes === flashMM) {
-                if (hour1El) hour1El.classList.add('flash');
-                if (hour2El) hour2El.classList.add('flash');
-                if (min1El) min1El.classList.add('flash');
-                if (min2El) min2El.classList.add('flash');
-                if (sec1El) sec1El.classList.remove('flash');
-                if (sec2El) sec2El.classList.remove('flash');
+                timeHTML = `<span class="flash">${hours}</span>:<span class="flash">${minutes}</span>:${seconds}`;
             } else if (enableFlash === '1' && minutes === flashHH && seconds === flashMM) {
-                if (hour1El) hour1El.classList.remove('flash');
-                if (hour2El) hour2El.classList.remove('flash');
-                if (min1El) min1El.classList.add('flash');
-                if (min2El) min2El.classList.add('flash');
-                if (sec1El) sec1El.classList.add('flash');
-                if (sec2El) sec2El.classList.add('flash');
-            }else{
-                if (hour1El) hour1El.classList.remove('flash');
-                if (hour2El) hour2El.classList.remove('flash');
-                if (min1El) min1El.classList.remove('flash');
-                if (min2El) min2El.classList.remove('flash');
-                if (sec1El) sec1El.classList.remove('flash');
-                if (sec2El) sec2El.classList.remove('flash');
+                timeHTML = `${hours}:<span class="flash">${minutes}</span>:<span class="flash">${seconds}</span>`;
+            } else {
+                timeHTML = `${hours}:${minutes}:${seconds}`;
             }
             
-            // 日付表示を更新
+            // 表示を更新
+            const timeEl = document.getElementById('time');
+            const dateEl = document.getElementById('date');
+            
+            if (timeEl) timeEl.innerHTML = timeHTML;
             if (dateEl) dateEl.textContent = `${year}.${month}.${day}`;
         }
 
@@ -737,9 +514,10 @@
         // iframe制御とスケーリング設定
         $(function(){
             // スケーリング対応iframeの設定
+            setupScaledIframe('scaled-iframe-clock', 'scaled-container-clock', 520, 160, 'fit');
             setupScaledIframe('scaled-iframe-1', 'scaled-container-1', 1500, 400, 'fit');
             setupScaledIframe('scaled-iframe-history', 'scaled-container-history', 1500, 440, 'fit');
-            setupScaledIframe('scaled-iframe-graph', 'scaled-container-graph', 600, 230, 'fit');
+            setupScaledIframe('scaled-iframe-graph', 'scaled-container-graph', 500, 230, 'fit');
 
             // CSS制御
             $('#scaled-iframe-1').on('load', function(){
@@ -750,6 +528,26 @@
                     console.warn('CSS制御失敗（同一オリジン制約）: scaled-iframe-1');
                 }
             });
+            
+            // 時計iframeのCSS制御
+            $('#scaled-iframe-clock').on('load', function(){
+                try {
+                    // 背景を透明に
+                    $(this).contents().find('body').css({
+                        'background': 'transparent',
+                        'margin': '0',
+                        'padding': '0'
+                    });
+                    // clock-containerの余白を削除
+                    $(this).contents().find('.clock-container').css({
+                        'margin': '0',
+                        'padding': '5px'
+                    });
+                    console.log('CSS制御成功: scaled-iframe-clock');
+                } catch(e) {
+                    console.warn('CSS制御失敗（同一オリジン制約）: scaled-iframe-clock', e);
+                }
+            });
 
             // info_grid用のデータ読み込み開始
             setInterval(loadInfoGridXml, 1000);
@@ -758,10 +556,6 @@
             // メッセージ更新開始
             setInterval(updateMessage, 1000);
             updateMessage();
-
-            // 時計更新開始
-            updateTime();
-            setInterval(updateTime, 1000);
         });
 
         // メッセージ設定関数
