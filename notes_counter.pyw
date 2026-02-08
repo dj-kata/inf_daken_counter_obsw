@@ -144,7 +144,7 @@ class MainWindow(MainWindowUI):
     
     def open_config_dialog(self):
         """設定ダイアログを開く"""
-        dialog = ConfigDialog(self.config, self)
+        dialog = ConfigDialog(self.config, self.result_database, self.screen_reader, self)
         if dialog.exec():
             # 設定が保存された場合、全てのクラスに設定を反映
             self.update_all_configs()

@@ -14,15 +14,19 @@ import os
 from src.config import Config
 from src.classes import music_pack, config_autosave_image, config_modify_rivalarea
 from src.logger import get_logger
+from src.result import ResultDatabase
+from src.screen_reader import ScreenReader
 logger = get_logger(__name__)
 
 class ConfigDialog(QDialog):
     """設定ダイアログクラス"""
     
-    def __init__(self, config: Config, parent=None):
+    def __init__(self, config: Config, result_database:ResultDatabase=None, screen_reader:ScreenReader=None, parent=None):
         super().__init__(parent)
         
         self.config = config
+        self.result_database = result_database
+        self.screen_reader = screen_reader
         
         # ダイアログ設定
         self.setWindowTitle("基本設定")
@@ -48,6 +52,7 @@ class ConfigDialog(QDialog):
         tab_widget.addTab(self.create_feature_tab(), "機能設定")
         tab_widget.addTab(self.create_music_pack_tab(), "楽曲パック")
         tab_widget.addTab(self.create_image_save_tab(), "画像保存")
+        tab_widget.addTab(self.create_data_import_tab(), "データ登録")  # 追加
         
         # ボタン
         button_box = QDialogButtonBox(
@@ -238,7 +243,90 @@ class ConfigDialog(QDialog):
         layout.addStretch()
         
         return widget
-    
+
+    def create_data_import_tab(self):
+        """データ登録タブ"""
+        widget = QWidget()
+        layout = QVBoxLayout()
+        widget.setLayout(layout)
+
+        # 画像からの登録グループ
+        import_group = QGroupBox("画像からリザルトを登録")
+        import_layout = QVBoxLayout()
+        import_group.setLayout(import_layout)
+
+        # 説明ラベル
+        desc_label = QLabel("保存済みのリザルト画像からプレーログを登録します")
+        import_layout.addWidget(desc_label)
+
+        # 登録ボタン
+        self.import_button = QPushButton("フォルダから画像を読み込んで登録")
+        self.import_button.clicked.connect(self.on_import_from_images)
+        import_layout.addWidget(self.import_button)
+
+        # 進捗表示用ラベル
+        self.import_status_label = QLabel("")
+        import_layout.addWidget(self.import_status_label)
+
+        layout.addWidget(import_group)
+        layout.addStretch()
+
+        return widget
+
+    def on_import_from_images(self):
+        """画像からリザルトを登録"""
+        if not self.result_database or not self.screen_reader:
+            self.import_status_label.setText("エラー: 登録機能が利用できません")
+            return
+
+        # フォルダ選択
+        folder_path = QFileDialog.getExistingDirectory(
+            self, "リザルト画像のフォルダを選択"
+        )
+
+        if not folder_path:
+            return
+
+        self.import_status_label.setText("読み込み中...")
+        self.import_button.setEnabled(False)
+
+        try:
+            import glob
+            from pathlib import Path
+
+            # pngファイルを取得
+            png_files = glob.glob(str(Path(folder_path) / "*.png"))
+
+            registered_count = 0
+            total_count = len(png_files)
+
+            for i, png_file in enumerate(png_files):
+                # 進捗表示
+                self.import_status_label.setText(f"処理中... {i+1}/{total_count}")
+
+                self.screen_reader.update_screen_from_file(png_file)
+                if self.screen_reader.is_result():
+                    r = self.screen_reader.read_result_screen()
+                    if r:
+                        # logger.info(f'[RESULT] {r}')
+                        registered_count += 1
+                        r.result.timestamp = os.path.getmtime(png_file)
+                        self.result_database.add(r.result)
+
+            # 完了メッセージ
+            self.import_status_label.setText(
+                f"完了: {total_count}件中{registered_count}件を登録しました"
+            )
+
+            self.result_database.save()
+            self.result_database.results.sort()
+
+        except Exception as e:
+            self.import_status_label.setText(f"エラー: {str(e)}")
+            logger.error(f"画像読み込みエラー: {e}")
+        finally:
+            self.import_button.setEnabled(True)
+
     def load_config_values(self):
         """設定値を読み込んでUIに反映"""
         # 機能設定
