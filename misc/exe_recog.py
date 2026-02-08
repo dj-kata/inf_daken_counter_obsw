@@ -51,6 +51,12 @@ if __name__ == '__main__':
     # print(len(rdb.results))
 
     rdb.write_today_updates_xml(datetime.datetime.now().timestamp() - 4*3600)
-    # rdb.write_history_cursong_xml('DISPARATE', play_style.sp, difficulty.another)
+    rdb.write_history_cursong_xml('EMERALDAS', play_style.sp, difficulty.another)
     rdb.write_graph_xml(datetime.datetime.now().timestamp()-4*3600)
-    print(rdb)
+    # print(rdb)
+
+    print(f'len = {len(rdb.results)}')
+
+    # rdb.write_best_csv()
+    a = rdb.get_all_best_results()
+    rdb.write_best_csv()

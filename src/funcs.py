@@ -61,6 +61,13 @@ def escape_for_xml(input):
     '''XMLに使えない文字列を変換'''
     return input.replace('&', '&amp;').replace('<','&lt;').replace('>','&gt;').replace('"','&quot;').replace("'",'&apos;')
 
+def escape_for_csv(input):
+    '''CSVに使えない文字列を変換'''
+    out = input
+    if 'LOVE2 シュガ' in input:
+        out = 'LOVE2 シュガ→'
+    return out
+
 def calc_rankdiff(notes, score):
     """ノーツ数をスコアを受け取り、AAA+30みたいな表記をタプルで返す"""
     target,diff = ('', '') # AAA, -50 みたいな結果を返す

@@ -124,6 +124,8 @@ class PklImportWorker(QThread):
                                               ).timestamp()
                 option = PlayOption(None)
                 option.convert_from_v2(item[-2])
+                notes = item[3]
+                mode = detect_mode.result
                 try:
                     result = OneResult(title=item[1],
                                        play_style=style,
@@ -132,11 +134,12 @@ class PklImportWorker(QThread):
                                        timestamp=int(timestamp),
                                        playspeed=None,
                                        option=option,
-                                       detect_mode=detect_mode.select,
+                                       detect_mode=mode,
                                        is_arcade = False,
                                        judge=None,
                                        score=item[9],
                                        bp=bp,
+                                       notes=notes,
                     )
                     
                     # リザルト登録処理

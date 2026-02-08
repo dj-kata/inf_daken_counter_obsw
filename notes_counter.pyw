@@ -514,6 +514,9 @@ class MainWindow(MainWindowUI):
         # 終了時ツイート
         if self.config.enable_autotweet:
             self.tweet()
+
+        # csv出力
+        self.result_database.write_best_csv()
         
         # OBS切断
         if self.obs_manager.is_connected:

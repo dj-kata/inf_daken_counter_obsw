@@ -23,6 +23,22 @@ class clear_lamp(Enum):
     fc     = 7
     """フルコンボ"""
 
+    def __str__(self):
+        if self == clear_lamp.noplay:
+            return 'NO PLAY'
+        elif self == clear_lamp.failed:
+            return 'FAILED'
+        elif self == clear_lamp.assist:
+            return 'A-CLEAR'
+        elif self == clear_lamp.easy:
+            return 'E-CLEAR'
+        elif self == clear_lamp.clear:
+            return 'CLEAR'
+        elif self == clear_lamp.exh:
+            return 'EXH-CLEAR'
+        elif self == clear_lamp.fc:
+            return 'F-COMBO'
+
 class play_style(Enum):
     """SP/DPのどれであるかを表す列挙型クラス。DBxはここでは考慮しない。"""
     sp  = 0

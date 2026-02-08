@@ -4,14 +4,15 @@ from .funcs import *
 from .songinfo import *
 from .logger import get_logger
 logger = get_logger(__name__)
-import datetime
 import os
+import sys
+import datetime
 import bz2, pickle
 import traceback
 import logging
 import logging, logging.handlers
 import math
-import sys
+import csv
 from typing import List
 # リザルト用のクラスを定義
 
@@ -101,6 +102,8 @@ class PlayOption():
     def __str__(self):
         out = 'unknown'
         if self.valid:
+            if self.battle:
+                out += 'BATTLE, '
             if not self.arrange:
                 out = 'REGULAR'
             else:
@@ -109,8 +112,6 @@ class PlayOption():
                 out += ',FLIP'
             if self.assist:
                 out += f',{self.assist}'
-            if self.battle:
-                out += ',BATTLE'
         return out
 
 class OneResult:
@@ -470,7 +471,68 @@ class ResultDatabase:
             else:
                 break
         return ret
-    
+
+    def get_all_best_results(self):
+        """全譜面のベストリザルトを集計（battle有効/無効を別々に集計）
+
+        Returns:
+            dict: (title, play_style, difficulty, battle)のtupleをキーとした辞書。
+                  各要素は以下のキーを持つ辞書:
+                - best_score: ベストスコア
+                - best_score_option: ベストスコア時のオプション
+                - min_bp: 最小BP
+                - min_bp_option: 最小BP時のオプション
+                - last_play_timestamp: 最終プレー日のタイムスタンプ
+                - best_lamp: ベストランプ
+        """
+        best_results = {}
+
+        for result in self.results:
+            # battleの判定
+            battle = result.option.battle if result.option else None
+
+            # キーをtupleで作成
+            key = (result.title, result.play_style, result.difficulty, battle)
+
+            # 初期化
+            if key not in best_results:
+                best_results[key] = {
+                    'best_score': 0,
+                    'best_score_option': None,
+                    'min_bp': 99999999,
+                    'min_bp_option': None,
+                    'last_play_timestamp': 0,
+                    'best_lamp': clear_lamp(0),
+                }
+
+            entry = best_results[key]
+
+            # ベストスコア更新
+            if result.score and result.score > entry['best_score']:
+                entry['best_score'] = result.score
+                entry['best_score_option'] = result.option
+
+            # 最小BP更新
+            bp = None
+            if result.judge:
+                bp = result.judge.bd + result.judge.pr
+            elif result.bp:
+                bp = result.bp
+
+            if bp is not None and bp < entry['min_bp']:
+                entry['min_bp'] = bp
+                entry['min_bp_option'] = result.option
+
+            # 最終プレー日更新
+            if result.timestamp > entry['last_play_timestamp']:
+                entry['last_play_timestamp'] = result.timestamp
+
+            # ベストランプ更新
+            if result.lamp and result.lamp.value > entry['best_lamp'].value:
+                entry['best_lamp'] = result.lamp
+
+        return best_results
+
     def write_graph_xml(self, start_time:int):
         '''本日のノーツ数用xmlを出力'''
         os.makedirs('out', exist_ok=True)
@@ -573,7 +635,6 @@ class ResultDatabase:
             style (play_style): _description_
             difficulty (difficulty): _description_
         """
-        os.makedirs('out', exist_ok=True)
         root = ET.Element('Results')
         songinfo = self.song_database.search(title=title, play_style=style, difficulty=difficulty)
         results = self.search(title=title, style=style, difficulty=difficulty)
@@ -680,7 +741,53 @@ class ResultDatabase:
         # xml出力
         tree = ET.ElementTree(root)
         ET.indent(tree, space="    ")
+        os.makedirs('out', exist_ok=True)
         tree.write(Path('out')/'history_cursong.xml', encoding='utf-8', xml_declaration=True)
+
+    def write_best_csv(self):
+        header = ['LV', 'Title', 'mode', 'Lamp', 'Score', '(rate)', 'BP', 'Opt(best score)', 'Opt(min bp)', 'Last Played']
+        os.makedirs('out', exist_ok=True)
+
+        # 全曲の自己べを取得
+        bests = self.get_all_best_results()
+
+        with open(Path('.')/'inf_score.csv', 'w') as f:
+            writer = csv.writer(f, lineterminator="\n")
+            writer.writerow(header)
+
+            for key,value in zip(bests.keys(), bests.values()):
+                row = []
+                lv = ''
+                title = escape_for_csv(key[0])
+                mode = get_chart_name(key[1], key[2])
+                if key[3]: # DBx
+                    mode = 'DB' + mode[-1]
+                lamp = value['best_lamp'].__str__()
+                score = value['best_score']
+                best_score_opt = value['best_score_option'].__str__()
+                if best_score_opt in ('unknown', 'None') or not best_score_opt:
+                    best_score_opt = '?'
+                bp = value['min_bp']
+                if bp == 99999999:
+                    bp = ''
+                min_bp_opt = value['min_bp_option'].__str__()
+                if min_bp_opt in ('unknown', 'None') or not min_bp_opt:
+                    min_bp_opt = '?'
+                timestamp = datetime.datetime.fromtimestamp(value['last_play_timestamp'])
+                row = [
+                    lv,
+                    title,
+                    mode,
+                    lamp,
+                    score,
+                    '', # rate
+                    bp,
+                    best_score_opt,
+                    min_bp_opt,
+                    timestamp
+                ]
+                writer.writerow(row)
+
 
     def __str__(self):
         out = ''
