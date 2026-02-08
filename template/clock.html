@@ -53,8 +53,11 @@
             /* box-shadow: 0 0 30px var(--color-shadow1); */
             position: relative;
             /* animation: pulse-border 3s ease-in-out infinite; */
-            width: 380px;
+            width: 100%;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         
         @keyframes pulse-border {
@@ -70,16 +73,18 @@
             display: flex;
             align-items: center;
             justify-content: left;
-            margin-left: 25px;
             margin-bottom: 5px;
+            width: 380px;
+            /* border: red solid 4px; */
         }
         
         .live-dot {
+            margin-left: 25px;
             width: 12px;
             height: 12px;
             background: var(--color-live);
             border-radius: 50%;
-            margin-right: 10px;
+            margin-right: 20px;
             box-shadow: 0 0 20px var(--color-live);
             animation: blink 1.5s ease-in-out infinite;
         }
@@ -90,7 +95,7 @@
             font-weight: 900;
             text-shadow: 0 0 20px var(--color-live);
             letter-spacing: 3px;
-            margin-right: 55px;
+            margin-right: 5px;
         }
         
         @keyframes blink {
@@ -109,8 +114,9 @@
             letter-spacing: 4px;
             font-variant-numeric: tabular-nums;
             font-family: 'dseg14classic-bold', monospace;
-            width: 280px;
-            display: inline-block;
+            width: 360px;
+            justify-content: left;
+            /* border: red solid 4px; */
         }
         
         .flash {
@@ -159,7 +165,6 @@
             <div class="live-text">LIVE</div>
             <div class="date-display" id="date">2024.01.01</div>
         </div>
-        
         <div class="time-display" id="time">00:00:00</div>
     </div>
 
@@ -205,7 +210,7 @@
             }
             
             // 表示を更新
-            document.getElementById('time').innerHTML = timeHTML;
+            document.getElementById('time').innerHTML = timeHTML+'&nbsp;&nbsp;';
             document.getElementById('date').textContent = `${year}.${month}.${day}`;
         }
         

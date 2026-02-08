@@ -32,7 +32,7 @@
             --original-height: 1080;   /* 元ページの高さ */
             --scale-method: fit;       /* fit | fill | exact */
 
-            --color-bg: #222;
+            --color-bg: #000;
             --primary-color: #00bbbb;
             --secondary-color: #bb00bb;
             --tertiary-color: #00bb00;
@@ -137,13 +137,23 @@
 
         .clock-area {
             flex: var(--clock-ratio);
-            background-color: var(--color-bg);
+            background-color: transparent;
             border: 10px solid var(--color-bg);
             overflow: hidden;
             position: relative;
             display: flex;
             justify-content: center;
             align-items: center;
+        }
+        
+        .clock-area-inner {
+            width: 100%;
+            height: 100%;
+            border: 2px solid #aaaaff;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            background: linear-gradient(135deg, #0a0a1f 0%, #1a1a3e 50%, #0a0a1f 100%);
         }
         
         .clock-area .scaled-iframe {
@@ -180,11 +190,11 @@
             flex-direction: row;
             background-color: var(--color-bg);
             padding: 10px;
-            gap: 10px;
+            gap: 20px;
         }
 
         .bottom-today {
-            flex: 6;
+            flex: 10;
             border-radius: 8px;
             overflow: hidden;
             position: relative;
@@ -198,7 +208,7 @@
         }
 
         .bottom-history {
-            flex: 5;
+            flex: 9;
             overflow: hidden;
             position: relative;
             background-color: transparent;
@@ -207,7 +217,7 @@
         }
 
         .bottom-graph {
-            flex: 3;
+            flex: 5;
             overflow: hidden;
             position: relative;
             background-color: transparent;
@@ -216,7 +226,7 @@
         }
         
         .bottom-camera {
-            flex: 5;
+            flex: 4.65;
             overflow: hidden;
             position: relative;
             background-color: transparent;
@@ -299,9 +309,11 @@
             
             <!-- 右上：時計・コメントエリア -->
             <div class="info-area">
-                <!-- 時計エリア（外部iframe、スケーリング対応） -->
-                <div class="clock-area" id="scaled-container-clock">
-                    <iframe class="scaled-iframe" id="scaled-iframe-clock" src="./clock.html" scrolling="no"></iframe>
+                <!-- 時計エリア（ローカルiframe、スケーリング対応） -->
+                <div class="clock-area">
+                    <div class="clock-area-inner" id="scaled-container-clock">
+                        <iframe class="scaled-iframe" id="scaled-iframe-clock" src="./clock.html" scrolling="no"></iframe>
+                    </div>
                 </div>
 
                 <div class="comment-area">
@@ -342,8 +354,8 @@
             <!-- 空き領域（手元カメラなど用） -->
             <div class="bottom-camera" id="camera-area">
                 <div class="camera-placeholder">
-                    <div>CAMERA AREA</div>
-                    <small>手元カメラなど配置用</small>
+                    <!-- <div>CAMERA AREA</div>
+                    <small>手元カメラなど配置用</small> -->
                 </div>
             </div>
         </div>
@@ -514,9 +526,9 @@
         // iframe制御とスケーリング設定
         $(function(){
             // スケーリング対応iframeの設定
-            setupScaledIframe('scaled-iframe-clock', 'scaled-container-clock', 520, 160, 'fit');
-            setupScaledIframe('scaled-iframe-1', 'scaled-container-1', 1500, 400, 'fit');
-            setupScaledIframe('scaled-iframe-history', 'scaled-container-history', 1500, 440, 'fit');
+            setupScaledIframe('scaled-iframe-clock', 'scaled-container-clock', 500, 120, 'fit');
+            setupScaledIframe('scaled-iframe-1', 'scaled-container-1', 1700, 400, 'fit');
+            setupScaledIframe('scaled-iframe-history', 'scaled-container-history', 1650, 440, 'fit');
             setupScaledIframe('scaled-iframe-graph', 'scaled-container-graph', 500, 230, 'fit');
 
             // CSS制御
@@ -529,23 +541,28 @@
                 }
             });
             
-            // 時計iframeのCSS制御
+            // 時計iframeのCSS制御（ローカルファイル）
             $('#scaled-iframe-clock').on('load', function(){
                 try {
                     // 背景を透明に
-                    $(this).contents().find('body').css({
+                    $(this).contents().find('html, body').css({
                         'background': 'transparent',
+                        'background-color': 'transparent',
                         'margin': '0',
                         'padding': '0'
                     });
-                    // clock-containerの余白を削除
-                    $(this).contents().find('.clock-container').css({
-                        'margin': '0',
-                        'padding': '5px'
+                    // すべての要素の余白を調整
+                    // $(this).contents().find('*').css({
+                    //     'margin': '0'
+                    // });
+                    // 日付を右寄せ
+                    $(this).contents().find('.date-display').css({
+                        'text-align': 'right',
+                        'width': '50%'
                     });
                     console.log('CSS制御成功: scaled-iframe-clock');
                 } catch(e) {
-                    console.warn('CSS制御失敗（同一オリジン制約）: scaled-iframe-clock', e);
+                    console.warn('CSS制御失敗: scaled-iframe-clock', e);
                 }
             });
 
