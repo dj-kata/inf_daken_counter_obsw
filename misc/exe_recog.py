@@ -50,7 +50,7 @@ if __name__ == '__main__':
     # rdb.save()
     # print(len(rdb.results))
 
-    write_notescount_xml(15, Judge(770, 150, 20, 1, 3, 4),Judge(12310, 3400, 500, 33, 55, 120))
     rdb.write_today_updates_xml(datetime.datetime.now().timestamp() - 4*3600)
     # rdb.write_history_cursong_xml('DISPARATE', play_style.sp, difficulty.another)
     rdb.write_graph_xml(datetime.datetime.now().timestamp()-4*3600)
+    print(rdb)

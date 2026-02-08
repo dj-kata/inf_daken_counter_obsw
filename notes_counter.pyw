@@ -77,6 +77,7 @@ class MainWindow(MainWindowUI):
         '''このプレーの判定内訳'''
         self.set_today_judge()
         self.result_database.write_today_updates_xml(self.start_time - self.config.autoload_offset*3600)
+        self.result_database.write_graph_xml(self.start_time - self.config.autoload_offset*3600)
         self.result_timestamp = 0
         self.today_keystroke_count = 0
         self.play_count = 0
@@ -176,6 +177,7 @@ class MainWindow(MainWindowUI):
         self.config.load_config()  # 最新の設定を読み込み
         self.obs_manager.set_config(self.config)
         self.result_database.song_database.load()  # 必要に応じて再読み込み
+        self.result_database.write_today_updates_xml(self.start_time - self.config.autoload_offset*3600)
         self.result_database.write_graph_xml(self.start_time - self.config.autoload_offset*3600)
         self.set_today_judge()
         
@@ -198,6 +200,8 @@ class MainWindow(MainWindowUI):
             date = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
             if self.screen_reader.is_result():
                 detailed_result = detailed_result if detailed_result else self.screen_reader.read_result_screen()
+                # TODO ここで最後に追加したresultを使うほうがよい、自己べ情報が上書きされるため
+                detailed_result.result = self.result_database.results[-1]
                 result = detailed_result.result
                 if skip_no_update and (self.config.autosave_image_mode == config_autosave_image.only_updates): # 更新している場合のみ保存
                     if not result.is_updated():
@@ -338,7 +342,7 @@ class MainWindow(MainWindowUI):
     
     def on_mode_changed(self, old_mode: detect_mode, new_mode: detect_mode):
         """モード変更時の処理"""
-        logger.info(f"モード変更: {old_mode.name} -> {new_mode.name}")
+        # logger.info(f"モード変更: {old_mode.name} -> {new_mode.name}")
         
         # OBS制御トリガーの実行
         trigger_map = {
@@ -366,13 +370,11 @@ class MainWindow(MainWindowUI):
                 result = self.screen_reader.read_play_screen(self.current_judge)
                 self.result_database.add(result)
                 self.result_database.save()
-
                 self.result_database.write_graph_xml(self.start_time - self.config.autoload_offset*3600)
 
                 # 統計情報の更新
                 self.play_count += 1
                 self.today_judge += self.current_judge
-                write_notescount_xml(self.play_count, self.current_judge, self.today_judge)
                 self.current_judge.reset()
 
         if trigger == 'result_start': # リザルト画面の先頭で実行
@@ -381,7 +383,7 @@ class MainWindow(MainWindowUI):
 
     def execute_obs_triggers(self, trigger: str):
         """指定されたトリガーのOBS制御を実行"""
-        logger.debug(f"OBSトリガー実行: {trigger}")
+        # logger.debug(f"OBSトリガー実行: {trigger}")
         try:
             # OBS制御ウィンドウが作成されていなくても設定は実行できるよう、
             # 直接設定データを読み込んで実行
@@ -402,7 +404,7 @@ class MainWindow(MainWindowUI):
             for setting in settings:
                 try:
                     action = setting["action"]
-                    logger.debug(f"action = {action}")
+                    # logger.debug(f"action = {action}")
                     
                     if action == "switch_scene":
                         target_scene = setting.get("scene")

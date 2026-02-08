@@ -102,6 +102,7 @@ class ScreenReader:
                 songinfo = self.songinfo.search(chart_id=chart_id)
                 timestamp = int(datetime.datetime.now().timestamp())
                 judge = self.read_judge_from_result(convert_side(result.play_side))
+                # logger.debug(f"side:{result.play_side}, judge:{judge}")
 
                 if not result.dead: # 完走した場合はCBを正確に計算
                     cb = bp - (judge.sum() - notes)
@@ -131,7 +132,9 @@ class ScreenReader:
             chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
             songinfo = self.songinfo.search(chart_id)
             timestamp = int(datetime.datetime.now().timestamp())
-            result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=None, option=PlayOption(None),
+            option = PlayOption(None)
+            option.valid = False
+            result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=None, option=option,
                                judge=None,score=score,bp=bp,detect_mode=detect_mode.select)
             ret = DetailedResult(songinfo=songinfo, result=result)
 

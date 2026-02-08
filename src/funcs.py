@@ -137,7 +137,7 @@ def convert_lamp(_lamp) -> clear_lamp|None:
     elif _lamp == 'F-COMBO':
         lamp = clear_lamp.fc
     else:
-        lamp = None
+        lamp = clear_lamp.noplay
     return lamp
 
 def convert_side(side:str) -> result_side:
@@ -206,23 +206,3 @@ def add_new_element(root, name, value):
     elem = ET.SubElement(root, name)
     if value:
         elem.text = value
-
-def write_notescount_xml(play_count:int, current_judge:Judge, today_judge:Judge):
-    '''判定内訳を受け取ってノーツ数関係のxmlを出力'''
-    os.makedirs('out', exist_ok=True)
-    root = ET.Element('items')
-    add_new_element(root, 'playcount', str(play_count))
-    add_new_element(root, 'today_notes', str(today_judge.notes()))
-    add_new_element(root, 'current_notes', str(current_judge.notes()))
-    add_new_element(root, 'today_score_rate', f"{today_judge.get_score_rate()*100:.2f}%")
-    add_new_element(root, 'current_score_rate', f"{current_judge.get_score_rate()*100:.2f}%")
-    add_new_element(root, 'pg', str(today_judge.pg))
-    add_new_element(root, 'gr', str(today_judge.gr))
-    add_new_element(root, 'gd', str(today_judge.gd))
-    add_new_element(root, 'bd', str(today_judge.bd))
-    add_new_element(root, 'pr', str(today_judge.pr))
-    add_new_element(root, 'cb', str(today_judge.cb))
-
-    tree = ET.ElementTree(root)
-    ET.indent(tree, space="    ")
-    tree.write(Path('out')/'graph.xml', encoding='utf-8', xml_declaration=True)

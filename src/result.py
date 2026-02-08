@@ -266,6 +266,7 @@ class DetailedResult():
     def __str__(self):
         """主要情報の文字列を出力。ログ用(overrided)"""
         msg = f"chart:{get_title_with_chart(self.result.title, self.result.play_style, self.result.difficulty)}"
+        msg += f", playspeed:{self.result.playspeed}"
         msg += f", score: {self.result.score}"
         if self.score_rate_with_rankdiff:
             if self.result.judge:
@@ -277,7 +278,15 @@ class DetailedResult():
             msg += f", BPI: {self.bpi}, "
         if self.result_side:
             msg += f", side: {self.result_side.name[1:]}"
-        msg += f", bp: {self.result.bp}, lamp: {self.result.lamp.name}, option: {self.result.option}, timestamp:{self.result.timestamp}\n"
+        if self.result:
+            msg += f", bp: {self.result.bp}"
+            if self.result.lamp:
+                msg += f", lamp: {self.result.lamp.name}"
+            if self.result.option:
+                msg += f", option: {self.result.option},"
+            msg += f", timestamp:{self.result.timestamp}\n"
+        else:
+            msg += '(result is None)'
         return msg
         
     def __eq__(self, other):
@@ -309,9 +318,9 @@ class ResultDatabase:
             logger.info(f"result added! hash:{hash(result)}, len:{len(self.results)}, result:{result}")
             return True
         else:
-            battle = True if result.option and result.option.battle else False
-            result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=battle)
             if result not in self.results:
+                battle = True if result.option and result.option.battle else False
+                result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=battle)
                 self.results.append(result)
                 logger.info(f"result added! hash:{hash(result)}, len:{len(self.results)}, result:{result}")
                 return True
@@ -381,6 +390,8 @@ class ResultDatabase:
             key = calc_chart_id(title, style, difficulty)
         results = self.search(chart_id=key)
         for r in results:
+            if r.result.detect_mode == detect_mode.play: # 途中落ちの判定ができないため使わない
+                continue
             if playspeed != r.result.playspeed: # 再生速度が異なる場合は落とす。選曲画面から呼ぶ場合は等速しか対象にしないので存在確認はしない。
                 continue
             if style == play_style.dp:
@@ -510,7 +521,7 @@ class ResultDatabase:
         ET.indent(tree, space="    ")
         tree.write(Path('out')/'today_update.xml', encoding='utf-8', xml_declaration=True)
 
-    def write_history_cursong_xml(self, title:str, style:play_style, difficulty:difficulty, battle:bool=None):
+    def write_history_cursong_xml(self, title:str, style:play_style, difficulty:difficulty, battle:bool=None, playspeed:float=None):
         """指定された曲のプレーログを出力
 
         Args:
@@ -533,11 +544,14 @@ class ResultDatabase:
         # 集計
         target:List[DetailedResult] = []
         for r in results:
-            if r.result.detect_mode != detect_mode.result:
+            if r.result.playspeed != playspeed:
+                continue
+            if r.result.detect_mode == detect_mode.play:
                 continue
             if battle and style == play_style.dp and r.result.option.battle != battle:
                 continue
-            target.append(r)
+            if r.result.detect_mode == detect_mode.result: # 集計はresult,selectでやるが、ログ表示は全ての情報が揃ったresultのみ
+                target.append(r)
             if r.result.score > best_score:
                 best_score = r.result.score
                 best_score_opt = r.result.option
@@ -545,9 +559,15 @@ class ResultDatabase:
             if r.result.lamp.value > best_lamp:
                 best_lamp = r.result.lamp.value
                 best_lamp_opt = r.result.option
-            if r.result.judge.pr+r.result.judge.bd < best_bp:
-                best_bp = r.result.judge.pr+r.result.judge.bd
-                best_bp_opt = r.result.option
+            if r.result.judge:
+                if r.result.judge.pr+r.result.judge.bd < best_bp:
+                    best_bp = r.result.judge.pr+r.result.judge.bd
+                    best_bp_opt = r.result.option
+            else:
+                if r.result.bp and r.result.bp < best_bp:
+                    best_bp = r.result.bp
+                    best_bp_opt = r.result.option
+
         if len(results) == 0:
             tree = ET.ElementTree(root)
             ET.indent(tree, space="    ")
@@ -567,15 +587,19 @@ class ResultDatabase:
         add_new_element(root, 'best_bp_opt', best_bp_opt.__str__())
         add_new_element(root, 'best_score', str(best_score))
         add_new_element(root, 'best_score_opt', best_score_opt.__str__())
-        add_new_element(root, 'bpi_ave', f"{songinfo.bpi_ave}")
-        add_new_element(root, 'bpi_top', f"{songinfo.bpi_top}")
-        add_new_element(root, 'bpi_coef', f"{songinfo.bpi_coef}")
+        if songinfo.bpi_ave:
+            add_new_element(root, 'bpi_ave', f"{songinfo.bpi_ave}")
+        if songinfo.bpi_top:
+            add_new_element(root, 'bpi_top', f"{songinfo.bpi_top}")
+        if songinfo.bpi_coef:
+            add_new_element(root, 'bpi_coef', f"{songinfo.bpi_coef}")
         if detail:
-            add_new_element(root, 'notes', str(detail.result.notes))
-            add_new_element(root, 'best_score_rate', str(best_score / detail.result.notes / 2))
-            add_new_element(root, 'best_bp_rate', f"{100*best_bp / detail.result.notes:.2}")
-            add_new_element(root, 'best_rankdiff0', detail.score_rate_with_rankdiff[0])
-            add_new_element(root, 'best_rankdiff1', detail.score_rate_with_rankdiff[1])
+            if detail.result.notes:
+                add_new_element(root, 'notes', str(detail.result.notes))
+                add_new_element(root, 'best_score_rate', str(best_score / detail.result.notes / 2))
+                add_new_element(root, 'best_bp_rate', f"{100*best_bp / detail.result.notes:.2}")
+                add_new_element(root, 'best_rankdiff0', detail.score_rate_with_rankdiff[0])
+                add_new_element(root, 'best_rankdiff1', detail.score_rate_with_rankdiff[1])
             if detail.bpi:
                 add_new_element(root, 'best_bpi', f"{detail.bpi:.2f}")
             if detail.score_rate_with_rankdiff:
@@ -602,9 +626,10 @@ class ResultDatabase:
             add_new_element(item, 'pre_lamp', str(r.result.pre_lamp.value))
             add_new_element(item, 'pre_bp', str(r.result.pre_bp))
             add_new_element(item, 'opt', r.result.option.__str__())
-            add_new_element(item, 'rankdiff', ''.join(r.score_rate_with_rankdiff))
-            add_new_element(item, 'rankdiff0', r.score_rate_with_rankdiff[0])
-            add_new_element(item, 'rankdiff1', r.score_rate_with_rankdiff[1])
+            if r.score_rate_with_rankdiff:
+                add_new_element(item, 'rankdiff', ''.join(r.score_rate_with_rankdiff))
+                add_new_element(item, 'rankdiff0', r.score_rate_with_rankdiff[0])
+                add_new_element(item, 'rankdiff1', r.score_rate_with_rankdiff[1])
 
         # xml出力
         tree = ET.ElementTree(root)
