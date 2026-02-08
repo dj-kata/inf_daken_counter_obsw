@@ -7,6 +7,11 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
         <style>
+            :root {
+                --skip-no-update: 0; /* 更新のない行を飛ばす */
+                --enable-header: 1; /* 1ならヘッダー部分を表示する */
+            }
+            
             * {
                 box-sizing: border-box;
             }
@@ -18,10 +23,6 @@
                 overflow-x: hidden;
                 font-family: 'RocknRoll One', sans-serif;
                 color: #fff;
-            }
-            
-            :root {
-                --skip-no-update: 0;
             }
             
             #all {
@@ -174,7 +175,7 @@
             .AA { color: #c3c3c3; font-weight: bold; }
             .A { color: #2ddf71; }
             .B { color: #7777ff; }
-            .F { color: #888; }
+            .F { color: #7777ff; }
             
             /* BPI */
             .bpi-positive {
@@ -270,23 +271,33 @@
             getxml.done(function(xml) {
                 var out = '';
                 var skip_no_update = getComputedStyle(document.documentElement).getPropertyValue('--skip-no-update');
+                var enable_header = getComputedStyle(document.documentElement).getPropertyValue('--enable-header');
+                if (enable_header==1){
+                    $('.header').show()
+                }else{
+                    $('.header').hide()
+                }
                 
                 $(xml).find("Results item").each(function(index, item) {
                     var lv = $(item).find('lv').text();
                     var lamp = Number($(item).find('lamp').text());
                     var difficulty = $(item).find('difficulty').text();
                     var title = $(item).find('title').text();
+                    var notes = Number($(item).find('notes').text());
                     var score = Number($(item).find('score').text());
                     var score_rate = Number($(item).find('score_rate').text()) || 0;
                     var pre_score = Number($(item).find('pre_score').text()) || 0;
-                    var bp = $(item).find('bp').text();
+                    var bp = Number($(item).find('bp').text());
+                    var pre_lamp = Number($(item).find('pre_lamp').text());
+                    var pre_score = Number($(item).find('pre_score').text());
+                    var pre_bp = Number($(item).find('pre_bp').text());
                     var bpi = $(item).find('bpi').text();
                     var opt = $(item).find('opt').text();
                     var sp_12hard = $(item).find('sp_12hard').text();
                     var sp_12clear = $(item).find('sp_12clear').text();
                     
-                    // スコア更新なしをスキップ
-                    if (skip_no_update == 1 && pre_score >= score) {
+                    // 更新なしをスキップ
+                    if (skip_no_update == 1 && pre_score >= score && pre_bp <= bp && pre_lamp >= lamp) {
                         return true;
                     }
                     
