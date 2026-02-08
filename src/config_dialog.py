@@ -7,16 +7,151 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
                                QLineEdit, QSpinBox, QCheckBox, QPushButton,
                                QGroupBox, QFileDialog, QTabWidget, QWidget,
                                QListWidget, QLabel, QDialogButtonBox, QRadioButton,
-                               QButtonGroup, QScrollArea, QGridLayout)
-from PySide6.QtCore import Qt
+                               QButtonGroup, QScrollArea, QGridLayout, QProgressBar)
+from PySide6.QtCore import Qt, QThread, Signal
 import os
+import datetime
 
 from src.config import Config
 from src.classes import music_pack, config_autosave_image, config_modify_rivalarea
 from src.logger import get_logger
-from src.result import ResultDatabase
+from src.result import ResultDatabase, OneResult, PlayOption
 from src.screen_reader import ScreenReader
+from src.funcs import *
 logger = get_logger(__name__)
+
+class ImageImportWorker(QThread):
+    """画像読み込み処理を行うワーカースレッド"""
+    # シグナル定義
+    progress = Signal(int, int)  # (現在の処理数, 総数)
+    finished = Signal(int, int)  # (登録数, 総数)
+    error = Signal(str)
+    
+    def __init__(self, folder_path, screen_reader, result_database):
+        super().__init__()
+        self.folder_path = folder_path
+        self.screen_reader = screen_reader
+        self.result_database = result_database
+        self._is_cancelled = False
+    
+    def cancel(self):
+        """処理をキャンセル"""
+        self._is_cancelled = True
+    
+    def run(self):
+        """スレッドで実行される処理"""
+        try:
+            import glob
+            from pathlib import Path
+            
+            # pngファイルを取得
+            png_files = glob.glob(str(Path(self.folder_path) / "*.png"))
+            
+            registered_count = 0
+            total_count = len(png_files)
+            
+            for i, png_file in enumerate(png_files):
+                if self._is_cancelled:
+                    break
+                
+                # 進捗通知
+                self.progress.emit(i + 1, total_count)
+                
+                self.screen_reader.update_screen_from_file(png_file)
+                if self.screen_reader.is_result():
+                    r = self.screen_reader.read_result_screen()
+                    if r:
+                        # logger.info(f'[RESULT] {r}')
+                        registered_count += 1
+                        r.result.timestamp = os.path.getmtime(png_file)
+            
+            # 完了通知
+            self.finished.emit(registered_count, total_count)
+            
+            self.result_database.save()
+            self.result_database.results.sort()
+                
+        except Exception as e:
+            self.error.emit(str(e))
+
+class PklImportWorker(QThread):
+    """pklファイル読み込み処理を行うワーカースレッド"""
+    # シグナル定義
+    progress = Signal(int, int)  # (現在の処理数, 総数)
+    finished = Signal(int, int)  # (登録数, 総数)
+    error = Signal(str)
+    
+    def __init__(self, pkl_path, result_database):
+        super().__init__()
+        self.pkl_path = pkl_path
+        self.result_database = result_database
+        self._is_cancelled = False
+    
+    def cancel(self):
+        """処理をキャンセル"""
+        self._is_cancelled = True
+    
+    def run(self):
+        """スレッドで実行される処理"""
+        try:
+            import pickle
+            
+            with open(self.pkl_path, 'rb') as f:
+                data = pickle.load(f)
+            
+            # v2はBPIの有無で2通り(長さ14,15)。option, 日付を-2,-1で取得すればよい。長さがこれ以外のものは落とす。
+            registered_count = 0
+            total_count = len(data)
+            for i, item in enumerate(data):
+                if self._is_cancelled:
+                    break
+                # 進捗通知
+                self.progress.emit(i + 1, total_count)
+
+                if len(item) not in (14, 15):
+                    continue
+
+                style = convert_play_style(item[2][:2]) # sp/dp
+                if item[11]:
+                    bp = item[11]
+                else:
+                    bp = 99999999
+                timestamp = datetime.datetime(year=int(item[-1][0:4]),
+                                              month=int(item[-1][5:7]),
+                                              day=int(item[-1][8:10]),
+                                              hour=int(item[-1][11:13]),
+                                              minute=int(item[-1][14:16]),
+                                              ).timestamp()
+                option = PlayOption(None)
+                option.convert_from_v2(item[-2])
+                try:
+                    result = OneResult(title=item[1],
+                                       play_style=style,
+                                       difficulty=convert_difficulty(item[2][-1]),
+                                       lamp=convert_lamp(item[7]),
+                                       timestamp=int(timestamp),
+                                       playspeed=None,
+                                       option=option,
+                                       detect_mode=detect_mode.select,
+                                       is_arcade = False,
+                                       judge=None,
+                                       score=item[9],
+                                       bp=bp,
+                    )
+                    
+                    # リザルト登録処理
+                    if self.result_database.add(result):
+                        registered_count += 1
+                except:
+                    continue
+            # 完了通知
+            self.finished.emit(registered_count, total_count)
+            
+            if registered_count > 0:
+                self.result_database.save()
+                
+        except Exception as e:
+            self.error.emit(str(e))
 
 class ConfigDialog(QDialog):
     """設定ダイアログクラス"""
@@ -264,13 +399,59 @@ class ConfigDialog(QDialog):
         self.import_button.clicked.connect(self.on_import_from_images)
         import_layout.addWidget(self.import_button)
 
+        self.import_progress = QProgressBar()
+        self.import_progress.setVisible(False)
+        import_layout.addWidget(self.import_progress)
+
+        # キャンセルボタン追加
+        self.import_cancel_button = QPushButton("キャンセル")
+        self.import_cancel_button.setVisible(False)
+        self.import_cancel_button.clicked.connect(self.on_cancel_import)
+        import_layout.addWidget(self.import_cancel_button)
+
         # 進捗表示用ラベル
         self.import_status_label = QLabel("")
         import_layout.addWidget(self.import_status_label)
 
         layout.addWidget(import_group)
-        layout.addStretch()
 
+        self.import_worker = None
+
+        # v2プレーログからの登録グループ
+        pkl_import_group = QGroupBox("v2プレーログから登録")
+        pkl_import_layout = QVBoxLayout()
+        pkl_import_group.setLayout(pkl_import_layout)
+
+        # 説明ラベル
+        pkl_desc_label = QLabel("v2のalllog.pklファイルからプレーログを登録します")
+        pkl_import_layout.addWidget(pkl_desc_label)
+
+        # 登録ボタン
+        self.pkl_import_button = QPushButton("alllog.pklを選択して登録")
+        self.pkl_import_button.clicked.connect(self.on_import_from_pkl)
+        pkl_import_layout.addWidget(self.pkl_import_button)
+
+        # プログレスバー
+        self.pkl_import_progress = QProgressBar()
+        self.pkl_import_progress.setVisible(False)
+        pkl_import_layout.addWidget(self.pkl_import_progress)
+
+        # キャンセルボタン
+        self.pkl_import_cancel_button = QPushButton("キャンセル")
+        self.pkl_import_cancel_button.setVisible(False)
+        self.pkl_import_cancel_button.clicked.connect(self.on_cancel_pkl_import)
+        pkl_import_layout.addWidget(self.pkl_import_cancel_button)
+
+        # 進捗表示用ラベル
+        self.pkl_import_status_label = QLabel("")
+        pkl_import_layout.addWidget(self.pkl_import_status_label)
+
+        layout.addWidget(pkl_import_group)
+
+        # ワーカースレッドの参照
+        self.pkl_import_worker = None
+
+        layout.addStretch()
         return widget
 
     def on_import_from_images(self):
@@ -286,46 +467,115 @@ class ConfigDialog(QDialog):
 
         if not folder_path:
             return
-
-        self.import_status_label.setText("読み込み中...")
+        
+        # UIの状態変更
         self.import_button.setEnabled(False)
+        self.import_progress.setVisible(True)
+        self.import_cancel_button.setVisible(True)
+        self.import_status_label.setText("読み込み中...")
+    
+        # ワーカースレッドの作成と開始
+        self.import_worker = ImageImportWorker(
+            folder_path, self.screen_reader, self.result_database
+        )
+        self.import_worker.progress.connect(self.on_import_progress)
+        self.import_worker.finished.connect(self.on_import_finished)
+        self.import_worker.error.connect(self.on_import_error)
+        self.import_worker.start()
 
-        try:
-            import glob
-            from pathlib import Path
+    def on_cancel_import(self):
+        """インポート処理をキャンセル"""
+        if self.import_worker and self.import_worker.isRunning():
+            self.import_worker.cancel()
+            self.import_status_label.setText("キャンセル中...")
+            self.import_cancel_button.setEnabled(False)
 
-            # pngファイルを取得
-            png_files = glob.glob(str(Path(folder_path) / "*.png"))
+    def on_import_progress(self, current, total):
+        """進捗更新"""
+        self.import_progress.setMaximum(total)
+        self.import_progress.setValue(current)
+        self.import_status_label.setText(f"処理中... {current}/{total}")
 
-            registered_count = 0
-            total_count = len(png_files)
+    def on_import_finished(self, registered_count, total_count):
+        """処理完了"""
+        self.import_progress.setVisible(False)
+        self.import_cancel_button.setVisible(False)
+        self.import_button.setEnabled(True)
+        self.import_status_label.setText(
+            f"完了: {total_count}件中{registered_count}件を登録しました"
+        )
+        logger.info(f"画像インポート完了: {registered_count}/{total_count}")
 
-            for i, png_file in enumerate(png_files):
-                # 進捗表示
-                self.import_status_label.setText(f"処理中... {i+1}/{total_count}")
+    def on_import_error(self, error_message):
+        """エラー発生"""
+        self.import_progress.setVisible(False)
+        self.import_cancel_button.setVisible(False)
+        self.import_button.setEnabled(True)
+        self.import_status_label.setText(f"エラー: {error_message}")
+        logger.error(f"画像読み込みエラー: {error_message}")
 
-                self.screen_reader.update_screen_from_file(png_file)
-                if self.screen_reader.is_result():
-                    r = self.screen_reader.read_result_screen()
-                    if r:
-                        # logger.info(f'[RESULT] {r}')
-                        registered_count += 1
-                        r.result.timestamp = os.path.getmtime(png_file)
-                        self.result_database.add(r.result)
+    def on_import_from_pkl(self):
+        """pklファイルからリザルトを登録"""
+        if not self.result_database:
+            self.pkl_import_status_label.setText("エラー: 登録機能が利用できません")
+            return
 
-            # 完了メッセージ
-            self.import_status_label.setText(
-                f"完了: {total_count}件中{registered_count}件を登録しました"
-            )
+        # ファイル選択
+        pkl_path, _ = QFileDialog.getOpenFileName(
+            self, "alllog.pklファイルを選択", "", "Pickle Files (alllog.pkl);;All Files (*)"
+        )
 
-            self.result_database.save()
-            self.result_database.results.sort()
+        if not pkl_path:
+            return
 
-        except Exception as e:
-            self.import_status_label.setText(f"エラー: {str(e)}")
-            logger.error(f"画像読み込みエラー: {e}")
-        finally:
-            self.import_button.setEnabled(True)
+        # ファイルの存在確認
+        if not os.path.exists(pkl_path):
+            self.pkl_import_status_label.setText("エラー: ファイルが存在しません")
+            return
+
+        # UIの状態変更
+        self.pkl_import_button.setEnabled(False)
+        self.pkl_import_progress.setVisible(True)
+        self.pkl_import_cancel_button.setVisible(True)
+        self.pkl_import_status_label.setText("読み込み中...")
+
+        # ワーカースレッドの作成と開始
+        self.pkl_import_worker = PklImportWorker(pkl_path, self.result_database)
+        self.pkl_import_worker.progress.connect(self.on_pkl_import_progress)
+        self.pkl_import_worker.finished.connect(self.on_pkl_import_finished)
+        self.pkl_import_worker.error.connect(self.on_pkl_import_error)
+        self.pkl_import_worker.start()
+
+    def on_cancel_pkl_import(self):
+        """pklインポート処理をキャンセル"""
+        if self.pkl_import_worker and self.pkl_import_worker.isRunning():
+            self.pkl_import_worker.cancel()
+            self.pkl_import_status_label.setText("キャンセル中...")
+            self.pkl_import_cancel_button.setEnabled(False)
+
+    def on_pkl_import_progress(self, current, total):
+        """pkl進捗更新"""
+        self.pkl_import_progress.setMaximum(total)
+        self.pkl_import_progress.setValue(current)
+        self.pkl_import_status_label.setText(f"処理中... {current}/{total}")
+
+    def on_pkl_import_finished(self, registered_count, total_count):
+        """pkl処理完了"""
+        self.pkl_import_progress.setVisible(False)
+        self.pkl_import_cancel_button.setVisible(False)
+        self.pkl_import_button.setEnabled(True)
+        self.pkl_import_status_label.setText(
+            f"完了: {total_count}件中{registered_count}件を登録しました"
+        )
+        logger.info(f"pklインポート完了: {registered_count}/{total_count}")
+
+    def on_pkl_import_error(self, error_message):
+        """pklエラー発生"""
+        self.pkl_import_progress.setVisible(False)
+        self.pkl_import_cancel_button.setVisible(False)
+        self.pkl_import_button.setEnabled(True)
+        self.pkl_import_status_label.setText(f"エラー: {error_message}")
+        logger.error(f"pkl読み込みエラー: {error_message}")
 
     def load_config_values(self):
         """設定値を読み込んでUIに反映"""

@@ -449,7 +449,7 @@ class MainWindow(MainWindowUI):
         result = detailed_result.result
         result.timestamp = 0 # 更新日は不明という扱いにする
         # xml更新
-        self.result_database.write_history_cursong_xml(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=False)
+        self.result_database.write_history_cursong_xml(title=result.title, style=result.play_style, difficulty=result.difficulty)
         # 自己べ登録
         if self.result_database.add(result):
             self.statusBar().showMessage(f"選曲画面から自己ベストを登録しました。 -> {result}", 10000)
@@ -473,7 +473,12 @@ class MainWindow(MainWindowUI):
             if result and result.chart_id:
                 if result == self.result_pre:
                     # xml更新
-                    self.result_database.write_history_cursong_xml(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=result.option.battle)
+                    self.result_database.write_history_cursong_xml(
+                        title=result.title
+                        ,style=result.play_style
+                        ,difficulty=result.difficulty
+                        ,battle=result.option.battle
+                    )
 
                     # リザルトを保存
                     if self.result_database.add(result):

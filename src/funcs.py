@@ -106,6 +106,7 @@ def convert_play_style(_style) -> play_style|None:
         return None
 
 def convert_difficulty(_difficulty) -> difficulty|None:
+    '''難易度の文字列をEnumに変換'''
     diff = None
     if _difficulty == 'BEGINNER':
         diff = difficulty.beginner
@@ -117,9 +118,20 @@ def convert_difficulty(_difficulty) -> difficulty|None:
         diff = difficulty.another
     elif _difficulty == 'LEGGENDARIA':
         diff = difficulty.leggendaria
+    elif _difficulty == 'B':
+        diff = difficulty.beginner
+    elif _difficulty == 'N':
+        diff = difficulty.normal
+    elif _difficulty == 'H':
+        diff = difficulty.hyper
+    elif _difficulty == 'A':
+        diff = difficulty.another
+    elif _difficulty == 'L':
+        diff = difficulty.leggendaria
     return diff
 
 def convert_lamp(_lamp) -> clear_lamp|None:
+    '''ランプ用文字列をEnumに変換'''
     if _lamp == 'NOPLAY':
         lamp = clear_lamp.noplay
     elif _lamp == 'FAILED':

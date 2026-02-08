@@ -27,11 +27,11 @@ class PlayOption():
     flip = None
     '''DPオンリー 左右の譜面が入れ替わる'''
     assist = None
-    '''A-SCR or LEGACY'''
+    '''A-SCR or LEGACY(オプション画面の構造上兼ねられない点に注意)'''
     battle = None
     '''DP時にBATTLEがON 両サイドがSP譜面になる'''
     special = None
-    '''H-RAN or BATTLE'''
+    '''集計対象とすべきでないスコアのフラグ。H-RAN or BATTLEの場合にTrueとなる。'''
 
     def __init__(self, option:ResultOptions=None):
         if option:
@@ -40,7 +40,47 @@ class PlayOption():
             self.flip: str = option.flip
             self.assist: str = option.assist
             self.battle: bool = option.battle
-            self.special: bool = (option.arrange is not None and 'H-RAN' in option.arrange) or self.battle
+            self.special: bool = (option.arrange is not None and ('H-RAN' in option.arrange or 'BATTLE' in option.arrange or 'SYMM-RAN' in option.arrange or 'SYNC-RAN' in option.arrange)) or self.battle
+
+    def convert_from_v2(self, opt:str):
+        '''v2の文字列形式でのオプションをv3用に変換してインスタンスに直接書き込む。'''
+        self.valid = True
+        if opt == None: # 正規
+            self.arrange = None
+        elif opt == '?':
+            self.valid = False # 不明だったやつは不明にしておく
+        else:
+            if 'H-RAN' in opt:
+                self.special = True
+            if 'BATTLE' in opt:
+                self.special = True
+            if 'SYNC-RAN' in opt:
+                self.special = True
+            if 'SYMM-RAN' in opt:
+                self.special = True
+            if opt.startswith('BATTLE'): # battle有効時はフラグを立てる
+                self.battle = True
+                opt = opt.split('BATTLE, ')[-1]
+            if 'FLIP' in opt: # flip有効時は消す
+                self.flip = 'FLIP'
+                opt = opt.replace(', FLIP', '')
+            if 'A-SCR' in opt:
+                self.assist = 'A-SCR'
+                opt = opt.replace(', A-SCR', '')
+            if 'LEGACY' in opt:
+                self.assist = 'LEGACY'
+                opt = opt.replace(', LEGACY', '')
+
+            if '/' not in opt: # sp
+                if opt == 'R-RAN':
+                    opt = 'R-RANDOM'
+                if opt == 'S-RAN':
+                    opt = 'S-RANDOM'
+                if opt == 'RAN':
+                    opt = 'RANDOM'
+                if opt == 'MIR':
+                    opt = 'MIRROR'
+            self.arrange = opt
 
     def __hash__(self):
         return hash((self.valid, self.arrange, self.flip, self.assist, self.battle, self.special))
@@ -179,7 +219,7 @@ class OneResult:
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""
         if self.lamp and self.score:
-            return f"song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_updated:{self.is_updated()}(pre score:{self.pre_score}, bp:{self.pre_bp}, lamp:{self.pre_lamp}), is_arcade:{self.is_arcade}, detect_mode:{self.detect_mode}, timestamp:{datetime.datetime.fromtimestamp(self.timestamp)}"
+            return f"detect_mode:{self.detect_mode.name}, song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_updated:{self.is_updated()}(pre score:{self.pre_score}, bp:{self.pre_bp}, lamp:{self.pre_lamp}), is_arcade:{self.is_arcade}, timestamp:{datetime.datetime.fromtimestamp(self.timestamp)}"
         else:
             return "not a result data!"
 
@@ -548,6 +588,8 @@ class ResultDatabase:
         # 集計
         target:List[DetailedResult] = []
         for r in results:
+            if r.result.option and r.result.option.special:
+                continue
             if r.result.playspeed != playspeed:
                 continue
             if r.result.detect_mode == detect_mode.play:
