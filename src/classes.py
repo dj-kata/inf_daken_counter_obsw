@@ -23,6 +23,12 @@ class clear_lamp(Enum):
     fc     = 7
     """フルコンボ"""
 
+    def __lt__(self, other):
+        return self.value < other.value
+
+    def __eq__(self, other):
+        return self.value == other.value
+
     def __str__(self):
         if self == clear_lamp.noplay:
             return 'NO PLAY'
@@ -34,6 +40,8 @@ class clear_lamp(Enum):
             return 'E-CLEAR'
         elif self == clear_lamp.clear:
             return 'CLEAR'
+        elif self == clear_lamp.hard:
+            return 'H-CLEAR'
         elif self == clear_lamp.exh:
             return 'EXH-CLEAR'
         elif self == clear_lamp.fc:
