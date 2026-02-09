@@ -156,7 +156,8 @@
             border-radius: 10px;
             overflow: hidden;
             position: relative;
-            background: linear-gradient(135deg, #0a0a1f 0%, #1a1a3e 50%, #0a0a1f 100%);
+            /* background: linear-gradient(180deg, #2c2c70 0%, #0a0a1f 100%); */
+            background: linear-gradient(90deg, #0a0a1f 0%, #1a1a3e 50%, #0a0a1f 100%);
         }
         
         .clock-area .scaled-iframe {
@@ -184,12 +185,11 @@
         }
 
         .live-dot {
-            margin-left: 25px;
-            width: 12px;
-            height: 12px;
+            width: 9px;
+            height: 9px;
             background: var(--color-live);
             border-radius: 50%;
-            margin-left: 70px;
+            margin-left: 80px;
             margin-right: 10px;
             box-shadow: 0 0 20px var(--color-live);
             animation: blink 1.5s ease-in-out infinite;
@@ -224,13 +224,14 @@
 
         .time-display {
             color: var(--color-time);
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
+            /* margin-left: -7px; */
             text-align: center;
             text-shadow: 
                 0 0 5px var(--color-time),
                 0 0 12px var(--color-time);
-            letter-spacing: 6px;
+            letter-spacing: 4px;
             font-variant-numeric: tabular-nums;
             font-family: 'dseg14classic-bold', monospace;
             width: 360px;
