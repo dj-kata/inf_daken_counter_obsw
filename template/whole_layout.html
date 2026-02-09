@@ -10,7 +10,7 @@
     <style>
         @font-face {
             font-family: 'dseg14classic-bold';
-            src: url('./font/DSEG14Classic-Bold.woff2') format('woff2');
+            src: url('./DSEG14Classic-Bold.woff2') format('woff2');
         }
 
         :root {
@@ -158,6 +158,105 @@
         
         .clock-area .scaled-iframe {
             border: none;
+        }
+
+        /* === 時計表示用のスタイル === */
+        .clock-display-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding-top: 5px;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: left;
+            margin-bottom: 5px;
+            margin-top: -5px;
+            width: 380px;
+        }
+
+        .live-dot {
+            margin-left: 25px;
+            width: 12px;
+            height: 12px;
+            background: var(--color-live);
+            border-radius: 50%;
+            margin-left: 70px;
+            margin-right: 10px;
+            box-shadow: 0 0 20px var(--color-live);
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        .live-text {
+            color: var(--color-live);
+            font-size: 16px;
+            font-weight: 900;
+            text-shadow: 0 0 20px var(--color-live);
+            letter-spacing: 3px;
+            margin-right: 5px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .date-display {
+            color: var(--color-date);
+            font-size: 12px;
+            text-align: right;
+            font-weight: 400;
+            text-shadow: 0 0 15px var(--color-date);
+            letter-spacing: 2px;
+            margin-left: -47px;
+            font-family: 'Orbitron', monospace;
+            width: 50%;
+            display: inline-block;
+        }
+
+        .time-display {
+            color: var(--color-time);
+            font-size: 32px;
+            font-weight: 700;
+            text-align: center;
+            text-shadow: 
+                0 0 5px var(--color-time),
+                0 0 12px var(--color-time);
+            letter-spacing: 6px;
+            font-variant-numeric: tabular-nums;
+            font-family: 'dseg14classic-bold', monospace;
+            width: 360px;
+            justify-content: center;
+            display: flex;
+        }
+
+        .flash {
+            color: var(--color-flash) !important;
+            text-shadow: 
+                0 0 20px var(--color-flash),
+                0 0 40px var(--color-flash),
+                0 0 60px var(--color-flash) !important;
+            animation: flash-glow 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes flash-glow {
+            0% { 
+                text-shadow: 
+                    0 0 20px var(--color-flash),
+                    0 0 40px var(--color-flash),
+                    0 0 60px var(--color-flash);
+            }
+            100% { 
+                text-shadow: 
+                    0 0 30px var(--color-flash),
+                    0 0 60px var(--color-flash),
+                    0 0 90px var(--color-flash);
+            }
         }
 
         .comment-area {
@@ -311,9 +410,19 @@
             <div class="info-area">
                 <!-- 時計エリア（ローカルiframe、スケーリング対応） -->
                 <div class="clock-area">
-                    <div class="clock-area-inner" id="scaled-container-clock">
-                        <iframe class="scaled-iframe" id="scaled-iframe-clock" src="./clock.html" scrolling="no"></iframe>
+                    <div class="clock-area-inner">
+                        <div class="clock-display-wrapper">
+                            <div class="live-indicator">
+                                <div class="live-dot"></div>
+                                <div class="live-text">LIVE</div>
+                                <div class="date-display" id="date">2024.01.01</div>
+                            </div>
+                            <div class="time-display" id="time">00:00:00</div>
+                        </div>
                     </div>
+                    <!-- <div class="clock-area-inner" id="scaled-container-clock">
+                        <iframe class="scaled-iframe" id="scaled-iframe-clock" src="./clock.html" scrolling="no"></iframe>
+                    </div> -->
                 </div>
 
                 <div class="comment-area">
@@ -365,29 +474,24 @@
         // 時計更新関数（シンプル版）
         function updateTime() {
             const now = new Date();
-            
-            // CSS変数を数値として取得してから2桁文字列に変換
+    
             const enableFlash = getComputedStyle(document.documentElement).getPropertyValue('--enable-flash').trim();
             const flashHHRaw = getComputedStyle(document.documentElement).getPropertyValue('--flash-hh').trim();
             const flashMMRaw = getComputedStyle(document.documentElement).getPropertyValue('--flash-mm').trim();
-            
-            // 数値として解釈してから2桁文字列に変換
+    
             const flashHH = String(parseInt(flashHHRaw, 10)).padStart(2, '0');
             const flashMM = String(parseInt(flashMMRaw, 10)).padStart(2, '0');
-            
-            // 時分秒を取得
+    
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
-            
-            // 日付を取得
+    
             const year = now.getFullYear();
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const day = String(now.getDate()).padStart(2, '0');
 
             let timeHTML = '';
-            
-            // フラッシュ機能が有効で、指定時刻と一致する場合
+    
             if (enableFlash === '1' && hours === flashHH && minutes === flashMM) {
                 timeHTML = `<span class="flash">${hours}</span>:<span class="flash">${minutes}</span>:${seconds}`;
             } else if (enableFlash === '1' && minutes === flashHH && seconds === flashMM) {
@@ -395,14 +499,14 @@
             } else {
                 timeHTML = `${hours}:${minutes}:${seconds}`;
             }
-            
-            // 表示を更新
-            const timeEl = document.getElementById('time');
-            const dateEl = document.getElementById('date');
-            
-            if (timeEl) timeEl.innerHTML = timeHTML;
-            if (dateEl) dateEl.textContent = `${year}.${month}.${day}`;
+    
+            document.getElementById('time').innerHTML = timeHTML;
+            document.getElementById('date').textContent = `${year}.${month}.${day}`;
         }
+
+        // 時計更新開始
+        updateTime();
+        setInterval(updateTime, 1000);
 
         // メッセージ更新関数
         function updateMessage() {
@@ -526,7 +630,7 @@
         // iframe制御とスケーリング設定
         $(function(){
             // スケーリング対応iframeの設定
-            setupScaledIframe('scaled-iframe-clock', 'scaled-container-clock', 500, 120, 'fit');
+            // setupScaledIframe('scaled-iframe-clock', 'scaled-container-clock', 500, 120, 'fit');
             setupScaledIframe('scaled-iframe-1', 'scaled-container-1', 1700, 400, 'fit');
             setupScaledIframe('scaled-iframe-history', 'scaled-container-history', 1650, 440, 'fit');
             setupScaledIframe('scaled-iframe-graph', 'scaled-container-graph', 500, 230, 'fit');
@@ -560,6 +664,14 @@
                         'text-align': 'right',
                         'width': '50%'
                     });
+                            // 親のCSS変数を取得
+                    const enableFlash = getComputedStyle(document.documentElement).getPropertyValue('--enable-flash').trim();
+                    const flashHH = getComputedStyle(document.documentElement).getPropertyValue('--flash-hh').trim();
+                    const flashMM = getComputedStyle(document.documentElement).getPropertyValue('--flash-mm').trim();
+                    iframeRoot.style.setProperty('--enable-flash', enableFlash);
+                    iframeRoot.style.setProperty('--flash-hh', flashHH);
+                    iframeRoot.style.setProperty('--flash-mm', flashMM);
+        
                     console.log('CSS制御成功: scaled-iframe-clock');
                 } catch(e) {
                     console.warn('CSS制御失敗: scaled-iframe-clock', e);
