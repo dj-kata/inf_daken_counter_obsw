@@ -311,7 +311,11 @@
             .B { color: #7777ff; }
             
             /* クリアランプ */
-            .fc { animation: flashfc 0.2s infinite; }
+            .fc{
+                animation-name: flashfc;
+                animation-duration: 0.2s;
+                animation-iteration-count: infinite;
+            }
             @keyframes flashfc {
                 0%   { background-color: #ff2828; }
                 20%  { background-color: #d5ff28; }
@@ -320,19 +324,46 @@
                 80%  { background-color: #d528ff; }
                 100% { background-color: #ff2828; }
             }
-            
-            .failed { animation: flashfailed 0.08s infinite; }
-            @keyframes flashfailed {
-                0%   { background-color: #333; }
-                50%  { background-color: #777; }
-                100% { background-color: #333; }
+            .failed{
+                animation-name: flashfailed;
+                animation-duration: 0.08s;
+                animation-iteration-count: infinite;
             }
-            
-            .ac { background-color: #ab47bc; }
-            .ec { background-color: #d32f2f; }
-            .nc { background-color: #ffa000; }
-            .hc { background-color: #388e3c; }
-            .exh { background-color: #0288d1; }
+            @keyframes flashfailed {
+                0%   { background-color: #ff2828; }
+                50%  { background-color: #282828; }
+                100% { background-color: #ff2828; }
+            }
+            .ac{background-color: #ff66ff;}
+            .ec{background-color: #22ff22;}
+            .nc{background-color: #22ccff;}
+            .hc{background-color: #ffffff;}
+            .exh{
+                animation-name: flashexh;
+                animation-duration: 0.08s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashexh {
+                0%   { background-color: #ff2828; }
+                50%  { background-color: #ffff28; }
+                100% { background-color: #ff2828; }
+            }
+            sp12hard{
+                color:#ff86b4;
+                padding: 0px;
+            }
+            sp12clear{
+                color:#9ee7ff;
+                padding: 0px;
+                display: none;
+            }
+            .playspeed-high{
+                color: #ff7;
+            }
+            .playspeed-low{
+                color: #f7f;
+            }
+
         </style>
     </head>
     <script>
@@ -407,9 +438,15 @@
         var music = data.music || '';
         var difficulty = data.difficulty || '';
         var notes = data.notes || 0;
+        var playspeed = Number(data.playspeed) || 1.0;
         var diff_color = getDifficultyColor(difficulty);
-        
-        document.querySelector('.title-name').textContent = music;
+       
+        if (playspeed>1.0){
+            music = "<span class='playspeed-high'>["+playspeed+"X]</span> " + music;
+        }else if (playspeed != 1.0) {
+            music = "<span class='playspeed-low'>["+playspeed+"X]</span> " + music;
+        }
+        document.querySelector('.title-name').innerHTML = music;
         document.querySelector('.title-level-difficulty').innerHTML = 
             '<span class="title-level">☆' + lv + '</span>' +
             '<span class="title-difficulty ' + diff_color + '">' + difficulty + '</span>';
@@ -419,7 +456,7 @@
         var best_score = data.best_score || 0;
         var best_score_rate = data.best_score_rate || 0;
         var best_score_opt = data.best_score_opt || '';
-        var best_bp = data.best_bp || 0;
+        var best_bp = data.best_bp || 99999999;
         var best_bp_rate = data.best_bp_rate;
         var best_bp_opt = data.best_bp_opt || '';
         var best_bpi = data.best_bpi || '';
@@ -439,11 +476,19 @@
         
         // BEST BP表示
         var bp_html = '';
-        bp_html += '<div class="best-item">';
-        bp_html += '<div class="best-value">' + best_bp + '</div>';
-        bp_html += '<div class="best-right-column">';
-        bp_html += '<div class="best-detail">(' + best_bp_rate + '%)</div>';
-        bp_html += '<div class="best-option">' + best_bp_opt + '</div>';
+        if (best_bp == 99999999){
+            bp_html += '<div class="best-item">';
+            bp_html += '<div class="best-value"></div>';
+            bp_html += '<div class="best-right-column">';
+            bp_html += '<div class="best-detail">( ??? %)</div>';
+            bp_html += '<div class="best-option">' + best_bp_opt + '</div>';
+        }else{
+            bp_html += '<div class="best-item">';
+            bp_html += '<div class="best-value">' + best_bp + '</div>';
+            bp_html += '<div class="best-right-column">';
+            bp_html += '<div class="best-detail">(' + best_bp_rate + '%)</div>';
+            bp_html += '<div class="best-option">' + best_bp_opt + '</div>';
+        }
         bp_html += '</div>';
         bp_html += '</div>';
         document.querySelector('.bp-info').innerHTML = bp_html;

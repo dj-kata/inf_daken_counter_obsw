@@ -628,6 +628,15 @@ class ConfigDialog(QDialog):
         self.config.enable_judge = self.enable_judge_check.isChecked()
         self.config.enable_folder_updates = self.enable_folder_updates_check.isChecked()
         self.config.autoload_offset = self.autoload_offset_spin.value()
+        # WebSocketデータポート設定
+        try:
+            port = int(self.websocket_data_port.text())
+            if 1000 <= port <= 65535:
+                self.config.websocket_data_port = port
+            else:
+                logger.warning(f"無効なポート番号: {port}. デフォルト値を使用します")
+        except ValueError:
+            logger.warning("ポート番号の変換に失敗しました。デフォルト値を使用します")
         
         # 画像保存先
         self.config.image_save_path = self.image_save_path_edit.text()

@@ -234,6 +234,13 @@
                 color: #ffaaaa;
                 font-size: 24px;
             }
+
+            .playspeed-high{
+                color: #ff7;
+            }
+            .playspeed-low{
+                color: #f7f;
+            }
         </style>
     </head>
     <body>
@@ -318,6 +325,7 @@
                 var opt = item.opt || '';
                 var sp_12hard = item.sp_12hard || '';
                 var sp_12clear = item.sp_12clear || '';
+                var playspeed = Number(item.playspeed) || 1.0;
                 
                 // 更新なしをスキップ
                 if (skip_no_update == 1 && pre_score >= score && pre_bp <= bp && pre_lamp >= lamp) {
@@ -418,6 +426,11 @@
                 // タイトル
                 out += '<td class="' + diff_color + '">';
                 if (title_prefix) out += title_prefix + ' ';
+                if (playspeed>1.0){
+                    title = "<span class='playspeed-high'>["+playspeed+"X]</span> "+title;
+                }else if (playspeed != 1.0) {
+                    title = "<span class='playspeed-low'>["+playspeed+"X]</span> "+title;
+                }
                 out += title + '</td>';
                 
                 if (is_battle) {

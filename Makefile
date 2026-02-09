@@ -15,6 +15,8 @@ $(target_zip): $(target) $(html_files) version.txt
 	@rm -rf $(target_zip)
 	@cp version.txt $(project_name)
 	@cp icon.ico $(project_name)
+	@cp template $(project_name)
+	@cp -a resources $(project_name)
 	@rm -rf $(project_name)/log
 	@rm -rf $(project_name)/*.json
 	@cp -a /mnt/d/bin/YouTubeLive/inf_daken_counter/resources $(project_name)/

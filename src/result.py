@@ -702,7 +702,7 @@ class ResultDatabase:
     
     def get_today_updates_data(self, start_time:int) -> dict:
         """本日のプレー履歴のデータを辞書形式で返す"""
-        target = []
+        target:List[OneResult] = []
         for r in reversed(self.results):
             if r.detect_mode == detect_mode.result:
                 if r.timestamp >= start_time:
@@ -727,6 +727,7 @@ class ResultDatabase:
                 'pre_bp': r.pre_bp,
                 'pre_lamp': r.pre_lamp.value,
                 'opt': r.option.__str__() if r.option else "",
+                'playspeed': r.playspeed if r.playspeed else 1.0,
                 'score_rate': r.score / r.notes / 2 if r.notes else 0
             }
             
@@ -752,7 +753,7 @@ class ResultDatabase:
     
     def get_history_cursong_data(self, title:str, style:play_style, difficulty:difficulty, 
                                  battle:bool=None, playspeed:float=None) -> dict:
-        """指定された曲のプレーログを辞書形式で返す"""
+        """指定された曲のプレーログを辞書形式で返す。websocketでの送信用。"""
         songinfo = self.song_database.search(title=title, play_style=style, difficulty=difficulty)
         results = self.search(title=title, style=style, difficulty=difficulty)
         best_score = 0
@@ -783,7 +784,7 @@ class ResultDatabase:
                 best_lamp = r.result.lamp.value
                 best_lamp_opt = r.result.option
             if r.result.judge:
-                if r.result.judge.pr + r.result.judge.bd < best_bp:
+                if not r.result.dead and r.result.judge.pr + r.result.judge.bd < best_bp:
                     best_bp = r.result.judge.pr + r.result.judge.bd
                     best_bp_opt = r.result.option
             else:
@@ -800,10 +801,11 @@ class ResultDatabase:
             'lv': str(songinfo.level) if hasattr(songinfo, 'level') else "",
             'music': title,
             'difficulty': get_chart_name(style, difficulty),
+            'playspeed':playspeed if playspeed else 1.0,
             'last_played': str(datetime.datetime.fromtimestamp(last_played_time).strftime('%Y/%m/%d')),
             'best_lamp': best_lamp,
             'best_lamp_opt': best_lamp_opt.__str__() if best_lamp_opt else "",
-            'best_bp': best_bp if best_bp != 99999999 else 0,
+            'best_bp': best_bp,
             'best_bp_opt': best_bp_opt.__str__() if best_bp_opt else "",
             'best_score': best_score,
             'best_score_opt': best_score_opt.__str__() if best_score_opt else ""
