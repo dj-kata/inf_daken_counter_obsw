@@ -188,7 +188,8 @@ class OneResult:
         ret = False
         ret = True if self.pre_score and self.score > self.pre_score else ret
         ret = True if self.pre_lamp and self.lamp.value > self.pre_lamp.value else ret
-        ret = True if self.pre_bp and self.bp < self.pre_bp else ret
+        ret = True if self.bp and not self.pre_bp else ret
+        ret = True if self.bp and self.pre_bp and self.bp < self.pre_bp else ret
         return ret
         
     def __eq__(self, other):
@@ -225,7 +226,7 @@ class OneResult:
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""
         if self.lamp and self.score:
-            return f"detect_mode:{self.detect_mode.name}, song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_updated:{self.is_updated()}(pre score:{self.pre_score}, bp:{self.pre_bp}, lamp:{self.pre_lamp}), is_arcade:{self.is_arcade}, timestamp:{datetime.datetime.fromtimestamp(self.timestamp)}"
+            return f"detect_mode:{self.detect_mode.name}, song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_updated:{self.is_updated()}(pre score:{self.pre_score}, bp:{self.pre_bp}, lamp:{self.pre_lamp}), notes:{self.notes}, is_arcade:{self.is_arcade}, timestamp:{datetime.datetime.fromtimestamp(self.timestamp)}"
         else:
             return "not a result data!"
 
@@ -315,9 +316,9 @@ class DetailedResult():
 
     def __str__(self):
         """主要情報の文字列を出力。ログ用(overrided)"""
-        msg = f"chart:{get_title_with_chart(self.result.title, self.result.play_style, self.result.difficulty)}"
-        msg += f", playspeed:{self.result.playspeed}"
-        msg += f", score: {self.result.score}"
+        msg = f"=== DetailedResult === \nchart:{get_title_with_chart(self.result.title, self.result.play_style, self.result.difficulty)}\n"
+        msg += f"info:{self.songinfo}\n"
+        msg += f"result:{self.result}\n"
         if self.score_rate_with_rankdiff:
             if self.result.judge:
                 msg += f"({''.join(self.score_rate_with_rankdiff)}, {self.result.judge.get_score_rate()*100:.2f}%)"
@@ -328,15 +329,7 @@ class DetailedResult():
             msg += f", BPI: {self.bpi}, "
         if self.result_side:
             msg += f", side: {self.result_side.name[1:]}"
-        if self.result:
-            msg += f", bp: {self.result.bp}"
-            if self.result.lamp:
-                msg += f", lamp: {self.result.lamp.name}"
-            if self.result.option:
-                msg += f", option: {self.result.option},"
-            msg += f", timestamp:{self.result.timestamp}\n"
-        else:
-            msg += '(result is None)'
+        msg += 'level:{self.level}'
         return msg
         
     def __eq__(self, other):
@@ -763,6 +756,7 @@ class ResultDatabase:
         best_bp_opt = None
         best_lamp = 0
         best_lamp_opt = None
+        notes = None # バグってノーツ数が入っていない場合があるので別処理にする
         
         target = []
         for r in results:
@@ -776,6 +770,8 @@ class ResultDatabase:
                 continue
             if r.result.detect_mode == detect_mode.result:
                 target.append(r)
+            if r.result.notes and not notes:
+                notes = r.result.notes
             if r.result.score > best_score:
                 best_score = r.result.score
                 best_score_opt = r.result.option
@@ -819,8 +815,10 @@ class ResultDatabase:
             data['bpi_coef'] = f"{songinfo.bpi_coef}"
         
         if detail:
+            detail.result.notes = notes
+            detail.bpi = detail.get_bpi() # ノース数などが入っていない場合におかしくなるので、一応計算し直す
             if detail.result.notes:
-                data['notes'] = detail.result.notes
+                data['notes'] = notes
                 data['best_score_rate'] = best_score / detail.result.notes / 2
                 data['best_bp_rate'] = f"{100*best_bp / detail.result.notes:.2f}"
                 if detail.score_rate_with_rankdiff:

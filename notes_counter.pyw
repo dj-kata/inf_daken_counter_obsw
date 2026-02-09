@@ -37,12 +37,21 @@ from src.config_dialog import ConfigDialog
 from src.obs_dialog import OBSControlDialog
 from src.main_window import MainWindowUI
 from src.storage import StorageAccessor
+from src.update import GitHubUpdater
 
 sys.path.append('infnotebook')
 from define import define
 # from src.resources import resource, check_latest
 from resources import resource, check_latest
 from record import musicnamechanges_filename
+
+try:
+    with open('version.txt', 'r') as f:
+        tmp = f.readline()
+        print(tmp)
+        SWVER = tmp.strip()[2:] if tmp.startswith('v') else tmp.strip()
+except Exception:
+    SWVER = "0.0.0"
 
 class MainWindow(MainWindowUI):
     """メインウィンドウクラス - 制御ロジックを担当"""
@@ -462,6 +471,8 @@ class MainWindow(MainWindowUI):
         # logger.debug(f"mode:{self.last_play_mode}, self.current_judge = {self.current_judge}")
         if tmp:
             self.current_judge = tmp
+        # TODO 多分websocketなのでプレイ中に都度送信しても負荷が低い
+        # self.result_database.broadcast_graph_data(self.start_time - self.config.autoload_offset*3600)
     
     def process_result_mode(self):
         """リザルト画面での処理"""
@@ -473,14 +484,6 @@ class MainWindow(MainWindowUI):
             result.timestamp = self.result_timestamp
             if result and result.chart_id:
                 if result == self.result_pre:
-                    # xml更新
-                    self.result_database.broadcast_history_cursong_data(
-                        title=result.title
-                        ,style=result.play_style
-                        ,difficulty=result.difficulty
-                        ,battle=result.option.battle
-                    )
-
                     # リザルトを保存
                     if self.result_database.add(result):
                         self.result_database.save()
@@ -492,6 +495,14 @@ class MainWindow(MainWindowUI):
                             if self.save_image(skip_no_update=self.config.autosave_image_mode==config_autosave_image.only_updates, detailed_result=detailed_result):
                                 # 曲名の更新
                                 self.last_saved_song = get_title_with_chart(result.title, result.play_style, result.difficulty)
+
+                    # xml更新
+                    self.result_database.broadcast_history_cursong_data(
+                        title=result.title
+                        ,style=result.play_style
+                        ,difficulty=result.difficulty
+                        ,battle=result.option.battle
+                    )
 
                 self.result_pre = result
         except:
@@ -590,5 +601,16 @@ def main():
 
 
 if __name__ == "__main__":
+    updater = GitHubUpdater(
+        github_author='dj-kata',
+        github_repo='inf_daken_counter_obsw',
+        current_version=SWVER,           # 現在のバージョン
+        main_exe_name="notes_counter.exe",  # メインプログラムのexe名
+        updator_exe_name="notes_counter.exe",           # アップデート用プログラムのexe名
+    )
+    
+    # メインプログラムから呼び出す場合
+    updater.check_and_update()
+    
     main()
 
