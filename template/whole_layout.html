@@ -14,14 +14,18 @@
         }
 
         :root {
+            /* === レイアウト設定 === */
+            --game-width: 84%;             /* game-areaの幅（画面の何%を使うか） */
+            
             /* === 分割比率のカスタムプロパティ === */
             --color-upper-border: #055;
-            --game-area-ratio: 5;
-            --info-area-ratio: 1;
             --clock-ratio: 0.6;
             --comment-ratio: 6.4;
-            --bottom-left-ratio: 5;
-            --bottom-right-ratio: 5.7;
+            
+            /* 下段の3つの要素の比率 */
+            --bottom-today-ratio: 10;
+            --bottom-history-ratio: 9;
+            --bottom-graph-ratio: 5;
             
             /* 右下エリアの上下分割比率 */
             --bottom-right-upper-ratio: 2;
@@ -78,20 +82,20 @@
         }
 
         .top-section {
-            flex: none;
+            flex: 0 0 auto;
             display: flex;
             background-color: transparent;
         }
 
         /* ゲームエリア */
         .game-area {
-            flex: var(--game-area-ratio);
+            width: var(--game-width);
+            aspect-ratio: 16/9;
+            flex-shrink: 0;
             background-color: transparent;
             border: 10px solid var(--color-bg);
             margin-right: 5px;
             position: relative;
-            /* overflow: hidden; */
-            aspect-ratio: 16/9;
         }
         .game-inner {
             /* border: 2px solid #00ffff; */
@@ -126,13 +130,12 @@
         }
 
         .info-area {
-            flex: var(--info-area-ratio);
+            flex: 1;
             display: flex;
             flex-direction: column;
             margin-left: -5px;
             background-color: transparent;
-            /* border-radius: 8px; */
-            /* padding: 5px; */
+            min-width: 0;
         }
 
         .clock-area {
@@ -284,22 +287,26 @@
 
         /* 下段全体 - #003背景 */
         .bottom-section {
+            width: var(--game-width);
             flex: 1;
             display: flex;
             flex-direction: row;
             background-color: var(--color-bg);
             padding: 10px;
             gap: 20px;
+            align-items: stretch;
+            min-height: 0;
         }
 
         .bottom-today {
-            flex: 10;
+            flex: var(--bottom-today-ratio);
             border-radius: 8px;
             overflow: hidden;
             position: relative;
             background-color: transparent;
             border: 2px solid #aaaaaa;
             border-radius: 10px;
+            display: flex;
         }
         
         .bottom-today iframe {
@@ -307,7 +314,7 @@
         }
 
         .bottom-history {
-            flex: 9;
+            flex: var(--bottom-history-ratio);
             overflow: hidden;
             position: relative;
             background-color: transparent;
@@ -316,7 +323,7 @@
         }
 
         .bottom-graph {
-            flex: 5;
+            flex: var(--bottom-graph-ratio);
             overflow: hidden;
             position: relative;
             background-color: transparent;
@@ -324,31 +331,6 @@
             border-radius: 10px;
         }
         
-        .bottom-camera {
-            flex: 4.65;
-            overflow: hidden;
-            position: relative;
-            background-color: transparent;
-            /* フレームなし */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .camera-placeholder {
-            color: #444;
-            font-size: 24px;
-            text-align: center;
-            font-family: 'Orbitron', monospace;
-            opacity: 0.3;
-        }
-        
-        .camera-placeholder small {
-            display: block;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-
         /* スケーリング対応iframe */
         .scaled-iframe {
             border: none;
@@ -457,14 +439,6 @@
                 <div class="placeholder" id="placeholder-graph">
                     <div>graph</div>
                     <small>今日の判定統計</small>
-                </div>
-            </div>
-            
-            <!-- 空き領域（手元カメラなど用） -->
-            <div class="bottom-camera" id="camera-area">
-                <div class="camera-placeholder">
-                    <!-- <div>CAMERA AREA</div>
-                    <small>手元カメラなど配置用</small> -->
                 </div>
             </div>
         </div>
@@ -645,39 +619,6 @@
                 }
             });
             
-            // 時計iframeのCSS制御（ローカルファイル）
-            $('#scaled-iframe-clock').on('load', function(){
-                try {
-                    // 背景を透明に
-                    $(this).contents().find('html, body').css({
-                        'background': 'transparent',
-                        'background-color': 'transparent',
-                        'margin': '0',
-                        'padding': '0'
-                    });
-                    // すべての要素の余白を調整
-                    // $(this).contents().find('*').css({
-                    //     'margin': '0'
-                    // });
-                    // 日付を右寄せ
-                    $(this).contents().find('.date-display').css({
-                        'text-align': 'right',
-                        'width': '50%'
-                    });
-                            // 親のCSS変数を取得
-                    const enableFlash = getComputedStyle(document.documentElement).getPropertyValue('--enable-flash').trim();
-                    const flashHH = getComputedStyle(document.documentElement).getPropertyValue('--flash-hh').trim();
-                    const flashMM = getComputedStyle(document.documentElement).getPropertyValue('--flash-mm').trim();
-                    iframeRoot.style.setProperty('--enable-flash', enableFlash);
-                    iframeRoot.style.setProperty('--flash-hh', flashHH);
-                    iframeRoot.style.setProperty('--flash-mm', flashMM);
-        
-                    console.log('CSS制御成功: scaled-iframe-clock');
-                } catch(e) {
-                    console.warn('CSS制御失敗: scaled-iframe-clock', e);
-                }
-            });
-
             // info_grid用のデータ読み込み開始
             setInterval(loadInfoGridXml, 1000);
             loadInfoGridXml();
