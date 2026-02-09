@@ -6,10 +6,10 @@
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="../out/websocket.css">
         <style>
             :root {
                 --skip-no-update: 0; /* 更新のない行を飛ばす */
-                --enable-header: 1; /* 1ならヘッダー部分を表示する */
             }
             
             * {
@@ -85,8 +85,7 @@
                 text-align: center;
                 font-size: 36px;
                 color: #ffeb3b;
-                text-shadow: 0 0 10px rgba(255, 235, 59, 0.5),
-                            2px 2px 0 #000;
+                text-shadow: 2px 2px 0 #000;
             }
             
             /* ランプ列 */
@@ -209,31 +208,20 @@
             
             .failed { animation: flashfailed 0.08s infinite; }
             @keyframes flashfailed {
-                0%   { background-color: #ff2828; }
-                50%  { background-color: #282828; }
-                100% { background-color: #ff2828; }
+                0%   { background-color: #333; }
+                50%  { background-color: #777; }
+                100% { background-color: #333; }
             }
             
-            .ac { background-color: #ff66ff; }
-            .ec { background-color: #22ff22; }
-            .nc { background-color: #22ccff; }
-            .hc { background-color: #ffffff; }
+            .ac { background-color: #ab47bc; }
+            .ec { background-color: #d32f2f; }
+            .nc { background-color: #ffa000; }
+            .hc { background-color: #388e3c; }
+            .exh { background-color: #0288d1; }
             
-            .exh { animation: flashexh 0.08s infinite; }
-            @keyframes flashexh {
-                0%   { background-color: #ff2828; }
-                50%  { background-color: #ffff28; }
-                100% { background-color: #ff2828; }
-            }
-            
-            /* SP☆12地力表 */
+            /* SP☆12 */
             .sp12-clear {
-                color: #9ee7ff;
-                font-size: 24px;
-            }
-            
-            .sp12-hard {
-                color: #ff86b4;
+                color: #bbddff;
                 font-size: 24px;
             }
             
@@ -241,11 +229,60 @@
                 color: #ffffff;
                 font-size: 24px;
             }
+            
+            .sp12-hard {
+                color: #ffaaaa;
+                font-size: 24px;
+            }
         </style>
     </head>
     <body>
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
         <script>
+        // WebSocketポート番号取得
+        function getWebSocketPort() {
+            const port = getComputedStyle(document.documentElement)
+                .getPropertyValue('--websocket-port').trim();
+            return parseInt(port) || 8767;
+        }
+        
+        let ws = null;
+        let reconnectInterval = null;
+        
+        function connectWebSocket() {
+            const WEBSOCKET_PORT = getWebSocketPort();
+            ws = new WebSocket(`ws://localhost:${WEBSOCKET_PORT}`);
+            
+            ws.onopen = function() {
+                console.log('WebSocket接続成功');
+                if (reconnectInterval) {
+                    clearInterval(reconnectInterval);
+                    reconnectInterval = null;
+                }
+            };
+            
+            ws.onmessage = function(event) {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.type === 'today_updates') {
+                        updateTodayUpdates(message.data);
+                    }
+                } catch (error) {
+                    console.error('メッセージ解析エラー:', error);
+                }
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocketエラー:', error);
+            };
+            
+            ws.onclose = function() {
+                console.log('WebSocket切断。3秒後に再接続します...');
+                if (!reconnectInterval) {
+                    reconnectInterval = setInterval(connectWebSocket, 3000);
+                }
+            };
+        }
+        
         function getDifficultyColor(difficulty) {
             if (!difficulty || difficulty.length < 3) return '';
             var diffType = difficulty.charAt(2).toUpperCase();
@@ -259,185 +296,170 @@
             }
         }
         
-        function loadXml() {
-            var getxml = $.ajax({
-                url: '../out/today_update.xml',
-                type: 'GET',
-                dataType: 'xml',
-                cache: false,
-                timeout: 10000
-            });
+        function updateTodayUpdates(data) {
+            if (!data || !data.items) return;
             
-            getxml.done(function(xml) {
-                var out = '';
-                var skip_no_update = getComputedStyle(document.documentElement).getPropertyValue('--skip-no-update');
-                var enable_header = getComputedStyle(document.documentElement).getPropertyValue('--enable-header');
-                if (enable_header==1){
-                    $('.header').show()
-                }else{
-                    $('.header').hide()
+            var out = '';
+            var skip_no_update = getComputedStyle(document.documentElement).getPropertyValue('--skip-no-update');
+            
+            data.items.forEach(function(item, index) {
+                var lv = item.lv || '';
+                var lamp = Number(item.lamp) || 0;
+                var difficulty = item.difficulty || '';
+                var title = item.title || '';
+                var notes = Number(item.notes) || 0;
+                var score = Number(item.score) || 0;
+                var score_rate = Number(item.score_rate) || 0;
+                var pre_score = Number(item.pre_score) || 0;
+                var bp = Number(item.bp) || 0;
+                var pre_lamp = Number(item.pre_lamp) || 0;
+                var pre_bp = Number(item.pre_bp) || 0;
+                var bpi = item.bpi || '';
+                var opt = item.opt || '';
+                var sp_12hard = item.sp_12hard || '';
+                var sp_12clear = item.sp_12clear || '';
+                
+                // 更新なしをスキップ
+                if (skip_no_update == 1 && pre_score >= score && pre_bp <= bp && pre_lamp >= lamp) {
+                    return;
                 }
                 
-                $(xml).find("Results item").each(function(index, item) {
-                    var lv = $(item).find('lv').text();
-                    var lamp = Number($(item).find('lamp').text());
-                    var difficulty = $(item).find('difficulty').text();
-                    var title = $(item).find('title').text();
-                    var notes = Number($(item).find('notes').text());
-                    var score = Number($(item).find('score').text());
-                    var score_rate = Number($(item).find('score_rate').text()) || 0;
-                    var pre_score = Number($(item).find('pre_score').text()) || 0;
-                    var bp = Number($(item).find('bp').text());
-                    var pre_lamp = Number($(item).find('pre_lamp').text());
-                    var pre_score = Number($(item).find('pre_score').text());
-                    var pre_bp = Number($(item).find('pre_bp').text());
-                    var bpi = $(item).find('bpi').text();
-                    var opt = $(item).find('opt').text();
-                    var sp_12hard = $(item).find('sp_12hard').text();
-                    var sp_12clear = $(item).find('sp_12clear').text();
-                    
-                    // 更新なしをスキップ
-                    if (skip_no_update == 1 && pre_score >= score && pre_bp <= bp && pre_lamp >= lamp) {
-                        return true;
-                    }
-                    
-                    // ランク判定
-                    var rank = "B";
-                    if (score_rate * 18 > 16) {
-                        rank = 'AAA';
-                    } else if (score_rate * 18 > 14) {
-                        rank = 'AA';
-                    } else if (score_rate * 18 > 12) {
-                        rank = 'A';
-                    } else if (score_rate * 18 > 0) {
-                        rank = 'F';
-                    }
-                    
-                    var rankdiff0 = $(item).find('rankdiff0').text();
-                    var rankdiff1 = $(item).find('rankdiff1').text();
-                    var rankdiff = '<span class="' + rank + '">' + rankdiff0 + '</span>' + rankdiff1;
-                    
-                    if (rankdiff0 + rankdiff1 == "MAX+0") {
-                        rankdiff = '<span class="MAX">MAX</span>';
-                    }
-                    
-                    // ランプ表示
-                    var lamp_html = '';
-                    if (lamp == 1) {
-                        lamp_html = '<span class="lamp-box failed"></span>';
-                    } else if (lamp == 2) {
-                        lamp_html = '<span class="lamp-box ac"></span>';
-                    } else if (lamp == 3) {
-                        lamp_html = '<span class="lamp-box ec"></span>';
-                    } else if (lamp == 4) {
-                        lamp_html = '<span class="lamp-box nc"></span>';
-                    } else if (lamp == 5) {
-                        lamp_html = '<span class="lamp-box hc"></span>';
-                    } else if (lamp == 6) {
-                        lamp_html = '<span class="lamp-box exh"></span>';
-                    } else if (lamp == 7) {
-                        lamp_html = '<span class="lamp-box fc"></span>';
-                    }
-                    
-                    // BPIの色分け
-                    var bpi_class = '';
-                    if (bpi && bpi !== '??') {
-                        bpi_class = bpi.includes('-') ? 'bpi-negative' : 'bpi-positive';
-                    } else {
-                        bpi = '';
-                    }
-                    
-                    // スコア更新チェック
-                    var score_class = score > pre_score ? 'score-updated' : 'score-not-updated';
-                    var row_class = score > pre_score ? 'score-updated' : '';
-                    
-                    // 難易度の色
-                    var diff_color = getDifficultyColor(difficulty);
-                    
-                    // レベル表示（SP☆12地力表対応）
-                    var level_display = '☆' + lv;
-                    if (sp_12clear || sp_12hard) {
-                        // clearとhardの両方を表示（略さない）
-                        var clear_text = sp_12clear || '?';
-                        var hard_text = sp_12hard || '?';
-                        
-                        level_display = '<span class="sp12-clear">' + clear_text + '</span>' +
-                                       '<span class="sp12-slash">/</span>' +
-                                       '<span class="sp12-hard">' + hard_text + '</span>';
-                    }
-                    
-                    // DBx系オプションの処理
-                    var is_battle = opt.indexOf("BATTLE") >= 0;
-                    var title_prefix = '';
-                    if (is_battle) {
-                        var with_scratch = opt.indexOf("A-SCR") < 0 ? "皿" : "";
-                        if ((opt.indexOf("MIR / OFF") >= 0) || (opt.indexOf("OFF / MIR") >= 0)) {
-                            title_prefix = '(' + with_scratch + 'DBM)';
-                        } else if (opt.indexOf("OFF / OFF") >= 0) {
-                            title_prefix = '(' + with_scratch + 'DB)';
-                        } else if (opt.indexOf("RAN / RAN") >= 0) {
-                            title_prefix = '(' + with_scratch + 'DBR)';
-                        } else if (opt.indexOf("S-RAN / S-RAN") >= 0) {
-                            title_prefix = '(' + with_scratch + 'DBSR)';
-                        } else if (opt.indexOf("H-RAN / H-RAN") >= 0) {
-                            title_prefix = '(' + with_scratch + 'DBHR)';
-                        }
-                    }
-                    
-                    // テーブル行HTML生成
-                    out += '<tr class="' + row_class + '">';
-                    
-                    // レベル
-                    out += '<td>' + level_display + '</td>';
-                    
-                    // ランプ
-                    out += '<td>' + lamp_html + '</td>';
-                    
-                    // タイトル
-                    out += '<td class="' + diff_color + '">';
-                    if (title_prefix) out += title_prefix + ' ';
-                    out += title + '</td>';
-                    
-                    if (is_battle) {
-                        // BATTLE系の場合
-                        out += '<td class="' + score_class + '">bp' + bp + '</td>';
-                        out += '<td></td>';
-                        out += '<td></td>';
-                    } else {
-                        // 通常の場合
-                        out += '<td class="' + score_class + '">' + score + '</td>';
-                        out += '<td>' + rankdiff + '</td>';
-                        out += '<td class="' + bpi_class + '">' + bpi + '</td>';
-                    }
-                    
-                    // オプション
-                    out += '<td>' + opt + '</td>';
-                    
-                    out += '</tr>';
-                    
-                    if (index == 26) {
-                        return false;
-                    }
-                });
+                // ランク判定
+                var rank = "B";
+                if (score_rate * 18 > 16) {
+                    rank = 'AAA';
+                } else if (score_rate * 18 > 14) {
+                    rank = 'AA';
+                } else if (score_rate * 18 > 12) {
+                    rank = 'A';
+                } else if (score_rate * 18 > 0) {
+                    rank = 'F';
+                }
                 
-                $('#results-tbody').html(out);
+                var rankdiff0 = item.rankdiff0 || '';
+                var rankdiff1 = item.rankdiff1 || '';
+                var rankdiff = '<span class="' + rank + '">' + rankdiff0 + '</span>' + rankdiff1;
+                
+                if (rankdiff0 + rankdiff1 == "MAX+0") {
+                    rankdiff = '<span class="MAX">MAX</span>';
+                }
+                
+                // ランプ表示
+                var lamp_html = '';
+                if (lamp == 1) {
+                    lamp_html = '<span class="lamp-box failed"></span>';
+                } else if (lamp == 2) {
+                    lamp_html = '<span class="lamp-box ac"></span>';
+                } else if (lamp == 3) {
+                    lamp_html = '<span class="lamp-box ec"></span>';
+                } else if (lamp == 4) {
+                    lamp_html = '<span class="lamp-box nc"></span>';
+                } else if (lamp == 5) {
+                    lamp_html = '<span class="lamp-box hc"></span>';
+                } else if (lamp == 6) {
+                    lamp_html = '<span class="lamp-box exh"></span>';
+                } else if (lamp == 7) {
+                    lamp_html = '<span class="lamp-box fc"></span>';
+                }
+                
+                // BPIの色分け
+                var bpi_class = '';
+                if (bpi && bpi !== '??') {
+                    bpi_class = bpi.includes('-') ? 'bpi-negative' : 'bpi-positive';
+                } else {
+                    bpi = '';
+                }
+                
+                // スコア更新チェック
+                var score_class = score > pre_score ? 'score-updated' : 'score-not-updated';
+                var row_class = score > pre_score ? 'score-updated' : '';
+                
+                // 難易度の色
+                var diff_color = getDifficultyColor(difficulty);
+                
+                // レベル表示（SP☆12地力表対応）
+                var level_display = '☆' + lv;
+                if (sp_12clear || sp_12hard) {
+                    var clear_text = sp_12clear || '?';
+                    var hard_text = sp_12hard || '?';
+                    
+                    level_display = '<span class="sp12-clear">' + clear_text + '</span>' +
+                                   '<span class="sp12-slash">/</span>' +
+                                   '<span class="sp12-hard">' + hard_text + '</span>';
+                }
+                
+                // DBx系オプションの処理
+                var is_battle = opt.indexOf("BATTLE") >= 0;
+                var title_prefix = '';
+                if (is_battle) {
+                    var with_scratch = opt.indexOf("A-SCR") < 0 ? "皿" : "";
+                    if ((opt.indexOf("MIR / OFF") >= 0) || (opt.indexOf("OFF / MIR") >= 0)) {
+                        title_prefix = '(' + with_scratch + 'DBM)';
+                    } else if (opt.indexOf("OFF / OFF") >= 0) {
+                        title_prefix = '(' + with_scratch + 'DB)';
+                    } else if (opt.indexOf("RAN / RAN") >= 0) {
+                        title_prefix = '(' + with_scratch + 'DBR)';
+                    } else if (opt.indexOf("S-RAN / S-RAN") >= 0) {
+                        title_prefix = '(' + with_scratch + 'DBSR)';
+                    } else if (opt.indexOf("H-RAN / H-RAN") >= 0) {
+                        title_prefix = '(' + with_scratch + 'DBHR)';
+                    }
+                }
+                
+                // テーブル行HTML生成
+                out += '<tr class="' + row_class + '">';
+                
+                // レベル
+                out += '<td>' + level_display + '</td>';
+                
+                // ランプ
+                out += '<td>' + lamp_html + '</td>';
+                
+                // タイトル
+                out += '<td class="' + diff_color + '">';
+                if (title_prefix) out += title_prefix + ' ';
+                out += title + '</td>';
+                
+                if (is_battle) {
+                    // BATTLE系の場合
+                    out += '<td class="' + score_class + '">bp' + bp + '</td>';
+                    out += '<td></td>';
+                    out += '<td></td>';
+                } else {
+                    // 通常の場合
+                    out += '<td class="' + score_class + '">' + score + '</td>';
+                    out += '<td>' + rankdiff + '</td>';
+                    out += '<td class="' + bpi_class + '">' + bpi + '</td>';
+                }
+                
+                // オプション
+                out += '<td>' + opt + '</td>';
+                
+                out += '</tr>';
+                
+                if (index == 26) {
+                    return false;
+                }
             });
             
-            getxml.fail(function(err) {
-                console.error('XMLロードエラー:', err);
-            });
+            document.getElementById('results-tbody').innerHTML = out;
         }
         
         window.addEventListener('DOMContentLoaded', function() {
-            loadXml();
-            setInterval(loadXml, 1000);
+            connectWebSocket();
+        });
+        
+        window.addEventListener('beforeunload', function() {
+            if (ws) {
+                ws.close();
+            }
         });
         </script>
         
         <div id="all">
-            <div class="header">
+            <!-- <div class="header">
                 <h1>📊 Recent Update</h1>
-            </div>
+            </div> -->
             
             <div class="results-container">
                 <table class="results-table">

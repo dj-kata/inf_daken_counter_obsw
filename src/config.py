@@ -34,6 +34,9 @@ class Config:
 
         self.image_save_path = 'results'
         
+        # WebSocketデータ配信ポート
+        self.websocket_data_port = 8767
+        
         # 楽曲パック集計対象設定（デフォルトはunknown以外の全て）
         self.target_music_packs = [pack.name for pack in music_pack if pack != music_pack.unknown]
         
@@ -76,6 +79,9 @@ class Config:
                     # リザルト画像保存先フォルダ
                     self.image_save_path = config_data.get('image_save_path', 'results')
                     
+                    # WebSocketポート設定
+                    self.websocket_data_port = config_data.get('websocket_data_port', 8767)
+                    
                     # 楽曲パック集計対象設定
                     self.target_music_packs = config_data.get('target_music_packs', [])
                     
@@ -110,6 +116,7 @@ class Config:
             "obs_control_settings": self.obs_control_settings,
             "monitor_source_name": self.monitor_source_name,
             "image_save_path": self.image_save_path,
+            "websocket_data_port": self.websocket_data_port,
             "target_music_packs": self.target_music_packs,
             "autosave_image_mode": self.autosave_image_mode.value,
             "modify_rivalarea_mode": self.modify_rivalarea_mode.value,

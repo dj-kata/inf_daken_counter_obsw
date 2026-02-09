@@ -53,7 +53,7 @@ class MainWindow(MainWindowUI):
         # 設定とデータベースの初期化
         self.config = Config()
         self.song_database = SongDatabase()
-        self.result_database = ResultDatabase()
+        self.result_database = ResultDatabase(config=self.config)
         self.screen_reader = ScreenReader()
         
         # OBS接続マネージャーの初期化
@@ -76,8 +76,8 @@ class MainWindow(MainWindowUI):
         self.current_judge = Judge()
         '''このプレーの判定内訳'''
         self.set_today_judge()
-        self.result_database.write_today_updates_xml(self.start_time - self.config.autoload_offset*3600)
-        self.result_database.write_graph_xml(self.start_time - self.config.autoload_offset*3600)
+        self.result_database.broadcast_today_updates_data(self.start_time - self.config.autoload_offset*3600)
+        self.result_database.broadcast_graph_data(self.start_time - self.config.autoload_offset*3600)
         self.result_timestamp = 0
         self.today_keystroke_count = 0
         self.play_count = 0
@@ -177,10 +177,11 @@ class MainWindow(MainWindowUI):
         self.config.load_config()  # 最新の設定を読み込み
         self.obs_manager.set_config(self.config)
         self.result_database.song_database.load()  # 必要に応じて再読み込み
-        self.result_database.write_today_updates_xml(self.start_time - self.config.autoload_offset*3600)
-        self.result_database.write_graph_xml(self.start_time - self.config.autoload_offset*3600)
+
+        self.result_database.broadcast_today_updates_data(self.start_time - self.config.autoload_offset*3600)
+        self.result_database.broadcast_graph_data(self.start_time - self.config.autoload_offset*3600)
         self.set_today_judge()
-        
+
         # OBS接続状態の再評価
         if not self.obs_manager.is_connected:
             self.obs_manager.connect()
@@ -370,7 +371,7 @@ class MainWindow(MainWindowUI):
                 result = self.screen_reader.read_play_screen(self.current_judge)
                 self.result_database.add(result)
                 self.result_database.save()
-                self.result_database.write_graph_xml(self.start_time - self.config.autoload_offset*3600)
+                self.result_database.broadcast_graph_data(self.start_time - self.config.autoload_offset*3600)
 
                 # 統計情報の更新
                 self.play_count += 1
@@ -449,7 +450,7 @@ class MainWindow(MainWindowUI):
         result = detailed_result.result
         result.timestamp = 0 # 更新日は不明という扱いにする
         # xml更新
-        self.result_database.write_history_cursong_xml(title=result.title, style=result.play_style, difficulty=result.difficulty)
+        self.result_database.broadcast_history_cursong_data(title=result.title, style=result.play_style, difficulty=result.difficulty)
         # 自己べ登録
         if self.result_database.add(result):
             self.statusBar().showMessage(f"選曲画面から自己ベストを登録しました。 -> {result}", 10000)
@@ -473,7 +474,7 @@ class MainWindow(MainWindowUI):
             if result and result.chart_id:
                 if result == self.result_pre:
                     # xml更新
-                    self.result_database.write_history_cursong_xml(
+                    self.result_database.broadcast_history_cursong_data(
                         title=result.title
                         ,style=result.play_style
                         ,difficulty=result.difficulty
@@ -483,7 +484,7 @@ class MainWindow(MainWindowUI):
                     # リザルトを保存
                     if self.result_database.add(result):
                         self.result_database.save()
-                        self.result_database.write_today_updates_xml(self.start_time - self.config.autoload_offset*3600)
+                        self.result_database.broadcast_today_updates_data(self.start_time - self.config.autoload_offset*3600)
 
                         # 画像の保存
                         if self.config.autosave_image_mode is not config_autosave_image.invalid:
@@ -525,6 +526,10 @@ class MainWindow(MainWindowUI):
         # タイマーを停止
         self.main_timer.stop()
         self.display_timer.stop()
+
+        # WebSocketサーバーとHTMLサーバーを停止
+        if hasattr(self.result_database, 'shutdown_servers'):
+            self.result_database.shutdown_servers()
 
         logger.info("アプリケーション終了")
         event.accept()

@@ -6,6 +6,7 @@
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="../out/websocket.css">
         <style>
             * {
                 box-sizing: border-box;
@@ -214,68 +215,79 @@
                 text-shadow: 0 0 5px rgba(255, 68, 68, 0.5);
             }
             
-            /* リザルトテーブル - コンパクト化 */
+            /* リザルトカード */
             .result-card {
                 background: linear-gradient(135deg, rgba(30, 30, 60, 0.9), rgba(20, 20, 40, 0.9));
                 border-radius: 12px;
-                padding: 12px 20px;
+                padding: 12px 15px;
                 box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
                 border: 2px solid rgba(100, 100, 200, 0.3);
             }
             
             .result-card h2 {
-                font-size: 28px;
-                margin: 0 0 8px 0;
-                color: #81d4fa;
+                font-size: 26px;
+                margin: 0 0 10px 0;
+                color: #ce93d8;
                 text-shadow: 2px 2px 0 #000;
             }
             
-            table#result {
+            /* テーブルスタイル */
+            #result {
                 width: 100%;
                 border-collapse: collapse;
             }
             
-            table#result tr {
-                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-                transition: background-color 0.2s;
-            }
-            
-            table#result tr:hover {
-                background-color: rgba(255, 255, 255, 0.05);
-            }
-            
-            table#result td {
-                padding: 6px 5px;
+            #result td {
+                padding: 6px 10px;
                 white-space: nowrap;
-                font-size: 32px;
+                font-size: 24px;
                 text-shadow: 2px 2px 0 #000;
             }
             
-            table#result td:nth-child(1) {
-                width: 20%;
-                color: #ffffaa;
+            #result tr {
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             }
             
-            table#result td:nth-child(2) {
-                width: 4%;
+            /* 日付列 */
+            #result td:nth-child(1) {
+                width: 200px;
+                color: #aaaaff;
             }
             
-            table#result td:nth-child(3) {
-                width: 14%;
-                text-align: right;
-                font-weight: bold;
-            }
-            
-            table#result td:nth-child(4) {
-                width: 18%;
+            /* ランプ列 */
+            #result td:nth-child(2) {
+                width: 40px;
                 text-align: center;
             }
             
-            table#result td:nth-child(5) {
-                width: 44%;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                color: #aaffaa;
+            /* スコア列 */
+            #result td:nth-child(3) {
+                width: 180px;
+                text-align: right;
+                font-size: 28px;
+                font-weight: bold;
+            }
+            
+            /* ランク列 */
+            #result td:nth-child(4) {
+                width: 200px;
+                text-align: center;
+                font-size: 26px;
+            }
+            
+            /* オプション列 */
+            #result td:nth-child(5) {
+                text-align: right;
+                font-size: 22px;
+                color: #77bb77;
+            }
+            
+            /* ランプボックス */
+            .lamp-box {
+                display: inline-block;
+                width: 25px;
+                height: 25px;
+                border-radius: 4px;
             }
             
             /* ランクカラー */
@@ -299,14 +311,6 @@
             .B { color: #7777ff; }
             
             /* クリアランプ */
-            .lamp-box {
-                display: inline-block;
-                width: 25px;
-                height: 25px;
-                border-radius: 4px;
-                vertical-align: middle;
-            }
-            
             .fc { animation: flashfc 0.2s infinite; }
             @keyframes flashfc {
                 0%   { background-color: #ff2828; }
@@ -319,275 +323,284 @@
             
             .failed { animation: flashfailed 0.08s infinite; }
             @keyframes flashfailed {
-                0%   { background-color: #ff2828; }
-                50%  { background-color: #282828; }
-                100% { background-color: #ff2828; }
+                0%   { background-color: #333; }
+                50%  { background-color: #777; }
+                100% { background-color: #333; }
             }
             
-            .ac { background-color: #ff66ff; }
-            .ec { background-color: #22ff22; }
-            .nc { background-color: #22ccff; }
-            .hc { background-color: #ffffff; }
-            
-            .exh { animation: flashexh 0.08s infinite; }
-            @keyframes flashexh {
-                0%   { background-color: #ff2828; }
-                50%  { background-color: #ffff28; }
-                100% { background-color: #ff2828; }
-            }
+            .ac { background-color: #ab47bc; }
+            .ec { background-color: #d32f2f; }
+            .nc { background-color: #ffa000; }
+            .hc { background-color: #388e3c; }
+            .exh { background-color: #0288d1; }
         </style>
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-        <script>
-        function getDifficultyColor(difficulty) {
-            // 難易度の3文字目を取得
-            if (!difficulty || difficulty.length < 3) return '';
-            var diffType = difficulty.charAt(2).toUpperCase();
-            
-            switch(diffType) {
-                case 'A': return 'diff-a';  // Another - 赤
-                case 'B': return 'diff-b';  // Beginner - 緑
-                case 'N': return 'diff-n';  // Normal - 青
-                case 'H': return 'diff-h';  // Hyper - 黄色
-                case 'L': return 'diff-l';  // Leggendaria - 紫
-                default: return '';
-            }
-        }
-        
-        function loadXml() {
-            var getxml = $.ajax({
-                url: '../out/history_cursong.xml',
-                type: 'GET',
-                dataType: 'xml',
-                timeout: 10000,
-                cache: false,
-            });
-            
-            getxml.done(function(xml) {
-                var out = '';
-                var title = $(xml).find('music').text();
-                var difficulty = $(xml).find('difficulty').text();
-                var lv = $(xml).find('lv').text();
-                var notes = Number($(xml).find('notes').text());
-                var best_lamp = $(xml).find('best_lamp').text();
-                var best_score = Number($(xml).find('best_score').text());
-                var best_bp = $(xml).find('best_bp').text();
-                if (best_bp == '99999999'){
-                    best_bp = "";
-                }
-                var best_lamp_opt = $(xml).find('best_lamp_opt').text();
-                var best_score_opt = $(xml).find('best_score_opt').text();
-                var best_bp_opt = $(xml).find('best_bp_opt').text();
-                var best_score_rate = Number($(xml).find('best_score_rate').text());
-                var best_notes = Number($(xml).find('notes').text());
-                var best_bpi = $(xml).find('best_bpi').text();
-                var bpi_ave = $(xml).find('bpi_ave').text();
-                var bpi_top = $(xml).find('bpi_top').text();
-                var best_bp_rate = $(xml).find('best_bp_rate').text();
-                
-                // ランク判定
-                var best_rank = "B";
-                if (best_score_rate * 18 > 16) {
-                    best_rank = 'AAA';
-                } else if (best_score_rate * 18 > 14) {
-                    best_rank = 'AA';
-                } else if (best_score_rate * 18 > 12) {
-                    best_rank = 'A';
-                }
-                
-                var best_rankdiff0 = $(xml).find('best_rankdiff0').text();
-                var best_rankdiff1 = $(xml).find('best_rankdiff1').text();
-                var best_rankdiff = '<span class="' + best_rank + '">' + best_rankdiff0 + '</span>' + best_rankdiff1;
-                
-                // MAXチェック
-                if (best_score == best_notes * 2 && best_notes > 0) {
-                    best_rankdiff = '<span class="MAX">MAX</span>';
-                }
-                
-                // タイトル表示
-                $('.title-name').text(title);
-                
-                // 難易度の色を取得
-                var diffColorClass = getDifficultyColor(difficulty);
-                $('.title-level-difficulty').html(
-                    '<span class="title-level">☆' + lv + '</span>' +
-                    '<span class="title-difficulty ' + diffColorClass + '">' + difficulty + '</span>'
-                );
-                
-                // ノーツ数表示
-                $('.title-notes').text(notes.toLocaleString() + ' notes');
-                
-                // BESTスコア表示
-                var best_html = '';
-                best_html += '<div class="best-item">';
-                best_html += '<div class="best-value">' + best_score + '</div>';
-                best_html += '<div class="best-right-column">';
-                best_html += '<div class="best-detail">' + best_rankdiff + '</div>';
-                best_html += '<div class="best-option">' + best_score_opt + '</div>';
-                best_html += '</div>';
-                best_html += '</div>';
-                $('.score-info').html(best_html);
-                
-                // BEST BP表示
-                var bp_html = '';
-                bp_html += '<div class="best-item">';
-                bp_html += '<div class="best-value">' + best_bp + '</div>';
-                bp_html += '<div class="best-right-column">';
-                bp_html += '<div class="best-detail">(' + best_bp_rate + '%)</div>';
-                bp_html += '<div class="best-option">' + best_bp_opt + '</div>';
-                bp_html += '</div>';
-                bp_html += '</div>';
-                $('.bp-info').html(bp_html);
-                
-                // BPI情報の表示判定
-                var hasBpiData = bpi_ave && bpi_ave !== '' && bpi_ave !== '0' && 
-                                 bpi_top && bpi_top !== '' && bpi_top !== '0' &&
-                                 best_bpi && best_bpi !== '';
-                
-                if (hasBpiData) {
-                    $('.bpi-card').addClass('visible');
-                    
-                    var bpi_ave_num = Number(bpi_ave);
-                    var bpi_top_num = Number(bpi_top);
-                    
-                    // BPI情報表示
-                    var bpi_html = '';
-                    bpi_html += '<div class="bpi-item">';
-                    bpi_html += '<div class="bpi-item-label">自己ベスト</div>';
-                    bpi_html += '<div class="bpi-item-value">' + best_bpi + '</div>';
-                    bpi_html += '</div>';
-                    
-                    bpi_html += '<div class="bpi-item">';
-                    bpi_html += '<div class="bpi-item-label">皆伝平均</div>';
-                    bpi_html += '<div class="bpi-item-value">' + bpi_ave_num.toLocaleString() + '</div>';
-                    var diff_ave = best_score - bpi_ave_num;
-                    var diff_ave_str = (diff_ave >= 0 ? '+' : '') + diff_ave;
-                    var diff_ave_class = diff_ave >= 0 ? 'positive' : 'negative';
-                    bpi_html += '<div class="bpi-comparison ' + diff_ave_class + '">' + diff_ave_str + '</div>';
-                    bpi_html += '</div>';
-                    
-                    bpi_html += '<div class="bpi-item">';
-                    bpi_html += '<div class="bpi-item-label">全国TOP</div>';
-                    bpi_html += '<div class="bpi-item-value">' + bpi_top_num.toLocaleString() + '</div>';
-                    var diff_top = best_score - bpi_top_num;
-                    var diff_top_str = (diff_top >= 0 ? '+' : '') + diff_top;
-                    var diff_top_class = diff_top >= 0 ? 'positive' : 'negative';
-                    bpi_html += '<div class="bpi-comparison ' + diff_top_class + '">' + diff_top_str + '</div>';
-                    bpi_html += '</div>';
-                    
-                    $('.bpi-info').html(bpi_html);
-                } else {
-                    $('.bpi-card').removeClass('visible');
-                }
-                
-                // プレイ履歴
-                $(xml).find("Results item").each(function(index, item) {
-                    var date = $(item).find('date').text();
-                    var lamp = Number($(item).find('lamp').text());
-                    var score = Number($(item).find('score').text());
-                    var score_rate = Number($(item).find('score_rate').text());
-                    var opt = $(item).find('opt').text();
-                    var bp = $(item).find('bp').text();
-                    var notes = Number($(item).find('notes').text());
-                    
-                    var rank = "B";
-                    if (score_rate * 18 > 16) {
-                        rank = 'AAA';
-                    } else if (score_rate * 18 > 14) {
-                        rank = 'AA';
-                    } else if (score_rate * 18 > 12) {
-                        rank = 'A';
-                    }
-                    
-                    var rankdiff0 = $(item).find('rankdiff0').text();
-                    var rankdiff1 = $(item).find('rankdiff1').text();
-                    var rankdiff = '<span class="' + rank + '">' + rankdiff0 + '</span>' + rankdiff1;
-                    
-                    if (score == notes * 2 && notes > 0) {
-                        rankdiff = '<span class="MAX">MAX</span>';
-                    }
-                    
-                    // ランプ表示
-                    var lamp_html = '';
-                    if (lamp == 1) {
-                        lamp_html = '<span class="lamp-box failed"></span>';
-                    } else if (lamp == 2) {
-                        lamp_html = '<span class="lamp-box ac"></span>';
-                    } else if (lamp == 3) {
-                        lamp_html = '<span class="lamp-box ec"></span>';
-                    } else if (lamp == 4) {
-                        lamp_html = '<span class="lamp-box nc"></span>';
-                    } else if (lamp == 5) {
-                        lamp_html = '<span class="lamp-box hc"></span>';
-                    } else if (lamp == 6) {
-                        lamp_html = '<span class="lamp-box exh"></span>';
-                    } else if (lamp == 7) {
-                        lamp_html = '<span class="lamp-box fc"></span>';
-                    }
-                    
-                    var dbflg = false;
-                    var with_scratch = "";
-                    if (opt.indexOf("BATTLE") >= 0) {
-                        dbflg = true;
-                        if (opt.indexOf("A-SCR") < 0) {
-                            with_scratch = ", 皿あり";
-                        }
-                    }
-                    
-                    // オプション省略
-                    if (opt.indexOf("BATTLE, OFF / MIR") >= 0) {
-                        opt = '(DBM;右M' + with_scratch + ')';
-                    } else if (opt.indexOf("BATTLE, MIR / OFF") >= 0) {
-                        opt = '(DBM;左M' + with_scratch + ')';
-                    } else if (opt.indexOf("BATTLE, OFF / OFF") >= 0) {
-                        opt = '(DB' + with_scratch + ')';
-                    } else if (opt.indexOf("BATTLE, RAN / RAN") >= 0) {
-                        opt = '(DBR' + with_scratch + ')';
-                    } else if (opt.indexOf("BATTLE, S-RAN / S-RAN") >= 0) {
-                        opt = '(DBSR' + with_scratch + ')';
-                    } else if (opt.indexOf("BATTLE, H-RAN / H-RAN") >= 0) {
-                        opt = '(DBHR' + with_scratch + ')';
-                    } else if (opt.indexOf("S-RAN / S-RAN, FLIP, LEGACY") >= 0) {
-                        opt = '(全裸' + with_scratch + ')';
-                    }
-                    
-                    // テーブル行追加
-                    if (dbflg) {
-                        out += '<tr>';
-                        out += '<td>' + date + '</td>';
-                        out += '<td>' + lamp_html + '</td>';
-                        out += '<td>bp' + bp + '</td>';
-                        out += '<td></td>';
-                        out += '<td>' + opt + '</td>';
-                        out += '</tr>';
-                    } else {
-                        out += '<tr>';
-                        out += '<td>' + date + '</td>';
-                        out += '<td>' + lamp_html + '</td>';
-                        out += '<td>' + score + '</td>';
-                        out += '<td>' + rankdiff + '</td>';
-                        out += '<td>' + opt + '</td>';
-                        out += '</tr>';
-                    }
-                    
-                    if (index == 19) {
-                        return false;
-                    }
-                });
-                
-                $('#result tbody').html(out);
-            });
-            
-            getxml.fail(function(err) {
-                console.error('XMLロードエラー:', err);
-            });
-        }
-        
-        window.addEventListener('DOMContentLoaded', function() {
-            loadXml();
-            setInterval(loadXml, 1000);
-        });
-        </script>
     </head>
+    <script>
+    // WebSocketポート番号取得
+    function getWebSocketPort() {
+        const port = getComputedStyle(document.documentElement)
+            .getPropertyValue('--websocket-port').trim();
+        return parseInt(port) || 8767;
+    }
+    
+    let ws = null;
+    let reconnectInterval = null;
+    
+    function connectWebSocket() {
+        const WEBSOCKET_PORT = getWebSocketPort();
+        ws = new WebSocket(`ws://localhost:${WEBSOCKET_PORT}`);
+        
+        ws.onopen = function() {
+            console.log('WebSocket接続成功');
+            if (reconnectInterval) {
+                clearInterval(reconnectInterval);
+                reconnectInterval = null;
+            }
+        };
+        
+        ws.onmessage = function(event) {
+            try {
+                const message = JSON.parse(event.data);
+                if (message.type === 'history_cursong') {
+                    updateHistory(message.data);
+                }
+            } catch (error) {
+                console.error('メッセージ解析エラー:', error);
+            }
+        };
+        
+        ws.onerror = function(error) {
+            console.error('WebSocketエラー:', error);
+        };
+        
+        ws.onclose = function() {
+            console.log('WebSocket切断。3秒後に再接続します...');
+            if (!reconnectInterval) {
+                reconnectInterval = setInterval(connectWebSocket, 3000);
+            }
+        };
+    }
+    
+    function getDifficultyColor(difficulty) {
+        if (!difficulty) return '';
+        var d = difficulty.toUpperCase();
+        
+        if (d.includes('SPA')) return 'diff-a';
+        if (d.includes('DPA')) return 'diff-a';
+        if (d.includes('SPH')) return 'diff-h';
+        if (d.includes('DPH')) return 'diff-h';
+        if (d.includes('SPN')) return 'diff-n';
+        if (d.includes('DPN')) return 'diff-n';
+        if (d.includes('SPL')) return 'diff-l';
+        if (d.includes('DPL')) return 'diff-l';
+        if (d.includes('SPB')) return 'diff-b';
+        if (d.includes('DPB')) return 'diff-b';
+        
+        return '';
+    }
+    
+    function updateHistory(data) {
+        if (!data) return;
+        
+        // タイトル情報
+        var lv = data.lv || '';
+        var music = data.music || '';
+        var difficulty = data.difficulty || '';
+        var notes = data.notes || 0;
+        var diff_color = getDifficultyColor(difficulty);
+        
+        document.querySelector('.title-name').textContent = music;
+        document.querySelector('.title-level-difficulty').innerHTML = 
+            '<span class="title-level">☆' + lv + '</span>' +
+            '<span class="title-difficulty ' + diff_color + '">' + difficulty + '</span>';
+        document.querySelector('.title-notes').textContent = 'NOTES: ' + notes;
+        
+        // BEST情報
+        var best_score = data.best_score || 0;
+        var best_score_rate = data.best_score_rate || 0;
+        var best_score_opt = data.best_score_opt || '';
+        var best_bp = data.best_bp || 0;
+        var best_bp_rate = data.best_bp_rate;
+        var best_bp_opt = data.best_bp_opt || '';
+        var best_bpi = data.best_bpi || '';
+        var bpi_ave = data.bpi_ave || '';
+        var bpi_top = data.bpi_top || '';
+        
+        // BEST SCORE表示
+        var score_html = '';
+        score_html += '<div class="best-item">';
+        score_html += '<div class="best-value">' + best_score + '</div>';
+        score_html += '<div class="best-right-column">';
+        score_html += '<div class="best-detail">(' + (best_score_rate * 100).toFixed(2) + '%)</div>';
+        score_html += '<div class="best-option">' + best_score_opt + '</div>';
+        score_html += '</div>';
+        score_html += '</div>';
+        document.querySelector('.score-info').innerHTML = score_html;
+        
+        // BEST BP表示
+        var bp_html = '';
+        bp_html += '<div class="best-item">';
+        bp_html += '<div class="best-value">' + best_bp + '</div>';
+        bp_html += '<div class="best-right-column">';
+        bp_html += '<div class="best-detail">(' + best_bp_rate + '%)</div>';
+        bp_html += '<div class="best-option">' + best_bp_opt + '</div>';
+        bp_html += '</div>';
+        bp_html += '</div>';
+        document.querySelector('.bp-info').innerHTML = bp_html;
+        
+        // BPI情報の表示判定
+        var hasBpiData = bpi_ave && bpi_ave !== '' && bpi_ave !== '0' && 
+                         bpi_top && bpi_top !== '' && bpi_top !== '0' &&
+                         best_bpi && best_bpi !== '';
+        
+        var bpiCard = document.querySelector('.bpi-card');
+        if (hasBpiData) {
+            bpiCard.classList.add('visible');
+            
+            var bpi_ave_num = Number(bpi_ave);
+            var bpi_top_num = Number(bpi_top);
+            
+            // BPI情報表示
+            var bpi_html = '';
+            bpi_html += '<div class="bpi-item">';
+            bpi_html += '<div class="bpi-item-label">自己ベスト</div>';
+            bpi_html += '<div class="bpi-item-value">' + best_bpi + '</div>';
+            bpi_html += '</div>';
+            
+            bpi_html += '<div class="bpi-item">';
+            bpi_html += '<div class="bpi-item-label">皆伝平均</div>';
+            bpi_html += '<div class="bpi-item-value">' + bpi_ave_num.toLocaleString() + '</div>';
+            var diff_ave = best_score - bpi_ave_num;
+            var diff_ave_str = (diff_ave >= 0 ? '+' : '') + diff_ave;
+            var diff_ave_class = diff_ave >= 0 ? 'positive' : 'negative';
+            bpi_html += '<div class="bpi-comparison ' + diff_ave_class + '">' + diff_ave_str + '</div>';
+            bpi_html += '</div>';
+            
+            bpi_html += '<div class="bpi-item">';
+            bpi_html += '<div class="bpi-item-label">全国TOP</div>';
+            bpi_html += '<div class="bpi-item-value">' + bpi_top_num.toLocaleString() + '</div>';
+            var diff_top = best_score - bpi_top_num;
+            var diff_top_str = (diff_top >= 0 ? '+' : '') + diff_top;
+            var diff_top_class = diff_top >= 0 ? 'positive' : 'negative';
+            bpi_html += '<div class="bpi-comparison ' + diff_top_class + '">' + diff_top_str + '</div>';
+            bpi_html += '</div>';
+            
+            document.querySelector('.bpi-info').innerHTML = bpi_html;
+        } else {
+            bpiCard.classList.remove('visible');
+        }
+        
+        // プレイ履歴
+        var out = '';
+        var items = data.items || [];
+        
+        items.forEach(function(item, index) {
+            var date = item.date || '';
+            var lamp = Number(item.lamp) || 0;
+            var score = Number(item.score) || 0;
+            var score_rate = Number(item.score_rate) || 0;
+            var opt = item.opt || '';
+            var bp = item.bp || 0;
+            var item_notes = Number(item.notes) || notes;
+            
+            var rank = "B";
+            if (score_rate * 18 > 16) {
+                rank = 'AAA';
+            } else if (score_rate * 18 > 14) {
+                rank = 'AA';
+            } else if (score_rate * 18 > 12) {
+                rank = 'A';
+            }
+            
+            var rankdiff0 = item.rankdiff0 || '';
+            var rankdiff1 = item.rankdiff1 || '';
+            var rankdiff = '<span class="' + rank + '">' + rankdiff0 + '</span>' + rankdiff1;
+            
+            if (score == item_notes * 2 && item_notes > 0) {
+                rankdiff = '<span class="MAX">MAX</span>';
+            }
+            
+            // ランプ表示
+            var lamp_html = '';
+            if (lamp == 1) {
+                lamp_html = '<span class="lamp-box failed"></span>';
+            } else if (lamp == 2) {
+                lamp_html = '<span class="lamp-box ac"></span>';
+            } else if (lamp == 3) {
+                lamp_html = '<span class="lamp-box ec"></span>';
+            } else if (lamp == 4) {
+                lamp_html = '<span class="lamp-box nc"></span>';
+            } else if (lamp == 5) {
+                lamp_html = '<span class="lamp-box hc"></span>';
+            } else if (lamp == 6) {
+                lamp_html = '<span class="lamp-box exh"></span>';
+            } else if (lamp == 7) {
+                lamp_html = '<span class="lamp-box fc"></span>';
+            }
+            
+            var dbflg = false;
+            var with_scratch = "";
+            if (opt.indexOf("BATTLE") >= 0) {
+                dbflg = true;
+                if (opt.indexOf("A-SCR") < 0) {
+                    with_scratch = ", 皿あり";
+                }
+            }
+            
+            // オプション省略
+            if (opt.indexOf("BATTLE, OFF / MIR") >= 0) {
+                opt = '(DBM;右M' + with_scratch + ')';
+            } else if (opt.indexOf("BATTLE, MIR / OFF") >= 0) {
+                opt = '(DBM;左M' + with_scratch + ')';
+            } else if (opt.indexOf("BATTLE, OFF / OFF") >= 0) {
+                opt = '(DB' + with_scratch + ')';
+            } else if (opt.indexOf("BATTLE, RAN / RAN") >= 0) {
+                opt = '(DBR' + with_scratch + ')';
+            } else if (opt.indexOf("BATTLE, S-RAN / S-RAN") >= 0) {
+                opt = '(DBSR' + with_scratch + ')';
+            } else if (opt.indexOf("BATTLE, H-RAN / H-RAN") >= 0) {
+                opt = '(DBHR' + with_scratch + ')';
+            } else if (opt.indexOf("S-RAN / S-RAN, FLIP, LEGACY") >= 0) {
+                opt = '(全裸' + with_scratch + ')';
+            }
+            
+            // テーブル行追加
+            if (dbflg) {
+                out += '<tr>';
+                out += '<td>' + date + '</td>';
+                out += '<td>' + lamp_html + '</td>';
+                out += '<td>bp' + bp + '</td>';
+                out += '<td></td>';
+                out += '<td>' + opt + '</td>';
+                out += '</tr>';
+            } else {
+                out += '<tr>';
+                out += '<td>' + date + '</td>';
+                out += '<td>' + lamp_html + '</td>';
+                out += '<td>' + score + '</td>';
+                out += '<td>' + rankdiff + '</td>';
+                out += '<td>' + opt + '</td>';
+                out += '</tr>';
+            }
+            
+            if (index == 19) {
+                return false;
+            }
+        });
+        
+        document.querySelector('#result tbody').innerHTML = out;
+    }
+    
+    window.addEventListener('DOMContentLoaded', function() {
+        connectWebSocket();
+    });
+    
+    window.addEventListener('beforeunload', function() {
+        if (ws) {
+            ws.close();
+        }
+    });
+    </script>
     <body>
         <div id="all">
             <!-- タイトルカード -->

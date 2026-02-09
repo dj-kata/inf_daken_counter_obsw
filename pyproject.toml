@@ -15,4 +15,5 @@ dependencies = [
     "opencv-python>=4.13.0.90",
     "pillow>=12.1.0",
     "pyside6>=6.10.1",
+    "websockets>=16.0",
 ]

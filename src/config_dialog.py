@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
                                QListWidget, QLabel, QDialogButtonBox, QRadioButton,
                                QButtonGroup, QScrollArea, QGridLayout, QProgressBar)
 from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QIntValidator
 import os
 import datetime
 
@@ -241,6 +242,11 @@ class ConfigDialog(QDialog):
         self.autoload_offset_spin = QSpinBox()
         self.autoload_offset_spin.setRange(0, 100)
         other_layout.addRow("自動読み込みオフセット:", self.autoload_offset_spin)
+        
+        self.websocket_data_port = QLineEdit()
+        validator = QIntValidator(1000,65535)
+        self.websocket_data_port.setValidator(validator)
+        other_layout.addRow("データ表示用port:", self.websocket_data_port)
         
         layout.addWidget(other_group)
         layout.addStretch()
@@ -587,6 +593,7 @@ class ConfigDialog(QDialog):
         self.enable_judge_check.setChecked(self.config.enable_judge)
         self.enable_folder_updates_check.setChecked(self.config.enable_folder_updates)
         self.autoload_offset_spin.setValue(self.config.autoload_offset)
+        self.websocket_data_port.setText(str(self.config.websocket_data_port))
         
         # 画像保存先 (Configクラスに image_save_path プロパティがある前提)
         if hasattr(self.config, 'image_save_path'):

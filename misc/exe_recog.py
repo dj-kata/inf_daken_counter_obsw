@@ -36,7 +36,8 @@ def gen_ocr_result(info, playdata):
 
 if __name__ == '__main__':
     logger.info('start')
-    rdb = ResultDatabase()
+    config = Config()
+    rdb = ResultDatabase(config = config)
     reader = ScreenReader()
     # for f in glob.glob('debug/0126/*.png'):
     #     # logger.info(f'file={f}')
@@ -50,9 +51,6 @@ if __name__ == '__main__':
     # rdb.save()
     # print(len(rdb.results))
 
-    rdb.write_today_updates_xml(datetime.datetime.now().timestamp() - 4*3600)
-    rdb.write_history_cursong_xml('EMERALDAS', play_style.sp, difficulty.another)
-    rdb.write_graph_xml(datetime.datetime.now().timestamp()-4*3600)
     # print(rdb)
 
     print(f'len = {len(rdb.results)}')
@@ -60,3 +58,11 @@ if __name__ == '__main__':
     # rdb.write_best_csv()
     a = rdb.get_all_best_results()
     rdb.write_best_csv()
+
+    import time
+    rdb.broadcast_today_updates_data(datetime.datetime.now().timestamp() - 48*3600)
+    rdb.broadcast_history_cursong_data('不沈艦CANDY', play_style.sp, difficulty.another)
+    rdb.broadcast_graph_data(datetime.datetime.now().timestamp()-4*3600)
+    time.sleep(4)
+
+    rdb.shutdown_servers()

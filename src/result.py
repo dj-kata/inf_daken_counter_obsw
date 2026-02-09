@@ -3,6 +3,7 @@ from .classes import *
 from .funcs import *
 from .songinfo import *
 from .logger import get_logger
+from .config import Config
 logger = get_logger(__name__)
 import os
 import sys
@@ -13,6 +14,10 @@ import logging
 import logging, logging.handlers
 import math
 import csv
+import asyncio
+import threading
+import os
+from pathlib import Path
 from typing import List
 # リザルト用のクラスを定義
 
@@ -341,14 +346,126 @@ class DetailedResult():
 
 class ResultDatabase:
     """全リザルトを保存するためのクラス"""
-    def __init__(self):
+    def __init__(self, config:Config=None):
         self.song_database = SongDatabase()
         """曲情報クラスのインスタンス。検索用。"""
         self.results:List[OneResult] = []
         """全リザルトが格納されるリスト。OneResultが1エントリとなる。"""
+
+        # WebSocketサーバー関連の初期化
+        self.config = config
+        self.ws_server = None
+        self.ws_loop = None
+        self.ws_thread = None
+    
+        # configが渡された場合のみWebSocketサーバーを起動
+        if config is not None:
+            self._init_websocket_server()
+            # WebSocket設定をCSSファイルに書き込み
+            self._write_websocket_config()
+            
         self.load()
         self.save()
 
+    def _write_websocket_config(self):
+        """WebSocketポート番号をCSSファイルに書き込む"""
+        try:
+            os.makedirs('out', exist_ok=True)
+            
+            css_content = f"""/* WebSocket設定 - 自動生成ファイル */
+    :root {{
+        --websocket-port: {self.config.websocket_data_port};
+    }}
+    """
+            
+            css_path = Path('out') / 'websocket.css'
+            with open(css_path, 'w', encoding='utf-8') as f:
+                f.write(css_content)
+            
+            logger.info(f"WebSocket設定を書き込みました: {css_path}")
+            logger.debug(f"  ポート番号: {self.config.websocket_data_port}")
+        except Exception as e:
+            logger.error(f"WebSocket設定ファイル書き込みエラー: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+
+    def _init_websocket_server(self):
+        """WebSocketサーバーを初期化（HTMLサーバーは不要）"""
+        import asyncio
+        import threading
+        from .websocket_server import DataWebSocketServer
+
+        # WebSocket用の非同期イベントループを別スレッドで起動
+        self.ws_loop = asyncio.new_event_loop()
+        self.ws_thread = threading.Thread(target=self._start_websocket_loop, daemon=True)
+        self.ws_thread.start()
+
+        # WebSocketサーバーの起動
+        self.ws_server = DataWebSocketServer(self.config.websocket_data_port)
+        self.ws_server.start(self.ws_loop)
+
+        logger.info(f"WebSocketサーバー起動: ポート {self.config.websocket_data_port}")
+
+    def _start_websocket_loop(self):
+        """WebSocket用イベントループをスレッドで実行"""
+        import asyncio
+        asyncio.set_event_loop(self.ws_loop)
+        self.ws_loop.run_forever()
+
+    def shutdown_servers(self):
+        """サーバーを停止（アプリケーション終了時に呼び出す）"""
+        if self.ws_server:
+            self.ws_server.stop()
+        if self.ws_loop:
+            self.ws_loop.call_soon_threadsafe(self.ws_loop.stop)
+        logger.info("WebSocketサーバーを停止しました")
+
+    def update_websocket_port(self, port: int):
+        """WebSocketポート番号を更新"""
+        if self.config:
+            self.config.websocket_data_port = port
+            self._write_websocket_config()  # CSSファイルを更新
+            logger.info(f"WebSocketポート更新: {port}")
+    def broadcast_graph_data(self, start_time: int):
+        """グラフデータをWebSocketで配信"""
+        if self.ws_server is None:
+            return
+        
+        try:
+            data = self.get_graph_data(start_time)
+            self.ws_server.update_graph_data(data)
+        except Exception as e:
+            logger.error(f"グラフデータ配信エラー: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+    
+    def broadcast_today_updates_data(self, start_time: int):
+        """本日の更新データをWebSocketで配信"""
+        if self.ws_server is None:
+            return
+        
+        try:
+            data = self.get_today_updates_data(start_time)
+            self.ws_server.update_today_updates_data(data)
+        except Exception as e:
+            logger.error(f"更新データ配信エラー: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+    
+    def broadcast_history_cursong_data(self, title: str, style, difficulty, 
+                                       battle: bool = None, playspeed: float = None):
+        """履歴データをWebSocketで配信"""
+        if self.ws_server is None:
+            return
+        
+        try:
+            data = self.get_history_cursong_data(title, style, difficulty, battle, playspeed)
+            self.ws_server.update_history_cursong_data(data)
+        except Exception as e:
+            logger.error(f"履歴データ配信エラー: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+    
     def add(self, result:OneResult) -> bool:
         """リザルト登録用関数。chart_id情報を何も渡さなくても受ける(途中落ちのノーツ数保存用)
 
@@ -533,11 +650,9 @@ class ResultDatabase:
 
         return best_results
 
-    def write_graph_xml(self, start_time:int):
-        '''本日のノーツ数用xmlを出力'''
-        os.makedirs('out', exist_ok=True)
-        root = ET.Element('Results')
-        target:List[OneResult] = []
+    def get_graph_data(self, start_time:int) -> dict:
+        '''本日のノーツ数用データを辞書形式で返す'''
+        target = []
         total = Judge()
         for r in reversed(self.results):
             if r.detect_mode == detect_mode.play:
@@ -548,106 +663,107 @@ class ResultDatabase:
                 else:
                     break
         
-        add_new_element(root, 'playcount', str(len(target)))
-        add_new_element(root, 'today_notes', str(total.pg+total.gr+total.gd+total.bd))
-        add_new_element(root, 'today_score_rate', f"{total.get_score_rate()*100:.2f}%")
-        elem_today = ET.SubElement(root, 'today_judge')
-        add_new_element(elem_today, 'pg', str(total.pg))
-        add_new_element(elem_today, 'gr', str(total.gr))
-        add_new_element(elem_today, 'gd', str(total.gd))
-        add_new_element(elem_today, 'bd', str(total.bd))
-        add_new_element(elem_today, 'pr', str(total.pr))
-        add_new_element(elem_today, 'cb', str(total.cb))
+        # 現在のスコアレートを計算
+        current_score_rate = "0.00%"
+        if len(target) > 0:
+            latest_result = target[0]
+            if hasattr(latest_result, 'score') and hasattr(latest_result, 'notes') and latest_result.notes:
+                current_score_rate = f"{latest_result.score / latest_result.notes / 2 * 100:.2f}%"
         
-        for i,r in enumerate(reversed(target)): # 古いものを一番下にするために逆順にする
-            elem = ET.SubElement(root, 'judge')
-            add_new_element(elem, 'idx', str(i+1))
-            add_new_element(elem, 'pg', str(r.judge.pg))
-            add_new_element(elem, 'gr', str(r.judge.gr))
-            add_new_element(elem, 'gd', str(r.judge.gd))
-            add_new_element(elem, 'bd', str(r.judge.bd))
-            add_new_element(elem, 'pr', str(r.judge.pr))
-            add_new_element(elem, 'cb', str(r.judge.cb))
+        data = {
+            'playcount': len(target),
+            'today_notes': total.pg + total.gr + total.gd + total.bd,
+            'today_score_rate': f"{total.get_score_rate()*100:.2f}%",
+            'current_score_rate': current_score_rate,
+            'today_judge': {
+                'pg': total.pg,
+                'gr': total.gr,
+                'gd': total.gd,
+                'bd': total.bd,
+                'pr': total.pr,
+                'cb': total.cb
+            },
+            'judges': []
+        }
         
-        # xml出力
-        tree = ET.ElementTree(root)
-        ET.indent(tree, space="    ")
-        tree.write(Path('out')/'graph.xml', encoding='utf-8', xml_declaration=True)
+        for i, r in enumerate(reversed(target)):
+            data['judges'].append({
+                'idx': i + 1,
+                'pg': r.judge.pg,
+                'gr': r.judge.gr,
+                'gd': r.judge.gd,
+                'bd': r.judge.bd,
+                'pr': r.judge.pr,
+                'cb': r.judge.cb
+            })
         
-
-    def write_today_updates_xml(self, start_time:int):
-        """本日のプレー履歴のXMLを出力
-
-        Args:
-            start_time (int): タイムスタンプ形式。これ以降のリザルトを集計する。
-        """
-        target:List[OneResult] = []
+        return data
+    
+    
+    def get_today_updates_data(self, start_time:int) -> dict:
+        """本日のプレー履歴のデータを辞書形式で返す"""
+        target = []
         for r in reversed(self.results):
-            if r.detect_mode == detect_mode.result: # selectの時刻が適当なので注意
+            if r.detect_mode == detect_mode.result:
                 if r.timestamp >= start_time:
                     target.append(r)
                 else:
                     break
-
-        os.makedirs('out', exist_ok=True)
-        root = ET.Element('Results')
         
+        items = []
         for r in target:
             songinfo = self.song_database.search(title=r.title, play_style=r.play_style, difficulty=r.difficulty)
             detailed_result = DetailedResult(songinfo, r, None, songinfo.level if hasattr(songinfo, 'level') else None)
-            item = ET.SubElement(root, 'item')
-            # add_new_element(item, '', )
-            add_new_element(item, 'lv', str(songinfo.level) if hasattr(songinfo, 'level') else "")
-            add_new_element(item, 'title', escape_for_xml(r.title))
-            add_new_element(item, 'difficulty', get_chart_name(r.play_style, r.difficulty))
-            add_new_element(item, 'notes', str(r.notes))
-            add_new_element(item, 'score', str(r.score))
-            add_new_element(item, 'bp', str(r.judge.pr + r.judge.bd))
-            add_new_element(item, 'lamp', str(r.lamp.value))
-            add_new_element(item, 'pre_score', str(r.pre_score))
-            add_new_element(item, 'pre_bp', str(r.pre_bp))
-            add_new_element(item, 'pre_lamp', str(r.pre_lamp.value))
+            
+            item = {
+                'lv': str(songinfo.level) if hasattr(songinfo, 'level') else "",
+                'title': r.title,
+                'difficulty': get_chart_name(r.play_style, r.difficulty),
+                'notes': r.notes,
+                'score': r.score,
+                'bp': r.judge.pr + r.judge.bd if r.judge else r.bp,
+                'lamp': r.lamp.value,
+                'pre_score': r.pre_score,
+                'pre_bp': r.pre_bp,
+                'pre_lamp': r.pre_lamp.value,
+                'opt': r.option.__str__() if r.option else "",
+                'score_rate': r.score / r.notes / 2 if r.notes else 0
+            }
+            
             if songinfo:
-                add_new_element(item, 'dp_unofficial_lv', songinfo.dp_unofficial)
-                add_new_element(item, 'sp_12hard', songinfo.sp12_hard.__str__() if songinfo.sp12_hard else "")
-                add_new_element(item, 'sp_12clear', songinfo.sp12_clear.__str__() if songinfo.sp12_clear else "")
-                add_new_element(item, 'sp_11hard', songinfo.sp11_hard.__str__() if songinfo.sp11_hard else "")
-                add_new_element(item, 'sp_11clear', songinfo.sp11_clear.__str__() if songinfo.sp11_clear else "")
-            add_new_element(item, 'opt', r.option.__str__())
-            add_new_element(item, 'score_rate', str(r.score / r.notes / 2)) # リザルト画面からのものしか使わないためnotesがある
+                item['dp_unofficial_lv'] = songinfo.dp_unofficial if hasattr(songinfo, 'dp_unofficial') else ""
+                item['sp_12hard'] = songinfo.sp12_hard.__str__() if hasattr(songinfo, 'sp12_hard') and songinfo.sp12_hard else ""
+                item['sp_12clear'] = songinfo.sp12_clear.__str__() if hasattr(songinfo, 'sp12_clear') and songinfo.sp12_clear else ""
+                item['sp_11hard'] = songinfo.sp11_hard.__str__() if hasattr(songinfo, 'sp11_hard') and songinfo.sp11_hard else ""
+                item['sp_11clear'] = songinfo.sp11_clear.__str__() if hasattr(songinfo, 'sp11_clear') and songinfo.sp11_clear else ""
+            
             if detailed_result.bpi:
-                add_new_element(item, 'bpi', f"{detailed_result.bpi:.2f}")
+                item['bpi'] = f"{detailed_result.bpi:.2f}"
+            
             if detailed_result.score_rate_with_rankdiff:
-                add_new_element(item, 'rankdiff', ''.join(detailed_result.score_rate_with_rankdiff))
-                add_new_element(item, 'rankdiff0', detailed_result.score_rate_with_rankdiff[0])
-                add_new_element(item, 'rankdiff1', detailed_result.score_rate_with_rankdiff[1])
+                item['rankdiff'] = ''.join(detailed_result.score_rate_with_rankdiff)
+                item['rankdiff0'] = detailed_result.score_rate_with_rankdiff[0]
+                item['rankdiff1'] = detailed_result.score_rate_with_rankdiff[1]
+            
+            items.append(item)
+        
+        return {'items': items}
     
-        # xml出力
-        tree = ET.ElementTree(root)
-        ET.indent(tree, space="    ")
-        tree.write(Path('out')/'today_update.xml', encoding='utf-8', xml_declaration=True)
-
-    def write_history_cursong_xml(self, title:str, style:play_style, difficulty:difficulty, battle:bool=None, playspeed:float=None):
-        """指定された曲のプレーログを出力
-
-        Args:
-            title (str): _description_
-            style (play_style): _description_
-            difficulty (difficulty): _description_
-        """
-        root = ET.Element('Results')
+    
+    def get_history_cursong_data(self, title:str, style:play_style, difficulty:difficulty, 
+                                 battle:bool=None, playspeed:float=None) -> dict:
+        """指定された曲のプレーログを辞書形式で返す"""
         songinfo = self.song_database.search(title=title, play_style=style, difficulty=difficulty)
         results = self.search(title=title, style=style, difficulty=difficulty)
         best_score = 0
         best_score_opt = None
         detail = None
-        '''best scoreのもののみでよいのでdetailed resultを残す'''
         best_bp = 99999999
         best_bp_opt = None
         best_lamp = 0
         best_lamp_opt = None
-        # 集計
-        target:List[DetailedResult] = []
+        
+        target = []
         for r in results:
             if r.result.option and r.result.option.special:
                 continue
@@ -657,7 +773,7 @@ class ResultDatabase:
                 continue
             if battle and style == play_style.dp and r.result.option.battle != battle:
                 continue
-            if r.result.detect_mode == detect_mode.result: # 集計はresult,selectでやるが、ログ表示は全ての情報が揃ったresultのみ
+            if r.result.detect_mode == detect_mode.result:
                 target.append(r)
             if r.result.score > best_score:
                 best_score = r.result.score
@@ -667,82 +783,87 @@ class ResultDatabase:
                 best_lamp = r.result.lamp.value
                 best_lamp_opt = r.result.option
             if r.result.judge:
-                if r.result.judge.pr+r.result.judge.bd < best_bp:
-                    best_bp = r.result.judge.pr+r.result.judge.bd
+                if r.result.judge.pr + r.result.judge.bd < best_bp:
+                    best_bp = r.result.judge.pr + r.result.judge.bd
                     best_bp_opt = r.result.option
             else:
                 if r.result.bp and r.result.bp < best_bp:
                     best_bp = r.result.bp
                     best_bp_opt = r.result.option
-
+        
         if len(results) == 0:
-            tree = ET.ElementTree(root)
-            ET.indent(tree, space="    ")
-            tree.write(Path('out')/'history_cursong.xml', encoding='utf-8', xml_declaration=True)
-            return
+            return {}
+        
         last_played_time = results[0].result.timestamp
-
-        # 出力
-        # add_new_element(root, '', )
-        add_new_element(root, 'lv', str(songinfo.level) if hasattr(songinfo, 'level') else "")
-        add_new_element(root, 'music', escape_for_xml(title))
-        add_new_element(root, 'difficulty', get_chart_name(style, difficulty))
-        add_new_element(root, 'last_played', str(datetime.datetime.fromtimestamp(last_played_time).strftime('%Y/%m/%d')))
-        add_new_element(root, 'best_lamp', str(best_lamp))
-        add_new_element(root, 'best_lamp_opt', best_lamp_opt.__str__())
-        add_new_element(root, 'best_bp', str(best_bp))
-        add_new_element(root, 'best_bp_opt', best_bp_opt.__str__())
-        add_new_element(root, 'best_score', str(best_score))
-        add_new_element(root, 'best_score_opt', best_score_opt.__str__())
-        if songinfo.bpi_ave:
-            add_new_element(root, 'bpi_ave', f"{songinfo.bpi_ave}")
-        if songinfo.bpi_top:
-            add_new_element(root, 'bpi_top', f"{songinfo.bpi_top}")
-        if songinfo.bpi_coef:
-            add_new_element(root, 'bpi_coef', f"{songinfo.bpi_coef}")
+        
+        data = {
+            'lv': str(songinfo.level) if hasattr(songinfo, 'level') else "",
+            'music': title,
+            'difficulty': get_chart_name(style, difficulty),
+            'last_played': str(datetime.datetime.fromtimestamp(last_played_time).strftime('%Y/%m/%d')),
+            'best_lamp': best_lamp,
+            'best_lamp_opt': best_lamp_opt.__str__() if best_lamp_opt else "",
+            'best_bp': best_bp if best_bp != 99999999 else 0,
+            'best_bp_opt': best_bp_opt.__str__() if best_bp_opt else "",
+            'best_score': best_score,
+            'best_score_opt': best_score_opt.__str__() if best_score_opt else ""
+        }
+        
+        if songinfo and hasattr(songinfo, 'bpi_ave') and songinfo.bpi_ave:
+            data['bpi_ave'] = f"{songinfo.bpi_ave}"
+        if songinfo and hasattr(songinfo, 'bpi_top') and songinfo.bpi_top:
+            data['bpi_top'] = f"{songinfo.bpi_top}"
+        if songinfo and hasattr(songinfo, 'bpi_coef') and songinfo.bpi_coef:
+            data['bpi_coef'] = f"{songinfo.bpi_coef}"
+        
         if detail:
             if detail.result.notes:
-                add_new_element(root, 'notes', str(detail.result.notes))
-                add_new_element(root, 'best_score_rate', str(best_score / detail.result.notes / 2))
-                add_new_element(root, 'best_bp_rate', f"{100*best_bp / detail.result.notes:.2}")
-                add_new_element(root, 'best_rankdiff0', detail.score_rate_with_rankdiff[0])
-                add_new_element(root, 'best_rankdiff1', detail.score_rate_with_rankdiff[1])
+                data['notes'] = detail.result.notes
+                data['best_score_rate'] = best_score / detail.result.notes / 2
+                data['best_bp_rate'] = f"{100*best_bp / detail.result.notes:.2f}"
+                if detail.score_rate_with_rankdiff:
+                    data['best_rankdiff0'] = detail.score_rate_with_rankdiff[0]
+                    data['best_rankdiff1'] = detail.score_rate_with_rankdiff[1]
             if detail.bpi:
-                add_new_element(root, 'best_bpi', f"{detail.bpi:.2f}")
+                data['best_bpi'] = f"{detail.bpi:.2f}"
             if detail.score_rate_with_rankdiff:
-                add_new_element(root, 'rankdiff', ''.join(detail.score_rate_with_rankdiff))
-                add_new_element(root, 'rankdiff0', detail.score_rate_with_rankdiff[0])
-                add_new_element(root, 'rankdiff1', detail.score_rate_with_rankdiff[1])
+                data['rankdiff'] = ''.join(detail.score_rate_with_rankdiff)
+                data['rankdiff0'] = detail.score_rate_with_rankdiff[0]
+                data['rankdiff1'] = detail.score_rate_with_rankdiff[1]
+        
         if songinfo:
-            add_new_element(root, 'dp_unofficial_lv', songinfo.dp_unofficial)
-            add_new_element(root, 'sp_12hard',  songinfo.sp12_hard.__str__() if songinfo.sp12_hard else "")
-            add_new_element(root, 'sp_12clear', songinfo.sp12_clear.__str__() if songinfo.sp12_clear else "")
-            add_new_element(root, 'sp_11hard',  songinfo.sp11_hard.__str__() if songinfo.sp11_hard else "")
-            add_new_element(root, 'sp_11clear', songinfo.sp11_clear.__str__() if songinfo.sp11_clear else "")
-        for r in reversed(target): # プレイごとの出力
-            item = ET.SubElement(root, 'item')
-            add_new_element(item, 'date', str(datetime.datetime.fromtimestamp(r.result.timestamp).strftime('%Y/%m/%d')))
-            add_new_element(item, 'lamp', str(r.result.lamp.value))
+            data['dp_unofficial_lv'] = songinfo.dp_unofficial if hasattr(songinfo, 'dp_unofficial') else ""
+            data['sp_12hard'] = songinfo.sp12_hard.__str__() if hasattr(songinfo, 'sp12_hard') and songinfo.sp12_hard else ""
+            data['sp_12clear'] = songinfo.sp12_clear.__str__() if hasattr(songinfo, 'sp12_clear') and songinfo.sp12_clear else ""
+            data['sp_11hard'] = songinfo.sp11_hard.__str__() if hasattr(songinfo, 'sp11_hard') and songinfo.sp11_hard else ""
+            data['sp_11clear'] = songinfo.sp11_clear.__str__() if hasattr(songinfo, 'sp11_clear') and songinfo.sp11_clear else ""
+        
+        items = []
+        for r in reversed(target):
+            item = {
+                'date': str(datetime.datetime.fromtimestamp(r.result.timestamp).strftime('%Y/%m/%d')),
+                'lamp': r.result.lamp.value,
+                'score': r.result.score,
+                'score_rate': r.result.score / r.result.notes / 2 if r.result.notes else 0,
+                'bp': r.result.bp,
+                'bprate': r.result.bp / r.result.notes if r.result.notes else 0,
+                'pre_score': r.result.pre_score,
+                'pre_lamp': r.result.pre_lamp.value,
+                'pre_bp': r.result.pre_bp,
+                'opt': r.result.option.__str__() if r.result.option else ""
+            }
+            
             if r.bpi:
-                add_new_element(item, 'bpi', f"{r.bpi:.2f}")
-            add_new_element(item, 'score', str(r.result.score))
-            add_new_element(item, 'score_rate', str(r.result.score/r.result.notes/2))
-            add_new_element(item, 'bp', str(r.result.bp))
-            add_new_element(item, 'bprate', str(r.result.bp/r.result.notes))
-            add_new_element(item, 'pre_score', str(r.result.pre_score))
-            add_new_element(item, 'pre_lamp', str(r.result.pre_lamp.value))
-            add_new_element(item, 'pre_bp', str(r.result.pre_bp))
-            add_new_element(item, 'opt', r.result.option.__str__())
+                item['bpi'] = f"{r.bpi:.2f}"
             if r.score_rate_with_rankdiff:
-                add_new_element(item, 'rankdiff', ''.join(r.score_rate_with_rankdiff))
-                add_new_element(item, 'rankdiff0', r.score_rate_with_rankdiff[0])
-                add_new_element(item, 'rankdiff1', r.score_rate_with_rankdiff[1])
-
-        # xml出力
-        tree = ET.ElementTree(root)
-        ET.indent(tree, space="    ")
-        os.makedirs('out', exist_ok=True)
-        tree.write(Path('out')/'history_cursong.xml', encoding='utf-8', xml_declaration=True)
+                item['rankdiff'] = ''.join(r.score_rate_with_rankdiff)
+                item['rankdiff0'] = r.score_rate_with_rankdiff[0]
+                item['rankdiff1'] = r.score_rate_with_rankdiff[1]
+            
+            items.append(item)
+        
+        data['items'] = items
+        return data
 
     def write_best_csv(self):
         header = ['LV', 'Title', 'mode', 'Lamp', 'Score', '(rate)', 'BP', 'Opt(best score)', 'Opt(min bp)', 'Last Played']
@@ -787,7 +908,6 @@ class ResultDatabase:
                     timestamp
                 ]
                 writer.writerow(row)
-
 
     def __str__(self):
         out = ''

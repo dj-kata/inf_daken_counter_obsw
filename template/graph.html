@@ -6,6 +6,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../out/websocket.css">
     <style>
         * {
             box-sizing: border-box;
@@ -199,127 +200,176 @@
             color: #ff77ff;
         }
     </style>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script>
-    function updateGraph() {
-        $.ajax({
-            url: "../out/graph.xml",
-            type: 'GET',
-            dataType: 'xml',
-            cache: false,
-            timeout: 10000
-        }).done(function(xml) {
-            // 今日の合計データ取得
-            var today_pg = Number($(xml).find('today_judge pg').text()) || 0;
-            var today_gr = Number($(xml).find('today_judge gr').text()) || 0;
-            var today_gd = Number($(xml).find('today_judge gd').text()) || 0;
-            var today_bd = Number($(xml).find('today_judge bd').text()) || 0;
-            var today_pr = Number($(xml).find('today_judge pr').text()) || 0;
-            
-            var playcount = Number($(xml).find('playcount').text()) || 0;
-            var today_notes = Number($(xml).find('today_notes').text()) || 0;
-            var today_score_rate = $(xml).find('today_score_rate').text() || '0%';
-            var current_score_rate = $(xml).find('current_score_rate').text() || '0%';
-            
-            // BAD判定の合計
-            var today_bad_total = today_bd + today_pr;
-            
-            // 合計ノーツ（グラフ用）
-            var today_total = today_pg + today_gr + today_gd + today_bad_total;
-            
-            // パーセンテージ計算
-            var today_pg_percent = today_total > 0 ? (today_pg / today_total * 100) : 0;
-            var today_gr_percent = today_total > 0 ? (today_gr / today_total * 100) : 0;
-            var today_gd_percent = today_total > 0 ? (today_gd / today_total * 100) : 0;
-            var today_bad_percent = today_total > 0 ? (today_bad_total / today_total * 100) : 0;
-            
-            // 表示更新
-            $('#today-notes').text(today_notes.toLocaleString());
-            $('#play-value').text(playcount);
-            $('#rate-value').text(today_score_rate);
-            $('#cur-value').text('(' + current_score_rate + ')');
-            
-            // 全体グラフ更新
-            $('#bar-pg').css('width', today_pg_percent + '%');
-            $('#bar-gr').css('width', today_gr_percent + '%');
-            $('#bar-gd').css('width', today_gd_percent + '%');
-            $('#bar-bad').css('width', today_bad_percent + '%');
-            
-            // 各曲の判定データを取得
-            var songs = [];
-            $(xml).find('judge').each(function() {
-                var idx = Number($(this).find('idx').text());
-                var pg = Number($(this).find('pg').text()) || 0;
-                var gr = Number($(this).find('gr').text()) || 0;
-                var gd = Number($(this).find('gd').text()) || 0;
-                var bd = Number($(this).find('bd').text()) || 0;
-                var pr = Number($(this).find('pr').text()) || 0;
-                
-                songs.push({
-                    idx: idx,
-                    pg: pg,
-                    gr: gr,
-                    gd: gd,
-                    total: pg + gr + gd + bd + pr
-                });
-            });
-            
-            // 画面幅から表示可能な曲数を計算
-            var containerWidth = $('.songs-graph-container').width();
-            var barWidth = 50; // song-barの幅
-            var gapWidth = 20; // グラフ間の余白
-            var rightMargin = 15; // 右端の余白
-            var barTotalWidth = barWidth + gapWidth; // 1本あたりの合計幅
-            var availableWidth = containerWidth - rightMargin; // 利用可能な幅
-            var visibleCount = Math.floor((availableWidth + gapWidth) / barTotalWidth); // 表示可能な曲数
-            
-            // 表示する曲（右端から表示可能な曲数分）
-            var recentSongs = songs.slice(-visibleCount);
-            
-            // 表示される曲の中での最大値を計算（スケーリング用）
-            var maxTotal = 0;
-            recentSongs.forEach(function(song) {
-                if (song.total > maxTotal) maxTotal = song.total;
-            });
-            
-            // 曲ごとのグラフを生成
-            var containerHeight = 100; // コンテナの高さ
-            var indexHeight = 23; // 曲番号の高さ
-            var totalTextHeight = 24; // 合計値テキストの高さ（余裕を持たせる）
-            var maxGraphHeight = containerHeight - indexHeight - totalTextHeight; // グラフ本体の最大高さ（約123px）
-            var songsGraphHtml = '';
-            
-            if (recentSongs.length === 0) {
-                // データがない場合の表示
-                songsGraphHtml = '';
-            } else {
-                recentSongs.forEach(function(song) {
-                    var pg_height = maxTotal > 0 ? (song.pg / maxTotal * maxGraphHeight) : 0;
-                    var gr_height = maxTotal > 0 ? (song.gr / maxTotal * maxGraphHeight) : 0;
-                    var gd_height = maxTotal > 0 ? (song.gd / maxTotal * maxGraphHeight) : 0;
-                    
-                    songsGraphHtml += '<div class="song-bar">';
-                    songsGraphHtml += '<div class="song-total">' + song.total.toLocaleString() + '</div>';
-                    songsGraphHtml += '<div class="song-bar-stack">';
-                    songsGraphHtml += '<div class="song-segment song-segment-pg" style="height: ' + pg_height + 'px"></div>';
-                    songsGraphHtml += '<div class="song-segment song-segment-gr" style="height: ' + gr_height + 'px"></div>';
-                    songsGraphHtml += '<div class="song-segment song-segment-gd" style="height: ' + gd_height + 'px"></div>';
-                    songsGraphHtml += '</div>';
-                    songsGraphHtml += '<div class="song-index">#' + song.idx + '</div>';
-                    songsGraphHtml += '</div>';
-                });
+    // CSSカスタムプロパティからWebSocketポート番号を取得
+    function getWebSocketPort() {
+        const port = getComputedStyle(document.documentElement).getPropertyValue('--websocket-port').trim();
+        return parseInt(port) || 8767; // デフォルト値
+    }
+    
+    let ws = null;
+    let reconnectInterval = null;
+
+    function connectWebSocket() {
+        const WEBSOCKET_PORT = getWebSocketPort();
+        ws = new WebSocket(`ws://localhost:${WEBSOCKET_PORT}`);
+        
+        ws.onopen = function() {
+            console.log('WebSocket接続成功');
+            if (reconnectInterval) {
+                clearInterval(reconnectInterval);
+                reconnectInterval = null;
             }
-            
-            $('.songs-graph-container').html(songsGraphHtml);
-            
-        }).fail(function(err) {
-            console.error('XMLロードエラー:', err);
+        };
+        
+        ws.onmessage = function(event) {
+            try {
+                const message = JSON.parse(event.data);
+                if (message.type === 'graph') {
+                    updateGraph(message.data);
+                }
+            } catch (error) {
+                console.error('メッセージ解析エラー:', error);
+            }
+        };
+        
+        ws.onerror = function(error) {
+            console.error('WebSocketエラー:', error);
+        };
+        
+        ws.onclose = function() {
+            console.log('WebSocket切断。3秒後に再接続します...');
+            if (!reconnectInterval) {
+                reconnectInterval = setInterval(connectWebSocket, 3000);
+            }
+        };
+    }
+
+    function updateGraph(data) {
+        if (!data) return;
+        
+        // デバッグ: 受信したデータを確認
+        console.log('受信データ:', data);
+        
+        // 今日の合計データ取得
+        const today_judge = data.today_judge || {};
+        const today_pg = today_judge.pg || 0;
+        const today_gr = today_judge.gr || 0;
+        const today_gd = today_judge.gd || 0;
+        const today_bd = today_judge.bd || 0;
+        const today_pr = today_judge.pr || 0;
+        
+        const playcount = data.playcount || 0;
+        const today_notes = data.today_notes || 0;
+        const today_score_rate = data.today_score_rate || '0%';
+        const current_score_rate = data.current_score_rate || '0%';
+        
+        // BAD判定の合計
+        const today_bad_total = today_bd + today_pr;
+        
+        // 合計ノーツ（グラフ用）
+        const today_total = today_pg + today_gr + today_gd + today_bad_total;
+        
+        // パーセンテージ計算
+        const today_pg_percent = today_total > 0 ? (today_pg / today_total * 100) : 0;
+        const today_gr_percent = today_total > 0 ? (today_gr / today_total * 100) : 0;
+        const today_gd_percent = today_total > 0 ? (today_gd / today_total * 100) : 0;
+        const today_bad_percent = today_total > 0 ? (today_bad_total / today_total * 100) : 0;
+        
+        // 安全にDOM要素を更新するヘルパー関数
+        function safeUpdateText(id, value) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            } else {
+                console.warn(`要素が見つかりません: ${id}`);
+            }
+        }
+        
+        function safeUpdateStyle(id, property, value) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.style[property] = value;
+            } else {
+                console.warn(`要素が見つかりません: ${id}`);
+            }
+        }
+        
+        // 表示更新
+        safeUpdateText('today-notes', today_notes.toLocaleString());
+        safeUpdateText('play-value', playcount);
+        safeUpdateText('rate-value', today_score_rate);
+        safeUpdateText('cur-value', '(' + current_score_rate + ')');
+        
+        // 全体グラフ更新
+        safeUpdateStyle('bar-pg', 'width', today_pg_percent + '%');
+        safeUpdateStyle('bar-gr', 'width', today_gr_percent + '%');
+        safeUpdateStyle('bar-gd', 'width', today_gd_percent + '%');
+        safeUpdateStyle('bar-bad', 'width', today_bad_percent + '%');
+        
+        // 各曲の判定データを取得
+        const songs = data.judges || [];
+        
+        // 画面幅から表示可能な曲数を計算
+        const container = document.querySelector('.songs-graph-container');
+        const containerWidth = container.clientWidth;
+        const barWidth = 50; // song-barの幅
+        const gapWidth = 20; // グラフ間の余白
+        const rightMargin = 15; // 右端の余白
+        const barTotalWidth = barWidth + gapWidth; // 1本あたりの合計幅
+        const availableWidth = containerWidth - rightMargin; // 利用可能な幅
+        const visibleCount = Math.floor((availableWidth + gapWidth) / barTotalWidth); // 表示可能な曲数
+        
+        // 表示する曲（右端から表示可能な曲数分）
+        const recentSongs = songs.slice(-visibleCount);
+        
+        // 表示される曲の中での最大値を計算（スケーリング用）
+        let maxTotal = 0;
+        recentSongs.forEach(function(song) {
+            const total = song.pg + song.gr + song.gd + song.bd + song.pr;
+            if (total > maxTotal) maxTotal = total;
         });
+        
+        // 曲ごとのグラフを生成
+        const containerHeight = 100; // コンテナの高さ
+        const indexHeight = 23; // 曲番号の高さ
+        const totalTextHeight = 24; // 合計値テキストの高さ（余裕を持たせる）
+        const maxGraphHeight = containerHeight - indexHeight - totalTextHeight; // グラフ本体の最大高さ（約123px）
+        let songsGraphHtml = '';
+        
+        if (recentSongs.length === 0) {
+            // データがない場合の表示
+            songsGraphHtml = '';
+        } else {
+            recentSongs.forEach(function(song) {
+                const songTotal = song.pg + song.gr + song.gd + song.bd + song.pr;
+                const pg_height = maxTotal > 0 ? (song.pg / maxTotal * maxGraphHeight) : 0;
+                const gr_height = maxTotal > 0 ? (song.gr / maxTotal * maxGraphHeight) : 0;
+                const gd_height = maxTotal > 0 ? (song.gd / maxTotal * maxGraphHeight) : 0;
+                
+                songsGraphHtml += '<div class="song-bar">';
+                songsGraphHtml += '<div class="song-total">' + songTotal.toLocaleString() + '</div>';
+                songsGraphHtml += '<div class="song-bar-stack">';
+                songsGraphHtml += '<div class="song-segment song-segment-pg" style="height: ' + pg_height + 'px"></div>';
+                songsGraphHtml += '<div class="song-segment song-segment-gr" style="height: ' + gr_height + 'px"></div>';
+                songsGraphHtml += '<div class="song-segment song-segment-gd" style="height: ' + gd_height + 'px"></div>';
+                songsGraphHtml += '</div>';
+                songsGraphHtml += '<div class="song-index">#' + song.idx + '</div>';
+                songsGraphHtml += '</div>';
+            });
+        }
+        
+        container.innerHTML = songsGraphHtml;
     }
     
     window.addEventListener('DOMContentLoaded', function() {
-        updateGraph();
-        setInterval(updateGraph, 300);
+        connectWebSocket();
+    });
+    
+    window.addEventListener('beforeunload', function() {
+        if (ws) {
+            ws.close();
+        }
     });
     </script>
 </head>
@@ -334,6 +384,7 @@
             <div class="stat-item">
                 <span class="stat-label">rate:</span>
                 <span class="stat-value" id="rate-value">0%</span>
+                <span class="stat-cur" id="cur-value"></span>
             </div>
             <div class="stat-item" style="margin-left: auto">
                 <!-- <div class="today-notes">0</div> -->
