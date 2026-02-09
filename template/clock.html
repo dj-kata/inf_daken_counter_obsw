@@ -43,21 +43,26 @@
             align-items: center;
             height: 100vh;
             overflow: hidden;
+            /* border: red solid 4px; */
         }
         
         .clock-container {
             background: transparent;
             /* border: 2px solid var(--color-frame); */
             border-radius: 0px;
-            padding: 0 0;
             /* box-shadow: 0 0 30px var(--color-shadow1); */
             position: relative;
             /* animation: pulse-border 3s ease-in-out infinite; */
             width: 100%;
+            height: 100%;
             text-align: center;
             display: flex;
             flex-direction: column;
             align-items: center;
+            /* border: red solid 4px; */
+            justify-content: center;
+            overflow: hidden;
+            gap: 5px;
         }
         
         @keyframes pulse-border {
@@ -73,8 +78,9 @@
             display: flex;
             align-items: center;
             justify-content: left;
-            margin-bottom: 5px;
+            /* margin-bottom: 5px; */
             width: 380px;
+            margin-top: -10px;
             /* border: red solid 4px; */
         }
         
@@ -111,11 +117,14 @@
             text-shadow: 
                 0 0 5px var(--color-time),
                 0 0 12px var(--color-time);
-            letter-spacing: 4px;
+            letter-spacing: 6px;
             font-variant-numeric: tabular-nums;
             font-family: 'dseg14classic-bold', monospace;
             width: 360px;
-            justify-content: left;
+            justify-content: center;
+            margin-left: -23px;
+            /* vertical-align: bottom; */
+            display: flex;
             /* border: red solid 4px; */
         }
         
@@ -210,7 +219,7 @@
             }
             
             // 表示を更新
-            document.getElementById('time').innerHTML = timeHTML+'&nbsp;&nbsp;';
+            document.getElementById('time').innerHTML = timeHTML;
             document.getElementById('date').textContent = `${year}.${month}.${day}`;
         }
         
