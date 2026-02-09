@@ -220,7 +220,7 @@ class OneResult:
     
     def __hash__(self):
         # 後日全く同じ判定内訳のリザルトを出したときに困るので、やはりtimestampは必須かも
-        return hash((self.chart_id, self.lamp, self.timestamp, self.playspeed, self.option, self.is_arcade, self.judge, self.score, self.bp, self.dead))
+        return hash((self.chart_id, self.lamp.value, self.timestamp, self.playspeed, self.option, self.is_arcade, self.judge, self.score, self.bp, self.dead))
 
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""

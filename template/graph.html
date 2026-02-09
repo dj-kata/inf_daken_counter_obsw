@@ -342,7 +342,7 @@
             songsGraphHtml = '';
         } else {
             recentSongs.forEach(function(song) {
-                const songTotal = song.pg + song.gr + song.gd + song.bd + song.pr;
+                const songTotal = song.pg + song.gr + song.gd + song.bd;
                 const pg_height = maxTotal > 0 ? (song.pg / maxTotal * maxGraphHeight) : 0;
                 const gr_height = maxTotal > 0 ? (song.gr / maxTotal * maxGraphHeight) : 0;
                 const gd_height = maxTotal > 0 ? (song.gd / maxTotal * maxGraphHeight) : 0;
