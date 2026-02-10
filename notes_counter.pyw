@@ -57,10 +57,9 @@ class MainWindow(MainWindowUI):
     """メインウィンドウクラス - 制御ロジックを担当"""
     
     def __init__(self):
-        super().__init__()
-        
         # 設定とデータベースの初期化
         self.config = Config()
+        super().__init__(self.config)
         self.song_database = SongDatabase()
         self.result_database = ResultDatabase(config=self.config)
         self.screen_reader = ScreenReader()
@@ -198,9 +197,9 @@ class MainWindow(MainWindowUI):
     def show_about(self):
         """バージョン情報表示"""
         from PySide6.QtWidgets import QMessageBox
-        QMessageBox.about(self, "バージョン情報", 
-                         "IIDX Helper v1.0\n\n"
-                         "OBS連携による自動リザルト保存アプリケーション")
+        QMessageBox.about(self, self.ui.window.about_title, 
+                         f"INFINITAS daken counter {SWVER}\n\n"
+                         "author: dj-kata")
     
     def save_image(self, skip_no_update:bool=False, detailed_result:DetailedResult=None):
         """

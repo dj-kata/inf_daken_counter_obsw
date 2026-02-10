@@ -3,8 +3,9 @@
 """
 
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-                               QLabel, QGroupBox, QGridLayout, QPushButton)
-from PySide6.QtGui import QAction
+                               QLabel, QGroupBox, QGridLayout, QPushButton,
+                               QMessageBox)
+from PySide6.QtGui import QAction, QActionGroup
 import time
 
 try:
@@ -13,16 +14,26 @@ try:
 except ImportError:
     KEYBOARD_AVAILABLE = False
 
+import sys, os
 from src.classes import detect_mode
 from src.logger import get_logger
+from src.funcs import load_ui_text
 logger = get_logger(__name__)
 
+# UIの型チェック用
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from src.ui_jp import UIText
 
 class MainWindowUI(QMainWindow):
     """メインウィンドウのUIレイアウトを担当するクラス"""
-    
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
+        self.config = config
+
+        # UIテキストをロード
+        self.ui:UIText = load_ui_text(self.config)
+        
         # UIコンポーネントの参照はここで定義（サブクラスから使用可能）
         self.obs_status_label = None
         self.mode_label = None
@@ -34,7 +45,8 @@ class MainWindowUI(QMainWindow):
     
     def init_ui(self):
         """UI初期化"""
-        self.setWindowTitle("INFINITAS daken counter")
+        # ウィンドウタイトル設定（言語対応）
+        self.setWindowTitle(self.ui.window.main_title)
         
         self.restore_window_geometry()
         
@@ -50,36 +62,36 @@ class MainWindowUI(QMainWindow):
         central_widget.setLayout(main_layout)
         
         # OBS接続状態グループ
-        obs_group = QGroupBox("OBS接続状態")
+        obs_group = QGroupBox(self.ui.obs.connection_state)
         obs_layout = QHBoxLayout()
-        self.obs_status_label = QLabel("未接続")
+        self.obs_status_label = QLabel(self.ui.obs.not_connected)
         self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")
         obs_layout.addWidget(self.obs_status_label)
         obs_group.setLayout(obs_layout)
         main_layout.addWidget(obs_group)
         
         # 状態情報グループ
-        status_group = QGroupBox("状態情報")
+        status_group = QGroupBox(self.ui.main.other_info)
         status_layout = QGridLayout()
         
         # ラベル作成
-        status_layout.addWidget(QLabel("現在のモード:"), 0, 0)
-        self.mode_label = QLabel("初期化中")
+        status_layout.addWidget(QLabel(self.ui.main.current_mode), 0, 0)
+        self.mode_label = QLabel(self.ui.mode.init)
         status_layout.addWidget(self.mode_label, 0, 1)
         
-        status_layout.addWidget(QLabel("起動時間:"), 1, 0)
+        status_layout.addWidget(QLabel(self.ui.main.ontime), 1, 0)
         self.uptime_label = QLabel("00:00:00")
         status_layout.addWidget(self.uptime_label, 1, 1)
         
-        status_layout.addWidget(QLabel("本日の打鍵数:"), 2, 0)
+        status_layout.addWidget(QLabel(self.ui.main.today_notes), 2, 0)
         self.keystroke_label = QLabel("0")
         status_layout.addWidget(self.keystroke_label, 2, 1)
         
-        status_layout.addWidget(QLabel("保存したリザルト数:"), 3, 0)
+        status_layout.addWidget(QLabel(self.ui.main.num_saved_results), 3, 0)
         self.result_count_label = QLabel("0")
         status_layout.addWidget(self.result_count_label, 3, 1)
         
-        status_layout.addWidget(QLabel("最後に保存した曲:"), 4, 0)
+        status_layout.addWidget(QLabel(self.ui.main.last_saved_song), 4, 0)
         self.last_song_label = QLabel("---")
         self.last_song_label.setWordWrap(True)
         status_layout.addWidget(self.last_song_label, 4, 1)
@@ -89,7 +101,7 @@ class MainWindowUI(QMainWindow):
         
         # 画像保存ボタン
         save_button_layout = QHBoxLayout()
-        self.save_image_button = QPushButton("画像保存 (F6)")
+        self.save_image_button = QPushButton(self.ui.main.save_image)
         self.save_image_button.clicked.connect(self.save_image)
         save_button_layout.addWidget(self.save_image_button)
         main_layout.addLayout(save_button_layout)
@@ -98,54 +110,78 @@ class MainWindowUI(QMainWindow):
         main_layout.addStretch()
         
         # ステータスバー
-        self.statusBar().showMessage("準備完了")
+        self.statusBar().showMessage(self.ui.main.status_ready)
     
     def create_menu_bar(self):
         """メニューバー作成"""
         menubar = self.menuBar()
         
         # ファイルメニュー
-        file_menu = menubar.addMenu("ファイル(&F)")
+        file_menu = menubar.addMenu(self.ui.menu.file)
         
-        config_action = QAction("基本設定(&C)...", self)
+        config_action = QAction(self.ui.menu.base_config, self)
         config_action.triggered.connect(self.open_config_dialog)
         file_menu.addAction(config_action)
         
-        obs_action = QAction("OBS制御設定(&O)...", self)
+        obs_action = QAction(self.ui.menu.obs_config, self)
         obs_action.triggered.connect(self.open_obs_dialog)
         file_menu.addAction(obs_action)
 
         file_menu.addSeparator() ##############################################
         
         # 画像保存アクション
-        save_image_action = QAction("画像保存(&S)", self)
+        save_image_action = QAction(self.ui.menu.save_image, self)
         save_image_action.setShortcut("F6")
         save_image_action.triggered.connect(self.save_image)
         file_menu.addAction(save_image_action)
         
         file_menu.addSeparator() ##############################################
         
-        exit_action = QAction("終了(&X)", self)
+        exit_action = QAction(self.ui.menu.exit, self)
         exit_action.setShortcut("Ctrl+Q")
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
         # ツールメニュー
-        tool_menu = menubar.addMenu("ツール(&E)")
+        tool_menu = menubar.addMenu(self.ui.menu.tool)
         
-        tweet_action = QAction("成果をツイート(&T)...", self)
+        tweet_action = QAction(self.ui.menu.tweet, self)
         tweet_action.triggered.connect(self.tweet)
         tool_menu.addAction(tweet_action)
 
-        # ヘルプメニュー
-        help_menu = menubar.addMenu("ヘルプ(&H)")
+        # 言語メニュー
+        language_menu = menubar.addMenu(self.ui.menu.language)
         
-        about_action = QAction("バージョン情報(&A)", self)
+        # アクショングループ（排他的選択）
+        language_group = QActionGroup(self)
+        language_group.setExclusive(True)
+        
+        # 日本語
+        action_ja = QAction(self.ui.menu.japanese, self)
+        action_ja.setCheckable(True)
+        action_ja.setChecked(self.config.language == 'ja')
+        action_ja.triggered.connect(lambda: self.change_language('ja'))
+        language_group.addAction(action_ja)
+        language_menu.addAction(action_ja)
+        
+        # English
+        action_en = QAction(self.ui.menu.english, self)
+        action_en.setCheckable(True)
+        action_en.setChecked(self.config.language == 'en')
+        action_en.triggered.connect(lambda: self.change_language('en'))
+        language_group.addAction(action_en)
+        language_menu.addAction(action_en)
+        
+        # ヘルプメニュー
+        help_menu = menubar.addMenu(self.ui.menu.help)
+        
+        about_action = QAction(self.ui.menu.about, self)
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
     
     def restore_window_geometry(self):
         """ウィンドウ位置とサイズを復元"""
+        self.setMinimumSize(450, 300)
         if self.config.main_window_geometry:
             import base64
             from PySide6.QtCore import QByteArray
@@ -154,7 +190,7 @@ class MainWindowUI(QMainWindow):
             geometry = QByteArray(geometry_bytes)
             self.restoreGeometry(geometry)
         else:
-            self.setGeometry(100, 100, 500, 300)
+            self.setGeometry(100, 100, 450, 300)
     
     def save_window_geometry(self):
         """ジオメトリを保存"""
@@ -200,10 +236,10 @@ class MainWindowUI(QMainWindow):
         
         # モード表示
         mode_names = {
-            detect_mode.init: "初期化中",
-            detect_mode.play: "プレー中",
-            detect_mode.select: "選曲画面",
-            detect_mode.result: "リザルト"
+            detect_mode.init: self.ui.mode.init,
+            detect_mode.play: self.ui.mode.play,
+            detect_mode.select: self.ui.mode.select,
+            detect_mode.result: self.ui.mode.result
         }
         self.mode_label.setText(mode_names.get(self.current_mode, "不明"))
         
@@ -219,7 +255,35 @@ class MainWindowUI(QMainWindow):
         self.keystroke_label.setText(str(self.today_keystroke_count))
         self.result_count_label.setText(str(self.play_count))
         self.last_song_label.setText(self.last_saved_song)
-    
+
+    def change_language(self, language: str):
+        """
+        言語を変更してアプリケーションを再起動
+        
+        Args:
+            language: 言語コード ('ja' or 'en')
+        """
+        if language == self.config.language:
+            # 既に同じ言語の場合は何もしない
+            return
+        
+        # 設定を保存
+        self.config.language = language
+        self.config.save_config()
+        
+        if language == 'en':
+            QMessageBox.information(
+                self,
+                "Language Changed",
+                "The new language will be applied when you restart the application."
+            )
+        else:
+            QMessageBox.information(
+                self,
+                "言語設定変更",
+                "言語設定を変更しました。\n次回起動時に反映されます。"
+            )
+        
     # 以下のメソッドはサブクラスで実装される
     def open_config_dialog(self):
         """設定ダイアログを開く（サブクラスで実装）"""

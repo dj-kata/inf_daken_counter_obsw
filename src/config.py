@@ -33,6 +33,9 @@ class Config:
         self.monitor_source_name = ""
 
         self.image_save_path = 'results'
+
+        # 言語設定
+        self.language = 'ja'  # 'ja' or 'en'
         
         # WebSocketデータ配信ポート
         self.websocket_data_port = 8767
@@ -81,6 +84,9 @@ class Config:
                     
                     # WebSocketポート設定
                     self.websocket_data_port = config_data.get('websocket_data_port', 8767)
+
+                    # 言語設定
+                    self.language = config_data.get('language', 'ja')
                     
                     # 楽曲パック集計対象設定
                     self.target_music_packs = config_data.get('target_music_packs', [])
@@ -121,6 +127,7 @@ class Config:
             "autosave_image_mode": self.autosave_image_mode.value,
             "modify_rivalarea_mode": self.modify_rivalarea_mode.value,
             "write_statistics": self.write_statistics,
+            "language": self.language,
         }
         
         try:

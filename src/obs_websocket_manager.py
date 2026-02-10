@@ -6,6 +6,7 @@ from PySide6.QtCore import QObject, Signal
 
 from src.config import Config
 from src.logger import get_logger
+from src.funcs import load_ui_text
 logger = get_logger(__name__)
 
 try:
@@ -15,7 +16,6 @@ except ImportError:
     ReqClient = None
     OBSWS_AVAILABLE = False
     logger.warning("obsws_python not installed. Install with: pip install obsws-python")
-
 
 class OBSWebSocketManager(QObject):
     """
@@ -33,6 +33,7 @@ class OBSWebSocketManager(QObject):
     
     def __init__(self):
         super().__init__()
+        self.ui = None
         
         self.config: Optional[Config] = None
         self.client: Optional[ReqClient] = None
@@ -56,6 +57,7 @@ class OBSWebSocketManager(QObject):
     def set_config(self, config: Config):
         """設定をセット"""
         self.config = config
+        self.ui = load_ui_text(config)
         logger.info(f"OBS WebSocket config set: {config.websocket_host}:{config.websocket_port}")
     
     def connect(self):
@@ -65,7 +67,7 @@ class OBSWebSocketManager(QObject):
             return False
         
         if not self.config:
-            self._emit_status("設定が読み込まれていません", False)
+            self._emit_status(self.ui.obs.not_configured, False)
             return False
         
         try:
@@ -91,7 +93,7 @@ class OBSWebSocketManager(QObject):
             self.client.get_version()
             
             self.is_connected = True
-            self._emit_status(f"接続成功 ({self.config.websocket_host}:{self.config.websocket_port})", True)
+            self._emit_status(f"{self.ui.obs.status_connected} ({self.config.websocket_host}:{self.config.websocket_port})", True)
             
             # 接続監視スレッドを開始
             self.start_monitor()
@@ -101,7 +103,7 @@ class OBSWebSocketManager(QObject):
         except Exception as e:
             self.is_connected = False
             self.client = None
-            error_msg = f"接続失敗: {str(e)}"
+            error_msg = f"{self.ui.obs.status_connection_failed}: {str(e)}"
             self._emit_status(error_msg, False)
             logger.error(f"OBS WebSocket connection failed: {e}")
             
@@ -127,7 +129,7 @@ class OBSWebSocketManager(QObject):
             self.client = None
         
         self.is_connected = False
-        self._emit_status("切断しました", False)
+        self._emit_status(self.ui.obs.status_disconnected, False)
     
     def start_monitor(self):
         """接続監視スレッドを開始"""
@@ -190,7 +192,7 @@ class OBSWebSocketManager(QObject):
                         logger.warning(f"OBS connection lost: {e}")
                         self.is_connected = False
                         self.client = None
-                        self._emit_status("接続が切断されました", False)
+                        self._emit_status(self.ui.obs.status_lost, False)
                         consecutive_failures += 1
                 
                 else:
@@ -199,13 +201,13 @@ class OBSWebSocketManager(QObject):
                         # 最大再接続試行回数チェック
                         if self.max_reconnect_attempts > 0 and consecutive_failures >= self.max_reconnect_attempts:
                             logger.error(f"Max reconnection attempts reached: {self.max_reconnect_attempts}")
-                            self._emit_status(f"再接続失敗（{self.max_reconnect_attempts}回試行）", False)
+                            self._emit_status(f"{self.ui.obs.status_reconnect_failed}（{self.max_reconnect_attempts}回試行）", False)
                             time.sleep(check_interval)
                             continue
                         
                         # 再接続試行
                         logger.info(f"Attempting to reconnect to OBS... (attempt {consecutive_failures + 1})")
-                        self._emit_status(f"再接続中... ({consecutive_failures + 1}回目)", False)
+                        self._emit_status(f"{self.ui.obs.status_reconnecting} ({consecutive_failures + 1}回目)", False)
                         
                         try:
                             self.client = ReqClient(
@@ -220,7 +222,7 @@ class OBSWebSocketManager(QObject):
                             
                             # 成功
                             self.is_connected = True
-                            self._emit_status(f"再接続成功 ({self.config.websocket_host}:{self.config.websocket_port})", True)
+                            self._emit_status(f"{self.ui.obs.status_reconnected} ({self.config.websocket_host}:{self.config.websocket_port})", True)
                             logger.info("OBS reconnection successful")
                             consecutive_failures = 0
                             
@@ -269,13 +271,13 @@ class OBSWebSocketManager(QObject):
         if not OBSWS_AVAILABLE:
             return "obsws_python がインストールされていません", False
         elif not self.config:
-            return "設定が読み込まれていません", False
+            return self.ui.obs.not_configured, False
         elif not self.is_connected:
-            return "未接続", False
+            return self.ui.obs.not_connected, False
         elif not self.is_monitor_source_configured():
-            return "監視対象ソース未設定", False
+            return self.ui.obs.no_source, False
         else:
-            return f"接続中 ({self.config.websocket_host}:{self.config.websocket_port})", True
+            return f"{self.ui.obs.connected} ({self.config.websocket_host}:{self.config.websocket_port})", True
     
     def get_detailed_status(self) -> Dict[str, Any]:
         """

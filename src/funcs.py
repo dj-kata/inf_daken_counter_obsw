@@ -20,6 +20,28 @@ logger = get_logger(__name__)
 
 # 各クラスから使う共通の関数をここで定義しておく
 
+# UIの型チェック用
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from src.ui_jp import UIText
+
+def load_ui_text(config):
+    """
+    設定に応じて適切な言語ファイルをロード
+    
+    Args:
+        config: Configオブジェクト
+    
+    Returns:
+        UITextクラス
+    """
+    if config.language == 'en':
+        from src.ui_en import UIText
+    else:
+        from src.ui_jp import UIText
+    
+    return UIText
+
 def calc_chart_id(title:str, play_style:play_style, difficulty:difficulty):
     """楽曲IDを計算する。曲名、スタイル、難易度をキーとしたsha256とする。"""
     hash = None
