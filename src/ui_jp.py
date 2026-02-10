@@ -23,6 +23,7 @@ class UIText:
         
         # ツールメニュー
         tweet = '成果をツイート(&T)...'
+        write_bpi_csv = 'BPI Manager用csvを書き出す(開発中)(&B)...'
         
         # 言語メニュー
         japanese = '日本語'

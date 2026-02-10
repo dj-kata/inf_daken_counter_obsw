@@ -953,7 +953,7 @@ class ResultDatabase:
             now = datetime.datetime.now()
             line += f"{now.year}/{now.month}/{now.day} {now.hour}:{now.minute}\n"
             out += line
-        f = open('bpi.txt', 'w', encoding='utf-8')
+        f = open(f'bpi_{play_style.name}.txt', 'w', encoding='utf-8')
         f.write(out)
 
         return titles

@@ -148,6 +148,9 @@ class MainWindowUI(QMainWindow):
         tweet_action = QAction(self.ui.menu.tweet, self)
         tweet_action.triggered.connect(self.tweet)
         tool_menu.addAction(tweet_action)
+        bpi_action = QAction(self.ui.menu.write_bpi_csv, self)
+        bpi_action.triggered.connect(self.write_bpi_csv)
+        tool_menu.addAction(bpi_action)
 
         # 言語メニュー
         language_menu = menubar.addMenu(self.ui.menu.language)
@@ -303,4 +306,8 @@ class MainWindowUI(QMainWindow):
     
     def tweet(self):
         """ツイート作成 (サブクラスで実装)"""
+        raise NotImplementedError
+    
+    def write_bpi_csv(self):
+        '''BPIM用csvの作成 (サブクラスで実装)'''
         raise NotImplementedError

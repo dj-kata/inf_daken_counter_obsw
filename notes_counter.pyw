@@ -562,6 +562,16 @@ class MainWindow(MainWindowUI):
         encoded_msg = urllib.parse.quote(msg)
         webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_msg}")
 
+    def write_bpi_csv(self):
+        '''BPI Manager用csvの出力'''
+        self.result_database.write_bpi_csv(play_style.sp)
+        self.result_database.write_bpi_csv(play_style.dp)
+        QMessageBox.information(
+            self,
+            "BPI Manager用csv出力機能",
+            "bpi_sp.txt, bpi_dp.txtを出力しました。ファイルを開いてコピー&ペーストしてください。"
+        )
+
 def check_resource():
     storage = StorageAccessor()
     informations_filename = f'{define.informations_resourcename}.res'
