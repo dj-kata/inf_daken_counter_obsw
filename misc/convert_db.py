@@ -6,6 +6,7 @@ import numpy as np
 import imagehash
 import glob
 import urllib, json, requests
+from bs4 import BeautifulSoup
 
 from src.screen_reader import ScreenReader
 from src.logger import get_logger
@@ -200,6 +201,55 @@ def set_sp12unofficial(titles:list, sdb:SongDatabase, conv_unof_infn:dict):
             not_found.append((title, play_style.sp, diff))
     return not_found
 
+def get_dp_unofficial(conv, download=False):
+    '''DP非公式難易度表の取得'''
+    vers = ['RA', 'ROOT', 'SINO', 'CB', 'DJT', 'sub', 'HERO', 'HSKY', 'CH', '4th'
+        , 'PEN', 'SIR', '1st', '2nd', '5th', '6th', '7th', '8th', '9th', '10th'
+        , 'GOLD', 'RED', 'COP', 'EMP', 'BIS',  'TRI', 'LC', 'DD', 'RDT', 'SPD']
+    def parse_lv_table(res):
+        ret = {}
+        soup = BeautifulSoup(res, features='html.parser')
+        div = soup.find_all('div')[8:-1]
+        for i,d in enumerate(div):
+            dat = d.text.split('\n')
+            if dat[0] == '曲情報なし':
+                continue
+            unofficial_lv = dat[1].strip()
+            for l in dat[2:-1]:
+                if l[:-4] in conv.keys():
+                    tmp = conv[l[:-4]]
+                    # (DD)とかを消す処理
+                    for v in vers:
+                        if tmp[-len(v)-3:] == f" ({v})":
+                            tmp = tmp[:-len(v)-3]
+                    title = (tmp, play_style.dp , convert_difficulty(l[-2]))
+                else:
+                    tmp = l[:-4]
+                    # (DD)とかを消す処理
+                    for v in vers:
+                        if tmp[-len(v)-3:] == f" ({v})":
+                            tmp = tmp[:-len(v)-3]
+                    title = (tmp, play_style.dp , convert_difficulty(l[-2]))
+                ret[title] = unofficial_lv
+        return ret
+    if download:
+        session = requests.session()
+        url = 'https://zasa.sakura.ne.jp/dp/rank.php'
+        songdb = {}
+        # 古い順に実行すればOK。同じkeyが即上書きとすれば最新の難易度だけ残る。
+        for ver in list(range(1,31)):
+            print(f"ver = {ver}")
+            data={'env':f'a{ver:02d}0', 'submit':'表示', 'cat':'0', 'mode':'m1', 'offi':'0'}
+            r = session.post(url, data=data)
+            dic = parse_lv_table(r.text)
+            songdb.update(dic)
+        with open('dp_unofficial.pkl', 'wb') as f:
+            pickle.dump(songdb, f)
+    else:
+        with open('dp_unofficial.pkl', 'rb') as f:
+            songdb = pickle.load(f)
+    return songdb
+
 def set_lvall(style:play_style, lv:int, titles:dict, sdb:SongDatabase):
     '''指定レベルの曲を全て追加。特にチェックをしない'''
     for s in titles[style.name.upper()][str(lv)]: # inf-notebookの曲名
@@ -286,6 +336,105 @@ not_found_bpi = set_bpim(bpi=bpi, sdb=sdb, conv=conv_bpi)
 
 print(sdb)
 
+conv_dp ={
+    "†渚の小悪魔ラヴリィ〜レイディオ†(II":"†渚の小悪魔ラヴリィ～レイディオ†(II",
+    "かげぬい 〜 Ver.BENIBOTAN":"かげぬい ～ Ver.BENIBOTAN",
+    "カゴノトリ〜弐式〜":"カゴノトリ～弐式～",
+    "キャトられ♥恋はモ〜モク":"キャトられ恋はモ～モク",
+    "ギョギョっと人魚♨爆婚ブライダル":"ギョギョっと人魚 爆婚ブライダル",
+    "クルクル☆ラブ〜Opioid Pepti":"クルクル☆ラブ～Opioid Pepti",
+    'ピアノ協奏曲第1番"蠍火"':"ピアノ協奏曲第１番”蠍火”",
+    "フェティッシュペイパー〜脇の汗回転ガール":"フェティッシュペイパー ～脇の汗回転ガール～",
+    'ワルツ第17番 ト短調"大犬のワルツ"':"ワルツ第17番 ト短調”大犬のワルツ”",
+    "全力 SPECIAL VACATION!":"全力 SPECIAL VACATION!",
+    "共犯ヘヴンズコード":"共犯へヴンズコード",
+    "夕焼け 〜Fading Day〜":"夕焼け ～Fading Day～",
+    "太陽〜T・A・I・Y・O〜":"太陽～T・A・I・Y・O～",
+    "恋する☆宇宙戦争っ!!":"恋する☆宇宙戦争っ！！",
+    "旋律のドグマ〜Misérables〜":"旋律のドグマ～Miserables～",
+    "焱影":"火影",
+    "花吹雪 〜 IIDX LIMITED 〜":"花吹雪 ～ IIDX LIMITED ～",
+    "草原の王女-奇跡を辿って-":"草原の王女-軌跡を辿って-",
+    "表裏一体！？怪盗いいんちょの悩み♥":"表裏一体！？怪盗いいんちょの悩み",
+    "超!!遠距離らぶ♡メ〜ル":"超!!遠距離らぶメ～ル",
+    "野球の遊び方 そしてその歴史 〜決定版〜":"野球の遊び方 そしてその歴史 ～決定版～",
+    "麗 〜うらら〜":"麗 ～うらら～",
+    '100% minimoo-G':'100％ minimoo-G',
+    '19,November':'19，November',
+    '50th Memorial Songs -二人の時 〜under the cherry blossoms〜-':'50th Memorial Songs -二人の時 ～under the cherry blossoms～-',
+    'A MINSTREL 〜 ver. short-scape 〜':'A MINSTREL ～ ver. short-scape ～',
+    'Amor De Verão':'Amor De Verao',
+    'Apocalypse 〜dirge of swans〜':'Apocalypse ～dirge of swans～',
+    'BALLAD FOR YOU〜想いの雨〜':'BALLAD FOR YOU～想いの雨～',
+    'Be Rock U(1998 burst style)':'Be Rock U (1998 burst style)',
+    'Best Of Me':'Best of Me',
+    'Blind Justice 〜Torn souls, Hurt Faiths〜':'Blind Justice ～Torn souls， Hurt Faiths ～',
+    'BLO§OM':'BLOSSOM',
+    'CaptivAte2〜覚醒〜':'CaptivAte2～覚醒～',
+    'CaptivAte〜浄化〜':'CaptivAte～浄化～',
+    'CaptivAte〜裁き〜':'CaptivAte～裁き～',
+    'CaptivAte〜裁き〜(SUBLIME TECHNO MIX)':'CaptivAte～裁き～(SUBLIME TECHNO MIX)',
+    'CaptivAte〜誓い〜':'CaptivAte～誓い～',
+    'CaptivAte2 〜覚醒〜':'CaptivAte2～覚醒～',
+    'CaptivAte 〜浄化〜':'CaptivAte～浄化～',
+    'CaptivAte 〜裁き〜':'CaptivAte～裁き～',
+    'CaptivAte 〜裁き〜(SUBLIME TECHNO MIX)':'CaptivAte～裁き～(SUBLIME TECHNO MIX)',
+    'CaptivAte 〜誓い〜':'CaptivAte～誓い～',
+    'City Never Sleeps (IIDX EDITION)':'City Never Sleeps (IIDX Edition)',
+    'CODE:Ø':'CODE:0',
+    'CROSSROAD 〜Left Story〜':'CROSSROAD ～Left Story～',
+    'DEATH†ZIGOQ〜怒りの高速爆走野郎〜':'DEATH†ZIGOQ ～怒りの高速爆走野郎～',
+    'DENJIN AKATSUKINITAORERU-SF PureAnalogSynth Mix-':'DENJIN AKATSUKINI TAORERU -SF PureAnalogSynth Mix-',
+    'DM STAR〜関西 energy style〜':'DM STAR～関西 energy style～',
+    'DORNWALD 〜Junge〜':'DORNWALD ～Junge～',
+    'Double♥♥Loving Heart':'Double Loving Heart',
+    'e-motion 2003 -romantic extra-':'e-motion 2003  -romantic extra-',
+    'Eine Haube 〜聖地の果てにあるもの〜':'Eine Haube ～聖地の果てにあるもの～',
+    'Geirskögul':'Geirskogul',
+    'i feel...':'i feel ...',
+    'LETHEBOLG 〜双神威に斬り咲けり〜':'LETHEBOLG ～双神威に斬り咲けり～',
+    'Light and Cyber･･･':'Light and Cyber…',
+    'London Affairs Beckoned WithMoney Loved By Yellow Papers.':'London Affairs Beckoned With Money Loved By Yellow Papers.',
+    'LOVE AGAIN TONIGHT〜for Mellisa mix〜':'LOVE AGAIN TONIGHT～for Mellisa mix～',
+    'Love♡km':'Love km',
+    'LOVE♡SHINE':'LOVE SHINE',
+    'Mächö Mönky':'Macho Monky',
+    'never...':'never…',
+    'PARANOIA MAX〜DIRTY MIX〜':'PARANOIA MAX～DIRTY MIX～',
+    'PARANOiA 〜HADES〜':'PARANOiA ～HADES～',
+    'Programmed Sun (xac Antarctic Ocean mix)':'Programmed Sun(xac Antarctic Ocean mix)',
+    'Präludium':'Praludium',
+    'quell〜the seventh slave〜':'quell～the seventh slave～',
+    "Raison d'être〜交差する宿命〜":"Raison d'etre～交差する宿命～",
+    'Raspberry♥Heart(English version)':'Raspberry Heart(English version)',
+    'spiral galaxy -L.E.D. STYLESPREADING PARTICLE BEAM MIX-':'spiral galaxy -L.E.D. STYLE SPREADING PARTICLE BEAM MIX-',
+    'Sweet Sweet♥Magic':'Sweet Sweet Magic',
+    'The Sealer 〜ア・ミリアとミリアの民〜':'The Sealer ～ア・ミリアとミリアの民～',
+    'Time to Empress':'Time To Empress',
+    'Turii 〜Panta rhei〜':'Turii ～Panta rhei～',
+    'ULTiM∧TE':'ＵＬＴｉＭΛＴＥ',
+    'Winning Eleven9 Theme (IIDX EDITION)':'Winning Eleven9 Theme(IIDX EDITION)',
+    'XENON II 〜TOMOYUKIの野望〜':'XENON II ～TOMOYUKIの野望～',
+    'ZETA〜素数の世界と超越者〜':'ZETA～素数の世界と超越者～',
+    '¡Viva!':'!Viva!',
+    'ÆTHER':'ATHER',
+    'Übertreffen':'Ubertreffen',
+    'Ōu Legends':'Ou Legends',
+    '全力 SPECIAL VACATION!! 〜限りある休日〜': '全力 SPECIAL VACATION!! ～限りある休日～',
+    '†渚の小悪魔ラヴリィ〜レイディオ†(IIDX EDIT)':'†渚の小悪魔ラヴリィ～レイディオ†(IIDX EDIT)',
+    'かげぬい 〜 Ver.BENIBOTAN 〜':'かげぬい ～ Ver.BENIBOTAN ～',
+    'クルクル☆ラブ〜Opioid Peptide MIX〜':'クルクル☆ラブ～Opioid Peptide MIX～',
+    'フェティッシュペイパー〜脇の汗回転ガール〜':'フェティッシュペイパー ～脇の汗回転ガール～',
+    'L.F.O.':'L.F.O',
+    "Raison d'être～交差する宿命～":"Raison d'etre～交差する宿命～",
+    'カゴノトリ ～弐式～':'カゴノトリ～弐式～',
+    'ZETA ～素数の世界と超越者～':'ZETA～素数の世界と超越者～',
+    'era (nostal mix)':'era (nostalmix)',
+    'DISAPPEAR feat. Koyomin':'DISAPPEAR feat. koyomin',
+    'Χ-DEN':'X-DEN',
+    'Anisakis -somatic mutation type "Forza"-':'Anisakis -somatic mutation type"Forza"-'
+}
+
 # songdbのSP11,12でBPI情報がないものを抽出; DPは需要が不明なので真面目にやらない
 # i=0
 # for s in sdb.filter(play_style=play_style.sp):
@@ -310,5 +459,17 @@ print(sdb.search(chart_id))
 for i in range(1, 11):
     set_lvall(play_style.sp, i, levels, sdb)
     set_lvall(play_style.dp, i, levels, sdb)
+
+# DP非公式難易度
+dp = get_dp_unofficial(conv_dp, download=False)
+
+dp_not_found = []
+for k in dp:
+    title, style, diff = k
+    chart_id = calc_chart_id(title, style, diff)
+    if sdb.search(chart_id = chart_id):
+        sdb.songs[chart_id].dp_unofficial = float(dp[k])
+    else:
+        dp_not_found.append(k)
 
 sdb.save()

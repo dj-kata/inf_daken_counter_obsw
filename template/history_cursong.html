@@ -440,6 +440,7 @@
         var notes = data.notes || 0;
         var playspeed = Number(data.playspeed) || 1.0;
         var diff_color = getDifficultyColor(difficulty);
+        var dp_unofficial_lv = data.dp_unofficial_lv;
        
         if (playspeed>1.0){
             music = "<span class='playspeed-high'>["+playspeed+"X]</span> " + music;
@@ -447,9 +448,12 @@
             music = "<span class='playspeed-low'>["+playspeed+"X]</span> " + music;
         }
         document.querySelector('.title-name').innerHTML = music;
-        document.querySelector('.title-level-difficulty').innerHTML = 
-            '<span class="title-level">☆' + lv + '</span>' +
-            '<span class="title-difficulty ' + diff_color + '">' + difficulty + '</span>';
+        var level_str = '<span class="title-level">☆' + lv + '</span>'
+        if (dp_unofficial_lv != ""){
+            level_str += ' <span class="dp-unofficial">(' + dp_unofficial_lv + ')</span>'
+        }
+        level_str += '<span class="title-difficulty ' + diff_color + '">' + difficulty + '</span>';
+        document.querySelector('.title-level-difficulty').innerHTML = level_str;
         document.querySelector('.title-notes').textContent = 'NOTES: ' + notes;
         
         // BEST情報

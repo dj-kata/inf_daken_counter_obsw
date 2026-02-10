@@ -326,6 +326,7 @@
                 var sp_12hard = item.sp_12hard || '';
                 var sp_12clear = item.sp_12clear || '';
                 var playspeed = Number(item.playspeed) || 1.0;
+                var dp_unofficial_lv = item.dp_unofficial_lv || "";
                 
                 // 更新なしをスキップ
                 if (skip_no_update == 1 && pre_score >= score && pre_bp <= bp && pre_lamp >= lamp) {
@@ -394,6 +395,9 @@
                     level_display = '<span class="sp12-clear">' + clear_text + '</span>' +
                                    '<span class="sp12-slash">/</span>' +
                                    '<span class="sp12-hard">' + hard_text + '</span>';
+                }
+                if (dp_unofficial_lv != ""){
+                    level_display = dp_unofficial_lv;
                 }
                 
                 // DBx系オプションの処理

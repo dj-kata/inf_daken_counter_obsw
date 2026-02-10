@@ -725,7 +725,7 @@ class ResultDatabase:
             }
             
             if songinfo:
-                item['dp_unofficial_lv'] = songinfo.dp_unofficial if hasattr(songinfo, 'dp_unofficial') else ""
+                item['dp_unofficial_lv'] = str(songinfo.dp_unofficial) if hasattr(songinfo, 'dp_unofficial') and songinfo.dp_unofficial else ""
                 item['sp_12hard'] = songinfo.sp12_hard.__str__() if hasattr(songinfo, 'sp12_hard') and songinfo.sp12_hard else ""
                 item['sp_12clear'] = songinfo.sp12_clear.__str__() if hasattr(songinfo, 'sp12_clear') and songinfo.sp12_clear else ""
                 item['sp_11hard'] = songinfo.sp11_hard.__str__() if hasattr(songinfo, 'sp11_hard') and songinfo.sp11_hard else ""
@@ -832,7 +832,7 @@ class ResultDatabase:
                 data['rankdiff1'] = detail.score_rate_with_rankdiff[1]
         
         if songinfo:
-            data['dp_unofficial_lv'] = songinfo.dp_unofficial if hasattr(songinfo, 'dp_unofficial') else ""
+            data['dp_unofficial_lv'] = str(songinfo.dp_unofficial) if hasattr(songinfo, 'dp_unofficial') else ""
             data['sp_12hard'] = songinfo.sp12_hard.__str__() if hasattr(songinfo, 'sp12_hard') and songinfo.sp12_hard else ""
             data['sp_12clear'] = songinfo.sp12_clear.__str__() if hasattr(songinfo, 'sp12_clear') and songinfo.sp12_clear else ""
             data['sp_11hard'] = songinfo.sp11_hard.__str__() if hasattr(songinfo, 'sp11_hard') and songinfo.sp11_hard else ""
@@ -908,6 +908,55 @@ class ResultDatabase:
                     timestamp
                 ]
                 writer.writerow(row)
+
+    def write_bpi_csv(self, play_style:play_style):
+        '''bpimが受けられるcsvを出力する。ランプは全てNO PLAYで出す。(CPIに使われないように)'''
+        # OK: 12,3395,0,0,200,FAILED,---,
+        # NG: 11,3396,0,0,200,FAILED,---
+        # OK: 11,3397,0,0,200,FAILED
+        # 
+        # 時刻の更新は必須。
+        # レベルは書いてあれば良いっぽい。全部11にしてみるか。
+        # 全曲の自己べを取得
+        bests = self.get_all_best_results()
+        titles = []
+        for k in bests.keys():
+            title, style, diff, battle = k
+            if battle:
+                continue
+            if style != play_style: # SP/DPどちらかのみ
+                continue
+            titles.append(title)
+        titles = list(set(titles))
+        out = 'バージョン,タイトル,ジャンル,アーティスト,プレー回数,BEGINNER 難易度,BEGINNER スコア,BEGINNER PGreat,BEGINNER Great,BEGINNER ミスカウント,BEGINNER クリアタイプ,BEGINNER DJ LEVEL,NORMAL 難易度,NORMAL スコア,NORMAL PGreat,NORMAL Great,NORMAL ミスカウント,NORMAL クリアタイプ,NORMAL DJ LEVEL,HYPER 難易度,HYPER スコア,HYPER PGreat,HYPER Great,HYPER ミスカウント,HYPER クリアタイプ,HYPER DJ LEVEL,ANOTHER 難易度,ANOTHER スコア,ANOTHER PGreat,ANOTHER Great,ANOTHER ミスカウント,ANOTHER クリアタイプ,ANOTHER DJ LEVEL,LEGGENDARIA 難易度,LEGGENDARIA スコア,LEGGENDARIA PGreat,LEGGENDARIA Great,LEGGENDARIA ミスカウント,LEGGENDARIA クリアタイプ,LEGGENDARIA DJ LEVEL,最終プレー日時\n'
+        for t in titles:
+            line = 'copula,'
+            line += t + ','
+            line += 'TECHNO,SLAKE,0,'
+            # beginner, normalは1つもないので埋めておく
+            line += '0,0,0,0,---,NO PLAY,---,3,0,0,0,---,NO PLAY,---,'
+            if (t, play_style, difficulty.hyper, None) in bests.keys():
+                s = bests[(t, play_style, difficulty.hyper, None)]
+                line += f"12,{s['best_score']},0,0,---,NO PLAY,---,"
+            else:
+                line += '3,0,0,0,---,NO PLAY,---,'
+            if (t, play_style, difficulty.another, None) in bests.keys():
+                s = bests[(t, play_style, difficulty.another, None)]
+                line += f"12,{s['best_score']},0,0,---,NO PLAY,---,"
+            else:
+                line += '3,0,0,0,---,NO PLAY,---,'
+            if (t, play_style, difficulty.leggendaria, None) in bests.keys():
+                s = bests[(t, play_style, difficulty.leggendaria, None)]
+                line += f"12,{s['best_score']},0,0,---,NO PLAY,---,"
+            else:
+                line += '3,0,0,0,---,NO PLAY,---,'
+            now = datetime.datetime.now()
+            line += f"{now.year}/{now.month}/{now.day} {now.hour}:{now.minute}\n"
+            out += line
+        f = open('bpi.txt', 'w', encoding='utf-8')
+        f.write(out)
+
+        return titles
 
     def __str__(self):
         out = ''
