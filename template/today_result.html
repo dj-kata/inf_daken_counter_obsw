@@ -194,9 +194,12 @@
                 margin-top: 5px;
                 text-align: right;
             }
-            
             /* クリアランプ */
-            .fc { animation: flashfc 0.2s infinite; }
+            .fc{
+                animation-name: flashfc;
+                animation-duration: 0.2s;
+                animation-iteration-count: infinite;
+            }
             @keyframes flashfc {
                 0%   { background-color: #ff2828; }
                 20%  { background-color: #d5ff28; }
@@ -205,19 +208,30 @@
                 80%  { background-color: #d528ff; }
                 100% { background-color: #ff2828; }
             }
-            
-            .failed { animation: flashfailed 0.08s infinite; }
-            @keyframes flashfailed {
-                0%   { background-color: #333; }
-                50%  { background-color: #777; }
-                100% { background-color: #333; }
+            .failed{
+                animation-name: flashfailed;
+                animation-duration: 0.08s;
+                animation-iteration-count: infinite;
             }
-            
-            .ac { background-color: #ab47bc; }
-            .ec { background-color: #d32f2f; }
-            .nc { background-color: #ffa000; }
-            .hc { background-color: #388e3c; }
-            .exh { background-color: #0288d1; }
+            @keyframes flashfailed {
+                0%   { background-color: #ff2828; }
+                50%  { background-color: #282828; }
+                100% { background-color: #ff2828; }
+            }
+            .ac{background-color: #ff66ff;}
+            .ec{background-color: #22ff22;}
+            .nc{background-color: #22ccff;}
+            .hc{background-color: #ffffff;}
+            .exh{
+                animation-name: flashexh;
+                animation-duration: 0.08s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashexh {
+                0%   { background-color: #ff2828; }
+                50%  { background-color: #ffff28; }
+                100% { background-color: #ff2828; }
+            }
             
             /* SP☆12 */
             .sp12-clear {
