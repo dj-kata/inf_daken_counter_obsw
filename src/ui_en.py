@@ -62,7 +62,7 @@ class UIText:
         tweet_group = 'Tweet Function'
         enable_autotweet = 'Enable auto-tweet on exit'
         enable_judge = 'Include judge data'
-        enable_folder_updates = 'Show folder update count'
+        enable_folder_updates = 'Show folder update count(coming soon)'
         
         other_group = 'Other'
         image_save_path = 'Image save path:'

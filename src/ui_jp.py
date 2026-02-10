@@ -62,7 +62,7 @@ class UIText:
         tweet_group = 'ツイート機能'
         enable_autotweet = '終了時の自動ツイートを有効にする'
         enable_judge = '判定部分を含める'
-        enable_folder_updates = 'フォルダごとの更新数を表示'
+        enable_folder_updates = 'フォルダごとの更新数を表示(開発中)'
         
         other_group = 'その他'
         image_save_path = '画像保存先:'
