@@ -75,6 +75,8 @@ build_exe_options = {
         "os",
         "sys",
         "enum",
+        "bs4",
+        "html",
         "typing",
         "ctypes",
         "ctypes.wintypes",
@@ -106,7 +108,7 @@ build_exe_options = {
         # obsws_pythonはpackagesで指定
         # infnotebookはinclude_filesで対応（パッケージスキャンを回避）
         "obsws_python.events", 
-        "obsws_python.subs",    # これも後で必要になる可能性が高いです
+        "obsws_python.subs",
         # "obsws_python.base"
         # 認識用
     ],

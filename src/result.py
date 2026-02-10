@@ -573,8 +573,10 @@ class ResultDatabase:
         if target is None:
             target = datetime.datetime.now()
         ret = 0
-        for r in reversed(self.results):
+        for r in self.results:
             result_date = datetime.datetime.fromtimestamp(r.timestamp)
+            if r.detect_mode != detect_mode.play:
+                continue
             if (result_date.month == target.month) and (result_date.year == target.year):
                 if r.judge:
                     ret += r.judge.notes()
