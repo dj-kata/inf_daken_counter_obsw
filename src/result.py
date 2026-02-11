@@ -46,7 +46,15 @@ class PlayOption():
             self.flip: str = option.flip
             self.assist: str = option.assist
             self.battle: bool = option.battle
-            self.special: bool = (option.arrange is not None and ('H-RAN' in option.arrange or 'BATTLE' in option.arrange or 'SYMM-RAN' in option.arrange or 'SYNC-RAN' in option.arrange)) or self.battle
+
+    @property
+    def special(self) -> bool:
+        """特殊オプション判定（自動計算）"""
+        if not self.arrange:
+            return self.battle
+
+        special_keywords = ['H-RAN', 'BATTLE', 'SYMM-RAN', 'SYNC-RAN']
+        return any(keyword in self.arrange for keyword in special_keywords) or self.battle
 
     def convert_from_v2(self, opt:str):
         '''v2の文字列形式でのオプションをv3用に変換してインスタンスに直接書き込む。'''
