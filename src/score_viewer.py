@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 import traceback
 
-from src.result import ResultDatabase, OneResult
+from src.result import ResultDatabase, OneResult, DetailedResult
 from src.classes import play_style, difficulty, clear_lamp, detect_mode
 from src.config import Config
 from src.logger import get_logger
@@ -435,9 +435,11 @@ class ScoreViewer(QMainWindow):
         # 列定義
         columns = [
             'Lv',
+            '非公式Lv',
             'Title',
             'difficulty',
             'lamp',
+            'BPI',
             'score',
             'rate',
             'BP',
@@ -455,15 +457,21 @@ class ScoreViewer(QMainWindow):
         
         # 列幅設定
         self.table.setColumnWidth(0, 60)   # Lv
-        self.table.setColumnWidth(1, 600)  # Title
-        self.table.setColumnWidth(2, 80)   # 譜面
-        self.table.setColumnWidth(3, 100)  # ランプ
-        self.table.setColumnWidth(4, 100)  # ベストスコア
-        self.table.setColumnWidth(5, 100)  # スコアレート
-        self.table.setColumnWidth(6, 80)   # 最小BP
-        self.table.setColumnWidth(7, 200)  # ベストスコア時オプション
-        self.table.setColumnWidth(8, 200)  # 最小BP時オプション
-        self.table.setColumnWidth(9, 150)  # 最終プレー日
+        self.table.setColumnWidth(1, 80)   # 非公式Lv
+        self.table.setColumnWidth(2, 600)  # Title
+        self.table.setColumnWidth(3, 80)   # 譜面
+        self.table.setColumnWidth(4, 100)  # ランプ
+        self.table.setColumnWidth(5, 80)   # BPI
+        self.table.setColumnWidth(6, 100)  # ベストスコア
+        self.table.setColumnWidth(7, 100)  # スコアレート
+        self.table.setColumnWidth(8, 80)   # 最小BP
+        self.table.setColumnWidth(9, 200)  # ベストスコア時オプション
+        self.table.setColumnWidth(10, 200) # 最小BP時オプション
+        self.table.setColumnWidth(11, 150) # 最終プレー日
+        
+        # BPI列と非公式Lv列は初期状態では非表示
+        self.table.setColumnHidden(1, True)  # 非公式Lv
+        self.table.setColumnHidden(5, True)  # BPI
         
         # ソート有効化
         self.table.setSortingEnabled(True)
@@ -592,6 +600,34 @@ class ScoreViewer(QMainWindow):
             # ソートを一時無効化
             self.table.setSortingEnabled(False)
             
+            # 選択されているレベルをチェック（11か12が含まれているか）
+            selected_levels = [
+                level for level, cb in self.level_checkboxes.items()
+                if cb.isChecked()
+            ]
+            show_bpi = 11 in selected_levels or 12 in selected_levels
+            
+            # 選択されているスタイルをチェック（DPか）
+            selected_style = None
+            is_battle = None
+            for style, button in self.style_buttons.items():
+                if button.isChecked():
+                    if style == 'SP':
+                        selected_style = play_style.sp
+                    elif style == 'DP':
+                        selected_style = play_style.dp
+                    elif style == 'Battle':
+                        selected_style = play_style.dp
+                        is_battle = True
+                    break
+            
+            # 非公式Lv列の表示判定（DPかつBattleでない場合のみ表示）
+            show_unofficial = (selected_style == play_style.dp and not is_battle)
+            
+            # BPI列と非公式Lv列の表示/非表示を切り替え
+            self.table.setColumnHidden(1, not show_unofficial)  # 非公式Lv
+            self.table.setColumnHidden(5, not show_bpi)  # BPI
+            
             # フィルター適用
             filtered_scores = self.apply_filters()
             
@@ -600,7 +636,7 @@ class ScoreViewer(QMainWindow):
             
             # データ追加
             for score in filtered_scores:
-                self.add_table_row(score)
+                self.add_table_row(score, show_bpi)
             
             # ソート再有効化
             self.table.setSortingEnabled(True)
@@ -636,7 +672,7 @@ class ScoreViewer(QMainWindow):
             if cb.isChecked()
         ]
         
-        # 検索キーワード
+        # 検索キーワード（大文字小文字を区別しない）
         search_text = self.search_box.text().strip().lower()
         
         # フィルター適用
@@ -653,7 +689,7 @@ class ScoreViewer(QMainWindow):
             if is_battle and not score.is_battle:
                 continue
             
-            # 検索フィルター（空文字列の場合はスキップ）
+            # 検索フィルター（大文字小文字を区別せず部分一致）
             if len(search_text) > 0:
                 if search_text not in score.title.lower():
                     continue
@@ -662,32 +698,37 @@ class ScoreViewer(QMainWindow):
         
         return filtered
     
-    def add_table_row(self, score: ScoreData):
+    def add_table_row(self, score: ScoreData, show_bpi: bool = False):
         """テーブルに1行追加"""
         row = self.table.rowCount()
         self.table.insertRow(row)
         
-        # 各セルにスコアデータへの参照を保存（後で取得するため）
-        # Lv
-        item = None
-        if score.style ==play_style.dp and not score.is_battle:
-            if type(score.dp_unofficial) == float:
-                item = SortableItem(str(score.dp_unofficial))
-                item.setData(Qt.UserRole, score.dp_unofficial)  # ScoreDataオブジェクトを保存
-            else:
-                item = SortableItem(f"☆{score.level}")
-                item.setData(Qt.UserRole, float(score.level)-0.0001)  # ScoreDataオブジェクトを保存
-        else:
-            item = SortableItem(f"☆{score.level}")
-            item.setData(Qt.UserRole, int(score.level))  # ScoreDataオブジェクトを保存
-
+        # Lv（常に公式レベルを表示）
+        item = SortableItem(f"☆{score.level}")
+        item.setData(Qt.UserRole, int(score.level))
         item.setTextAlignment(Qt.AlignCenter)
         self.table.setItem(row, 0, item)
+        
+        # 非公式Lv（DPかつbattle=Falseの場合のみ値を設定）
+        unofficial_str = ""
+        unofficial_value = None
+        if score.style == play_style.dp and not score.is_battle:
+            if type(score.songinfo.dp_unofficial) == float:
+                unofficial_str = str(score.songinfo.dp_unofficial)
+                unofficial_value = score.songinfo.dp_unofficial
+        
+        item = SortableItem(unofficial_str)
+        if unofficial_value is not None:
+            item.setData(Qt.UserRole, unofficial_value)
+        else:
+            item.setData(Qt.UserRole, float(score.level)-0.001)
+        item.setTextAlignment(Qt.AlignCenter)
+        self.table.setItem(row, 1, item)
         
         # Title
         item = QTableWidgetItem(score.title)
         item.setData(Qt.UserRole, score) # 特殊なソートを行わないtitle列にscoreの実体を入れておく
-        self.table.setItem(row, 1, item)
+        self.table.setItem(row, 2, item)
         
         # 譜面
         chart_name, chart_color = self.get_chart_info(score.chart)
@@ -696,7 +737,7 @@ class ScoreViewer(QMainWindow):
         item.setTextAlignment(Qt.AlignCenter)
         if chart_color:
             item.setBackground(QBrush(chart_color))
-        self.table.setItem(row, 2, item)
+        self.table.setItem(row, 3, item)
         
         # ランプ（色付き）
         lamp_name, lamp_color = self.get_lamp_info(score.lamp)
@@ -705,37 +746,59 @@ class ScoreViewer(QMainWindow):
         if lamp_color:
             item.setBackground(QBrush(lamp_color))
         item.setData(Qt.UserRole, score.lamp.value)
-        self.table.setItem(row, 3, item)
+        self.table.setItem(row, 4, item)
+        
+        # BPI（11か12レベルの場合のみ計算）
+        bpi_str = ""
+        bpi_value = None
+        if show_bpi:
+            try:
+                if score.best_score_result and score.songinfo:
+                    detailed = DetailedResult(score.songinfo, score.best_score_result)
+                    bpi = detailed.get_bpi()
+                    if bpi is not None:
+                        bpi_str = f"{bpi:.2f}"
+                        bpi_value = bpi
+            except Exception as e:
+                logger.debug(f"BPI計算エラー ({score.title}): {e}")
+        
+        item = SortableItem(bpi_str)
+        if bpi_value is not None:
+            item.setData(Qt.UserRole, bpi_value)
+        else:
+            item.setData(Qt.UserRole, -16)
+        item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.table.setItem(row, 5, item)
         
         # ベストスコア
         item = QTableWidgetItem(str(score.best_score))
         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.table.setItem(row, 4, item)
+        self.table.setItem(row, 6, item)
         
         # スコアレート
         rate_str = f"{score.score_rate * 100:.2f}%" if score.score_rate > 0 else ""
         item = QTableWidgetItem(rate_str)
         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.table.setItem(row, 5, item)
+        self.table.setItem(row, 7, item)
         
         # 最小BP
         bp_str = str(score.min_bp) if score.min_bp < 99999 else ""
         item = QTableWidgetItem(bp_str)
         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.table.setItem(row, 6, item)
+        self.table.setItem(row, 8, item)
         
         # ベストスコア時オプション
         item = QTableWidgetItem(score.best_score_option)
-        self.table.setItem(row, 7, item)
+        self.table.setItem(row, 9, item)
         
         # 最小BP時オプション
         item = QTableWidgetItem(score.min_bp_option)
-        self.table.setItem(row, 8, item)
+        self.table.setItem(row, 10, item)
         
         # 最終プレー日
         item = QTableWidgetItem(score.last_play_date)
         item.setTextAlignment(Qt.AlignCenter)
-        self.table.setItem(row, 9, item)
+        self.table.setItem(row, 11, item)
 
     def get_chart_info(self, diff:str) -> tuple:
         '''譜面情報を送信(名前,色)'''
@@ -971,9 +1034,9 @@ class ScoreViewer(QMainWindow):
             if not selected_items:
                 return
             
-            # 最初の列からScoreDataを取得
+            # Title列（列2）からScoreDataを取得
             row = selected_items[0].row()
-            item = self.table.item(row, 1)
+            item = self.table.item(row, 2)
             if item:
                 score = item.data(Qt.UserRole)
                 if score:
