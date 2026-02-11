@@ -155,8 +155,6 @@ class OneResult:
         '''SP/DP'''
         self.difficulty = difficulty
         '''譜面難易度'''
-        self.chart_id  = calc_chart_id(title, play_style, difficulty)
-        """楽曲ID。無効なIDも設定可能とする"""
         self.judge     = judge
         """判定内訳"""
 
@@ -199,7 +197,12 @@ class OneResult:
         ret = True if self.bp and not self.pre_bp else ret
         ret = True if self.bp and self.pre_bp and self.bp < self.pre_bp else ret
         return ret
-        
+
+    @property
+    def chart_id(self) -> str:
+        """楽曲ID（自動計算）"""
+        return calc_chart_id(self.title, self.play_style, self.difficulty)
+
     def __eq__(self, other):
         if not isinstance(other, OneResult):
             return False
