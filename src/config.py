@@ -40,6 +40,10 @@ class Config:
         # WebSocketデータ配信ポート
         self.websocket_data_port = 8767
         
+        # スコアビューワ設定
+        self.score_viewer_style = 'SP'  # 'SP', 'DP', 'Battle'
+        self.score_viewer_levels = list(range(1, 13))  # [1, 2, ..., 12]
+        
         # 楽曲パック集計対象設定（デフォルトはunknown以外の全て）
         self.target_music_packs = [pack.name for pack in music_pack if pack != music_pack.unknown]
         
@@ -88,6 +92,10 @@ class Config:
                     # 言語設定
                     self.language = config_data.get('language', 'ja')
                     
+                    # スコアビューワ設定
+                    self.score_viewer_style = config_data.get('score_viewer_style', 'SP')
+                    self.score_viewer_levels = config_data.get('score_viewer_levels', list(range(1, 13)))
+                    
                     # 楽曲パック集計対象設定
                     self.target_music_packs = config_data.get('target_music_packs', [])
                     
@@ -128,6 +136,8 @@ class Config:
             "modify_rivalarea_mode": self.modify_rivalarea_mode.value,
             "write_statistics": self.write_statistics,
             "language": self.language,
+            "score_viewer_style": self.score_viewer_style,
+            "score_viewer_levels": self.score_viewer_levels,
         }
         
         try:
