@@ -463,6 +463,8 @@ class MainWindow(MainWindowUI):
         if self.result_database.add(result):
             self.statusBar().showMessage(f"選曲画面から自己ベストを登録しました。 -> {result}", 10000)
             self.result_database.save()
+            if self.score_viewer:
+                self.score_viewer.refresh_data()
     
     def process_play_mode(self):
         """プレー画面での処理"""
@@ -486,6 +488,8 @@ class MainWindow(MainWindowUI):
                     # リザルトを保存
                     if self.result_database.add(result):
                         self.result_database.save()
+                        if self.score_viewer:
+                            self.score_viewer.refresh_data()
                         self.result_database.broadcast_today_updates_data(self.start_time - self.config.autoload_offset*3600)
 
                         # 画像の保存
