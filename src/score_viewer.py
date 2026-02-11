@@ -16,7 +16,7 @@ from typing import Dict, List, Optional
 import traceback
 
 from src.result import ResultDatabase, OneResult
-from src.classes import play_style, difficulty, clear_lamp as LampType
+from src.classes import play_style, difficulty, clear_lamp
 from src.config import Config
 from src.logger import get_logger
 
@@ -31,7 +31,7 @@ class ScoreData:
         self.chart: str = ""  # SPA, SPH, DPA, etc.
         self.style: play_style = play_style.sp
         self.difficulty: difficulty = difficulty.hyper
-        self.lamp: int = 0  # クリアランプ
+        self.lamp: clear_lamp = clear_lamp.noplay  # クリアランプ
         self.best_score: int = 0
         self.score_rate: float = 0.0
         self.min_bp: int = 99999
@@ -234,7 +234,7 @@ class ScoreViewer(QMainWindow):
         self.setup_rival_table()
         
         # テーブルの高さを制限（最大5行分程度）
-        self.rival_table.setMaximumHeight(180)
+        self.rival_table.setMaximumHeight(120)
         
         layout.addWidget(self.rival_table)
         
@@ -365,7 +365,7 @@ class ScoreViewer(QMainWindow):
                 score.min_bp_option = self.format_option(result.option)
             
             # クリアランプ更新（最高値）
-            if result.lamp > score.lamp:
+            if result.lamp.value > score.lamp.value:
                 score.lamp = result.lamp
             
             # 最終プレー日更新
@@ -589,25 +589,25 @@ class ScoreViewer(QMainWindow):
         item.setTextAlignment(Qt.AlignCenter)
         self.table.setItem(row, 9, item)
     
-    def get_lamp_info(self, lamp: int) -> tuple:
+    def get_lamp_info(self, lamp: clear_lamp) -> tuple:
         """ランプ情報を取得（名前, 色）"""
-        # LampType enumを使用
+        # clear_lamp enumを使用
         try:
-            if lamp == LampType.no_play.value:
+            if lamp == clear_lamp.noplay:
                 return ("NO PLAY", QColor(200, 200, 200))
-            elif lamp == LampType.failed.value:
+            elif lamp == clear_lamp.failed:
                 return ("FAILED", QColor(128, 128, 128))
-            elif lamp == LampType.assist.value:
+            elif lamp == clear_lamp.assist:
                 return ("ASSIST", QColor(171, 71, 188))  # 紫
-            elif lamp == LampType.easy.value:
+            elif lamp == clear_lamp.easy:
                 return ("EASY", QColor(244, 67, 54))     # 赤
-            elif lamp == LampType.clear.value:
+            elif lamp == clear_lamp.clear:
                 return ("CLEAR", QColor(76, 175, 80))    # 緑
-            elif lamp == LampType.hard.value:
+            elif lamp == clear_lamp.hard:
                 return ("HARD", QColor(255, 193, 7))     # 黄色
-            elif lamp == LampType.ex_hard.value:
+            elif lamp == clear_lamp.exh:
                 return ("EX-HARD", QColor(255, 255, 255))  # 白
-            elif lamp == LampType.fullcombo.value:
+            elif lamp == clear_lamp.fc:
                 return ("FULLCOMBO", QColor(255, 235, 59)) # 金
             else:
                 return ("UNKNOWN", None)
