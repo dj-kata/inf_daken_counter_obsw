@@ -89,14 +89,24 @@ class Judge:
         """Poor(見逃し+空)"""
         self.cb = cb
         """ComboBreak"""
-        self.kpr = pr-cb
-        """空プア。自動計算される。"""
-
-        self.score = pg*2 + gr
-        self.bp = bd+pr
 
         if self.cb < self.bd:
             self.cb = self.bp
+
+    @property
+    def score(self) -> int:
+        '''スコア(自動計算)'''
+        return self.pg*2 + self.gr
+    
+    @property
+    def bp(self) -> int:
+        """BP（自動計算）"""
+        return self.bd + self.pr
+    
+    @property
+    def kpr(self) -> int:
+        """空プア（自動計算）"""
+        return self.pr - self.cb
 
     @classmethod
     def from_list(cls, data: List[str]):
@@ -108,8 +118,9 @@ class Judge:
         # *tmp でリストを展開してメインのコンストラクタに渡す
         return cls(*tmp)
 
-    def get_score_rate(self) -> float:
-        """現在の判定内訳に対するスコアレートを計算"""
+    @property
+    def score_rate(self) -> float:
+        """現在の判定内訳に対するスコアレート(自動計算)"""
         notes = self.pg+self.gr+self.gd+self.bd+self.pr-self.cb
         if notes == 0:
             return 0.0
@@ -130,10 +141,12 @@ class Judge:
         self.score = 0
         self.bp = 0
 
+    @property
     def sum(self) -> int:
-        '''CB以外の判定値の合計を返す。CB補正用'''
+        '''全判定(CB以外)の合計を返す。(自動計算)'''
         return self.pg + self.gr + self.gd + self.bd + self.pr
     
+    @property
     def notes(self) -> int:
         '''判定からノーツ数(pr以外の和)を返す'''
         return self.pg + self.gr + self.gd + self.bd
@@ -158,7 +171,7 @@ class Judge:
         return hash((self.pg, self.gr, self.gd, self.bd, self.pr, self.cb))
 
     def __str__(self):
-        return f"PG:{self.pg}, GR:{self.gr}, GD:{self.gd}, BD:{self.bd}, PR:{self.pr}, CB:{self.cb},  score:{self.score}, bp:{self.bp},  rate:{self.get_score_rate()*100:.1f}%"
+        return f"PG:{self.pg}, GR:{self.gr}, GD:{self.gd}, BD:{self.bd}, PR:{self.pr}, CB:{self.cb},  score:{self.score}, bp:{self.bp},  rate:{self.score_rate*100:.1f}%"
 
 class average_release:
     '''キー入力の平均リリース時間保存用。100ノーツ平均のリスト(長さ不定)を持つ?'''

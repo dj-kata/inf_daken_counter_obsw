@@ -321,7 +321,7 @@ class DetailedResult():
         msg += f"result:{self.result}\n"
         if self.score_rate_with_rankdiff:
             if self.result.judge:
-                msg += f"({''.join(self.score_rate_with_rankdiff)}, {self.result.judge.get_score_rate()*100:.2f}%)"
+                msg += f"({''.join(self.score_rate_with_rankdiff)}, {self.result.judge.score_rate*100:.2f}%)"
             else:
                 msg += f"({''.join(self.score_rate_with_rankdiff)})"
         msg += f", detect_mode:{self.result.detect_mode}, judge:[{self.result.judge}]"
@@ -579,7 +579,7 @@ class ResultDatabase:
                 continue
             if (result_date.month == target.month) and (result_date.year == target.year):
                 if r.judge:
-                    ret += r.judge.notes()
+                    ret += r.judge.notes
             else:
                 break
         return ret
@@ -668,7 +668,7 @@ class ResultDatabase:
         data = {
             'playcount': len(target),
             'today_notes': total.pg + total.gr + total.gd + total.bd,
-            'today_score_rate': f"{total.get_score_rate()*100:.2f}%",
+            'today_score_rate': f"{total.score_rate*100:.2f}%",
             'current_score_rate': current_score_rate,
             'today_judge': {
                 'pg': total.pg,

@@ -375,7 +375,7 @@ class MainWindow(MainWindowUI):
             self.last_play_mode = self.screen_reader.detect_playside()
 
         if trigger == 'play_end': # プレー画面の終わりに実行
-            if self.current_judge and  self.current_judge.notes() > 0:
+            if self.current_judge and  self.current_judge.notes > 0:
                 result = self.screen_reader.read_play_screen(self.current_judge)
                 self.result_database.add(result)
                 self.result_database.save()
@@ -554,7 +554,7 @@ class MainWindow(MainWindowUI):
 
     def tweet(self):
         '''成果ツイート'''
-        msg = f"plays:{self.play_count}, notes:{self.today_judge.notes():,}, {self.today_judge.get_score_rate()*100:.2f}%\n"
+        msg = f"plays:{self.play_count}, notes:{self.today_judge.notes:,}, {self.today_judge.score_rate*100:.2f}%\n"
         if self.config.enable_judge:
             msg += f"(PG:{self.today_judge.pg:,}, GR:{self.today_judge.gr:,}, GD:{self.today_judge.gd:,}, BD:{self.today_judge.bd:,}, PR:{self.today_judge.pr:,}, CB:{self.today_judge.cb:,})\n"
         if self.config.enable_folder_updates:
