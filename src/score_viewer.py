@@ -575,6 +575,10 @@ class ScoreViewer(QMainWindow):
     def save_filter_state(self):
         """選択状態を設定に保存"""
         try:
+            # 属性が存在するかチェック
+            if not hasattr(self, 'style_buttons') or not hasattr(self, 'level_checkboxes'):
+                return
+            
             # Play Style保存
             for style, button in self.style_buttons.items():
                 if button.isChecked():
@@ -720,8 +724,6 @@ class ScoreViewer(QMainWindow):
         item = SortableItem(unofficial_str)
         if unofficial_value is not None:
             item.setData(Qt.UserRole, unofficial_value)
-        else:
-            item.setData(Qt.UserRole, float(score.level)-0.001)
         item.setTextAlignment(Qt.AlignCenter)
         self.table.setItem(row, 1, item)
         
@@ -1050,12 +1052,20 @@ class ScoreViewer(QMainWindow):
     @Slot()
     def on_filter_changed(self):
         """フィルター変更時"""
+        # テーブルが初期化されていない場合は何もしない
+        if not hasattr(self, 'table'):
+            return
+        
         self.update_table()
         self.save_filter_state()
     
     @Slot()
     def on_level_all_changed(self):
         """ALLチェックボックス変更時"""
+        # 属性が存在するかチェック
+        if not hasattr(self, 'level_all_checkbox') or not hasattr(self, 'level_checkboxes'):
+            return
+        
         # ALLチェックボックスの現在の状態を取得
         checked = self.level_all_checkbox.isChecked()
         
@@ -1071,6 +1081,10 @@ class ScoreViewer(QMainWindow):
     @Slot()
     def on_level_checkbox_changed(self):
         """レベルチェックボックス変更時"""
+        # 属性が存在するかチェック
+        if not hasattr(self, 'level_checkboxes') or not hasattr(self, 'level_all_checkbox'):
+            return
+        
         # ALLチェックボックスの状態を更新
         self.update_level_all_checkbox()
         
@@ -1079,6 +1093,10 @@ class ScoreViewer(QMainWindow):
     
     def update_level_all_checkbox(self):
         """ALLチェックボックスの状態を更新"""
+        # 属性が存在するかチェック
+        if not hasattr(self, 'level_checkboxes') or not hasattr(self, 'level_all_checkbox'):
+            return
+        
         all_checked = all(cb.isChecked() for cb in self.level_checkboxes.values())
         
         # stateChangedシグナルを一時的にブロック
