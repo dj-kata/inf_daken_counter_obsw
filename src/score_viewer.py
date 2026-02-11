@@ -6,7 +6,7 @@
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTableWidget, QTableWidgetItem, QHeaderView,
-    QCheckBox, QRadioButton, QButtonGroup, QLineEdit, QLabel, QGroupBox
+    QCheckBox, QRadioButton, QButtonGroup, QLineEdit, QLabel, QGroupBox, QMessageBox
 )
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QColor, QBrush
@@ -16,7 +16,7 @@ from typing import Dict, List, Optional
 import traceback
 
 from src.result import ResultDatabase, OneResult
-from src.classes import play_style, difficulty, clear_lamp
+from src.classes import play_style, difficulty, clear_lamp, detect_mode
 from src.config import Config
 from src.logger import get_logger
 from src.funcs import *
@@ -114,7 +114,7 @@ class ScoreViewer(QMainWindow):
         self.statusBar().showMessage("準備完了")
     
     def create_top_widget(self) -> QWidget:
-        """上部ウィジェットを作成（左:フィルタ、右:ライバル欄）"""
+        """上部ウィジェットを作成（左:フィルタ、中央:プレーログ、右:ライバル欄）"""
         widget = QWidget()
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)  # マージンを0に
@@ -124,6 +124,10 @@ class ScoreViewer(QMainWindow):
         # 左側: フィルターエリア
         filter_widget = self.create_filter_widget()
         layout.addWidget(filter_widget, alignment=Qt.AlignTop)  # 上揃え
+        
+        # 中央: プレーログ表示部
+        playlog_widget = self.create_playlog_widget()
+        layout.addWidget(playlog_widget, alignment=Qt.AlignTop)  # 上揃え
         
         # 右側: ライバル欄
         rival_widget = self.create_rival_widget()
@@ -220,6 +224,73 @@ class ScoreViewer(QMainWindow):
         layout.addLayout(search_layout)
         
         return frame
+    
+    def create_playlog_widget(self) -> QWidget:
+        """プレーログ表示部ウィジェットを作成"""
+        from PySide6.QtWidgets import QFrame, QPushButton, QSizePolicy
+        frame = QFrame()
+        
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+        frame.setLayout(layout)
+        
+        # サイズポリシーを設定
+        frame.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        
+        # 上部：タイトルと削除ボタン
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(5)
+        
+        title_label = QLabel("プレーログ")
+        title_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        header_layout.addWidget(title_label)
+        
+        header_layout.addStretch()
+        
+        # 削除ボタン
+        self.delete_playlog_button = QPushButton("削除")
+        self.delete_playlog_button.setMaximumWidth(80)
+        self.delete_playlog_button.clicked.connect(self.on_delete_playlog)
+        header_layout.addWidget(self.delete_playlog_button)
+        
+        layout.addLayout(header_layout)
+        
+        # プレーログテーブル
+        self.playlog_table = QTableWidget()
+        self.setup_playlog_table()
+        
+        # テーブルの高さを制限
+        self.playlog_table.setMaximumHeight(120)
+        
+        layout.addWidget(self.playlog_table)
+        
+        return frame
+    
+    def setup_playlog_table(self):
+        """プレーログテーブルの初期設定"""
+        # 列定義
+        columns = ['プレー日時', 'ランプ', 'スコア', 'BP']
+        
+        self.playlog_table.setColumnCount(len(columns))
+        self.playlog_table.setHorizontalHeaderLabels(columns)
+        
+        # ヘッダー設定
+        header = self.playlog_table.horizontalHeader()
+        header.setStretchLastSection(True)
+        
+        # 列幅設定
+        self.playlog_table.setColumnWidth(0, 150)  # プレー日時
+        self.playlog_table.setColumnWidth(1, 100)  # ランプ
+        self.playlog_table.setColumnWidth(2, 100)  # スコア
+        self.playlog_table.setColumnWidth(3, 100)  # BP
+        
+        # 編集不可
+        self.playlog_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        
+        # 選択設定（行全体を選択）
+        self.playlog_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.playlog_table.setSelectionMode(QTableWidget.SingleSelection)
     
     def create_rival_widget(self) -> QWidget:
         """ライバル欄ウィジェットを作成"""
@@ -360,8 +431,9 @@ class ScoreViewer(QMainWindow):
                 songinfo = self.result_database.song_database.search(chart_id = result.chart_id)
                 
                 # レベル取得（曲データベースから取得する場合は別途実装）
-                score.level = str(songinfo.level)
-                score.dp_unofficial = songinfo.dp_unofficial
+                if songinfo:
+                    score.level = str(songinfo.level)
+                    score.dp_unofficial = songinfo.dp_unofficial
                 
                 # 譜面表記作成 (SPA, SPH, DPA, etc.)
                 score.chart = self.get_chart_name(result.play_style, result.difficulty)
@@ -372,24 +444,26 @@ class ScoreViewer(QMainWindow):
                 score = self.scores[key]
             
             # ベストスコア更新
-            if result.score > score.best_score:
+            if result.score and result.score > score.best_score:
                 score.best_score = result.score
-                score.score_rate = result.score / (result.notes * 2) if result.notes > 0 else 0
                 score.best_score_option = self.format_option(result.option)
+                score.score_rate = result.score / (result.notes * 2) if result.notes and result.notes > 0 else 0
             
             # 最小BP更新
-            if result.bp < score.min_bp:
+            if result.bp and result.bp < score.min_bp:
                 score.min_bp = result.bp
                 score.min_bp_option = self.format_option(result.option)
             
             # クリアランプ更新（最高値）
-            if result.lamp.value > score.lamp.value:
+            if result.lamp and result.lamp.value > score.lamp.value:
                 score.lamp = result.lamp
             
             # 最終プレー日更新
             play_date = datetime.fromtimestamp(result.timestamp).strftime('%Y-%m-%d %H:%M')
             if play_date > score.last_play_date:
                 score.last_play_date = play_date
+            if score.title == 'Smashing Wedge' and score.style == play_style.dp:
+                print(score.title, score.style, score.lamp, result.lamp)
         
         except Exception as e:
             import traceback
@@ -402,8 +476,6 @@ class ScoreViewer(QMainWindow):
             style_prefix = "SP"
         elif style == play_style.dp:
             style_prefix = "DP"
-        elif style == play_style.battle:
-            return "Battle"
         
         diff_suffix = ""
         if diff == difficulty.beginner:
@@ -717,6 +789,137 @@ class ScoreViewer(QMainWindow):
         except Exception as e:
             logger.error(f"ライバル欄更新エラー: {e}")
     
+    def update_playlog_table(self, score: ScoreData):
+        """プレーログ欄を更新（選択中の曲のプレーログを表示）"""
+        try:
+            self.playlog_table.setRowCount(0)
+            
+            if not score:
+                return
+            
+            # 選択中の曲のプレーログをフィルタ
+            # detect_mode=detect_mode.resultのもののみ
+            playlogs = []
+            for result in self.result_database.results:
+                if (result.title == score.title and 
+                    result.play_style == score.style and 
+                    result.difficulty == score.difficulty and
+                    result.detect_mode == detect_mode.result):
+                    playlogs.append(result)
+            
+            # タイムスタンプで降順ソート（新しい順）
+            playlogs.sort(key=lambda x: x.timestamp, reverse=True)
+            
+            # テーブルに表示
+            for row, log in enumerate(playlogs):
+                self.playlog_table.insertRow(row)
+                
+                # プレー日時
+                dt = datetime.fromtimestamp(log.timestamp)
+                date_str = dt.strftime('%Y/%m/%d %H:%M')
+                item = QTableWidgetItem(date_str)
+                item.setTextAlignment(Qt.AlignCenter)
+                # OneResultオブジェクトを保持（削除時に使用）
+                item.setData(Qt.UserRole, log)
+                self.playlog_table.setItem(row, 0, item)
+                
+                # ランプ（色付き）
+                lamp_name, lamp_color = self.get_lamp_info(log.lamp)
+                item = QTableWidgetItem(lamp_name)
+                item.setTextAlignment(Qt.AlignCenter)
+                if lamp_color:
+                    item.setBackground(QBrush(lamp_color))
+                self.playlog_table.setItem(row, 1, item)
+                
+                # スコア
+                score_str = str(log.score) if log.score else ""
+                item = QTableWidgetItem(score_str)
+                item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.playlog_table.setItem(row, 2, item)
+                
+                # BP
+                bp_str = str(log.bp) if log.bp is not None else ""
+                item = QTableWidgetItem(bp_str)
+                item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.playlog_table.setItem(row, 3, item)
+        
+        except Exception as e:
+            logger.error(f"プレーログ欄更新エラー: {e}")
+            logger.error(traceback.format_exc())
+    
+    @Slot()
+    def on_delete_playlog(self):
+        """プレーログ削除ボタンがクリックされた時"""
+        try:
+            # 選択されている行を取得
+            selected_items = self.playlog_table.selectedItems()
+            if not selected_items:
+                QMessageBox.warning(self, "警告", "削除するプレーログを選択してください。")
+                return
+            
+            # 選択された行からOneResultオブジェクトを取得
+            row = selected_items[0].row()
+            item = self.playlog_table.item(row, 0)
+            if not item:
+                return
+            
+            result_to_delete = item.data(Qt.UserRole)
+            if not result_to_delete:
+                return
+            
+            # 確認ダイアログ
+            dt = datetime.fromtimestamp(result_to_delete.timestamp)
+            date_str = dt.strftime('%Y/%m/%d %H:%M')
+            
+            reply = QMessageBox.question(
+                self,
+                "確認",
+                f"以下のプレーログを削除しますか?\n\n"
+                f"曲名: {result_to_delete.title}\n"
+                f"譜面: {get_chart_name(result_to_delete.play_style, result_to_delete.difficulty)}\n"
+                f"日時: {date_str}\n"
+                f"スコア: {result_to_delete.score}\n"
+                f"BP: {result_to_delete.bp}",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if reply == QMessageBox.Yes:
+                # プレーログを削除
+                if result_to_delete in self.result_database.results:
+                    self.result_database.results.remove(result_to_delete)
+                    
+                    # データベースを保存
+                    self.result_database.save()
+                    
+                    # スコアデータを再読み込み
+                    self.load_scores()
+                    
+                    # テーブル更新
+                    self.update_table()
+                    
+                    # 現在選択中の譜面があればプレーログとライバル欄も更新
+                    if self.current_selected_score:
+                        key = (
+                            self.current_selected_score.title,
+                            self.current_selected_score.style,
+                            self.current_selected_score.difficulty
+                        )
+                        if key in self.scores:
+                            self.current_selected_score = self.scores[key]
+                            self.update_playlog_table(self.current_selected_score)
+                            self.update_rival_table(self.current_selected_score)
+                    
+                    QMessageBox.information(self, "完了", "プレーログを削除しました。")
+                    logger.info(f"プレーログを削除: {result_to_delete.title} {date_str}")
+                else:
+                    QMessageBox.warning(self, "エラー", "プレーログの削除に失敗しました。")
+        
+        except Exception as e:
+            logger.error(f"プレーログ削除エラー: {e}")
+            logger.error(traceback.format_exc())
+            QMessageBox.critical(self, "エラー", f"プレーログの削除中にエラーが発生しました:\n{e}")
+    
     @Slot()
     def on_table_selection_changed(self):
         """テーブルの選択が変更された時"""
@@ -732,6 +935,7 @@ class ScoreViewer(QMainWindow):
                 score = item.data(Qt.UserRole)
                 if score:
                     self.current_selected_score = score
+                    self.update_playlog_table(score)
                     self.update_rival_table(score)
         
         except Exception as e:
@@ -783,7 +987,7 @@ class ScoreViewer(QMainWindow):
         self.load_scores()
         self.update_table()
         
-        # 現在選択中の譜面があればライバル欄も更新
+        # 現在選択中の譜面があればプレーログとライバル欄も更新
         if self.current_selected_score:
             # 最新のスコアデータを取得
             key = (
@@ -793,6 +997,7 @@ class ScoreViewer(QMainWindow):
             )
             if key in self.scores:
                 self.current_selected_score = self.scores[key]
+                self.update_playlog_table(self.current_selected_score)
                 self.update_rival_table(self.current_selected_score)
     
     def closeEvent(self, event):
