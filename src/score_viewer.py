@@ -724,6 +724,8 @@ class ScoreViewer(QMainWindow):
         item = SortableItem(unofficial_str)
         if unofficial_value is not None:
             item.setData(Qt.UserRole, unofficial_value)
+        else:
+            item.setData(Qt.UserRole, float(score.level)-0.001)
         item.setTextAlignment(Qt.AlignCenter)
         self.table.setItem(row, 1, item)
         
