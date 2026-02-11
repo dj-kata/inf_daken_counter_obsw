@@ -549,6 +549,14 @@ class ScoreViewer(QMainWindow):
     def restore_filter_state(self):
         """設定から選択状態を復元"""
         try:
+            # 全てのシグナルを一時的にブロック
+            for button in self.style_buttons.values():
+                button.blockSignals(True)
+            for cb in self.level_checkboxes.values():
+                cb.blockSignals(True)
+            if hasattr(self, 'level_all_checkbox'):
+                self.level_all_checkbox.blockSignals(True)
+            
             # Play Style復元
             style = self.config.score_viewer_style
             if style in self.style_buttons:
@@ -567,7 +575,17 @@ class ScoreViewer(QMainWindow):
                     self.level_checkboxes[level].setChecked(True)
             
             # ALLチェックボックスの状態を更新
-            self.update_level_all_checkbox()
+            if hasattr(self, 'level_all_checkbox'):
+                all_checked = all(cb.isChecked() for cb in self.level_checkboxes.values())
+                self.level_all_checkbox.setChecked(all_checked)
+            
+            # シグナルのブロックを解除
+            for button in self.style_buttons.values():
+                button.blockSignals(False)
+            for cb in self.level_checkboxes.values():
+                cb.blockSignals(False)
+            if hasattr(self, 'level_all_checkbox'):
+                self.level_all_checkbox.blockSignals(False)
         
         except Exception as e:
             logger.error(f"フィルター状態復元エラー: {e}")
@@ -1052,10 +1070,19 @@ class ScoreViewer(QMainWindow):
             logger.error(f"選択変更エラー: {e}")
     
     @Slot()
-    def on_filter_changed(self):
-        """フィルター変更時"""
+    def on_filter_changed(self, arg=None):
+        """フィルター変更時
+        
+        Args:
+            arg: ラジオボタンのtoggled(bool)または検索ボックスのtextChanged(str)からの引数
+        """
         # テーブルが初期化されていない場合は何もしない
         if not hasattr(self, 'table'):
+            return
+        
+        # ラジオボタンのtoggledシグナルから呼ばれた場合（argがbool）
+        # checked=Falseなら何もしない（ボタンが外れた時ではなく、新しいボタンがチェックされた時だけ処理）
+        if isinstance(arg, bool) and not arg:
             return
         
         self.update_table()
