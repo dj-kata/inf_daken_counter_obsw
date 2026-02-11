@@ -28,6 +28,7 @@ class ScoreData:
     """1譜面の自己ベスト情報"""
     def __init__(self):
         self.level: str = ""
+        self.dp_unofficial: str = ""
         self.title: str = ""
         self.chart: str = ""  # SPA, SPH, DPA, etc.
         self.style: play_style = play_style.sp
@@ -321,6 +322,7 @@ class ScoreViewer(QMainWindow):
         
         # 編集不可
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setStyleSheet("font-size: 14px;")
     
     def load_scores(self):
         """全スコアを読み込んで集計"""
@@ -354,10 +356,12 @@ class ScoreViewer(QMainWindow):
                 score.style = result.play_style
                 score.difficulty = result.difficulty
                 score.notes = result.notes
+
+                songinfo = self.result_database.song_database.search(chart_id = result.chart_id)
                 
                 # レベル取得（曲データベースから取得する場合は別途実装）
-                # score.level = self.result_database.song_database.search(chart_id = result.chart_id).level
-                score.level = str(self.result_database.song_database.search(chart_id = result.chart_id).level)
+                score.level = str(songinfo.level)
+                score.dp_unofficial = songinfo.dp_unofficial
                 
                 # 譜面表記作成 (SPA, SPH, DPA, etc.)
                 score.chart = self.get_chart_name(result.play_style, result.difficulty)
@@ -558,13 +562,24 @@ class ScoreViewer(QMainWindow):
         
         # 各セルにスコアデータへの参照を保存（後で取得するため）
         # Lv
-        item = SortableItem(f"☆{score.level}")
+        item = None
+        if score.style ==play_style.dp and not score.is_battle:
+            if type(score.dp_unofficial) == float:
+                item = SortableItem(str(score.dp_unofficial))
+                item.setData(Qt.UserRole, score.dp_unofficial)  # ScoreDataオブジェクトを保存
+            else:
+                item = SortableItem(f"☆{score.level}")
+                item.setData(Qt.UserRole, float(score.level)-0.0001)  # ScoreDataオブジェクトを保存
+        else:
+            item = SortableItem(f"☆{score.level}")
+            item.setData(Qt.UserRole, int(score.level))  # ScoreDataオブジェクトを保存
+
         item.setTextAlignment(Qt.AlignCenter)
-        item.setData(Qt.UserRole, int(score.level))  # ScoreDataオブジェクトを保存
         self.table.setItem(row, 0, item)
         
         # Title
         item = QTableWidgetItem(score.title)
+        item.setData(Qt.UserRole, score) # 特殊なソートを行わないtitle列にscoreの実体を入れておく
         self.table.setItem(row, 1, item)
         
         # 譜面
@@ -675,12 +690,13 @@ class ScoreViewer(QMainWindow):
             self.rival_table.setItem(row, 0, item)
             
             # ランプ（色付き）
-            lamp_name, lamp_color = self.get_lamp_info(score.lamp)
-            item = QTableWidgetItem(lamp_name)
-            item.setTextAlignment(Qt.AlignCenter)
-            if lamp_color:
-                item.setBackground(QBrush(lamp_color))
-            self.rival_table.setItem(row, 1, item)
+            if score.lamp:
+                lamp_name, lamp_color = self.get_lamp_info(score.lamp)
+                item = QTableWidgetItem(lamp_name)
+                item.setTextAlignment(Qt.AlignCenter)
+                if lamp_color:
+                    item.setBackground(QBrush(lamp_color))
+                self.rival_table.setItem(row, 1, item)
             
             # スコア
             item = QTableWidgetItem(str(score.best_score))
@@ -711,7 +727,7 @@ class ScoreViewer(QMainWindow):
             
             # 最初の列からScoreDataを取得
             row = selected_items[0].row()
-            item = self.table.item(row, 0)
+            item = self.table.item(row, 1)
             if item:
                 score = item.data(Qt.UserRole)
                 if score:
