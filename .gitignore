@@ -21,3 +21,6 @@ playlog.infdc
 config.json
 pic/*
 qt.conf
+*.pkl
+hoge*
+inf_score.csv
