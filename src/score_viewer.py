@@ -27,21 +27,101 @@ logger = get_logger(__name__)
 class ScoreData:
     """1譜面の自己ベスト情報"""
     def __init__(self):
-        self.level: str = ""
-        self.dp_unofficial: str = ""
         self.title: str = ""
-        self.chart: str = ""  # SPA, SPH, DPA, etc.
         self.style: play_style = play_style.sp
         self.difficulty: difficulty = difficulty.hyper
-        self.lamp: clear_lamp = clear_lamp.noplay  # クリアランプ
-        self.best_score: int = 0
-        self.score_rate: float = 0.0
-        self.min_bp: int = 99999
-        self.best_score_option: str = ""
-        self.min_bp_option: str = ""
-        self.last_play_date: str = ""
-        self.notes: int = 0  # ノーツ数
-        self.is_battle = None # battleオプションありかどうか
+        self.songinfo = None  # SongInfoオブジェクト
+        self.best_score_result: OneResult = None  # ベストスコア時のOneResult
+        self.min_bp_result: OneResult = None  # 最小BP時のOneResult
+        self.best_lamp_result: OneResult = None  # 最良ランプのOneResult
+        self.last_result: OneResult = None  # 最終プレー
+    
+    @property
+    def chart(self) -> str:
+        """譜面名 (SPA, SPH, DPA, etc.)"""
+        return get_chart_name(self.style, self.difficulty)
+    
+    @property
+    def level(self) -> str:
+        """レベル"""
+        if self.songinfo and hasattr(self.songinfo, 'level'):
+            return str(self.songinfo.level)
+        return ""
+    
+    @property
+    def dp_unofficial(self) -> str:
+        """非公式難易度"""
+        if self.songinfo and hasattr(self.songinfo, 'dp_unofficial'):
+            return str(self.songinfo.dp_unofficial)
+        return ""
+    
+    @property
+    def lamp(self) -> clear_lamp:
+        """最良ランプ"""
+        if self.best_lamp_result:
+            return self.best_lamp_result.lamp
+        return clear_lamp.noplay
+    
+    @property
+    def best_score(self) -> int:
+        """ベストスコア"""
+        if self.best_score_result:
+            return self.best_score_result.score if self.best_score_result.score else 0
+        return 0
+    
+    @property
+    def score_rate(self) -> float:
+        """スコアレート"""
+        if self.best_score_result and self.best_score_result.notes:
+            return self.best_score / (self.best_score_result.notes * 2)
+        return 0.0
+    
+    @property
+    def min_bp(self) -> int:
+        """最小BP"""
+        if self.min_bp_result:
+            return self.min_bp_result.bp if self.min_bp_result.bp is not None else 99999
+        return 99999
+    
+    @property
+    def best_score_option(self) -> str:
+        """ベストスコア時のオプション"""
+        if self.best_score_result and self.best_score_result.option:
+            return str(self.best_score_result.option)
+        return ""
+    
+    @property
+    def min_bp_option(self) -> str:
+        """最小BP時のオプション"""
+        if self.min_bp_result and self.min_bp_result.option:
+            return str(self.min_bp_result.option)
+        return ""
+    
+    @property
+    def last_play_date(self) -> str:
+        """最終プレー日"""
+        if self.last_result:
+            return datetime.fromtimestamp(self.last_result.timestamp).strftime('%Y-%m-%d %H:%M')
+        return ""
+    
+    @property
+    def notes(self) -> int:
+        """ノーツ数"""
+        # ベストスコア時のノーツ数を優先
+        if self.best_score_result and self.best_score_result.notes:
+            return self.best_score_result.notes
+        if self.min_bp_result and self.min_bp_result.notes:
+            return self.min_bp_result.notes
+        if self.best_lamp_result and self.best_lamp_result.notes:
+            return self.best_lamp_result.notes
+        return 0
+    
+    @property
+    def is_battle(self):
+        """battleオプションありかどうか"""
+        if self.best_score_result and self.best_score_result.option:
+            return self.best_score_result.option.battle
+        return None
 
 class SortableItem(QTableWidgetItem):
     '''UserRoleに渡された数値でソートするための表アイテム。表示とソートを分ける時に使う。'''
@@ -238,15 +318,16 @@ class ScoreViewer(QMainWindow):
         # サイズポリシーを設定
         frame.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         
-        # 上部：タイトルと削除ボタン
+        # 上部：曲名と難易度 + 削除ボタン
         header_layout = QHBoxLayout()
         header_layout.setSpacing(5)
         
-        title_label = QLabel("プレーログ")
-        title_label.setStyleSheet("font-weight: bold; font-size: 14px;")
-        header_layout.addWidget(title_label)
-        
-        header_layout.addStretch()
+        # 曲名と難易度表示ラベル（必ず1行に収める）
+        self.playlog_title_label = QLabel("")
+        self.playlog_title_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.playlog_title_label.setWordWrap(False)  # 折り返し無効
+        self.playlog_title_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)  # 横方向は無視して省略
+        header_layout.addWidget(self.playlog_title_label, 1)  # ストレッチファクター1
         
         # 削除ボタン
         self.delete_playlog_button = QPushButton("削除")
@@ -426,82 +507,36 @@ class ScoreViewer(QMainWindow):
                 score.title = result.title
                 score.style = result.play_style
                 score.difficulty = result.difficulty
-                score.notes = result.notes
-
-                songinfo = self.result_database.song_database.search(chart_id = result.chart_id)
                 
-                # レベル取得（曲データベースから取得する場合は別途実装）
-                if songinfo:
-                    score.level = str(songinfo.level)
-                    score.dp_unofficial = songinfo.dp_unofficial
-                
-                # 譜面表記作成 (SPA, SPH, DPA, etc.)
-                score.chart = self.get_chart_name(result.play_style, result.difficulty)
+                # songinfo取得
+                score.songinfo = self.result_database.song_database.search(chart_id=result.chart_id)
                 
                 self.scores[key] = score
-                score.is_battle = result.option.battle if result.option else None
             else:
                 score = self.scores[key]
             
             # ベストスコア更新
-            if result.score and result.score > score.best_score:
-                score.best_score = result.score
-                score.best_score_option = self.format_option(result.option)
-                score.score_rate = result.score / (result.notes * 2) if result.notes and result.notes > 0 else 0
+            if result.score and (not score.best_score_result or result.score > score.best_score_result.score):
+                score.best_score_result = result
             
             # 最小BP更新
-            if result.bp and result.bp < score.min_bp:
-                score.min_bp = result.bp
-                score.min_bp_option = self.format_option(result.option)
+            current_bp = result.bp if result.bp is not None else 99999
+            best_bp = score.min_bp_result.bp if score.min_bp_result and score.min_bp_result.bp is not None else 99999
+            if current_bp < best_bp:
+                score.min_bp_result = result
             
             # クリアランプ更新（最高値）
-            if result.lamp and result.lamp.value > score.lamp.value:
-                score.lamp = result.lamp
+            if result.lamp and (not score.best_lamp_result or result.lamp.value > score.best_lamp_result.lamp.value):
+                score.best_lamp_result = result
             
             # 最終プレー日更新
-            play_date = datetime.fromtimestamp(result.timestamp).strftime('%Y-%m-%d %H:%M')
-            if play_date > score.last_play_date:
-                score.last_play_date = play_date
-            if score.title == 'Smashing Wedge' and score.style == play_style.dp:
-                print(score.title, score.style, score.lamp, result.lamp)
+            if not score.last_result or result.timestamp > score.last_result.timestamp:
+                score.last_result = result
         
         except Exception as e:
-            import traceback
-            logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
-    
-    def get_chart_name(self, style: play_style, diff: difficulty) -> str:
-        """譜面名を取得 (SPA, SPH, DPA, etc.)"""
-        style_prefix = ""
-        if style == play_style.sp:
-            style_prefix = "SP"
-        elif style == play_style.dp:
-            style_prefix = "DP"
-        
-        diff_suffix = ""
-        if diff == difficulty.beginner:
-            diff_suffix = "B"
-        elif diff == difficulty.normal:
-            diff_suffix = "N"
-        elif diff == difficulty.hyper:
-            diff_suffix = "H"
-        elif diff == difficulty.another:
-            diff_suffix = "A"
-        elif diff == difficulty.leggendaria:
-            diff_suffix = "L"
-        
-        return style_prefix + diff_suffix
-    
-    def format_option(self, option) -> str:
-        """オプションを文字列にフォーマット"""
-        if option is None:
-            return ""
-        
-        # PlayOptionオブジェクトの場合
-        if hasattr(option, 'get_option_str'):
-            return option.get_option_str()
-        
-        # 文字列の場合
-        return str(option)
+            logger.error(f"リザルト処理エラー: {e}")
+            logger.error(traceback.format_exc())
+
     
     def restore_filter_state(self):
         """設定から選択状態を復元"""
@@ -795,16 +830,24 @@ class ScoreViewer(QMainWindow):
             self.playlog_table.setRowCount(0)
             
             if not score:
+                # 曲が選択されていない場合は曲名ラベルをクリア
+                if hasattr(self, 'playlog_title_label'):
+                    self.playlog_title_label.setText("")
                 return
             
-            # 選択中の曲のプレーログをフィルタ
-            # detect_mode=detect_mode.resultのもののみ
+            # 曲名と難易度を表示
+            if hasattr(self, 'playlog_title_label'):
+                chart_info = f"{score.title} ({score.chart})"
+                if score.level:
+                    chart_info += f" ☆{score.level}"
+                self.playlog_title_label.setText(chart_info)
+            
+            # 選択中の曲のプレーログをフィルタ（全てのdetect_modeを対象）
             playlogs = []
             for result in self.result_database.results:
                 if (result.title == score.title and 
                     result.play_style == score.style and 
-                    result.difficulty == score.difficulty and
-                    result.detect_mode == detect_mode.result):
+                    result.difficulty == score.difficulty):
                     playlogs.append(result)
             
             # タイムスタンプで降順ソート（新しい順）
