@@ -537,6 +537,10 @@ class MainWindow(MainWindowUI):
         self.main_timer.stop()
         self.display_timer.stop()
 
+        # スコアビューワを終了
+        if self.score_viewer is not None:
+            self.score_viewer.close()
+
         # WebSocketサーバーとHTMLサーバーを停止
         if hasattr(self.result_database, 'shutdown_servers'):
             self.result_database.shutdown_servers()

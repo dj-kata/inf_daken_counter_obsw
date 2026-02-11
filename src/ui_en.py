@@ -23,6 +23,7 @@ class UIText:
         
         # ツールメニュー
         tweet = '&Tweet today playlog'
+        score_viewer = '&Score Viewer'
         write_bpi_csv = 'Generate csv for BPI Manager(coming soon)(&B)...'
         
         # Language menu

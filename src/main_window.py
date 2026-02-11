@@ -18,6 +18,7 @@ import sys, os
 from src.classes import detect_mode
 from src.logger import get_logger
 from src.funcs import load_ui_text
+from src.score_viewer import ScoreViewer
 logger = get_logger(__name__)
 
 # UIの型チェック用
@@ -42,6 +43,7 @@ class MainWindowUI(QMainWindow):
         self.result_count_label = None
         self.last_song_label = None
         self.save_image_button = None
+        self.score_viewer = None
     
     def init_ui(self):
         """UI初期化"""
@@ -148,6 +150,9 @@ class MainWindowUI(QMainWindow):
         tweet_action = QAction(self.ui.menu.tweet, self)
         tweet_action.triggered.connect(self.tweet)
         tool_menu.addAction(tweet_action)
+        score_viewer_action = QAction(self.ui.menu.score_viewer, self)
+        score_viewer_action.triggered.connect(self.open_score_viewer)
+        tool_menu.addAction(score_viewer_action)
         bpi_action = QAction(self.ui.menu.write_bpi_csv, self)
         bpi_action.triggered.connect(self.write_bpi_csv)
         tool_menu.addAction(bpi_action)
@@ -258,6 +263,56 @@ class MainWindowUI(QMainWindow):
         self.keystroke_label.setText(str(self.today_keystroke_count))
         self.result_count_label.setText(str(self.play_count))
         self.last_song_label.setText(self.last_saved_song)
+
+    def open_score_viewer(self):
+        """スコアビューワを開く"""
+        try:
+            # 既に開いている場合は前面に表示
+            if self.score_viewer is not None and self.score_viewer.isVisible():
+                self.score_viewer.raise_()
+                self.score_viewer.activateWindow()
+                return
+            
+            # result_databaseが存在するか確認
+            if not hasattr(self, 'result_database') or self.result_database is None:
+                from PySide6.QtWidgets import QMessageBox
+                QMessageBox.warning(
+                    self,
+                    "警告",
+                    "プレーログデータベースが初期化されていません。"
+                )
+                return
+            
+            # スコアビューワを作成
+            self.score_viewer = ScoreViewer(self.result_database, parent=self)
+            self.score_viewer.show()
+            
+            from src.logger import get_logger
+            logger = get_logger(__name__)
+            logger.info("スコアビューワを起動しました")
+        
+        except Exception as e:
+            from src.logger import get_logger
+            logger = get_logger(__name__)
+            logger.exception("スコアビューワ起動エラー")
+            
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.critical(
+                self,
+                "エラー",
+                f"スコアビューワの起動に失敗しました:\n{str(e)}"
+            )
+    
+    def on_result_updated(self):
+        """
+        プレーログが更新された時に呼ばれる
+        （既存のメソッドに追加するか、新規作成）
+        """
+        # ... 既存の更新処理 ...
+        
+        # スコアビューワが開いている場合は更新
+        if self.score_viewer is not None and self.score_viewer.isVisible():
+            self.score_viewer.refresh_data()
 
     def change_language(self, language: str):
         """
