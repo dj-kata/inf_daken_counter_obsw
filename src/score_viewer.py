@@ -19,6 +19,7 @@ from src.result import ResultDatabase, OneResult
 from src.classes import play_style, difficulty, clear_lamp
 from src.config import Config
 from src.logger import get_logger
+from src.funcs import *
 
 logger = get_logger(__name__)
 
@@ -39,7 +40,18 @@ class ScoreData:
         self.min_bp_option: str = ""
         self.last_play_date: str = ""
         self.notes: int = 0  # ノーツ数
+        self.is_battle = None # battleオプションありかどうか
 
+class SortableItem(QTableWidgetItem):
+    '''UserRoleに渡された数値でソートするための表アイテム。表示とソートを分ける時に使う。'''
+    def __lt__(self, other):
+        data1 = self.data(Qt.UserRole)
+        data2 = other.data(Qt.UserRole)
+        if data1 is not None and data2 is not None:
+            return data1 < data2
+            
+        # データがない場合はデフォルトの比較（文字列比較）を行う
+        return super().__lt__(other)
 
 class ScoreViewer(QMainWindow):
     """スコアビューワウィンドウ"""
@@ -243,7 +255,7 @@ class ScoreViewer(QMainWindow):
     def setup_rival_table(self):
         """ライバルテーブルの初期設定"""
         # 列定義
-        columns = ['プレーヤー名', 'ランプ', 'スコア', 'ミスカウント', '最終プレー日']
+        columns = ['player', 'lamp', 'score', 'BP', 'last played']
         
         self.rival_table.setColumnCount(len(columns))
         self.rival_table.setHorizontalHeaderLabels(columns)
@@ -271,14 +283,14 @@ class ScoreViewer(QMainWindow):
         columns = [
             'Lv',
             'Title',
-            '譜面',
-            'ランプ',
-            'ベストスコア',
-            'スコアレート',
-            '最小BP',
-            'ベストスコア時オプション',
-            '最小BP時オプション',
-            '最終プレー日'
+            'difficulty',
+            'lamp',
+            'score',
+            'rate',
+            'BP',
+            'Option(best score)',
+            'Option(min BP)',
+            'last played'
         ]
         
         self.table.setColumnCount(len(columns))
@@ -290,7 +302,7 @@ class ScoreViewer(QMainWindow):
         
         # 列幅設定
         self.table.setColumnWidth(0, 60)   # Lv
-        self.table.setColumnWidth(1, 300)  # Title
+        self.table.setColumnWidth(1, 600)  # Title
         self.table.setColumnWidth(2, 80)   # 譜面
         self.table.setColumnWidth(3, 100)  # ランプ
         self.table.setColumnWidth(4, 100)  # ベストスコア
@@ -344,12 +356,14 @@ class ScoreViewer(QMainWindow):
                 score.notes = result.notes
                 
                 # レベル取得（曲データベースから取得する場合は別途実装）
-                score.level = str(result.notes // 100)  # 仮実装
+                # score.level = self.result_database.song_database.search(chart_id = result.chart_id).level
+                score.level = str(self.result_database.song_database.search(chart_id = result.chart_id).level)
                 
                 # 譜面表記作成 (SPA, SPH, DPA, etc.)
                 score.chart = self.get_chart_name(result.play_style, result.difficulty)
                 
                 self.scores[key] = score
+                score.is_battle = result.option.battle if result.option else None
             else:
                 score = self.scores[key]
             
@@ -374,7 +388,8 @@ class ScoreViewer(QMainWindow):
                 score.last_play_date = play_date
         
         except Exception as e:
-            logger.error(f"リザルト処理エラー: {e}")
+            import traceback
+            logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
     
     def get_chart_name(self, style: play_style, diff: difficulty) -> str:
         """譜面名を取得 (SPA, SPH, DPA, etc.)"""
@@ -492,6 +507,7 @@ class ScoreViewer(QMainWindow):
         
         # 選択されたstyle
         selected_style = None
+        is_battle      = None
         for style, button in self.style_buttons.items():
             if button.isChecked():
                 if style == 'SP':
@@ -499,7 +515,8 @@ class ScoreViewer(QMainWindow):
                 elif style == 'DP':
                     selected_style = play_style.dp
                 elif style == 'Battle':
-                    selected_style = play_style.battle
+                    selected_style = play_style.dp
+                    is_battle = True
                 break
         
         # 選択されたレベル
@@ -520,6 +537,10 @@ class ScoreViewer(QMainWindow):
             # Level フィルター
             if score.level not in selected_levels:
                 continue
+
+            # Battleフィルタ
+            if is_battle and not score.is_battle:
+                continue
             
             # 検索フィルター（空文字列の場合はスキップ）
             if len(search_text) > 0:
@@ -537,9 +558,9 @@ class ScoreViewer(QMainWindow):
         
         # 各セルにスコアデータへの参照を保存（後で取得するため）
         # Lv
-        item = QTableWidgetItem(f"☆{score.level}")
+        item = SortableItem(f"☆{score.level}")
         item.setTextAlignment(Qt.AlignCenter)
-        item.setData(Qt.UserRole, score)  # ScoreDataオブジェクトを保存
+        item.setData(Qt.UserRole, int(score.level))  # ScoreDataオブジェクトを保存
         self.table.setItem(row, 0, item)
         
         # Title
@@ -547,16 +568,21 @@ class ScoreViewer(QMainWindow):
         self.table.setItem(row, 1, item)
         
         # 譜面
-        item = QTableWidgetItem(score.chart)
+        chart_name, chart_color = self.get_chart_info(score.chart)
+        item = SortableItem(score.chart)
+        item.setData(Qt.UserRole, score.difficulty.value)
         item.setTextAlignment(Qt.AlignCenter)
+        if chart_color:
+            item.setBackground(QBrush(chart_color))
         self.table.setItem(row, 2, item)
         
         # ランプ（色付き）
         lamp_name, lamp_color = self.get_lamp_info(score.lamp)
-        item = QTableWidgetItem(lamp_name)
+        item = SortableItem(lamp_name)
         item.setTextAlignment(Qt.AlignCenter)
         if lamp_color:
             item.setBackground(QBrush(lamp_color))
+        item.setData(Qt.UserRole, score.lamp.value)
         self.table.setItem(row, 3, item)
         
         # ベストスコア
@@ -588,7 +614,25 @@ class ScoreViewer(QMainWindow):
         item = QTableWidgetItem(score.last_play_date)
         item.setTextAlignment(Qt.AlignCenter)
         self.table.setItem(row, 9, item)
-    
+
+    def get_chart_info(self, diff:str) -> tuple:
+        '''譜面情報を送信(名前,色)'''
+        try:
+            if diff[-1] == 'B':
+                return (diff, QColor(150, 255, 150))
+            elif diff[-1] == 'N':
+                return (diff, QColor(150, 150, 255))
+            elif diff[-1] == 'H':
+                return (diff, QColor(255, 255, 155))
+            elif diff[-1] == 'A':
+                return (diff, QColor(255, 150, 150))
+            elif diff[-1] == 'L':
+                return (diff, QColor(255, 150, 255))
+            else:
+                return ("", QColor(255,255,255))
+        except:
+            return ("", QColor(255,255,255))
+
     def get_lamp_info(self, lamp: clear_lamp) -> tuple:
         """ランプ情報を取得（名前, 色）"""
         # clear_lamp enumを使用
@@ -598,21 +642,21 @@ class ScoreViewer(QMainWindow):
             elif lamp == clear_lamp.failed:
                 return ("FAILED", QColor(128, 128, 128))
             elif lamp == clear_lamp.assist:
-                return ("ASSIST", QColor(171, 71, 188))  # 紫
+                return ("ASSIST", QColor(255, 150, 255))  # 紫
             elif lamp == clear_lamp.easy:
-                return ("EASY", QColor(244, 67, 54))     # 赤
+                return ("EASY", QColor(150, 255, 150))     # 赤
             elif lamp == clear_lamp.clear:
-                return ("CLEAR", QColor(76, 175, 80))    # 緑
+                return ("CLEAR", QColor(76, 175, 255))    # 緑
             elif lamp == clear_lamp.hard:
-                return ("HARD", QColor(255, 193, 7))     # 黄色
+                return ("HARD", QColor(255, 70, 70))     # 黄色
             elif lamp == clear_lamp.exh:
-                return ("EX-HARD", QColor(255, 255, 255))  # 白
+                return ("EXH-CLEAR", QColor(255, 255, 120))  # 白
             elif lamp == clear_lamp.fc:
-                return ("FULLCOMBO", QColor(255, 235, 59)) # 金
+                return ("FULLCOMBO", QColor(255, 170, 100)) 
             else:
-                return ("UNKNOWN", None)
+                return ("NO PLAY", QColor(200, 200, 200))
         except:
-            return ("UNKNOWN", None)
+            return ("NO PLAY", QColor(200, 200, 200))
     
     def update_rival_table(self, score: ScoreData):
         """ライバル欄を更新（自己ベストを表示）"""
@@ -627,7 +671,7 @@ class ScoreViewer(QMainWindow):
             self.rival_table.insertRow(row)
             
             # プレーヤー名（自分）
-            item = QTableWidgetItem("自己ベスト")
+            item = QTableWidgetItem("(MY BEST)")
             self.rival_table.setItem(row, 0, item)
             
             # ランプ（色付き）
@@ -741,3 +785,21 @@ class ScoreViewer(QMainWindow):
         self.save_filter_state()
         logger.info("スコアビューワを終了しました")
         event.accept()
+
+if __name__ == '__main__':
+    from PySide6.QtWidgets import QApplication
+    app = QApplication(sys.argv)
+    class MyWindow(QMainWindow):
+        def __init__(self):
+            super().__init__()
+            self.setWindowTitle("検証用ウィンドウ")
+            self.resize(600, 400)
+            # ここにテーブル作成などのロジックがある想定
+
+    window = MyWindow()
+    rdb = ResultDatabase()
+    app.setQuitOnLastWindowClosed(True)
+    config = Config()
+    sv = ScoreViewer(config, rdb, window)
+    sv.show()
+    sys.exit(app.exec())
