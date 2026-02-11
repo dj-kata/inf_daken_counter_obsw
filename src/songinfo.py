@@ -102,9 +102,11 @@ class OneSongInfo:
         self.dp_ereter_easy = dp_ereter_easy
         self.dp_ereter_hard = dp_ereter_hard
         self.dp_ereter_exh  = dp_ereter_exh
-        # その他
-        self.chart_id       = calc_chart_id(title, play_style, difficulty)
-        """譜面毎に割り当てるID"""
+
+    @property
+    def chart_id(self) -> str:
+        """譜面ID（自動計算）"""
+        return calc_chart_id(self.title, self.play_style, self.difficulty)
 
     def __str__(self):
         """内部情報を表示"""
