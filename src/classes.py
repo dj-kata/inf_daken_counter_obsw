@@ -137,9 +137,6 @@ class Judge:
         self.pr = 0
         self.bd = 0
         self.cb = 0
-        self.kpr = 0
-        self.score = 0
-        self.bp = 0
 
     @property
     def sum(self) -> int:

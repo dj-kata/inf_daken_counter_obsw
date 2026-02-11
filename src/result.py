@@ -175,7 +175,7 @@ class OneResult:
             self.score = judge.score
             self.bp    = judge.bp
         self.lamp      = lamp
-        self._timestamp = timestamp
+        self.timestamp = timestamp
         self.option    = option
         self.playspeed = playspeed
         self.is_arcade = is_arcade
@@ -203,11 +203,6 @@ class OneResult:
         """楽曲ID（自動計算）"""
         return calc_chart_id(self.title, self.play_style, self.difficulty)
     
-    @property
-    def timestamp(self) -> int:
-        """タイムスタンプ（読み取り専用）"""
-        return self._timestamp
-
     def __eq__(self, other):
         if not isinstance(other, OneResult):
             return False
@@ -269,24 +264,13 @@ class DetailedResult():
         """スコアレート(0.0-1.0; float)"""
         self.score_rate_with_rankdiff = None
         """ランク差分付きのスコアレート(F+0 - MAX+0; str)"""
-        self.bpi = None
-        """BPIの値"""
         self.update_details()
-        self._bpi_cache = None
-        self._score_rate_cache = None
 
     @property
     def bpi(self) -> float:
-        """BPI(キャッシュ付き)"""
-        if self._bpi_cache is None:
-            self._bpi_cache = self.get_bpi()
-        return self._bpi_cache
+        """BPI(自動計算)"""
+        return self.get_bpi()
     
-    def invalidate_cache(self):
-        """BPIのキャッシュを無効化"""
-        self._bpi_cache = None
-        self._score_rate_cache = None
-
     def update_details(self):
         """詳細情報を算出"""
         if self.result.notes and self.result.score:
