@@ -73,19 +73,18 @@ class MainWindow(MainWindowUI):
 
         # その他
         self.result_stats_writer = ResultStatsWriter()
-        self.start_time = datetime.datetime.now().timestamp()
         '''起動時刻を覚えておく'''
 
         # アプリケーション状態
         self.current_mode = detect_mode.init
-        self.start_time = time.time()
+        self._start_time = int(datetime.datetime.now().timestamp())
         self.today_judge = Judge()
         '''本日のプレーの判定内訳'''
         self.current_judge = Judge()
         '''このプレーの判定内訳'''
         self.set_today_judge()
-        self.result_database.broadcast_today_updates_data(self.start_time - self.config.autoload_offset*3600)
-        self.result_database.broadcast_graph_data(self.start_time - self.config.autoload_offset*3600)
+        self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
+        self.result_database.broadcast_graph_data(self.start_time_with_offset)
         self.result_timestamp = 0
         self.today_keystroke_count = 0
         self.play_count = 0
@@ -120,6 +119,16 @@ class MainWindow(MainWindowUI):
         self.setup_global_hotkeys()
         
         logger.info("アプリケーション起動完了")
+
+    @property
+    def start_time(self) -> int:
+        '''起動時刻(read only)'''
+        return self._start_time
+
+    @property
+    def start_time_with_offset(self) -> int:
+        '''オフセット込みの起動時間'''
+        return self._start_time - self.config.autoload_offset * 3600
     
     def check_obs_configuration(self):
         """OBS設定をチェックし、問題があれば警告ダイアログを表示"""
@@ -174,7 +183,7 @@ class MainWindow(MainWindowUI):
         self.play_count = 0
         for r in reversed(self.result_database.results):
             if r.detect_mode == detect_mode.play and r.judge:
-                if r.timestamp >= self.start_time - self.config.autoload_offset*3600:
+                if r.timestamp >= self.start_time_with_offset:
                     self.play_count += 1
                     self.today_judge += r.judge
                 else:
@@ -186,8 +195,8 @@ class MainWindow(MainWindowUI):
         self.obs_manager.set_config(self.config)
         self.result_database.song_database.load()  # 必要に応じて再読み込み
 
-        self.result_database.broadcast_today_updates_data(self.start_time - self.config.autoload_offset*3600)
-        self.result_database.broadcast_graph_data(self.start_time - self.config.autoload_offset*3600)
+        self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
+        self.result_database.broadcast_graph_data(self.start_time_with_offset)
         self.set_today_judge()
 
         # OBS接続状態の再評価
@@ -379,7 +388,7 @@ class MainWindow(MainWindowUI):
                 result = self.screen_reader.read_play_screen(self.current_judge)
                 self.result_database.add(result)
                 self.result_database.save()
-                self.result_database.broadcast_graph_data(self.start_time - self.config.autoload_offset*3600)
+                self.result_database.broadcast_graph_data(self.start_time_with_offset)
 
                 # 統計情報の更新
                 self.play_count += 1
@@ -473,7 +482,7 @@ class MainWindow(MainWindowUI):
         if tmp:
             self.current_judge = tmp
         # TODO 多分websocketなのでプレイ中に都度送信しても負荷が低い
-        # self.result_database.broadcast_graph_data(self.start_time - self.config.autoload_offset*3600)
+        # self.result_database.broadcast_graph_data(self.start_time_with_offset)
     
     def process_result_mode(self):
         """リザルト画面での処理"""
@@ -490,7 +499,7 @@ class MainWindow(MainWindowUI):
                         self.result_database.save()
                         if self.score_viewer:
                             self.score_viewer.refresh_data()
-                        self.result_database.broadcast_today_updates_data(self.start_time - self.config.autoload_offset*3600)
+                        self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
 
                         # 画像の保存
                         if self.config.autosave_image_mode is not config_autosave_image.invalid:
