@@ -554,9 +554,6 @@ class MainWindow(MainWindowUI):
         ontime = datetime.datetime.now() - datetime.datetime.fromtimestamp(self.start_time)
         msg += f"uptime: {str(ontime).split('.')[0]}\n"
         date = datetime.datetime.fromtimestamp(self.start_time)
-        logger.info(date.year)
-        logger.info(date.month)
-        logger.info(self.result_database.get_monthly_notes())
         msg += f"({date.year}/{date.month:02d}: {self.result_database.get_monthly_notes():,})\n"
         msg += '#INFINITAS_daken_counter\n'
         encoded_msg = urllib.parse.quote(msg)
