@@ -133,10 +133,11 @@
             }
             
             /* 難易度の色分け */
-            .diff-a { color: #ff4444; }  /* Another - 赤 */
-            .diff-h { color: #ffff44; }  /* Hyper - 黄色 */
-            .diff-n { color: #4444ff; }  /* Normal - 青 */
-            .diff-l { color: #ff44ff; }  /* Leggendaria - 紫 */
+            .diff-b { color: #88ff88; }  /* Another - 赤 */
+            .diff-a { color: #ff8888; }  /* Another - 赤 */
+            .diff-h { color: #ffff88; }  /* Hyper - 黄色 */
+            .diff-n { color: #8888ff; }  /* Normal - 青 */
+            .diff-l { color: #ff88ff; }  /* Leggendaria - 紫 */
             
             /* ランプボックス */
             .lamp-box {
@@ -313,6 +314,7 @@
                 case 'H': return 'diff-h';
                 case 'N': return 'diff-n';
                 case 'L': return 'diff-l';
+                case 'B': return 'diff-b';
                 default: return '';
             }
         }
