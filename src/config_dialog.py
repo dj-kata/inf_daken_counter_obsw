@@ -16,7 +16,8 @@ import datetime
 from src.config import Config
 from src.classes import music_pack, config_autosave_image, config_modify_rivalarea
 from src.logger import get_logger
-from src.result import ResultDatabase, OneResult, PlayOption
+from src.result import OneResult, PlayOption
+from src.result_database import ResultDatabase
 from src.screen_reader import ScreenReader
 from src.funcs import *
 logger = get_logger(__name__)

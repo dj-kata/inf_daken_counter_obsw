@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 
 from src.screen_reader import ScreenReader
 from src.logger import get_logger
-from src.result import ResultDatabase
+from src.result_database import ResultDatabase
 from src.classes import * 
 from src.config import Config
 from src.songinfo import *

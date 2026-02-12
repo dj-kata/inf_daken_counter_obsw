@@ -7,7 +7,7 @@ import bz2, pickle
 from typing import List, Dict
 import traceback
 import logging
-import logging, logging.handlers
+import logging.handlers
 from pathlib import Path
 
 # dbfile = Path('src')/'songinfo.infdc'
@@ -164,7 +164,7 @@ class SongDatabase:
         try:
             with bz2.BZ2File(dbfile, 'rb', compresslevel=9) as f:
                 self.songs = pickle.load(f)
-        except:
+        except Exception:
             logger.error(traceback.format_exc())
 
     def save(self):

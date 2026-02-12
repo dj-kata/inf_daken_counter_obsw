@@ -28,7 +28,8 @@ from src.funcs import *
 from src.obs_websocket_manager import OBSWebSocketManager
 from src.songinfo import SongDatabase
 from src.screen_reader import ScreenReader
-from src.result import ResultDatabase, OneResult, DetailedResult
+from src.result import OneResult, DetailedResult
+from src.result_database import ResultDatabase
 from src.result_stats_writer import ResultStatsWriter
 from src.logger import get_logger
 logger = get_logger('notes_counter')
@@ -430,27 +431,19 @@ class MainWindow(MainWindowUI):
                             self.obs_manager.change_scene(target_scene)
                             print(f"シーンを切り替え: {target_scene}")
                     
-                    elif action == "show_source":
+                    elif action in ("show_source", "hide_source"):
                         scene_name = setting.get("scene")
                         source_name = setting.get("source")
                         if scene_name and source_name:
                             mod_scene_name, scene_item_id = self.obs_manager.search_itemid(scene_name, source_name)
                             if scene_item_id:
-                                self.obs_manager.enable_source(mod_scene_name, scene_item_id)
-                                print(f"ソースを表示: {scene_name}/{source_name} (id:{scene_item_id})")
-                    
-                    elif action == "hide_source":
-                        scene_name = setting.get("scene")
-                        source_name = setting.get("source")
-                        if scene_name and source_name:
-                            mod_scene_name, scene_item_id = self.obs_manager.search_itemid(scene_name, source_name)
-                            if scene_item_id:
-                                self.obs_manager.send_command("set_scene_item_enabled",
-                                                            scene_name=mod_scene_name,
-                                                            scene_item_id=scene_item_id,
-                                                            scene_item_enabled=False)
-                                self.obs_manager.disable_source(mod_scene_name, scene_item_id)
-                                print(f"ソースを非表示: {scene_name}/{source_name} (id:{scene_item_id})")
+                                enabled = (action == "show_source")
+                                if enabled:
+                                    self.obs_manager.enable_source(mod_scene_name, scene_item_id)
+                                else:
+                                    self.obs_manager.disable_source(mod_scene_name, scene_item_id)
+                                state = "表示" if enabled else "非表示"
+                                print(f"ソースを{state}: {scene_name}/{source_name} (id:{scene_item_id})")
                                 
                 except Exception as e:
                     print(f"制御実行エラー (trigger: {trigger}, setting: {setting}): {e}")
@@ -517,7 +510,7 @@ class MainWindow(MainWindowUI):
                     )
 
                 self.result_pre = result
-        except:
+        except Exception:
             pass
             # logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
     
@@ -541,10 +534,6 @@ class MainWindow(MainWindowUI):
 
         # csv出力
         self.result_database.write_best_csv()
-        
-        # OBS切断
-        if self.obs_manager.is_connected:
-            self.obs_manager.disconnect()
         
         # タイマーを停止
         self.main_timer.stop()
@@ -586,26 +575,20 @@ class MainWindow(MainWindowUI):
             "bpi_sp.txt, bpi_dp.txtを出力しました。ファイルを開いてコピー&ペーストしてください。"
         )
 
+_RESOURCES = [
+    (define.informations_resourcename, resource.load_resource_informations),
+    (define.details_resourcename,      resource.load_resource_details),
+    (define.musictable_resourcename,   resource.load_resource_musictable),
+    (define.musicselect_resourcename,  resource.load_resource_musicselect),
+]
+
 def check_resource():
-    storage = StorageAccessor()
-    informations_filename = f'{define.informations_resourcename}.res'
+    storage_acc = StorageAccessor()
     logger.debug('check_resource start')
-    if check_latest(storage, informations_filename):
-        resource.load_resource_informations()
-
-    details_filename = f'{define.details_resourcename}.res'
-    if check_latest(storage, details_filename):
-        resource.load_resource_details()
-
-    musictable_filename = f'{define.musictable_resourcename}.res'
-    if check_latest(storage, musictable_filename):
-        resource.load_resource_musictable()
-
-    musicselect_filename = f'{define.musicselect_resourcename}.res'
-    if check_latest(storage, musicselect_filename):
-        resource.load_resource_musicselect()
-
-    check_latest(storage, musicnamechanges_filename)
+    for res_name, load_func in _RESOURCES:
+        if check_latest(storage_acc, f'{res_name}.res'):
+            load_func()
+    check_latest(storage_acc, musicnamechanges_filename)
     logger.debug('end')
 
 def main():

@@ -1,6 +1,7 @@
 import time
 import threading
 import traceback
+import functools
 from typing import Callable, Optional, List, Dict, Any
 from PySide6.QtCore import QObject, Signal
 
@@ -8,6 +9,21 @@ from src.config import Config
 from src.logger import get_logger
 from src.funcs import load_ui_text
 logger = get_logger(__name__)
+
+
+def _require_connection(func):
+    """OBS接続が必要なメソッド用デコレータ"""
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if not self.is_connected or not self.client:
+            logger.warning(f"OBS not connected (calling {func.__name__})")
+            return None
+        try:
+            return func(self, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Failed to {func.__name__}: {e}")
+            return None
+    return wrapper
 
 try:
     from obsws_python import ReqClient
@@ -299,86 +315,54 @@ class OBSWebSocketManager(QObject):
             'message': message
         }
     
+    @_require_connection
     def send_command(self, command_name: str, **kwargs):
         """
         OBSにコマンドを送信（汎用メソッド）
-        
+
         Args:
             command_name: 実行するコマンド名
             **kwargs: コマンドのパラメータ
-            
+
         Returns:
             コマンドの実行結果、またはエラー時はNone
         """
-        if not self.is_connected or not self.client:
-            logger.warning(f"OBS WebSocket not connected (command: {command_name})")
-            return None
-        
-        try:
-            # 動的にメソッドを呼び出し
-            method = getattr(self.client, command_name)
-            result = method(**kwargs)
-            logger.debug(f"OBS command executed: {command_name}")
-            return result
-        except AttributeError:
-            logger.error(f"Unknown OBS command: {command_name}")
-            return None
-        except Exception as e:
-            logger.error(f"OBS command failed: {command_name}, error: {e}")
-            # コマンド失敗時は接続が切れた可能性がある
-            # 次の監視ループで自動的に検出・再接続される
-            return None
+        method = getattr(self.client, command_name)
+        result = method(**kwargs)
+        logger.debug(f"OBS command executed: {command_name}")
+        return result
     
+    @_require_connection
     def get_scene_list(self) -> List[Dict]:
         """シーン一覧を取得"""
-        try:
-            if not self.is_connected or not self.client:
-                return []
-            res = self.client.get_scene_list()
-            return res.scenes
-        except Exception as e:
-            logger.debug(f"Failed to get scenes: {e}")
-            return []
-    
+        res = self.client.get_scene_list()
+        return res.scenes
+
+    @_require_connection
     def get_source_list(self, scene: str) -> List[str]:
         """指定シーンのソース一覧を取得"""
         ret = []
-        try:
-            if not self.is_connected or not self.client:
-                return ret
-            
-            allitem = self.client.get_scene_item_list(scene).scene_items
-            for x in allitem:
-                if x['isGroup']:
-                    grp = self.client.get_group_scene_item_list(x['sourceName']).scene_items
-                    for y in grp:
-                        ret.append(y['sourceName'])
-                ret.append(x['sourceName'])
-        except Exception as e:
-            logger.debug(f"Failed to get sources: {e}")
-        
+        allitem = self.client.get_scene_item_list(scene).scene_items
+        for x in allitem:
+            if x['isGroup']:
+                grp = self.client.get_group_scene_item_list(x['sourceName']).scene_items
+                for y in grp:
+                    ret.append(y['sourceName'])
+            ret.append(x['sourceName'])
         ret.reverse()
         return ret
-    
+
+    @_require_connection
     def change_scene(self, name: str):
         """シーンを変更"""
-        try:
-            if self.is_connected and self.client:
-                self.client.set_current_program_scene(name)
-                return True
-        except Exception as e:
-            logger.error(f"Failed to change scene: {e}")
-        return False
-    
+        self.client.set_current_program_scene(name)
+        return True
+
+    @_require_connection
     def change_text(self, source: str, text: str):
         """テキストソースを変更"""
-        try:
-            if self.is_connected and self.client:
-                self.client.set_input_settings(source, {'text': text}, True)
-                return True
-        except Exception as e:
-            logger.debug(f"Failed to change text: {e}")
-        return False
+        self.client.set_input_settings(source, {'text': text}, True)
+        return True
     
     def screenshot(self):
         """OBSソースのキャプチャをself.screenに格納"""
@@ -399,60 +383,40 @@ class OBSWebSocketManager(QObject):
             # logger.error(f"Screenshot failed: {e}")
             self.screen = None
     
+    @_require_connection
     def save_screenshot_dst(self, source: str, dst: str) -> bool:
         """スクリーンショットを保存"""
-        try:
-            if not self.is_connected or not self.client:
-                return False
-            
-            res = self.client.save_source_screenshot(
-                source, 'png', dst, 
-                self.picw, self.pich, 100
-            )
-            return True
-        except Exception as e:
-            logger.debug(f"Failed to save screenshot: {e}")
-            return False
-    
+        self.client.save_source_screenshot(
+            source, 'png', dst,
+            self.picw, self.pich, 100
+        )
+        return True
+
+    @_require_connection
     def enable_source(self, scenename: str, sourceid: int):
         """ソースを有効化"""
-        try:
-            if self.is_connected and self.client:
-                self.client.set_scene_item_enabled(scenename, sourceid, enabled=True)
-                return True
-        except Exception as e:
-            logger.error(f"Failed to enable source: {e}")
-        return False
-    
+        self.client.set_scene_item_enabled(scenename, sourceid, enabled=True)
+        return True
+
+    @_require_connection
     def disable_source(self, scenename: str, sourceid: int):
         """ソースを無効化"""
-        try:
-            if self.is_connected and self.client:
-                self.client.set_scene_item_enabled(scenename, sourceid, enabled=False)
-                return True
-        except Exception as e:
-            logger.error(f"Failed to disable source: {e}")
-        return False
-    
+        self.client.set_scene_item_enabled(scenename, sourceid, enabled=False)
+        return True
+
+    @_require_connection
     def search_itemid(self, scene: str, target: str) -> tuple[str, Optional[int]]:
         """ソースのIDを検索"""
         ret = scene, None
-        try:
-            if not self.is_connected or not self.client:
-                return ret
-            
-            allitem = self.client.get_scene_item_list(scene).scene_items
-            for x in allitem:
-                if x['sourceName'] == target:
-                    ret = scene, x['sceneItemId']
-                if x['isGroup']:
-                    grp = self.client.get_group_scene_item_list(x['sourceName']).scene_items
-                    for y in grp:
-                        if y['sourceName'] == target:
-                            ret = x['sourceName'], y['sceneItemId']
-        except Exception as e:
-            logger.debug(f"Failed to search item id: {e}")
-        
+        allitem = self.client.get_scene_item_list(scene).scene_items
+        for x in allitem:
+            if x['sourceName'] == target:
+                ret = scene, x['sceneItemId']
+            if x['isGroup']:
+                grp = self.client.get_group_scene_item_list(x['sourceName']).scene_items
+                for y in grp:
+                    if y['sourceName'] == target:
+                        ret = x['sourceName'], y['sceneItemId']
         return ret
     
     def __del__(self):

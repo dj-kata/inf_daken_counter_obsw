@@ -114,7 +114,7 @@ class ScreenReader:
                 out_result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
                                    judge=judge,score=score,bp=bp, notes=notes, dead=result.dead, detect_mode=detect_mode.result)
                 ret = DetailedResult(songinfo=songinfo, result=out_result, result_side=convert_side(result.play_side), level=level)
-        except:
+        except Exception:
             logger.error(traceback.format_exc())
         return ret
 
@@ -165,7 +165,7 @@ class ScreenReader:
         try:
             judge = self.detect_judge(mode)
             return Judge.from_list(judge)
-        except:
+        except Exception:
             print(traceback.format_exc())
             return None
 

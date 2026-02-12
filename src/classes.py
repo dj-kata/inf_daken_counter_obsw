@@ -2,7 +2,7 @@ from enum import Enum
 from src.logger import get_logger
 logger = get_logger(__name__)
 
-from typing import List
+from typing import List, Dict
 
 class clear_lamp(Enum):
     """クリアランプを表すための列挙型クラス"""
@@ -26,26 +26,12 @@ class clear_lamp(Enum):
     def __lt__(self, other):
         return self.value < other.value
 
-    def __eq__(self, other):
-        return self.value == other.value
-
     def __str__(self):
-        if self == clear_lamp.noplay:
-            return 'NO PLAY'
-        elif self == clear_lamp.failed:
-            return 'FAILED'
-        elif self == clear_lamp.assist:
-            return 'A-CLEAR'
-        elif self == clear_lamp.easy:
-            return 'E-CLEAR'
-        elif self == clear_lamp.clear:
-            return 'CLEAR'
-        elif self == clear_lamp.hard:
-            return 'H-CLEAR'
-        elif self == clear_lamp.exh:
-            return 'EXH-CLEAR'
-        elif self == clear_lamp.fc:
-            return 'F-COMBO'
+        _LAMP_NAMES = {
+            0: 'NO PLAY', 1: 'FAILED', 2: 'A-CLEAR', 3: 'E-CLEAR',
+            4: 'CLEAR', 5: 'H-CLEAR', 6: 'EXH-CLEAR', 7: 'F-COMBO',
+        }
+        return _LAMP_NAMES.get(self.value, '')
 
 class play_style(Enum):
     """SP/DPのどれであるかを表す列挙型クラス。DBxはここでは考慮しない。"""
@@ -160,9 +146,6 @@ class Judge:
                 self.bd == other.bd and
                 self.pr == other.pr and
                 self.cb == other.cb)
-    
-    def __ne__(self, other):
-        return not self.__eq__(other)
     
     def __hash__(self):
         return hash((self.pg, self.gr, self.gd, self.bd, self.pr, self.cb))

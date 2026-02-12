@@ -90,104 +90,76 @@ def escape_for_csv(input):
         out = 'LOVE2 シュガ→'
     return out
 
+_RANK_THRESHOLDS = [
+    # (threshold_numerator, rank_name, target_numerator)
+    (17, 'MAX', None),  # target_numerator=None means use smax directly
+    (15, 'AAA', 16),
+    (13, 'AA',  14),
+    (11, 'A',   12),
+    (9,  'B',   10),
+    (7,  'C',   8),
+    (5,  'D',   6),
+    (3,  'E',   4),
+]
+
 def calc_rankdiff(notes, score):
     """ノーツ数をスコアを受け取り、AAA+30みたいな表記をタプルで返す"""
-    target,diff = ('', '') # AAA, -50 みたいな結果を返す
-    smax = notes*2
+    smax = notes * 2
     if score == smax:
-        target,diff = ('MAX', '+0')
-    elif score >= math.ceil(17*smax/18):
-        target,diff = ('MAX', f"{score-smax:+}")
-    elif score >= math.ceil(15*smax/18):
-        aaa = math.ceil(smax*16/18)
-        target,diff = ('AAA', f'{score - aaa:+}')
-    elif score >= math.ceil(13*smax/18):
-        aa = math.ceil(smax*14/18)
-        target,diff = ('AA', f'{score - aa:+}')
-    elif score >= math.ceil(11*smax/18):
-        a = math.ceil(smax*12/18)
-        target,diff = ('A', f'{score - a:+}')
-    elif score >= math.ceil(9*smax/18):
-        tmp = math.ceil(smax*10/18)
-        target,diff = ('B', f'{score - tmp:+}')
-    elif score >= math.ceil(7*smax/18):
-        tmp = math.ceil(smax*8/18)
-        target,diff = ('C', f'{score - tmp:+}')
-    elif score >= math.ceil(5*smax/18):
-        tmp = math.ceil(smax*6/18)
-        target,diff = ('D', f'{score - tmp:+}')
-    elif score >= math.ceil(3*smax/18):
-        tmp = math.ceil(smax*4/18)
-        target,diff = ('E', f'{score - tmp:+}')
-    else:
-        target,diff = ('F', f'{score:+}')
-    if diff == '-0':
-        diff = '+0'
+        return ('MAX', '+0')
 
-    return target,diff
+    for threshold_num, rank_name, target_num in _RANK_THRESHOLDS:
+        if score >= math.ceil(threshold_num * smax / 18):
+            target_score = smax if target_num is None else math.ceil(target_num * smax / 18)
+            diff = f'{score - target_score:+}'
+            if diff == '-0':
+                diff = '+0'
+            return (rank_name, diff)
 
-def convert_play_style(_style) -> play_style|None:
-    if _style == 'SP':
-        return play_style.sp
-    elif _style == 'DP':
-        return play_style.dp
-    else:
-        return None
+    return ('F', f'{score:+}')
 
-def convert_difficulty(_difficulty) -> difficulty|None:
+_PLAY_STYLE_MAP = {
+    'SP': play_style.sp,
+    'DP': play_style.dp,
+}
+
+def convert_play_style(_style) -> play_style | None:
+    return _PLAY_STYLE_MAP.get(_style)
+
+_DIFFICULTY_MAP = {
+    'BEGINNER': difficulty.beginner, 'B': difficulty.beginner,
+    'NORMAL': difficulty.normal,     'N': difficulty.normal,
+    'HYPER': difficulty.hyper,       'H': difficulty.hyper,
+    'ANOTHER': difficulty.another,   'A': difficulty.another,
+    'LEGGENDARIA': difficulty.leggendaria, 'L': difficulty.leggendaria,
+}
+
+def convert_difficulty(_difficulty) -> difficulty | None:
     '''難易度の文字列をEnumに変換'''
-    diff = None
-    if _difficulty == 'BEGINNER':
-        diff = difficulty.beginner
-    elif _difficulty == 'NORMAL':
-        diff = difficulty.normal
-    elif _difficulty == 'HYPER':
-        diff = difficulty.hyper
-    elif _difficulty == 'ANOTHER':
-        diff = difficulty.another
-    elif _difficulty == 'LEGGENDARIA':
-        diff = difficulty.leggendaria
-    elif _difficulty == 'B':
-        diff = difficulty.beginner
-    elif _difficulty == 'N':
-        diff = difficulty.normal
-    elif _difficulty == 'H':
-        diff = difficulty.hyper
-    elif _difficulty == 'A':
-        diff = difficulty.another
-    elif _difficulty == 'L':
-        diff = difficulty.leggendaria
-    return diff
+    return _DIFFICULTY_MAP.get(_difficulty)
 
-def convert_lamp(_lamp) -> clear_lamp|None:
+_LAMP_MAP = {
+    'NOPLAY': clear_lamp.noplay,
+    'FAILED': clear_lamp.failed,
+    'A-CLEAR': clear_lamp.assist,
+    'E-CLEAR': clear_lamp.easy,
+    'CLEAR': clear_lamp.clear,
+    'H-CLEAR': clear_lamp.hard,
+    'EXH-CLEAR': clear_lamp.exh,
+    'F-COMBO': clear_lamp.fc,
+}
+
+def convert_lamp(_lamp) -> clear_lamp | None:
     '''ランプ用文字列をEnumに変換'''
-    if _lamp == 'NOPLAY':
-        lamp = clear_lamp.noplay
-    elif _lamp == 'FAILED':
-        lamp = clear_lamp.failed
-    elif _lamp == 'A-CLEAR':
-        lamp = clear_lamp.assist
-    elif _lamp == 'E-CLEAR':
-        lamp = clear_lamp.easy
-    elif _lamp == 'CLEAR':
-        lamp = clear_lamp.clear
-    elif _lamp == 'H-CLEAR':
-        lamp = clear_lamp.hard
-    elif _lamp == 'EXH-CLEAR':
-        lamp = clear_lamp.exh
-    elif _lamp == 'F-COMBO':
-        lamp = clear_lamp.fc
-    else:
-        lamp = clear_lamp.noplay
-    return lamp
+    return _LAMP_MAP.get(_lamp, clear_lamp.noplay)
 
-def convert_side(side:str) -> result_side:
-    ret = None
-    if side == "1P":
-        ret = result_side._1p
-    elif side == "2P":
-        ret = result_side._2p
-    return ret
+_SIDE_MAP = {
+    '1P': result_side._1p,
+    '2P': result_side._2p,
+}
+
+def convert_side(side: str) -> result_side:
+    return _SIDE_MAP.get(side)
 
 def cut_rival_area(img:Image, side:result_side) -> Image:
     '''ライバルエリアをカットする'''

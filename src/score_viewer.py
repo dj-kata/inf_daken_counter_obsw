@@ -15,7 +15,8 @@ from datetime import datetime
 from typing import Dict, List, Optional
 import traceback
 
-from src.result import ResultDatabase, OneResult, DetailedResult
+from src.result import OneResult, DetailedResult
+from src.result_database import ResultDatabase
 from src.classes import play_style, difficulty, clear_lamp, detect_mode
 from src.config import Config
 from src.logger import get_logger

@@ -9,6 +9,7 @@ import glob
 from src.screen_reader import ScreenReader
 from src.logger import get_logger
 from src.result import *
+from src.result_database import ResultDatabase
 from src.classes import *
 from src.config import Config
 from src.funcs import *
@@ -60,9 +61,16 @@ if __name__ == '__main__':
     rdb.write_best_csv()
 
     import time
-    rdb.broadcast_today_updates_data(datetime.datetime.now().timestamp() - 48*3600)
-    rdb.broadcast_history_cursong_data('不沈艦CANDY', play_style.sp, difficulty.another)
-    rdb.broadcast_graph_data(datetime.datetime.now().timestamp()-4*3600)
+    # a = rdb.results[-1]
+    # a.play_style = play_style.dp
+    # a.chart_id = (a.title, a.play_style, a.difficulty)
+    # rdb.results[-1] = a
+    rdb.broadcast_today_updates_data(datetime.datetime.now().timestamp() - 96*3600)
+    rdb.broadcast_history_cursong_data('AA', play_style.sp, difficulty.another)
+    # time.sleep(5)
+    # rdb.broadcast_history_cursong_data('Lords Of The Roundtable', play_style.sp, difficulty.another, playspeed=0.95)
+    # rdb.broadcast_history_cursong_data('Carmina', play_style.sp, difficulty.another)
+    # rdb.broadcast_graph_data(datetime.datetime.now().timestamp()-4*3600)
     time.sleep(4)
 
     rdb.shutdown_servers()

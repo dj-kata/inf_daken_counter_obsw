@@ -3,6 +3,25 @@ import os
 from src.classes import *
 from src.funcs import *
 
+# 難易度ごとの色マッピング: (fill, glow_color)
+_DIFFICULTY_COLORS = {
+    difficulty.another:     ((250, 100, 100), (150, 0, 0)),
+    difficulty.leggendaria: ((250, 100, 250), (80, 0, 80)),
+    difficulty.hyper:       ((250, 250, 100), (80, 80, 0)),
+    difficulty.normal:      ((100, 100, 250), (0, 0, 80)),
+    difficulty.beginner:    ((100, 250, 100), (0, 80, 0)),
+}
+
+# クリアランプごとの表示: (display_text, fill, glow_color)
+_LAMP_DISPLAY = {
+    clear_lamp.assist: ('A-CLEAR',   (255, 155, 250), (80, 0, 80)),
+    clear_lamp.easy:   ('E-CLEAR',   (100, 255, 100), (80, 150, 80)),
+    clear_lamp.clear:  (None,        (100, 190, 255), (80, 100, 150)),  # None = lamp.name.upper()を使用
+    clear_lamp.hard:   ('H-CLEAR',   (255, 50, 100),  (150, 30, 50)),
+    clear_lamp.exh:    ('EXH-CLEAR', (255, 255, 100), (150, 150, 50)),
+    clear_lamp.fc:     ('F-COMBO',   (255, 170, 250), (200, 50, 150)),
+}
+
 class ResultStatsWriter:
     """リザルト画像に統計情報を埋め込むためのクラス"""
     
@@ -105,21 +124,9 @@ class ResultStatsWriter:
         # Lv, その他難易度
         text = f"{get_chart_name(play_style,difficulty)} "
         text = self._truncate_text(draw, text, self.sub_font, box_width - 30)
-        if difficulty == difficulty.another:
-            self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
-                                       fill=(250, 100, 100), glow_color=(150, 0, 0))
-        elif difficulty == difficulty.leggendaria:
-            self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
-                                       fill=(250, 100, 250), glow_color=(80, 0, 80))
-        elif difficulty == difficulty.hyper:
-            self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
-                                       fill=(250, 250, 100), glow_color=(80, 80, 0))
-        elif difficulty == difficulty.normal:
-            self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
-                                       fill=(100, 100, 250), glow_color=(0, 0, 80))
-        elif difficulty == difficulty.beginner:
-            self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
-                                       fill=(100, 250, 100), glow_color=(0, 80, 0))
+        diff_fill, diff_glow = _DIFFICULTY_COLORS.get(difficulty, ((255, 255, 255), (50, 50, 50)))
+        self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
+                                   fill=diff_fill, glow_color=diff_glow)
         text = f"Lv{level} "
         text = self._truncate_text(draw, text, self.main_font, box_width - 30)
         self._draw_text_with_glow(draw, (x+100, y), text, self.sub_font,
@@ -132,26 +139,13 @@ class ResultStatsWriter:
         y += self.sub_font.size + 30
 
         # クリアランプ
-        text = f'{lamp.name.upper()}'
-        text = self._truncate_text(draw, text, self.main_font, box_width - 30)
-        if lamp == clear_lamp.assist:
-            self._draw_text_with_glow(draw, (x, y), 'A-CLEAR', self.main_font,
-                                       fill=(255, 155, 250), glow_color=(80, 0, 80))
-        elif lamp == clear_lamp.easy:
-            self._draw_text_with_glow(draw, (x, y), 'E-CLEAR', self.main_font,
-                                       fill=(100, 255, 100), glow_color=(80, 150, 80))
-        elif lamp == clear_lamp.clear:
-            self._draw_text_with_glow(draw, (x, y), text, self.main_font,
-                                       fill=(100, 190, 255), glow_color=(80, 100, 150))
-        elif lamp == clear_lamp.hard:
-            self._draw_text_with_glow(draw, (x, y), 'H-CLEAR', self.main_font,
-                                       fill=(255, 50, 100), glow_color=(150, 30, 50))
-        elif lamp == clear_lamp.exh:
-            self._draw_text_with_glow(draw, (x, y), 'EXH-CLEAR', self.main_font,
-                                       fill=(255, 255, 100), glow_color=(150, 150, 50))
-        elif lamp == clear_lamp.fc:
-            self._draw_text_with_glow(draw, (x, y), 'F-COMBO', self.main_font,
-                                       fill=(255, 170, 250), glow_color=(200, 50, 150))
+        if lamp in _LAMP_DISPLAY:
+            lamp_text, lamp_fill, lamp_glow = _LAMP_DISPLAY[lamp]
+            if lamp_text is None:
+                lamp_text = lamp.name.upper()
+            lamp_text = self._truncate_text(draw, lamp_text, self.main_font, box_width - 30)
+            self._draw_text_with_glow(draw, (x, y), lamp_text, self.main_font,
+                                       fill=lamp_fill, glow_color=lamp_glow)
         y += line_height
 
         # スコア,BP

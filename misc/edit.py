@@ -2,6 +2,7 @@ import pickle
 from src.screen_reader import ScreenReader
 from src.logger import get_logger
 from src.result import *
+from src.result_database import ResultDatabase
 from src.classes import *
 from src.config import Config
 from src.funcs import *
@@ -15,8 +16,8 @@ with open('alllog.pkl', 'rb') as f:
 
 rdb = ResultDatabase()
 key = 'Lords Of The Roundtable'
-key = 'Carmina'
-for r in rdb.search(key, play_style.sp, difficulty.another):
+key = 'Timepiece phase II (CN Ver.)'
+for r in rdb.search(key, play_style.dp, difficulty.another):
     print(r)
 
 best = rdb.get_all_best_results()
