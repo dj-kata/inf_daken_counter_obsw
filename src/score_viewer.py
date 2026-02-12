@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QCheckBox, QRadioButton, QButtonGroup, QLineEdit, QLabel, QGroupBox, QMessageBox
 )
 from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtGui import QColor, QBrush
+from PySide6.QtGui import QColor, QBrush, QPainter, QFont, QPen
 from datetime import datetime
 from typing import Dict, List, Optional
 import traceback
@@ -133,6 +133,76 @@ class SortableItem(QTableWidgetItem):
             
         # データがない場合はデフォルトの比較（文字列比較）を行う
         return super().__lt__(other)
+
+class WinLossBar(QWidget):
+    """勝敗割合バー"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.my_wins = 0
+        self.rival_wins = 0
+        self.draws = 0
+        self.rival_name = ""
+        self.setFixedHeight(24)
+        self.setMinimumWidth(200)
+        self.hide()
+
+    def set_data(self, my_wins: int, rival_wins: int, draws: int, rival_name: str):
+        self.my_wins = my_wins
+        self.rival_wins = rival_wins
+        self.draws = draws
+        self.rival_name = rival_name
+        if my_wins + rival_wins + draws > 0:
+            self.show()
+        else:
+            self.hide()
+        self.update()
+
+    def paintEvent(self, event):
+        total = self.my_wins + self.rival_wins + self.draws
+        if total == 0:
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        w = self.width()
+        h = self.height()
+
+        # 割合の計算
+        my_w = int(w * self.my_wins / total)
+        draw_w = int(w * self.draws / total)
+        rival_w = w - my_w - draw_w
+
+        # MY BEST側（青系）
+        if my_w > 0:
+            painter.fillRect(0, 0, my_w, h, QColor(70, 130, 220))
+        # 引き分け（灰色）
+        if draw_w > 0:
+            painter.fillRect(my_w, 0, draw_w, h, QColor(160, 160, 160))
+        # ライバル側（赤系）
+        if rival_w > 0:
+            painter.fillRect(my_w + draw_w, 0, rival_w, h, QColor(220, 70, 70))
+
+        # テキスト描画
+        painter.setPen(QPen(QColor(255, 255, 255)))
+        font = QFont()
+        font.setBold(True)
+        font.setPointSize(9)
+        painter.setFont(font)
+
+        # 左: MY BEST 勝数
+        left_text = f"ME: {self.my_wins}"
+        painter.drawText(4, 0, w, h, Qt.AlignLeft | Qt.AlignVCenter, left_text)
+
+        # 右: ライバル勝数
+        right_text = f"{self.rival_name}: {self.rival_wins}"
+        painter.drawText(0, 0, w - 4, h, Qt.AlignRight | Qt.AlignVCenter, right_text)
+
+        # 中央: 引き分け（スペースがあれば）
+        if self.draws > 0 and draw_w > 30:
+            painter.drawText(my_w, 0, draw_w, h, Qt.AlignCenter, f"{self.draws}")
+
+        painter.end()
+
 
 class ScoreViewer(QMainWindow):
     """スコアビューワウィンドウ"""
@@ -389,7 +459,7 @@ class ScoreViewer(QMainWindow):
 
         frame.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
 
-        # タイトル + 更新ボタン
+        # タイトル + 更新ボタン + 勝敗バー
         title_layout = QHBoxLayout()
         title_label = QLabel("ライバル欄")
         title_label.setStyleSheet("font-weight: bold; font-size: 14px;")
@@ -400,6 +470,10 @@ class ScoreViewer(QMainWindow):
         self.rival_refresh_button.setToolTip("ライバルデータを更新")
         self.rival_refresh_button.clicked.connect(self._on_refresh_rivals_clicked)
         title_layout.addWidget(self.rival_refresh_button)
+
+        self.win_loss_bar = WinLossBar()
+        title_layout.addWidget(self.win_loss_bar, 1)
+
         title_layout.addStretch()
         layout.addLayout(title_layout)
 
@@ -433,9 +507,11 @@ class ScoreViewer(QMainWindow):
         
         # 編集不可
         self.rival_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        
-        # 選択モード
-        self.rival_table.setSelectionMode(QTableWidget.NoSelection)
+
+        # 選択モード（行単位）
+        self.rival_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.rival_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.rival_table.itemSelectionChanged.connect(self._on_rival_selection_changed)
     
     def setup_table(self):
         """メインテーブルの初期設定"""
@@ -1202,6 +1278,63 @@ class ScoreViewer(QMainWindow):
             self.rival_refresh_button.setEnabled(True)
         if self.current_selected_score:
             self.update_rival_table(self.current_selected_score)
+
+    @Slot()
+    def _on_rival_selection_changed(self):
+        """ライバルテーブルの選択が変更された時 — 勝敗バーを更新"""
+        try:
+            selected = self.rival_table.selectedItems()
+            if not selected:
+                self.win_loss_bar.hide()
+                return
+
+            row = selected[0].row()
+            if row == 0:
+                # MY BEST行が選択された場合はバーを非表示
+                self.win_loss_bar.hide()
+                return
+
+            rival_name_item = self.rival_table.item(row, 0)
+            if not rival_name_item:
+                return
+            rival_name = rival_name_item.text()
+
+            my_wins, rival_wins, draws = self._compute_win_loss(rival_name)
+            self.win_loss_bar.set_data(my_wins, rival_wins, draws, rival_name)
+
+        except Exception as e:
+            logger.error(f"ライバル選択変更エラー: {e}")
+
+    def _compute_win_loss(self, rival_name: str):
+        """指定ライバルとの全譜面での勝敗を集計（スコア比較）"""
+        my_wins = 0
+        rival_wins = 0
+        draws = 0
+
+        if not self.rival_manager:
+            return my_wins, rival_wins, draws
+
+        for score in self.scores.values():
+            if score.best_score <= 0:
+                continue
+
+            mode = score.chart
+            rival_scores = self.rival_manager.get_rival_scores(score.title, mode)
+
+            for name, entry in rival_scores:
+                if name != rival_name:
+                    continue
+                if not entry.score:
+                    break
+                if score.best_score > entry.score:
+                    my_wins += 1
+                elif score.best_score < entry.score:
+                    rival_wins += 1
+                else:
+                    draws += 1
+                break
+
+        return my_wins, rival_wins, draws
 
     def closeEvent(self, event):
         """ウィンドウを閉じる時"""
