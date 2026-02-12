@@ -1,10 +1,8 @@
 import sys
-import pickle
 import os
 from PIL import Image
 import numpy as np
 import imagehash
-import glob
 import copy
 
 import cv2

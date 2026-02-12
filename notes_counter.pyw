@@ -6,7 +6,6 @@ OBS連携による自動リザルト保存アプリケーション
 import sys
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtCore import QTimer
-import time
 import traceback
 import datetime
 from pathlib import Path

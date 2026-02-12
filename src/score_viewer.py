@@ -10,7 +10,6 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QColor, QBrush
-from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Optional
 import traceback

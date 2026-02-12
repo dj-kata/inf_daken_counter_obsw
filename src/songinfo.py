@@ -2,12 +2,9 @@ from .classes import *
 from .funcs import *
 from .logger import get_logger
 logger = get_logger(__name__)
-import os
 import bz2, pickle
 from typing import List, Dict
 import traceback
-import logging
-import logging.handlers
 from pathlib import Path
 
 # dbfile = Path('src')/'songinfo.infdc'

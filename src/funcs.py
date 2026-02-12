@@ -11,10 +11,6 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 sys.path.append('infnotebook')
-from screenshot import Screenshot,open_screenimage
-from recog import Recognition as recog
-from resources import resource
-from define import Define as define
 from src.logger import get_logger
 logger = get_logger(__name__)
 

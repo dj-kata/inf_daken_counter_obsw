@@ -6,7 +6,7 @@
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
                                QLineEdit, QSpinBox, QCheckBox, QPushButton,
                                QGroupBox, QFileDialog, QTabWidget, QWidget,
-                               QListWidget, QLabel, QDialogButtonBox, QRadioButton,
+                               QLabel, QDialogButtonBox, QRadioButton,
                                QButtonGroup, QScrollArea, QGridLayout, QProgressBar)
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QIntValidator
