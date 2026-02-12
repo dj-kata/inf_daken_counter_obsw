@@ -568,16 +568,26 @@ class ResultDatabase:
                     mode = 'DB' + mode[-1]
                 lamp = str(value['best_lamp'])
                 score = value['best_score']
-                best_score_opt = value['best_score_option'].__str__()
-                if best_score_opt in ('unknown', 'None') or not best_score_opt:
-                    best_score_opt = '?'
                 bp = value['min_bp']
                 if bp == 99999999:
                     bp = ''
+                best_score_opt = value['best_score_option'].__str__()
+                if best_score_opt in ('unknown', 'None') or not best_score_opt:
+                    best_score_opt = '?'
+                if best_score_opt == 'REGULAR':
+                    if key[1] == play_style.sp:
+                        best_score_opt = 'OFF'
+                    else:
+                        best_score_opt = 'OFF/OFF'
                 min_bp_opt = value['min_bp_option'].__str__()
                 if min_bp_opt in ('unknown', 'None') or not min_bp_opt:
                     min_bp_opt = '?'
-                timestamp = datetime.datetime.fromtimestamp(value['last_play_timestamp'])
+                if min_bp_opt == 'REGULAR':
+                    if key[1] == play_style.sp:
+                        min_bp_opt = 'OFF'
+                    else:
+                        min_bp_opt = 'OFF/OFF'
+                timestamp = datetime.datetime.fromtimestamp(value['last_play_timestamp']).strftime('%Y/%m/%d %H:%M')
                 row = [
                     lv,
                     title,
@@ -590,6 +600,9 @@ class ResultDatabase:
                     min_bp_opt,
                     timestamp
                 ]
+                if mode == '':
+                    logger.debug(f'mode is None, skipped!, row={row}')
+                    continue
                 writer.writerow(row)
 
     def write_bpi_csv(self, play_style:play_style):
