@@ -566,7 +566,7 @@ class MainWindow(MainWindowUI):
         if self.config.enable_judge:
             msg += f"(PG:{self.today_judge.pg:,}, GR:{self.today_judge.gr:,}, GD:{self.today_judge.gd:,}, BD:{self.today_judge.bd:,}, PR:{self.today_judge.pr:,}, CB:{self.today_judge.cb:,})\n"
         if self.config.enable_folder_updates:
-            pass
+            msg += self._collect_today_updates()
         ontime = datetime.datetime.now() - datetime.datetime.fromtimestamp(self.start_time)
         msg += f"uptime: {str(ontime).split('.')[0]}\n"
         date = datetime.datetime.fromtimestamp(self.start_time)
@@ -574,6 +574,111 @@ class MainWindow(MainWindowUI):
         msg += '#INFINITAS_daken_counter\n'
         encoded_msg = urllib.parse.quote(msg)
         webbrowser.open(f"https://twitter.com/intent/tweet?text={encoded_msg}")
+
+    def _collect_today_updates(self) -> str:
+        '''本日のリザルトからレベル別ランプ更新数・新規AA/AAA/MAX-数を集計'''
+        # 本日のresultモードのリザルトを収集
+        today_results = []
+        for r in reversed(self.result_database.results):
+            if r.detect_mode == detect_mode.result:
+                if r.timestamp >= self.start_time_with_offset:
+                    today_results.append(r)
+                else:
+                    break
+
+        if not today_results:
+            return ""
+
+        # SP/DPそれぞれで集計
+        sp_results = [r for r in today_results if r.play_style == play_style.sp]
+        dp_results = [r for r in today_results if r.play_style == play_style.dp]
+
+        has_sp = len(sp_results) > 0
+        has_dp = len(dp_results) > 0
+        both = has_sp and has_dp
+
+        lines = []
+        if has_sp:
+            if both:
+                lines.append("(SP)")
+            lines.extend(self._collect_updates_for_style(sp_results))
+        if has_dp:
+            if both:
+                lines.append("(DP)")
+            lines.extend(self._collect_updates_for_style(dp_results))
+
+        return '\n'.join(lines) + '\n' if lines else ""
+
+    def _collect_updates_for_style(self, results) -> list:
+        '''指定されたリザルト群からレベル別の成果を集計してリストで返す'''
+        # ランプ更新の集計 (同一譜面は最良のもののみ)
+        best_lamp_updates = {}
+        for r in results:
+            if r.pre_lamp and r.lamp.value > r.pre_lamp.value:
+                if r.chart_id not in best_lamp_updates or r.lamp.value > best_lamp_updates[r.chart_id].lamp.value:
+                    best_lamp_updates[r.chart_id] = r
+
+        # スコアランク更新の集計 (同一譜面は最良のもののみ)
+        best_scores = {}
+        for r in results:
+            if r.notes and r.score:
+                if r.chart_id not in best_scores or r.score > best_scores[r.chart_id].score:
+                    best_scores[r.chart_id] = r
+
+        # レベル別に統合して集計: {level: {項目名: count}}
+        updates_by_level = {}
+
+        # ランプ更新を集計
+        for r in best_lamp_updates.values():
+            songinfo = self.result_database.song_database.search(chart_id=r.chart_id)
+            lv = songinfo.level if songinfo else 0
+            if lv not in updates_by_level:
+                updates_by_level[lv] = {}
+            lamp_name = r.lamp.name.upper()
+            updates_by_level[lv][lamp_name] = updates_by_level[lv].get(lamp_name, 0) + 1
+
+        # スコアランク更新を集計
+        for r in best_scores.values():
+            if not r.notes or not r.score:
+                continue
+            rate = r.score / (r.notes * 2)
+            pre_rate = r.pre_score / (r.notes * 2) if r.pre_score else 0
+            rank_name = None
+            if rate > 17/18 and pre_rate <= 17/18:
+                rank_name = 'MAX-'
+            elif rate > 16/18 and pre_rate <= 16/18:
+                rank_name = 'AAA'
+            elif rate > 14/18 and pre_rate <= 14/18:
+                rank_name = 'AA'
+            if rank_name:
+                songinfo = self.result_database.song_database.search(chart_id=r.chart_id)
+                lv = songinfo.level if songinfo else 0
+                if lv not in updates_by_level:
+                    updates_by_level[lv] = {}
+                updates_by_level[lv][rank_name] = updates_by_level[lv].get(rank_name, 0) + 1
+
+        if not updates_by_level:
+            return []
+
+        # ランプ・ランクの表示順序
+        display_order = ['EASY', 'CLEAR', 'HARD', 'EXH', 'FC', 'AA', 'AAA', 'MAX-']
+
+        lines = []
+        for lv in sorted(updates_by_level.keys()):
+            items = updates_by_level[lv]
+            parts = []
+            for key in display_order:
+                if key in items:
+                    parts.append(f"{key}+{items[key]}")
+            # display_orderに含まれないものも念のため出力
+            for key in sorted(items.keys()):
+                if key not in display_order:
+                    parts.append(f"{key}+{items[key]}")
+            if parts:
+                lv_str = f"☆{lv}" if lv else "☆?"
+                lines.append(f"{lv_str} {', '.join(parts)}")
+
+        return lines
 
     def write_bpi_csv(self):
         '''BPI Manager用csvの出力'''

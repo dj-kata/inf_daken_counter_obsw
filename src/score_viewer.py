@@ -135,7 +135,9 @@ class SortableItem(QTableWidgetItem):
         return super().__lt__(other)
 
 class WinLossBar(QWidget):
-    """勝敗割合バー"""
+    """勝敗割合バー（クリックで勝ち/負けフィルタ切り替え）"""
+    side_clicked = Signal(str)  # "my_wins", "rival_wins", "draws"
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.my_wins = 0
@@ -144,6 +146,7 @@ class WinLossBar(QWidget):
         self.rival_name = ""
         self.setFixedHeight(24)
         self.setMinimumWidth(200)
+        self.setCursor(Qt.PointingHandCursor)
         self.hide()
 
     def set_data(self, my_wins: int, rival_wins: int, draws: int, rival_name: str):
@@ -156,6 +159,21 @@ class WinLossBar(QWidget):
         else:
             self.hide()
         self.update()
+
+    def mousePressEvent(self, event):
+        total = self.my_wins + self.rival_wins + self.draws
+        if total == 0:
+            return
+        x = event.position().x()
+        w = self.width()
+        my_w = int(w * self.my_wins / total)
+        draw_w = int(w * self.draws / total)
+        if x < my_w:
+            self.side_clicked.emit("my_wins")
+        elif x >= my_w + draw_w:
+            self.side_clicked.emit("rival_wins")
+        else:
+            self.side_clicked.emit("draws")
 
     def paintEvent(self, event):
         total = self.my_wins + self.rival_wins + self.draws
@@ -218,6 +236,8 @@ class ScoreViewer(QMainWindow):
         self.rival_manager = rival_manager
         self.scores: Dict[str, ScoreData] = {}  # key: (title, style, difficulty)
         self.current_selected_score: Optional[ScoreData] = None  # 現在選択中の譜面
+        self._rival_win_filter: Optional[str] = None  # "my_wins", "rival_wins", "draws", or None
+        self._rival_win_filter_name: str = ""  # フィルタ対象のライバル名
 
         if self.rival_manager:
             self.rival_manager.rivals_loaded.connect(self._on_rivals_loaded)
@@ -255,7 +275,17 @@ class ScoreViewer(QMainWindow):
         # 上部エリア（左右分割）
         top_widget = self.create_top_widget()
         main_layout.addWidget(top_widget)
-        
+
+        # ライバル勝敗フィルター表示ラベル
+        self._rival_filter_label = QLabel()
+        self._rival_filter_label.setStyleSheet(
+            "color: white; background-color: #D04040; padding: 4px 8px; font-weight: bold;"
+        )
+        self._rival_filter_label.setCursor(Qt.PointingHandCursor)
+        self._rival_filter_label.mousePressEvent = lambda e: self._clear_rival_win_filter()
+        self._rival_filter_label.hide()
+        main_layout.addWidget(self._rival_filter_label)
+
         # メインテーブル
         self.table = QTableWidget()
         self.setup_table()
@@ -472,6 +502,7 @@ class ScoreViewer(QMainWindow):
         title_layout.addWidget(self.rival_refresh_button)
 
         self.win_loss_bar = WinLossBar()
+        self.win_loss_bar.side_clicked.connect(self._on_win_loss_bar_clicked)
         title_layout.addWidget(self.win_loss_bar, 1)
 
         title_layout.addStretch()
@@ -639,29 +670,36 @@ class ScoreViewer(QMainWindow):
                 cb.blockSignals(True)
             if hasattr(self, 'level_all_checkbox'):
                 self.level_all_checkbox.blockSignals(True)
-            
+
             # Play Style復元
             style = self.config.score_viewer_style
             if style in self.style_buttons:
                 self.style_buttons[style].setChecked(True)
-            
+            else:
+                self.style_buttons['SP'].setChecked(True)
+
             # Level復元
             levels = self.config.score_viewer_levels
-            
+
+            # 空リストや不正な値の場合は全レベルをチェック
+            valid_levels = [lv for lv in levels if lv in self.level_checkboxes]
+            if not valid_levels:
+                valid_levels = list(self.level_checkboxes.keys())
+                logger.warning(f"保存されたレベル設定が無効です。全レベルに復元します: {levels}")
+
             # まず全てのチェックを外す
             for cb in self.level_checkboxes.values():
                 cb.setChecked(False)
-            
+
             # 保存されているレベルをチェック
-            for level in levels:
-                if level in self.level_checkboxes:
-                    self.level_checkboxes[level].setChecked(True)
-            
+            for level in valid_levels:
+                self.level_checkboxes[level].setChecked(True)
+
             # ALLチェックボックスの状態を更新
             if hasattr(self, 'level_all_checkbox'):
                 all_checked = all(cb.isChecked() for cb in self.level_checkboxes.values())
                 self.level_all_checkbox.setChecked(all_checked)
-            
+
             # シグナルのブロックを解除
             for button in self.style_buttons.values():
                 button.blockSignals(False)
@@ -669,9 +707,14 @@ class ScoreViewer(QMainWindow):
                 cb.blockSignals(False)
             if hasattr(self, 'level_all_checkbox'):
                 self.level_all_checkbox.blockSignals(False)
-        
+
         except Exception as e:
             logger.error(f"フィルター状態復元エラー: {e}")
+            # 復元に失敗した場合は全レベルをチェック
+            for cb in self.level_checkboxes.values():
+                cb.blockSignals(True)
+                cb.setChecked(True)
+                cb.blockSignals(False)
     
     def save_filter_state(self):
         """選択状態を設定に保存"""
@@ -753,10 +796,10 @@ class ScoreViewer(QMainWindow):
             logger.error(f"テーブル更新エラー: {e}")
             logger.error(traceback.format_exc())
     
-    def apply_filters(self) -> List[ScoreData]:
-        """フィルターを適用してスコアリストを返す"""
+    def _get_basic_filtered_scores(self) -> List[ScoreData]:
+        """基本フィルタ（Style/Level/検索）のみを適用したスコアリストを返す"""
         filtered = []
-        
+
         # 選択されたstyle
         selected_style = None
         is_battle      = None
@@ -770,37 +813,69 @@ class ScoreViewer(QMainWindow):
                     selected_style = play_style.dp
                     is_battle = True
                 break
-        
+
         # 選択されたレベル
         selected_levels = [
             str(level) for level, cb in self.level_checkboxes.items()
             if cb.isChecked()
         ]
-        
+
         # 検索キーワード（大文字小文字を区別しない）
         search_text = self.search_box.text().strip().lower()
-        
+
         # フィルター適用
         for score in self.scores.values():
             # Style フィルター
             if selected_style and score.style != selected_style:
                 continue
-            
-            # Level フィルター
-            if score.level not in selected_levels:
-                continue
+
+            # Level フィルター (songinfoがない曲はレベル不明なので全選択時のみ表示)
+            if score.level:
+                if score.level not in selected_levels:
+                    continue
+            else:
+                if len(selected_levels) < len(self.level_checkboxes):
+                    continue
 
             # Battleフィルタ
             if is_battle and not score.is_battle:
                 continue
-            
+
             # 検索フィルター（大文字小文字を区別せず部分一致）
             if len(search_text) > 0:
                 if search_text not in score.title.lower():
                     continue
-            
+
             filtered.append(score)
-        
+
+        return filtered
+
+    def apply_filters(self) -> List[ScoreData]:
+        """全フィルター（基本 + ライバル勝敗）を適用してスコアリストを返す"""
+        filtered = self._get_basic_filtered_scores()
+
+        # ライバル勝敗フィルター
+        if self._rival_win_filter and self._rival_win_filter_name and self.rival_manager:
+            result = []
+            for score in filtered:
+                if score.best_score <= 0:
+                    continue
+                mode = score.chart
+                rival_scores = self.rival_manager.get_rival_scores(score.title, mode)
+                for name, entry in rival_scores:
+                    if name != self._rival_win_filter_name:
+                        continue
+                    if not entry.score:
+                        break
+                    if self._rival_win_filter == "my_wins" and score.best_score > entry.score:
+                        result.append(score)
+                    elif self._rival_win_filter == "rival_wins" and score.best_score < entry.score:
+                        result.append(score)
+                    elif self._rival_win_filter == "draws" and score.best_score == entry.score:
+                        result.append(score)
+                    break
+            filtered = result
+
         return filtered
     
     def add_table_row(self, score: ScoreData, show_bpi: bool = False):
@@ -1195,7 +1270,13 @@ class ScoreViewer(QMainWindow):
         # checked=Falseなら何もしない（ボタンが外れた時ではなく、新しいボタンがチェックされた時だけ処理）
         if isinstance(arg, bool) and not arg:
             return
-        
+
+        # 基本フィルタが変わったらライバル勝敗フィルタをリセット
+        if self._rival_win_filter:
+            self._rival_win_filter = None
+            self._rival_win_filter_name = ""
+            self._rival_filter_label.hide()
+
         self.update_table()
         self.save_filter_state()
     
@@ -1276,8 +1357,16 @@ class ScoreViewer(QMainWindow):
         """ライバルデータ取得完了"""
         if hasattr(self, 'rival_refresh_button'):
             self.rival_refresh_button.setEnabled(True)
+        # ライバルデータ反映
         if self.current_selected_score:
             self.update_rival_table(self.current_selected_score)
+        # 勝敗フィルタ中なら再計算
+        if self._rival_win_filter:
+            self.update_table()
+        # ステータスバーに通知
+        rival_count = len([r for r in self.rival_manager.rivals if not r.error]) if self.rival_manager else 0
+        if rival_count > 0:
+            self.statusBar().showMessage(f"ライバルデータを更新しました ({rival_count}人)", 5000)
 
     @Slot()
     def _on_rival_selection_changed(self):
@@ -1299,6 +1388,13 @@ class ScoreViewer(QMainWindow):
                 return
             rival_name = rival_name_item.text()
 
+            # ライバルが変わったらフィルターをリセット
+            if self._rival_win_filter_name and self._rival_win_filter_name != rival_name:
+                self._rival_win_filter = None
+                self._rival_win_filter_name = ""
+                self._rival_filter_label.hide()
+                self.update_table()
+
             my_wins, rival_wins, draws = self._compute_win_loss(rival_name)
             self.win_loss_bar.set_data(my_wins, rival_wins, draws, rival_name)
 
@@ -1306,7 +1402,7 @@ class ScoreViewer(QMainWindow):
             logger.error(f"ライバル選択変更エラー: {e}")
 
     def _compute_win_loss(self, rival_name: str):
-        """指定ライバルとの全譜面での勝敗を集計（スコア比較）"""
+        """指定ライバルとの現在のフィルタ条件での勝敗を集計（スコア比較）"""
         my_wins = 0
         rival_wins = 0
         draws = 0
@@ -1314,7 +1410,8 @@ class ScoreViewer(QMainWindow):
         if not self.rival_manager:
             return my_wins, rival_wins, draws
 
-        for score in self.scores.values():
+        filtered = self._get_basic_filtered_scores()
+        for score in filtered:
             if score.best_score <= 0:
                 continue
 
@@ -1335,6 +1432,46 @@ class ScoreViewer(QMainWindow):
                 break
 
         return my_wins, rival_wins, draws
+
+    @Slot(str)
+    def _on_win_loss_bar_clicked(self, side: str):
+        """勝敗バーのクリック時 — 勝ち/負け/引き分け曲のみ表示"""
+        rival_name = self.win_loss_bar.rival_name
+        if not rival_name:
+            return
+
+        # 同じ側をクリックしたらフィルタ解除
+        if self._rival_win_filter == side and self._rival_win_filter_name == rival_name:
+            self._clear_rival_win_filter()
+            return
+
+        self._rival_win_filter = side
+        self._rival_win_filter_name = rival_name
+
+        if side == "my_wins":
+            self._rival_filter_label.setText(f"  {rival_name} に勝っている曲のみ表示中  [×]")
+            self._rival_filter_label.setStyleSheet(
+                "color: white; background-color: #4682DC; padding: 4px 8px; font-weight: bold;"
+            )
+        elif side == "rival_wins":
+            self._rival_filter_label.setText(f"  {rival_name} に負けている曲のみ表示中  [×]")
+            self._rival_filter_label.setStyleSheet(
+                "color: white; background-color: #D04040; padding: 4px 8px; font-weight: bold;"
+            )
+        else:
+            self._rival_filter_label.setText(f"  {rival_name} と引き分けの曲のみ表示中  [×]")
+            self._rival_filter_label.setStyleSheet(
+                "color: white; background-color: #808080; padding: 4px 8px; font-weight: bold;"
+            )
+        self._rival_filter_label.show()
+        self.update_table()
+
+    def _clear_rival_win_filter(self):
+        """ライバル勝敗フィルターをクリア"""
+        self._rival_win_filter = None
+        self._rival_win_filter_name = ""
+        self._rival_filter_label.hide()
+        self.update_table()
 
     def closeEvent(self, event):
         """ウィンドウを閉じる時"""
