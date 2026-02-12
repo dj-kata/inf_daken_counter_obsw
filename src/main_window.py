@@ -284,7 +284,8 @@ class MainWindowUI(QMainWindow):
                 return
             
             # スコアビューワを作成
-            self.score_viewer = ScoreViewer(self.config, self.result_database, parent=self)
+            rival_manager = getattr(self, 'rival_manager', None)
+            self.score_viewer = ScoreViewer(self.config, self.result_database, rival_manager=rival_manager, parent=self)
             self.score_viewer.show()
             
             from src.logger import get_logger

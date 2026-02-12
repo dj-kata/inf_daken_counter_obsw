@@ -541,14 +541,21 @@ class ResultDatabase:
         data['items'] = items
         return data
 
-    def write_best_csv(self):
+    def write_best_csv(self, csv_path=None):
         header = ['LV', 'Title', 'mode', 'Lamp', 'Score', '(rate)', 'BP', 'Opt(best score)', 'Opt(min bp)', 'Last Played']
         os.makedirs('out', exist_ok=True)
 
         # 全曲の自己べを取得
         bests = self.get_all_best_results()
 
-        with open(Path('.')/'inf_score.csv', 'w') as f:
+        # 出力先の決定
+        if csv_path:
+            os.makedirs(csv_path, exist_ok=True)
+            output_file = Path(csv_path) / 'inf_score.csv'
+        else:
+            output_file = Path('.') / 'inf_score.csv'
+
+        with open(output_file, 'w') as f:
             writer = csv.writer(f, lineterminator="\n")
             writer.writerow(header)
 

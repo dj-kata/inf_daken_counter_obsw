@@ -140,13 +140,17 @@ class ScoreViewer(QMainWindow):
     # データ更新シグナル
     data_updated = Signal()
     
-    def __init__(self, config: Config, result_database: ResultDatabase, parent=None):
+    def __init__(self, config: Config, result_database: ResultDatabase, rival_manager=None, parent=None):
         super().__init__(parent)
-        
+
         self.config = config
         self.result_database = result_database
+        self.rival_manager = rival_manager
         self.scores: Dict[str, ScoreData] = {}  # key: (title, style, difficulty)
         self.current_selected_score: Optional[ScoreData] = None  # 現在選択中の譜面
+
+        if self.rival_manager:
+            self.rival_manager.rivals_loaded.connect(self._on_rivals_loaded)
         
         # ウィンドウ設定
         self.setWindowTitle("スコアビューワ")
@@ -375,34 +379,37 @@ class ScoreViewer(QMainWindow):
     
     def create_rival_widget(self) -> QWidget:
         """ライバル欄ウィジェットを作成"""
-        # QFrameで囲む
-        from PySide6.QtWidgets import QFrame
+        from PySide6.QtWidgets import QFrame, QSizePolicy, QPushButton
+
         frame = QFrame()
-        # 枠線なし（デフォルト）
-        
         layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)  # マージンを0に
-        layout.setSpacing(5)  # 要素間のスペースを小さく
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
         frame.setLayout(layout)
-        
-        # サイズポリシーを設定（縦方向に伸びないように）
-        from PySide6.QtWidgets import QSizePolicy
+
         frame.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
-        
-        # タイトル
+
+        # タイトル + 更新ボタン
+        title_layout = QHBoxLayout()
         title_label = QLabel("ライバル欄")
         title_label.setStyleSheet("font-weight: bold; font-size: 14px;")
-        layout.addWidget(title_label)
-        
+        title_layout.addWidget(title_label)
+
+        self.rival_refresh_button = QPushButton("↻")
+        self.rival_refresh_button.setMaximumWidth(30)
+        self.rival_refresh_button.setToolTip("ライバルデータを更新")
+        self.rival_refresh_button.clicked.connect(self._on_refresh_rivals_clicked)
+        title_layout.addWidget(self.rival_refresh_button)
+        title_layout.addStretch()
+        layout.addLayout(title_layout)
+
         # ライバルテーブル
         self.rival_table = QTableWidget()
         self.setup_rival_table()
-        
-        # テーブルの高さを制限（最大5行分程度）
-        self.rival_table.setMaximumHeight(120)
-        
+        self.rival_table.setMaximumHeight(250)
+
         layout.addWidget(self.rival_table)
-        
+
         return frame
     
     def setup_rival_table(self):
@@ -866,22 +873,20 @@ class ScoreViewer(QMainWindow):
             return ("NO PLAY", QColor(200, 200, 200))
     
     def update_rival_table(self, score: ScoreData):
-        """ライバル欄を更新（自己ベストを表示）"""
+        """ライバル欄を更新（自己ベスト + ライバルスコアを表示）"""
         try:
             self.rival_table.setRowCount(0)
-            
+
             if not score:
                 return
-            
-            # 1行追加（自己ベスト）
+
+            # Row 0: MY BEST
             row = 0
             self.rival_table.insertRow(row)
-            
-            # プレーヤー名（自分）
+
             item = QTableWidgetItem("(MY BEST)")
             self.rival_table.setItem(row, 0, item)
-            
-            # ランプ（色付き）
+
             if score.lamp:
                 lamp_name, lamp_color = self.get_lamp_info(score.lamp)
                 item = QTableWidgetItem(lamp_name)
@@ -889,23 +894,53 @@ class ScoreViewer(QMainWindow):
                 if lamp_color:
                     item.setBackground(QBrush(lamp_color))
                 self.rival_table.setItem(row, 1, item)
-            
-            # スコア
+
             item = QTableWidgetItem(str(score.best_score))
             item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.rival_table.setItem(row, 2, item)
-            
-            # ミスカウント
+
             bp_str = str(score.min_bp) if score.min_bp < 99999 else ""
             item = QTableWidgetItem(bp_str)
             item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.rival_table.setItem(row, 3, item)
-            
-            # 最終プレー日
+
             item = QTableWidgetItem(score.last_play_date)
             item.setTextAlignment(Qt.AlignCenter)
             self.rival_table.setItem(row, 4, item)
-        
+
+            # ライバル行
+            if self.rival_manager:
+                mode = score.chart  # "SPA", "DPN" 等
+                rival_scores = self.rival_manager.get_rival_scores(score.title, mode)
+
+                for rival_name, entry in rival_scores:
+                    row += 1
+                    self.rival_table.insertRow(row)
+
+                    item = QTableWidgetItem(rival_name)
+                    self.rival_table.setItem(row, 0, item)
+
+                    lamp_name, lamp_color = self.get_lamp_info(entry.lamp)
+                    item = QTableWidgetItem(lamp_name)
+                    item.setTextAlignment(Qt.AlignCenter)
+                    if lamp_color:
+                        item.setBackground(QBrush(lamp_color))
+                    self.rival_table.setItem(row, 1, item)
+
+                    score_str = str(entry.score) if entry.score else ""
+                    item = QTableWidgetItem(score_str)
+                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    self.rival_table.setItem(row, 2, item)
+
+                    bp_str = str(entry.bp) if entry.bp < 99999999 else ""
+                    item = QTableWidgetItem(bp_str)
+                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    self.rival_table.setItem(row, 3, item)
+
+                    item = QTableWidgetItem(entry.last_played)
+                    item.setTextAlignment(Qt.AlignCenter)
+                    self.rival_table.setItem(row, 4, item)
+
         except Exception as e:
             logger.error(f"ライバル欄更新エラー: {e}")
     
@@ -1153,6 +1188,21 @@ class ScoreViewer(QMainWindow):
                 self.update_playlog_table(self.current_selected_score)
                 self.update_rival_table(self.current_selected_score)
     
+    @Slot()
+    def _on_refresh_rivals_clicked(self):
+        """ライバルデータ更新ボタン押下"""
+        if self.rival_manager and self.config.rivals:
+            self.rival_refresh_button.setEnabled(False)
+            self.rival_manager.start_fetch(self.config.rivals)
+
+    @Slot()
+    def _on_rivals_loaded(self):
+        """ライバルデータ取得完了"""
+        if hasattr(self, 'rival_refresh_button'):
+            self.rival_refresh_button.setEnabled(True)
+        if self.current_selected_score:
+            self.update_rival_table(self.current_selected_score)
+
     def closeEvent(self, event):
         """ウィンドウを閉じる時"""
         # 設定を保存

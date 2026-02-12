@@ -51,7 +51,11 @@ class Config:
         self.autosave_image_mode = config_autosave_image.only_updates  # 画像保存条件
         self.modify_rivalarea_mode = config_modify_rivalarea.invalid  # ライバル欄編集方法
         self.write_statistics = False  # 統計情報を書き込むか
-        
+
+        # ライバルスコア設定
+        self.rivals = []  # [{"name": "...", "url": "..."}]
+        self.csv_export_path = ''  # inf_score.csvの出力先 (空=ルート直下)
+
         self.load_config()
         self.save_config()
     
@@ -110,6 +114,10 @@ class Config:
                     self.autosave_image_mode = config_autosave_image(config_data.get('autosave_image_mode', config_autosave_image.invalid.value))
                     self.modify_rivalarea_mode = config_modify_rivalarea(config_data.get('modify_rivalarea_mode', config_modify_rivalarea.invalid.value))
                     self.write_statistics = config_data.get('write_statistics', False)
+
+                    # ライバルスコア設定
+                    self.rivals = config_data.get('rivals', [])
+                    self.csv_export_path = config_data.get('csv_export_path', '')
             except Exception as e:
                 logger.error(traceback.format_exc())
                 print(f"設定ファイル読み込みエラー: {e}")
@@ -138,6 +146,8 @@ class Config:
             "language": self.language,
             "score_viewer_style": self.score_viewer_style,
             "score_viewer_levels": self.score_viewer_levels,
+            "rivals": self.rivals,
+            "csv_export_path": self.csv_export_path,
         }
         
         try:

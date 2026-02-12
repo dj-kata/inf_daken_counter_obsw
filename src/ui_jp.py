@@ -58,6 +58,7 @@ class UIText:
         music_pack = '楽曲パック'
         image_save = '画像保存'
         data_import = 'データ登録'
+        rival = 'ライバル'
     
     class feature:
         """機能設定タブ"""
@@ -111,6 +112,18 @@ class UIText:
         completed_format = '完了: {total}件中{registered}件を登録しました'
         error_format = 'エラー: {message}'
     
+    class rival:
+        """ライバル設定タブ"""
+        rival_group = 'ライバル登録'
+        rival_description = 'ライバルのinf_score.csvのGoogle Drive共有URLを登録してください'
+        name_label = '名前'
+        url_label = 'URL'
+        add_button = '追加'
+        remove_button = '削除'
+        csv_export_group = 'CSV出力先'
+        csv_export_description = 'inf_score.csvの出力先フォルダ (空欄の場合はアプリのルート)'
+        select_csv_export_path = 'CSV出力先フォルダを選択'
+
     class message:
         """メッセージ"""
         language_changed = '言語を変更しました。アプリケーションを再起動します...'

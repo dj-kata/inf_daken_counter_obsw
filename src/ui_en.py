@@ -58,6 +58,7 @@ class UIText:
         music_pack = 'Music Packs'
         image_save = 'Image Saving'
         data_import = 'Data Import'
+        rival = 'Rival'
     
     class feature:
         """Feature settings tab"""
@@ -111,6 +112,18 @@ class UIText:
         completed_format = 'Completed: Registered {registered} out of {total} items'
         error_format = 'Error: {message}'
     
+    class rival:
+        """Rival settings tab"""
+        rival_group = 'Rival Registration'
+        rival_description = 'Register Google Drive share URLs for rival inf_score.csv files'
+        name_label = 'Name'
+        url_label = 'URL'
+        add_button = 'Add'
+        remove_button = 'Remove'
+        csv_export_group = 'CSV Export Path'
+        csv_export_description = 'Output folder for inf_score.csv (empty = app root)'
+        select_csv_export_path = 'Select CSV export folder'
+
     class message:
         """Messages"""
         language_changed = 'Language changed. Restarting application...'

@@ -199,7 +199,8 @@ class ConfigDialog(QDialog):
         # tab_widget.addTab(self.create_music_pack_tab(), self.ui.tab.music_pack)
         tab_widget.addTab(self.create_image_save_tab(), self.ui.tab.image_save)
         tab_widget.addTab(self.create_data_import_tab(), self.ui.tab.data_import)  # 追加
-        
+        tab_widget.addTab(self.create_rival_tab(), self.ui.tab.rival)
+
         # ボタン
         button_box = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel
@@ -470,6 +471,109 @@ class ConfigDialog(QDialog):
         layout.addStretch()
         return widget
 
+    def create_rival_tab(self):
+        """ライバル設定タブ"""
+        widget = QWidget()
+        layout = QVBoxLayout()
+        widget.setLayout(layout)
+
+        # ライバル登録グループ
+        rival_group = QGroupBox(self.ui.rival.rival_group)
+        rival_layout = QVBoxLayout()
+        rival_group.setLayout(rival_layout)
+
+        desc_label = QLabel(self.ui.rival.rival_description)
+        rival_layout.addWidget(desc_label)
+
+        # ライバルリスト表示用テーブル
+        from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
+        self.rival_list_table = QTableWidget()
+        self.rival_list_table.setColumnCount(2)
+        self.rival_list_table.setHorizontalHeaderLabels(
+            [self.ui.rival.name_label, self.ui.rival.url_label]
+        )
+        self.rival_list_table.horizontalHeader().setStretchLastSection(True)
+        self.rival_list_table.setColumnWidth(0, 120)
+        self.rival_list_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.rival_list_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.rival_list_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        rival_layout.addWidget(self.rival_list_table)
+
+        # 名前+URL入力行
+        input_layout = QHBoxLayout()
+        self.rival_name_edit = QLineEdit()
+        self.rival_name_edit.setPlaceholderText(self.ui.rival.name_label)
+        self.rival_name_edit.setMaximumWidth(120)
+        input_layout.addWidget(self.rival_name_edit)
+
+        self.rival_url_edit = QLineEdit()
+        self.rival_url_edit.setPlaceholderText(self.ui.rival.url_label)
+        input_layout.addWidget(self.rival_url_edit)
+
+        add_button = QPushButton(self.ui.rival.add_button)
+        add_button.clicked.connect(self.on_add_rival)
+        input_layout.addWidget(add_button)
+
+        remove_button = QPushButton(self.ui.rival.remove_button)
+        remove_button.clicked.connect(self.on_remove_rival)
+        input_layout.addWidget(remove_button)
+
+        rival_layout.addLayout(input_layout)
+        layout.addWidget(rival_group)
+
+        # CSV出力先グループ
+        csv_group = QGroupBox(self.ui.rival.csv_export_group)
+        csv_layout = QVBoxLayout()
+        csv_group.setLayout(csv_layout)
+
+        csv_desc_label = QLabel(self.ui.rival.csv_export_description)
+        csv_layout.addWidget(csv_desc_label)
+
+        csv_path_layout = QHBoxLayout()
+        self.csv_export_path_edit = QLineEdit()
+        csv_path_layout.addWidget(self.csv_export_path_edit)
+
+        csv_browse_button = QPushButton(self.ui.dialog.browse)
+        csv_browse_button.clicked.connect(self.on_csv_browse_clicked)
+        csv_path_layout.addWidget(csv_browse_button)
+
+        csv_layout.addLayout(csv_path_layout)
+        layout.addWidget(csv_group)
+
+        layout.addStretch()
+        return widget
+
+    def on_add_rival(self):
+        """ライバルをリストに追加"""
+        name = self.rival_name_edit.text().strip()
+        url = self.rival_url_edit.text().strip()
+        if not name or not url:
+            return
+        from PySide6.QtWidgets import QTableWidgetItem
+        row = self.rival_list_table.rowCount()
+        self.rival_list_table.insertRow(row)
+        self.rival_list_table.setItem(row, 0, QTableWidgetItem(name))
+        self.rival_list_table.setItem(row, 1, QTableWidgetItem(url))
+        self.rival_name_edit.clear()
+        self.rival_url_edit.clear()
+
+    def on_remove_rival(self):
+        """選択中のライバルをリストから削除"""
+        selected = self.rival_list_table.selectedItems()
+        if selected:
+            self.rival_list_table.removeRow(selected[0].row())
+
+    def on_csv_browse_clicked(self):
+        """CSV出力先フォルダ参照"""
+        current_dir = self.csv_export_path_edit.text()
+        if not os.path.exists(current_dir):
+            current_dir = os.path.expanduser("~")
+        dir_path = QFileDialog.getExistingDirectory(
+            self, self.ui.rival.select_csv_export_path, current_dir
+        )
+        if dir_path:
+            self.csv_export_path_edit.setText(dir_path)
+
     def on_import_from_images(self):
         """画像からリザルトを登録"""
         if not self.result_database or not self.screen_reader:
@@ -622,7 +726,21 @@ class ConfigDialog(QDialog):
 
         if hasattr(self.config, 'write_statistics'):
             self.write_statistics_check.setChecked(self.config.write_statistics)
-        
+
+        # ライバル設定
+        if hasattr(self, 'rival_list_table'):
+            from PySide6.QtWidgets import QTableWidgetItem
+            self.rival_list_table.setRowCount(0)
+            for rival in self.config.rivals:
+                row = self.rival_list_table.rowCount()
+                self.rival_list_table.insertRow(row)
+                self.rival_list_table.setItem(row, 0, QTableWidgetItem(rival.get('name', '')))
+                self.rival_list_table.setItem(row, 1, QTableWidgetItem(rival.get('url', '')))
+
+        # CSV出力先
+        if hasattr(self, 'csv_export_path_edit'):
+            self.csv_export_path_edit.setText(self.config.csv_export_path)
+
     def accept(self):
         """OKボタン押下時の処理"""
         # UIから設定値を取得してConfigに保存
@@ -656,6 +774,23 @@ class ConfigDialog(QDialog):
         self.config.modify_rivalarea_mode = config_modify_rivalarea(self.rivalarea_button_group.checkedId())
         self.config.write_statistics = self.write_statistics_check.isChecked()
         
+        # ライバル設定
+        if hasattr(self, 'rival_list_table'):
+            rivals = []
+            for row in range(self.rival_list_table.rowCount()):
+                name_item = self.rival_list_table.item(row, 0)
+                url_item = self.rival_list_table.item(row, 1)
+                if name_item and url_item:
+                    rivals.append({
+                        'name': name_item.text(),
+                        'url': url_item.text()
+                    })
+            self.config.rivals = rivals
+
+        # CSV出力先
+        if hasattr(self, 'csv_export_path_edit'):
+            self.config.csv_export_path = self.csv_export_path_edit.text()
+
         # 設定を保存
         self.config.save_config()
         

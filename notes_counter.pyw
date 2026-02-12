@@ -30,6 +30,7 @@ from src.screen_reader import ScreenReader
 from src.result import OneResult, DetailedResult
 from src.result_database import ResultDatabase
 from src.result_stats_writer import ResultStatsWriter
+from src.rival_data import RivalManager
 from src.logger import get_logger
 logger = get_logger('notes_counter')
 
@@ -62,6 +63,7 @@ class MainWindow(MainWindowUI):
         super().__init__(self.config)
         self.song_database = SongDatabase()
         self.result_database = ResultDatabase(config=self.config)
+        self.rival_manager = RivalManager(parent=self)
         self.screen_reader = ScreenReader()
         
         # OBS接続マネージャーの初期化
@@ -117,7 +119,11 @@ class MainWindow(MainWindowUI):
         
         # グローバルホットキーの登録
         self.setup_global_hotkeys()
-        
+
+        # ライバルデータの取得（バックグラウンド）
+        if self.config.rivals:
+            self.rival_manager.start_fetch(self.config.rivals)
+
         logger.info("アプリケーション起動完了")
 
     @property
@@ -161,10 +167,14 @@ class MainWindow(MainWindowUI):
     
     def open_config_dialog(self):
         """設定ダイアログを開く"""
+        old_rivals = copy.deepcopy(self.config.rivals)
         dialog = ConfigDialog(self.config, self.result_database, self.screen_reader, self)
         if dialog.exec():
             # 設定が保存された場合、全てのクラスに設定を反映
             self.update_all_configs()
+            # ライバル設定が変更された場合は再取得
+            if self.config.rivals != old_rivals:
+                self.rival_manager.start_fetch(self.config.rivals)
             logger.info("設定を更新しました")
             self.statusBar().showMessage("設定を更新しました", 3000)
     
@@ -532,7 +542,8 @@ class MainWindow(MainWindowUI):
             self.tweet()
 
         # csv出力
-        self.result_database.write_best_csv()
+        csv_path = self.config.csv_export_path or None
+        self.result_database.write_best_csv(csv_path=csv_path)
         
         # タイマーを停止
         self.main_timer.stop()
