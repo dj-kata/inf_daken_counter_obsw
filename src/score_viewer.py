@@ -479,7 +479,7 @@ class ScoreViewer(QMainWindow):
     
     def create_rival_widget(self) -> QWidget:
         """ライバル欄ウィジェットを作成"""
-        from PySide6.QtWidgets import QFrame, QSizePolicy, QPushButton
+        from PySide6.QtWidgets import QFrame, QSizePolicy
 
         frame = QFrame()
         layout = QVBoxLayout()
@@ -494,12 +494,6 @@ class ScoreViewer(QMainWindow):
         title_label = QLabel("ライバル欄")
         title_label.setStyleSheet("font-weight: bold; font-size: 14px;")
         title_layout.addWidget(title_label)
-
-        self.rival_refresh_button = QPushButton("↻")
-        self.rival_refresh_button.setMaximumWidth(30)
-        self.rival_refresh_button.setToolTip("ライバルデータを更新")
-        self.rival_refresh_button.clicked.connect(self._on_refresh_rivals_clicked)
-        title_layout.addWidget(self.rival_refresh_button)
 
         self.win_loss_bar = WinLossBar()
         self.win_loss_bar.side_clicked.connect(self._on_win_loss_bar_clicked)
@@ -1346,17 +1340,8 @@ class ScoreViewer(QMainWindow):
                 self.update_rival_table(self.current_selected_score)
     
     @Slot()
-    def _on_refresh_rivals_clicked(self):
-        """ライバルデータ更新ボタン押下"""
-        if self.rival_manager and self.config.rivals:
-            self.rival_refresh_button.setEnabled(False)
-            self.rival_manager.start_fetch(self.config.rivals)
-
-    @Slot()
     def _on_rivals_loaded(self):
         """ライバルデータ取得完了"""
-        if hasattr(self, 'rival_refresh_button'):
-            self.rival_refresh_button.setEnabled(True)
         # ライバルデータ反映
         if self.current_selected_score:
             self.update_rival_table(self.current_selected_score)
