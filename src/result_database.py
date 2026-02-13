@@ -587,7 +587,7 @@ class ResultDatabase:
                         min_bp_opt = 'OFF'
                     else:
                         min_bp_opt = 'OFF/OFF'
-                timestamp = datetime.datetime.fromtimestamp(value['last_play_timestamp']).strftime('%Y/%m/%d %H:%M')
+                timestamp = datetime.datetime.fromtimestamp(value['last_play_timestamp']).strftime('%Y/%m/%d %H:%M:%S')
                 row = [
                     lv,
                     title,
