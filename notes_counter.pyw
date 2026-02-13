@@ -306,7 +306,7 @@ class MainWindow(MainWindowUI):
             is_connected: 接続状態（True=接続中、False=切断）
             message: ステータスメッセージ
         """
-        logger.info(f"OBS connection changed: connected={is_connected}, message={message}")
+        # logger.info(f"OBS connection changed: connected={is_connected}, message={message}")
 
         # UIを更新（スレッドセーフに）
         self.obs_status_label.setText(message)
@@ -322,7 +322,7 @@ class MainWindow(MainWindowUI):
         else:
             # 切断時
             self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")
-            logger.warning("OBS接続が切断されました")
+            # logger.warning("OBS接続が切断されました")
 
             # 必要に応じて追加の処理
             # 例: 自動制御を一時停止など

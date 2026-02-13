@@ -189,6 +189,7 @@ class RivalManager(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.rivals: List[RivalData] = []
+        self.prev_rivals: List[RivalData] = []
         self._worker: Optional[RivalFetchWorker] = None
 
     def load_cache(self):
@@ -228,22 +229,15 @@ class RivalManager(QObject):
         self._worker.start()
 
     def _on_fetch_finished(self, results: List[RivalData]):
+        self.prev_rivals = self.rivals
         self.rivals = results
         self._save_cache()
         self.rivals_loaded.emit()
 
-    def get_rival_scores(self, title: str, mode: str) -> List[Tuple[str, RivalScoreEntry]]:
-        """指定譜面の全ライバルスコアを返す
-
-        Args:
-            title: 曲名
-            mode: 譜面モード文字列 ("SPA", "DPN" 等)
-
-        Returns:
-            (ライバル名, RivalScoreEntry)のリスト
-        """
+    @staticmethod
+    def _lookup_scores(rivals: List[RivalData], title: str, mode: str) -> List[Tuple[str, RivalScoreEntry]]:
         results = []
-        for rival in self.rivals:
+        for rival in rivals:
             if rival.error:
                 continue
             entry = rival.scores.get((title, mode))
@@ -253,3 +247,11 @@ class RivalManager(QObject):
             if entry:
                 results.append((rival.name, entry))
         return results
+
+    def get_rival_scores(self, title: str, mode: str) -> List[Tuple[str, RivalScoreEntry]]:
+        """指定譜面の全ライバルスコアを返す"""
+        return self._lookup_scores(self.rivals, title, mode)
+
+    def get_prev_rival_scores(self, title: str, mode: str) -> List[Tuple[str, RivalScoreEntry]]:
+        """前回取得時の指定譜面の全ライバルスコアを返す"""
+        return self._lookup_scores(self.prev_rivals, title, mode)

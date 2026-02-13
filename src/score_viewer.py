@@ -238,6 +238,7 @@ class ScoreViewer(QMainWindow):
         self.current_selected_score: Optional[ScoreData] = None  # 現在選択中の譜面
         self._rival_win_filter: Optional[str] = None  # "my_wins", "rival_wins", "draws", or None
         self._rival_win_filter_name: str = ""  # フィルタ対象のライバル名
+        self._challenges: Dict[tuple, str] = {}  # {(title, mode): rival_name}
 
         if self.rival_manager:
             self.rival_manager.rivals_loaded.connect(self._on_rivals_loaded)
@@ -339,6 +340,11 @@ class ScoreViewer(QMainWindow):
         from PySide6.QtWidgets import QSizePolicy
         frame.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
         
+        # 挑戦状モードチェックボックス
+        self.challenge_checkbox = QCheckBox("挑戦状モード")
+        self.challenge_checkbox.stateChanged.connect(self._on_challenge_mode_changed)
+        layout.addWidget(self.challenge_checkbox)
+
         # 1行目: Style選択（ラジオボタン）
         style_layout = QHBoxLayout()
         style_group = QGroupBox("Play Style")
@@ -538,6 +544,7 @@ class ScoreViewer(QMainWindow):
         """メインテーブルの初期設定"""
         # 列定義
         columns = [
+            '挑戦者',
             'Lv',
             '非公式Lv',
             'Title',
@@ -551,32 +558,34 @@ class ScoreViewer(QMainWindow):
             'Option(min BP)',
             'last played'
         ]
-        
+
         self.table.setColumnCount(len(columns))
         self.table.setHorizontalHeaderLabels(columns)
-        
+
         # ヘッダー設定
         header = self.table.horizontalHeader()
         header.setStretchLastSection(True)
         header.sectionClicked.connect(lambda _: self.save_filter_state())
-        
+
         # 列幅設定
-        self.table.setColumnWidth(0, 60)   # Lv
-        self.table.setColumnWidth(1, 80)   # 非公式Lv
-        self.table.setColumnWidth(2, 600)  # Title
-        self.table.setColumnWidth(3, 80)   # 譜面
-        self.table.setColumnWidth(4, 100)  # ランプ
-        self.table.setColumnWidth(5, 80)   # BPI
-        self.table.setColumnWidth(6, 100)  # ベストスコア
-        self.table.setColumnWidth(7, 100)  # スコアレート
-        self.table.setColumnWidth(8, 80)   # 最小BP
-        self.table.setColumnWidth(9, 200)  # ベストスコア時オプション
-        self.table.setColumnWidth(10, 200) # 最小BP時オプション
-        self.table.setColumnWidth(11, 150) # 最終プレー日
-        
-        # BPI列と非公式Lv列は初期状態では非表示
-        self.table.setColumnHidden(1, True)  # 非公式Lv
-        self.table.setColumnHidden(5, True)  # BPI
+        self.table.setColumnWidth(0, 100)  # 挑戦者
+        self.table.setColumnWidth(1, 60)   # Lv
+        self.table.setColumnWidth(2, 80)   # 非公式Lv
+        self.table.setColumnWidth(3, 600)  # Title
+        self.table.setColumnWidth(4, 80)   # 譜面
+        self.table.setColumnWidth(5, 100)  # ランプ
+        self.table.setColumnWidth(6, 80)   # BPI
+        self.table.setColumnWidth(7, 100)  # ベストスコア
+        self.table.setColumnWidth(8, 100)  # スコアレート
+        self.table.setColumnWidth(9, 80)   # 最小BP
+        self.table.setColumnWidth(10, 200) # ベストスコア時オプション
+        self.table.setColumnWidth(11, 200) # 最小BP時オプション
+        self.table.setColumnWidth(12, 150) # 最終プレー日
+
+        # 初期状態では非表示の列
+        self.table.setColumnHidden(0, True)  # 挑戦者
+        self.table.setColumnHidden(2, True)  # 非公式Lv
+        self.table.setColumnHidden(6, True)  # BPI
         
         # ソート有効化
         self.table.setSortingEnabled(True)
@@ -691,6 +700,14 @@ class ScoreViewer(QMainWindow):
                 all_checked = all(cb.isChecked() for cb in self.level_checkboxes.values())
                 self.level_all_checkbox.setChecked(all_checked)
 
+            # 挑戦状モード復元
+            if hasattr(self, 'challenge_checkbox'):
+                self.challenge_checkbox.blockSignals(True)
+                self.challenge_checkbox.setChecked(self.config.score_viewer_challenge_mode)
+                self.challenge_checkbox.blockSignals(False)
+                if hasattr(self, 'table'):
+                    self.table.setColumnHidden(0, not self.config.score_viewer_challenge_mode)
+
             # ソート状態復元
             sort_col = self.config.score_viewer_sort_column
             sort_order = Qt.SortOrder(self.config.score_viewer_sort_order)
@@ -732,6 +749,10 @@ class ScoreViewer(QMainWindow):
                 if cb.isChecked()
             ]
             self.config.score_viewer_levels = selected_levels
+
+            # 挑戦状モード保存
+            if hasattr(self, 'challenge_checkbox'):
+                self.config.score_viewer_challenge_mode = self.challenge_checkbox.isChecked()
 
             # ソート状態保存
             if hasattr(self, 'table'):
@@ -775,9 +796,11 @@ class ScoreViewer(QMainWindow):
             # 非公式Lv列の表示判定（DPかつBattleでない場合のみ表示）
             show_unofficial = (selected_style == play_style.dp and not is_battle)
             
-            # BPI列と非公式Lv列の表示/非表示を切り替え
-            self.table.setColumnHidden(1, not show_unofficial)  # 非公式Lv
-            self.table.setColumnHidden(5, not show_bpi)  # BPI
+            # 列の表示/非表示を切り替え
+            is_challenge = hasattr(self, 'challenge_checkbox') and self.challenge_checkbox.isChecked()
+            self.table.setColumnHidden(0, not is_challenge)  # 挑戦者
+            self.table.setColumnHidden(2, not show_unofficial)  # 非公式Lv
+            self.table.setColumnHidden(6, not show_bpi)  # BPI
             
             # フィルター適用
             filtered_scores = self.apply_filters()
@@ -879,6 +902,10 @@ class ScoreViewer(QMainWindow):
                     break
             filtered = result
 
+        # 挑戦状フィルター（挑戦状モードON時は挑戦状のみ表示、0件なら全て非表示）
+        if hasattr(self, 'challenge_checkbox') and self.challenge_checkbox.isChecked():
+            filtered = [s for s in filtered if (s.title, s.chart) in self._challenges]
+
         return filtered
     
     def add_table_row(self, score: ScoreData, show_bpi: bool = False):
@@ -888,50 +915,61 @@ class ScoreViewer(QMainWindow):
         
         # Lv（常に公式レベルを表示）
         item = SortableItem(f"☆{score.level}")
+        # 挑戦者 (column 0)
+        challenger_key = (score.title, score.chart)
+        challenger_name = self._challenges.get(challenger_key, "")
+        item = QTableWidgetItem(challenger_name)
+        item.setTextAlignment(Qt.AlignCenter)
+        if challenger_name:
+            item.setBackground(QBrush(QColor(255, 200, 200)))
+        self.table.setItem(row, 0, item)
+
+        # Lv (column 1)
+        item = SortableItem(f"☆{score.level}")
         item.setData(Qt.UserRole, int(score.level))
         item.setTextAlignment(Qt.AlignCenter)
-        self.table.setItem(row, 0, item)
-        
-        # 非公式Lv（DPかつbattle=Falseの場合のみ値を設定）
+        self.table.setItem(row, 1, item)
+
+        # 非公式Lv (column 2)
         unofficial_str = ""
         unofficial_value = None
         if score.style == play_style.dp and not score.is_battle:
             if type(score.songinfo.dp_unofficial) == float:
                 unofficial_str = str(score.songinfo.dp_unofficial)
                 unofficial_value = score.songinfo.dp_unofficial
-        
+
         item = SortableItem(unofficial_str)
         if unofficial_value is not None:
             item.setData(Qt.UserRole, unofficial_value)
         else:
             item.setData(Qt.UserRole, float(score.level)-0.001)
         item.setTextAlignment(Qt.AlignCenter)
-        self.table.setItem(row, 1, item)
-        
-        # Title
-        item = QTableWidgetItem(score.title)
-        item.setData(Qt.UserRole, score) # 特殊なソートを行わないtitle列にscoreの実体を入れておく
         self.table.setItem(row, 2, item)
-        
-        # 譜面
+
+        # Title (column 3)
+        item = QTableWidgetItem(score.title)
+        item.setData(Qt.UserRole, score)
+        self.table.setItem(row, 3, item)
+
+        # 譜面 (column 4)
         chart_name, chart_color = self.get_chart_info(score.chart)
         item = SortableItem(score.chart)
         item.setData(Qt.UserRole, score.difficulty.value)
         item.setTextAlignment(Qt.AlignCenter)
         if chart_color:
             item.setBackground(QBrush(chart_color))
-        self.table.setItem(row, 3, item)
-        
-        # ランプ（色付き）
+        self.table.setItem(row, 4, item)
+
+        # ランプ (column 5)
         lamp_name, lamp_color = self.get_lamp_info(score.lamp)
         item = SortableItem(lamp_name)
         item.setTextAlignment(Qt.AlignCenter)
         if lamp_color:
             item.setBackground(QBrush(lamp_color))
         item.setData(Qt.UserRole, score.lamp.value)
-        self.table.setItem(row, 4, item)
-        
-        # BPI（11か12レベルの場合のみ計算）
+        self.table.setItem(row, 5, item)
+
+        # BPI (column 6)
         bpi_str = ""
         bpi_value = None
         if show_bpi:
@@ -944,44 +982,44 @@ class ScoreViewer(QMainWindow):
                         bpi_value = bpi
             except Exception as e:
                 logger.debug(f"BPI計算エラー ({score.title}): {e}")
-        
+
         item = SortableItem(bpi_str)
         if bpi_value is not None:
             item.setData(Qt.UserRole, bpi_value)
         else:
             item.setData(Qt.UserRole, -16)
         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.table.setItem(row, 5, item)
-        
-        # ベストスコア
+        self.table.setItem(row, 6, item)
+
+        # ベストスコア (column 7)
         item = QTableWidgetItem(str(score.best_score))
         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.table.setItem(row, 6, item)
-        
-        # スコアレート
+        self.table.setItem(row, 7, item)
+
+        # スコアレート (column 8)
         rate_str = f"{score.score_rate * 100:.2f}%" if score.score_rate > 0 else ""
         item = QTableWidgetItem(rate_str)
         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.table.setItem(row, 7, item)
-        
-        # 最小BP
+        self.table.setItem(row, 8, item)
+
+        # 最小BP (column 9)
         bp_str = str(score.min_bp) if score.min_bp < 99999 else ""
         item = QTableWidgetItem(bp_str)
         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.table.setItem(row, 8, item)
-        
-        # ベストスコア時オプション
-        item = QTableWidgetItem(score.best_score_option)
         self.table.setItem(row, 9, item)
-        
-        # 最小BP時オプション
-        item = QTableWidgetItem(score.min_bp_option)
+
+        # ベストスコア時オプション (column 10)
+        item = QTableWidgetItem(score.best_score_option)
         self.table.setItem(row, 10, item)
-        
-        # 最終プレー日
+
+        # 最小BP時オプション (column 11)
+        item = QTableWidgetItem(score.min_bp_option)
+        self.table.setItem(row, 11, item)
+
+        # 最終プレー日 (column 12)
         item = QTableWidgetItem(score.last_play_date)
         item.setTextAlignment(Qt.AlignCenter)
-        self.table.setItem(row, 11, item)
+        self.table.setItem(row, 12, item)
 
     def get_chart_info(self, diff:str) -> tuple:
         '''譜面情報を送信(名前,色)'''
@@ -1246,9 +1284,9 @@ class ScoreViewer(QMainWindow):
             if not selected_items:
                 return
             
-            # Title列（列2）からScoreDataを取得
+            # Title列（列3）からScoreDataを取得
             row = selected_items[0].row()
-            item = self.table.item(row, 2)
+            item = self.table.item(row, 3)
             if item:
                 score = item.data(Qt.UserRole)
                 if score:
@@ -1259,6 +1297,12 @@ class ScoreViewer(QMainWindow):
         except Exception as e:
             logger.error(f"選択変更エラー: {e}")
     
+    @Slot()
+    def _on_challenge_mode_changed(self):
+        """挑戦状モード切り替え"""
+        self.update_table()
+        self.save_filter_state()
+
     @Slot()
     def on_filter_changed(self, arg=None):
         """フィルター変更時
@@ -1351,16 +1395,48 @@ class ScoreViewer(QMainWindow):
     @Slot()
     def _on_rivals_loaded(self):
         """ライバルデータ取得完了"""
+        # 挑戦状を計算
+        self._compute_challenges()
         # ライバルデータ反映
         if self.current_selected_score:
             self.update_rival_table(self.current_selected_score)
-        # 勝敗フィルタ中なら再計算
-        if self._rival_win_filter:
+        # テーブル更新（勝敗フィルタ or 挑戦状モード）
+        if self._rival_win_filter or (hasattr(self, 'challenge_checkbox') and self.challenge_checkbox.isChecked()):
             self.update_table()
         # ステータスバーに通知
         rival_count = len([r for r in self.rival_manager.rivals if not r.error]) if self.rival_manager else 0
         if rival_count > 0:
-            self.statusBar().showMessage(f"ライバルデータを更新しました ({rival_count}人)", 5000)
+            msg = f"ライバルデータを更新しました ({rival_count}人)"
+            if self._challenges:
+                msg += f" / 挑戦状: {len(self._challenges)}件"
+            self.statusBar().showMessage(msg, 5000)
+
+    def _compute_challenges(self):
+        """挑戦状を計算: ライバルのスコアが前回より上がり、かつ自己ベストを超えた譜面を検出"""
+        self._challenges.clear()
+        if not self.rival_manager or not self.rival_manager.prev_rivals:
+            return
+
+        for score in self.scores.values():
+            if score.best_score <= 0:
+                continue
+            mode = score.chart
+            current_rivals = self.rival_manager.get_rival_scores(score.title, mode)
+            prev_rivals = self.rival_manager.get_prev_rival_scores(score.title, mode)
+            prev_lookup = {name: entry for name, entry in prev_rivals}
+
+            for rival_name, current_entry in current_rivals:
+                if not current_entry.score or current_entry.score <= score.best_score:
+                    continue
+                prev_entry = prev_lookup.get(rival_name)
+                if prev_entry is None:
+                    continue
+                if current_entry.score > prev_entry.score:
+                    self._challenges[(score.title, mode)] = rival_name
+                    break  # 1譜面につき1人
+
+        if self._challenges:
+            logger.info(f"挑戦状検出: {len(self._challenges)}件")
 
     @Slot()
     def _on_rival_selection_changed(self):

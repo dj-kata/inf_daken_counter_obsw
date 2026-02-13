@@ -43,9 +43,10 @@ class Config:
         # スコアビューワ設定
         self.score_viewer_style = 'SP'  # 'SP', 'DP', 'Battle'
         self.score_viewer_levels = list(range(1, 13))  # [1, 2, ..., 12]
-        self.score_viewer_sort_column = 0  # ソート列インデックス
+        self.score_viewer_sort_column = 1  # ソート列インデックス (0=挑戦者, 1=Lv, ...)
         self.score_viewer_sort_order = 0   # 0=昇順, 1=降順
         self.score_viewer_geometry = None  # [x, y, width, height]
+        self.score_viewer_challenge_mode = False  # 挑戦状モード
         
         # 楽曲パック集計対象設定（デフォルトはunknown以外の全て）
         self.target_music_packs = [pack.name for pack in music_pack if pack != music_pack.unknown]
@@ -102,9 +103,14 @@ class Config:
                     # スコアビューワ設定
                     self.score_viewer_style = config_data.get('score_viewer_style', 'SP')
                     self.score_viewer_levels = config_data.get('score_viewer_levels', list(range(1, 13)))
-                    self.score_viewer_sort_column = config_data.get('score_viewer_sort_column', 0)
                     self.score_viewer_sort_order = config_data.get('score_viewer_sort_order', 0)
                     self.score_viewer_geometry = config_data.get('score_viewer_geometry', None)
+                    self.score_viewer_challenge_mode = config_data.get('score_viewer_challenge_mode', False)
+                    # ソート列マイグレーション: 挑戦者列(col0)追加前の設定は+1する
+                    if 'score_viewer_challenge_mode' not in config_data:
+                        self.score_viewer_sort_column = config_data.get('score_viewer_sort_column', 0) + 1
+                    else:
+                        self.score_viewer_sort_column = config_data.get('score_viewer_sort_column', 1)
                     
                     # 楽曲パック集計対象設定
                     self.target_music_packs = config_data.get('target_music_packs', [])
@@ -155,6 +161,7 @@ class Config:
             "score_viewer_sort_column": self.score_viewer_sort_column,
             "score_viewer_sort_order": self.score_viewer_sort_order,
             "score_viewer_geometry": self.score_viewer_geometry,
+            "score_viewer_challenge_mode": self.score_viewer_challenge_mode,
             "rivals": self.rivals,
             "csv_export_path": self.csv_export_path,
         }

@@ -5,10 +5,14 @@ import functools
 from typing import Callable, Optional, List, Dict, Any
 from PySide6.QtCore import QObject, Signal
 
+import logging
 from src.config import Config
 from src.logger import get_logger
 from src.funcs import load_ui_text
 logger = get_logger(__name__)
+
+# obsws_pythonライブラリの接続エラートレースバックを抑制
+logging.getLogger('obsws_python').setLevel(logging.CRITICAL)
 
 
 def _require_connection(func):
@@ -222,7 +226,7 @@ class OBSWebSocketManager(QObject):
                             continue
                         
                         # 再接続試行
-                        logger.info(f"Attempting to reconnect to OBS... (attempt {consecutive_failures + 1})")
+                        # logger.info(f"Attempting to reconnect to OBS... (attempt {consecutive_failures + 1})")
                         self._emit_status(f"{self.ui.obs.status_reconnecting} ({consecutive_failures + 1}回目)", False)
                         
                         try:
@@ -247,7 +251,7 @@ class OBSWebSocketManager(QObject):
                             self.is_connected = False
                             self.client = None
                             consecutive_failures += 1
-                            logger.debug(f"Reconnection failed: {e}")
+                            # logger.debug(f"Reconnection failed: {e}")
                             
                             # 次の再接続まで待機
                             time.sleep(self.reconnect_interval)
@@ -264,7 +268,7 @@ class OBSWebSocketManager(QObject):
     def _emit_status(self, message: str, is_connected: bool):
         """接続状態変化を通知"""
         self.is_connected = is_connected
-        logger.info(f"OBS status: {message} (connected={is_connected})")
+        # logger.info(f"OBS status: {message} (connected={is_connected})")
         try:
             self.connection_changed.emit(is_connected, message)
         except: # アプリ終了時にエラーを吐かないようにする
