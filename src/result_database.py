@@ -549,7 +549,7 @@ class ResultDatabase:
                     entry['scores']['B_below'] += 1
 
         return {
-            'date': now.strftime('%Y/%m/%d'),
+            'date': now.strftime('%Y. %m. %d'),
             'playcount': playcount,
             'score_rate': score_rate_str,
             'daily_notes': daily_notes,

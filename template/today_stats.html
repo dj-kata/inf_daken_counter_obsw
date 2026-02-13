@@ -8,12 +8,16 @@
     <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../out/websocket.css">
     <style>
+        @font-face {
+            font-family: 'dseg14classic-bold';
+            src: url('./DSEG14Classic-Bold.woff2') format('woff2');
+        }
         :root {
             --notes-graph-days: 7;
             --skip-no-update: 1;
             /* --stats-levels: "sp11,sp12,dp11,dp12"; */
             --stats-levels: "sp11,sp12";
-            --lv-stats-position: "bottom"; /* left or bottom */
+            --lv-stats-position: "left"; /* left or bottom */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -48,6 +52,7 @@
         }
 
         .date-display {
+            font-family: 'dseg14classic-bold';
             font-size: 72px;
             color: #fff;
             text-shadow: 3px 3px 0 #000, -2px 2px 0 #000, 2px -2px 0 #000, -2px -2px 0 #000;
