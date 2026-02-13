@@ -52,10 +52,10 @@ dist:
 	@cp -a $(project_name)/*.exe to_bin/
 
 clean:
-	@rm -rf $(project_name)
+	@rm -rf $(target)
 	@rm -rf __pycache__
 
 test:
 	@$(wuv) run $(main_file_name).pyw
-debug:
+dtest:
 	@$(wuv) run python $(main_file_name).pyw
