@@ -43,6 +43,9 @@ class Config:
         # スコアビューワ設定
         self.score_viewer_style = 'SP'  # 'SP', 'DP', 'Battle'
         self.score_viewer_levels = list(range(1, 13))  # [1, 2, ..., 12]
+        self.score_viewer_sort_column = 0  # ソート列インデックス
+        self.score_viewer_sort_order = 0   # 0=昇順, 1=降順
+        self.score_viewer_geometry = None  # [x, y, width, height]
         
         # 楽曲パック集計対象設定（デフォルトはunknown以外の全て）
         self.target_music_packs = [pack.name for pack in music_pack if pack != music_pack.unknown]
@@ -99,6 +102,9 @@ class Config:
                     # スコアビューワ設定
                     self.score_viewer_style = config_data.get('score_viewer_style', 'SP')
                     self.score_viewer_levels = config_data.get('score_viewer_levels', list(range(1, 13)))
+                    self.score_viewer_sort_column = config_data.get('score_viewer_sort_column', 0)
+                    self.score_viewer_sort_order = config_data.get('score_viewer_sort_order', 0)
+                    self.score_viewer_geometry = config_data.get('score_viewer_geometry', None)
                     
                     # 楽曲パック集計対象設定
                     self.target_music_packs = config_data.get('target_music_packs', [])
@@ -146,6 +152,9 @@ class Config:
             "language": self.language,
             "score_viewer_style": self.score_viewer_style,
             "score_viewer_levels": self.score_viewer_levels,
+            "score_viewer_sort_column": self.score_viewer_sort_column,
+            "score_viewer_sort_order": self.score_viewer_sort_order,
+            "score_viewer_geometry": self.score_viewer_geometry,
             "rivals": self.rivals,
             "csv_export_path": self.csv_export_path,
         }

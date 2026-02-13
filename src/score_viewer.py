@@ -244,7 +244,11 @@ class ScoreViewer(QMainWindow):
         
         # ウィンドウ設定
         self.setWindowTitle("スコアビューワ")
-        self.setGeometry(100, 100, 1600, 800)
+        geo = self.config.score_viewer_geometry
+        if geo and len(geo) == 4:
+            self.setGeometry(geo[0], geo[1], geo[2], geo[3])
+        else:
+            self.setGeometry(100, 100, 1600, 800)
         
         # UI初期化
         self.init_ui()
@@ -489,18 +493,10 @@ class ScoreViewer(QMainWindow):
 
         frame.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
 
-        # タイトル + 更新ボタン + 勝敗バー
-        title_layout = QHBoxLayout()
-        title_label = QLabel("ライバル欄")
-        title_label.setStyleSheet("font-weight: bold; font-size: 14px;")
-        title_layout.addWidget(title_label)
-
+        # 勝敗バー
         self.win_loss_bar = WinLossBar()
         self.win_loss_bar.side_clicked.connect(self._on_win_loss_bar_clicked)
-        title_layout.addWidget(self.win_loss_bar, 1)
-
-        title_layout.addStretch()
-        layout.addLayout(title_layout)
+        layout.addWidget(self.win_loss_bar)
 
         # ライバルテーブル
         self.rival_table = QTableWidget()
@@ -562,6 +558,7 @@ class ScoreViewer(QMainWindow):
         # ヘッダー設定
         header = self.table.horizontalHeader()
         header.setStretchLastSection(True)
+        header.sectionClicked.connect(lambda _: self.save_filter_state())
         
         # 列幅設定
         self.table.setColumnWidth(0, 60)   # Lv
@@ -694,6 +691,12 @@ class ScoreViewer(QMainWindow):
                 all_checked = all(cb.isChecked() for cb in self.level_checkboxes.values())
                 self.level_all_checkbox.setChecked(all_checked)
 
+            # ソート状態復元
+            sort_col = self.config.score_viewer_sort_column
+            sort_order = Qt.SortOrder(self.config.score_viewer_sort_order)
+            if hasattr(self, 'table'):
+                self.table.horizontalHeader().setSortIndicator(sort_col, sort_order)
+
             # シグナルのブロックを解除
             for button in self.style_buttons.values():
                 button.blockSignals(False)
@@ -729,7 +732,13 @@ class ScoreViewer(QMainWindow):
                 if cb.isChecked()
             ]
             self.config.score_viewer_levels = selected_levels
-            
+
+            # ソート状態保存
+            if hasattr(self, 'table'):
+                header = self.table.horizontalHeader()
+                self.config.score_viewer_sort_column = header.sortIndicatorSection()
+                self.config.score_viewer_sort_order = header.sortIndicatorOrder().value
+
             # 設定を保存
             self.config.save_config()
         
@@ -1057,6 +1066,7 @@ class ScoreViewer(QMainWindow):
             if self.rival_manager:
                 mode = score.chart  # "SPA", "DPN" 等
                 rival_scores = self.rival_manager.get_rival_scores(score.title, mode)
+                rival_scores.sort(key=lambda x: x[1].score, reverse=True)
 
                 for rival_name, entry in rival_scores:
                     row += 1
@@ -1265,13 +1275,12 @@ class ScoreViewer(QMainWindow):
         if isinstance(arg, bool) and not arg:
             return
 
-        # 基本フィルタが変わったらライバル勝敗フィルタをリセット
-        if self._rival_win_filter:
-            self._rival_win_filter = None
-            self._rival_win_filter_name = ""
-            self._rival_filter_label.hide()
-
         self.update_table()
+
+        # 勝敗バーが表示中なら数値を再計算
+        if self.win_loss_bar.isVisible() and self.win_loss_bar.rival_name:
+            my_wins, rival_wins, draws = self._compute_win_loss(self.win_loss_bar.rival_name)
+            self.win_loss_bar.set_data(my_wins, rival_wins, draws, self.win_loss_bar.rival_name)
         self.save_filter_state()
     
     @Slot()
@@ -1462,6 +1471,9 @@ class ScoreViewer(QMainWindow):
         """ウィンドウを閉じる時"""
         # 設定を保存
         self.save_filter_state()
+        geo = self.geometry()
+        self.config.score_viewer_geometry = [geo.x(), geo.y(), geo.width(), geo.height()]
+        self.config.save_config()
         logger.info("スコアビューワを終了しました")
         event.accept()
 

@@ -1,8 +1,12 @@
 """ライバルスコアデータの取得・管理モジュール"""
+import bz2
 import csv
 import io
+import os
+import pickle
 import re
 import requests
+import traceback
 from typing import Dict, List, Tuple, Optional
 
 from PySide6.QtCore import QObject, QThread, Signal
@@ -178,12 +182,35 @@ class RivalFetchWorker(QThread):
 class RivalManager(QObject):
     """ライバルデータの取得・保持を管理するクラス"""
 
+    CACHE_PATH = os.path.join('out', 'rival_log.infdc')
+
     rivals_loaded = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.rivals: List[RivalData] = []
         self._worker: Optional[RivalFetchWorker] = None
+
+    def load_cache(self):
+        """キャッシュからライバルデータを読み込み、即座に反映する"""
+        try:
+            with bz2.BZ2File(self.CACHE_PATH, 'rb') as f:
+                self.rivals = pickle.load(f)
+            rival_count = len([r for r in self.rivals if not r.error])
+            logger.info(f"ライバルキャッシュを読み込みました ({rival_count}人)")
+            self.rivals_loaded.emit()
+        except Exception:
+            logger.debug("ライバルキャッシュが見つからないか読み込めません")
+
+    def _save_cache(self):
+        """ライバルデータをキャッシュに保存する"""
+        try:
+            os.makedirs('out', exist_ok=True)
+            with bz2.BZ2File(self.CACHE_PATH, 'wb', compresslevel=9) as f:
+                pickle.dump(self.rivals, f)
+            logger.info("ライバルキャッシュを保存しました")
+        except Exception:
+            logger.error(f"ライバルキャッシュ保存エラー: {traceback.format_exc()}")
 
     def start_fetch(self, rival_configs: List[Dict[str, str]]):
         """全ライバルのCSVをバックグラウンドで取得開始"""
@@ -202,6 +229,7 @@ class RivalManager(QObject):
 
     def _on_fetch_finished(self, results: List[RivalData]):
         self.rivals = results
+        self._save_cache()
         self.rivals_loaded.emit()
 
     def get_rival_scores(self, title: str, mode: str) -> List[Tuple[str, RivalScoreEntry]]:

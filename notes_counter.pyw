@@ -120,8 +120,9 @@ class MainWindow(MainWindowUI):
         # グローバルホットキーの登録
         self.setup_global_hotkeys()
 
-        # ライバルデータの取得（バックグラウンド）
+        # ライバルデータ: キャッシュから即座に読み込み → バックグラウンドで最新を取得
         if self.config.rivals:
+            self.rival_manager.load_cache()
             self.rival_manager.start_fetch(self.config.rivals)
 
         logger.info("アプリケーション起動完了")
