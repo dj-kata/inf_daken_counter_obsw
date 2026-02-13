@@ -87,6 +87,7 @@ class MainWindow(MainWindowUI):
         self.set_today_judge()
         self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
         self.result_database.broadcast_graph_data(self.start_time_with_offset)
+        self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
         self.result_timestamp = 0
         self.today_keystroke_count = 0
         self.play_count = 0
@@ -208,6 +209,7 @@ class MainWindow(MainWindowUI):
 
         self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
         self.result_database.broadcast_graph_data(self.start_time_with_offset)
+        self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
         self.set_today_judge()
 
         # OBS接続状態の再評価
@@ -400,6 +402,7 @@ class MainWindow(MainWindowUI):
                 self.result_database.add(result)
                 self.result_database.save()
                 self.result_database.broadcast_graph_data(self.start_time_with_offset)
+                self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
 
                 # 統計情報の更新
                 self.play_count += 1
@@ -503,6 +506,7 @@ class MainWindow(MainWindowUI):
                         if self.score_viewer:
                             self.score_viewer.refresh_data()
                         self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
+                        self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
 
                         # 画像の保存
                         if self.config.autosave_image_mode is not config_autosave_image.invalid:

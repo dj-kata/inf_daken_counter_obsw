@@ -38,6 +38,7 @@ class DataWebSocketServer:
         self.graph_data = None
         self.today_updates_data = None
         self.history_cursong_data = None
+        self.today_stats_data = None
         
     async def register_client(self, websocket):
         """クライアントを登録し、最新データを送信"""
@@ -59,6 +60,11 @@ class DataWebSocketServer:
             await websocket.send(json.dumps({
                 'type': 'history_cursong',
                 'data': self.history_cursong_data
+            }))
+        if self.today_stats_data:
+            await websocket.send(json.dumps({
+                'type': 'today_stats',
+                'data': self.today_stats_data
             }))
     
     async def unregister_client(self, websocket):
@@ -118,6 +124,19 @@ class DataWebSocketServer:
         if self.clients:
             message = json.dumps({
                 'type': 'history_cursong',
+                'data': data
+            })
+            await asyncio.gather(
+                *[client.send(message) for client in self.clients],
+                return_exceptions=True
+            )
+
+    async def broadcast_today_stats_data(self, data: dict):
+        """統計データをブロードキャスト"""
+        self.today_stats_data = data
+        if self.clients:
+            message = json.dumps({
+                'type': 'today_stats',
                 'data': data
             })
             await asyncio.gather(
@@ -184,6 +203,14 @@ class DataWebSocketServer:
         if self.loop:
             asyncio.run_coroutine_threadsafe(
                 self.broadcast_history_cursong_data(data),
+                self.loop
+            )
+
+    def update_today_stats_data(self, data: dict):
+        """統計データを更新（同期メソッド）"""
+        if self.loop:
+            asyncio.run_coroutine_threadsafe(
+                self.broadcast_today_stats_data(data),
                 self.loop
             )
 

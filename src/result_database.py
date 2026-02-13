@@ -9,10 +9,12 @@ logger = get_logger(__name__)
 import os
 import sys
 import datetime
+import math
 import bz2, pickle
 import traceback
 import functools
 import csv
+from collections import defaultdict
 from pathlib import Path
 from typing import List
 
@@ -143,6 +145,11 @@ class ResultDatabase:
                                        battle: bool = None, playspeed: float = None):
         """履歴データをWebSocketで配信"""
         return self.get_history_cursong_data(title, style, difficulty, battle, playspeed)
+
+    @_ws_broadcast('update_today_stats_data')
+    def broadcast_today_stats_data(self, start_time: int):
+        """統計データをWebSocketで配信"""
+        return self.get_today_stats_data(start_time)
 
     def add(self, result:OneResult) -> bool:
         """リザルト登録用関数。chart_id情報を何も渡さなくても受ける(途中落ちのノーツ数保存用)
@@ -425,6 +432,130 @@ class ResultDatabase:
 
         return {'items': items}
 
+
+    def get_today_stats_data(self, start_time: int) -> dict:
+        """today_stats.html用の統計データを生成"""
+        now = datetime.datetime.now()
+
+        # --- playcount, score_rate (get_graph_dataと同等のロジック) ---
+        today_target = []
+        total_judge = Judge()
+        for r in reversed(self.results):
+            if r.detect_mode == detect_mode.play:
+                if r.timestamp >= start_time:
+                    today_target.append(r)
+                    if r.judge:
+                        total_judge += r.judge
+                else:
+                    break
+
+        playcount = len(today_target)
+        score_rate_str = f"{total_judge.score_rate * 100:.1f}%"
+
+        # --- daily_notes: 直近14日分の日別ノーツ ---
+        daily_judges = defaultdict(Judge)
+        for r in reversed(self.results):
+            if r.detect_mode != detect_mode.play or not r.judge:
+                continue
+            r_date = datetime.datetime.fromtimestamp(r.timestamp).date()
+            days_ago = (now.date() - r_date).days
+            if days_ago > 14:
+                break
+            daily_judges[r_date] += r.judge
+
+        daily_notes = []
+        for i in range(14, -1, -1):
+            d = now.date() - datetime.timedelta(days=i)
+            j = daily_judges.get(d, Judge())
+            daily_notes.append({
+                'date': d.strftime('%m/%d'),
+                'pg': j.pg,
+                'gr': j.gr,
+                'gd': j.gd,
+                'bd': j.bd,
+            })
+
+        # --- today_level_distribution: 本日のレベル分布 ---
+        level_dist = {}
+        for r in reversed(self.results):
+            if r.detect_mode == detect_mode.result:
+                if r.timestamp >= start_time:
+                    songinfo = self.song_database.search(
+                        title=r.title, play_style=r.play_style, difficulty=r.difficulty
+                    )
+                    lv = str(songinfo.level) if songinfo and hasattr(songinfo, 'level') else '?'
+                    if lv not in level_dist:
+                        level_dist[lv] = {'sp': 0, 'dp': 0, 'battle': 0}
+                    is_battle = r.option and r.option.battle
+                    if is_battle:
+                        level_dist[lv]['battle'] += 1
+                    elif r.play_style == play_style.sp:
+                        level_dist[lv]['sp'] += 1
+                    else:
+                        level_dist[lv]['dp'] += 1
+                else:
+                    break
+
+        # --- level_stats: 全レベルのランプ/スコアレート統計 ---
+        bests = self.get_all_best_results()
+        level_stats = {'sp': {}, 'dp': {}}
+
+        for (title, style, diff, battle), value in bests.items():
+            if battle:
+                continue
+            songinfo = self.song_database.search(
+                title=title, play_style=style, difficulty=diff
+            )
+            if not songinfo or not hasattr(songinfo, 'level') or not songinfo.level:
+                continue
+
+            lv = str(songinfo.level)
+            style_key = 'sp' if style == play_style.sp else 'dp'
+
+            if lv not in level_stats[style_key]:
+                level_stats[style_key][lv] = {
+                    'total': 0,
+                    'lamps': {
+                        'fc': 0, 'exh': 0, 'hard': 0, 'clear': 0,
+                        'easy': 0, 'assist': 0, 'failed': 0,
+                    },
+                    'scores': {'AAA': 0, 'AA': 0, 'A': 0, 'B_below': 0},
+                }
+
+            entry = level_stats[style_key][lv]
+            entry['total'] += 1
+
+            # ランプ分類
+            lamp = value['best_lamp']
+            lamp_key_map = {
+                clear_lamp.fc: 'fc', clear_lamp.exh: 'exh',
+                clear_lamp.hard: 'hard', clear_lamp.clear: 'clear',
+                clear_lamp.easy: 'easy', clear_lamp.assist: 'assist',
+                clear_lamp.failed: 'failed', clear_lamp.noplay: 'failed',
+            }
+            entry['lamps'][lamp_key_map.get(lamp, 'failed')] += 1
+
+            # スコアレート分類
+            notes = songinfo.notes if hasattr(songinfo, 'notes') and songinfo.notes else None
+            if notes and value['best_score'] > 0:
+                rate = value['best_score'] / (notes * 2)
+                if rate >= 16 / 18:
+                    entry['scores']['AAA'] += 1
+                elif rate >= 14 / 18:
+                    entry['scores']['AA'] += 1
+                elif rate >= 12 / 18:
+                    entry['scores']['A'] += 1
+                else:
+                    entry['scores']['B_below'] += 1
+
+        return {
+            'date': now.strftime('%Y/%m/%d'),
+            'playcount': playcount,
+            'score_rate': score_rate_str,
+            'daily_notes': daily_notes,
+            'today_level_distribution': level_dist,
+            'level_stats': level_stats,
+        }
 
     def get_history_cursong_data(self, title:str, style:play_style, difficulty:difficulty,
                                  battle:bool=None, playspeed:float=None) -> dict:
