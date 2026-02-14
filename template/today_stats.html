@@ -14,7 +14,7 @@
         }
         :root {
             --notes-graph-days: 7;
-            --skip-no-update: 1;
+            --skip-no-update: 0;
             /* --stats-levels: "sp11,sp12,dp11,dp12"; */
             --stats-levels: "sp11,sp12";
             --lv-stats-position: "left"; /* left or bottom */
@@ -372,7 +372,7 @@
 
         <!-- Play Log (iframe) -->
         <div class="playlog-section">
-            <iframe id="playlog-iframe" src="today_result.html"></iframe>
+            <iframe id="playlog-iframe"></iframe>
         </div>
 
         <!-- Lv Stats -->
@@ -463,6 +463,9 @@
 
         // Small delay to ensure CSS custom properties are fully parsed and applied
         setTimeout(function() {
+            // iframe srcにskip-no-updateをURLパラメータとして渡す
+            // (file://等のクロスオリジン環境でもCSS注入に頼らず確実に値を伝える)
+            playlogIframe.src = 'today_result.html?skip_no_update=' + getSkipNoUpdate();
             applyLayout();
             connectWebSocket();
         }, 100);

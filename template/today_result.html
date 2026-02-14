@@ -323,7 +323,11 @@
             if (!data || !data.items) return;
             
             var out = '';
-            var skip_no_update = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--skip-no-update')) || 0;
+            // URLパラメータ(today_stats.htmlのiframeから渡される)を優先、なければCSS変数を使用
+            var _urlParams = new URLSearchParams(window.location.search);
+            var skip_no_update = _urlParams.has('skip_no_update')
+                ? Number(_urlParams.get('skip_no_update'))
+                : (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--skip-no-update')) || 0);
             
             data.items.forEach(function(item, index) {
                 var lv = item.lv || '';
