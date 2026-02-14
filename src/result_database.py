@@ -151,6 +151,58 @@ class ResultDatabase:
         """統計データをWebSocketで配信"""
         return self.get_today_stats_data(start_time)
 
+    _SPECIAL_ARRANGE_KEYWORDS = ['H-RAN', 'SYMM-RAN', 'SYNC-RAN']
+
+    def _filter_results_for_best(self, results: List[DetailedResult],
+                                  playspeed: float = None, battle: bool = False
+                                 ) -> List[DetailedResult]:
+        """自己ベスト計算用にリザルトをフィルタリングする。
+
+        以下の3ケースに分けて対象リザルトを絞り込む:
+        - playspeed is not None: 同一playspeedの detect_mode.result のみ
+        - battle=True: battle=True の detect_mode.result のみ
+        - 上記以外: playspeed=None かつ battleでない detect_mode.result / detect_mode.select
+
+        Args:
+            results: フィルタ対象のリザルトリスト
+            playspeed: 再生速度（Noneは通常速度）
+            battle: バトルモードかどうか
+
+        Returns:
+            フィルタ済みリザルトのリスト
+        """
+        filtered = []
+        for r in results:
+            # detect_mode.play は常に除外（途中落ちの判定ができないため）
+            if r.result.detect_mode == detect_mode.play:
+                continue
+            # 特殊配置オプション(H-RAN, SYMM-RAN, SYNC-RAN)は常に除外
+            if r.result.option and r.result.option.arrange:
+                if any(kw in r.result.option.arrange for kw in self._SPECIAL_ARRANGE_KEYWORDS):
+                    continue
+
+            if playspeed is not None:
+                # playspeed指定時: 同一playspeedの detect_mode.result のみ
+                if r.result.playspeed != playspeed:
+                    continue
+                if r.result.detect_mode != detect_mode.result:
+                    continue
+            elif battle:
+                # battle時: battle=True の detect_mode.result のみ
+                if not (r.result.option and r.result.option.battle):
+                    continue
+                if r.result.detect_mode != detect_mode.result:
+                    continue
+            else:
+                # 通常: playspeed=None かつ battleでない detect_mode.result / detect_mode.select
+                if r.result.playspeed is not None:
+                    continue
+                if r.result.option and r.result.option.battle:
+                    continue
+
+            filtered.append(r)
+        return filtered
+
     def add(self, result:OneResult) -> bool:
         """リザルト登録用関数。chart_id情報を何も渡さなくても受ける(途中落ちのノーツ数保存用)
 
@@ -167,7 +219,7 @@ class ResultDatabase:
         else:
             if result not in self.results:
                 battle = True if result.option and result.option.battle else False
-                result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=battle)
+                result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=battle, playspeed=result.playspeed)
                 self.results.append(result)
                 logger.info(f"result added! hash:{hash(result)}, len:{len(self.results)}, result:{result}")
                 return True
@@ -218,15 +270,15 @@ class ResultDatabase:
                 battle:bool=None,option:PlayOption=None,playspeed:float=None
         ) -> List:
         """指定された曲の自己べ(スコア, BP, ランプ)を返す。見つからない場合は0,0を返す。
-        battle=TrueかつDPの場合はDBx系のみ検索対象とする。optionが空でない場合は同一オプションのみ検索対象とする。
 
         Args:
-            title (str, optional): _description_. Defaults to None.
-            style (play_style, optional): _description_. Defaults to None.
-            difficulty (difficulty, optional): _description_. Defaults to None.
-            chart_id (str, optional): _description_. Defaults to None.
-            battle (bool, optional): DBx系の判定に使う、Defaults to False.
-            option (PlayOption, optional): 同一オプションのリザルトのみとしたい場合に指定、Defaults to False.
+            title (str, optional): 曲名. Defaults to None.
+            style (play_style, optional): SP/DP. Defaults to None.
+            difficulty (difficulty, optional): 譜面難易度. Defaults to None.
+            chart_id (str, optional): 譜面ID. Defaults to None.
+            battle (bool, optional): バトルモードの判定に使う. Defaults to None.
+            option (PlayOption, optional): 同一オプションのリザルトのみとしたい場合に指定. Defaults to None.
+            playspeed (float, optional): 再生速度. Defaults to None.
 
         Returns:
             List[int]: score, bp, lamp
@@ -236,20 +288,10 @@ class ResultDatabase:
         if title is not None and style is not None and difficulty is not None:
             key = calc_chart_id(title, style, difficulty)
         results = self.search(chart_id=key)
-        for r in results:
-            if r.result.detect_mode == detect_mode.play: # 途中落ちの判定ができないため使わない
-                continue
-            if playspeed != r.result.playspeed: # 再生速度が異なる場合は落とす。選曲画面から呼ぶ場合は等速しか対象にしないので存在確認はしない。
-                continue
-            if style == play_style.dp:
-                if battle: # 検索対象がDBxの場合
-                    if r.result.option and not r.result.option.battle:
-                        continue
-                else: # 検索対象が非DBxの場合
-                    if r.result.option and r.result.option.battle:
-                        continue
+        filtered = self._filter_results_for_best(results, playspeed=playspeed, battle=battle)
+        for r in filtered:
             if option: # オプション指定がある場合は、arrangeが一致するもののみ通す
-                if option.arrange is not r.option.arrange or option.flip is not r.option.flip or option.special is not r.option.special:
+                if option.arrange is not r.result.option.arrange or option.flip is not r.result.option.flip or option.special is not r.result.option.special:
                     continue
             ret[0] = max(ret[0], r.result.score)
             if r.result.judge:
@@ -571,16 +613,9 @@ class ResultDatabase:
         best_lamp_opt = None
         notes = None # バグってノーツ数が入っていない場合があるので別処理にする
 
+        filtered = self._filter_results_for_best(results, playspeed=playspeed, battle=battle)
         target = []
-        for r in results:
-            if r.result.option and r.result.option.special:
-                continue
-            if r.result.playspeed != playspeed:
-                continue
-            if r.result.detect_mode == detect_mode.play:
-                continue
-            if battle and style == play_style.dp and r.result.option.battle != battle:
-                continue
+        for r in filtered:
             if r.result.detect_mode == detect_mode.result:
                 target.append(r)
             if r.result.notes and not notes:

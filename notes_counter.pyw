@@ -521,6 +521,7 @@ class MainWindow(MainWindowUI):
                         ,style=result.play_style
                         ,difficulty=result.difficulty
                         ,battle=result.option.battle
+                        ,playspeed=result.playspeed
                     )
 
                 self.result_pre = result

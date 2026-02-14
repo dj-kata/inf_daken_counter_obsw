@@ -89,7 +89,7 @@ class PlayOption():
                 self.special == other.special)
 
     def __str__(self):
-        out = 'unknown'
+        out = '?'
         if self.valid:
             if self.battle:
                 out += 'BATTLE, '
