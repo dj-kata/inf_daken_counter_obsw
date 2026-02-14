@@ -400,7 +400,7 @@
     }
 
     function getSkipNoUpdate() {
-        return getCSSProp('--skip-no-update') || '0';
+        return parseInt(getCSSProp('--skip-no-update')) || 0;
     }
 
     function getLvStatsPosition() {

@@ -323,7 +323,7 @@
             if (!data || !data.items) return;
             
             var out = '';
-            var skip_no_update = getComputedStyle(document.documentElement).getPropertyValue('--skip-no-update');
+            var skip_no_update = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--skip-no-update')) || 0;
             
             data.items.forEach(function(item, index) {
                 var lv = item.lv || '';
