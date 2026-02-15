@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 import traceback
 
-from src.result import OneResult, DetailedResult
+from src.result import OneResult, DetailedResult, OneBestData
 from src.result_database import ResultDatabase
 from src.classes import play_style, difficulty, clear_lamp, detect_mode
 from src.config import Config
@@ -23,105 +23,6 @@ from src.funcs import *
 
 logger = get_logger(__name__)
 
-
-class ScoreData:
-    """1譜面の自己ベスト情報"""
-    def __init__(self):
-        self.title: str = ""
-        self.style: play_style = play_style.sp
-        self.difficulty: difficulty = difficulty.hyper
-        self.songinfo = None  # SongInfoオブジェクト
-        self.best_score_result: OneResult = None  # ベストスコア時のOneResult
-        self.min_bp_result: OneResult = None  # 最小BP時のOneResult
-        self.best_lamp_result: OneResult = None  # 最良ランプのOneResult
-        self.last_result: OneResult = None  # 最終プレー
-    
-    @property
-    def chart(self) -> str:
-        """譜面名 (SPA, SPH, DPA, etc.)"""
-        return get_chart_name(self.style, self.difficulty)
-    
-    @property
-    def level(self) -> str:
-        """レベル"""
-        if self.songinfo and hasattr(self.songinfo, 'level'):
-            return str(self.songinfo.level)
-        return ""
-    
-    @property
-    def dp_unofficial(self) -> str:
-        """非公式難易度"""
-        if self.songinfo and hasattr(self.songinfo, 'dp_unofficial'):
-            return str(self.songinfo.dp_unofficial)
-        return ""
-    
-    @property
-    def lamp(self) -> clear_lamp:
-        """最良ランプ"""
-        if self.best_lamp_result:
-            return self.best_lamp_result.lamp
-        return clear_lamp.noplay
-    
-    @property
-    def best_score(self) -> int:
-        """ベストスコア"""
-        if self.best_score_result:
-            return self.best_score_result.score if self.best_score_result.score else 0
-        return 0
-    
-    @property
-    def score_rate(self) -> float:
-        """スコアレート"""
-        if self.best_score_result and self.best_score_result.notes:
-            return self.best_score / (self.best_score_result.notes * 2)
-        return 0.0
-    
-    @property
-    def min_bp(self) -> int:
-        """最小BP"""
-        if self.min_bp_result:
-            return self.min_bp_result.bp if self.min_bp_result.bp is not None else 99999
-        return 99999
-    
-    @property
-    def best_score_option(self) -> str:
-        """ベストスコア時のオプション"""
-        if self.best_score_result and self.best_score_result.option:
-            return str(self.best_score_result.option)
-        return ""
-    
-    @property
-    def min_bp_option(self) -> str:
-        """最小BP時のオプション"""
-        if self.min_bp_result and self.min_bp_result.option:
-            return str(self.min_bp_result.option)
-        return ""
-    
-    @property
-    def last_play_date(self) -> str:
-        """最終プレー日"""
-        if self.last_result:
-            return datetime.fromtimestamp(self.last_result.timestamp).strftime('%Y-%m-%d %H:%M')
-        return ""
-    
-    @property
-    def notes(self) -> int:
-        """ノーツ数"""
-        # ベストスコア時のノーツ数を優先
-        if self.best_score_result and self.best_score_result.notes:
-            return self.best_score_result.notes
-        if self.min_bp_result and self.min_bp_result.notes:
-            return self.min_bp_result.notes
-        if self.best_lamp_result and self.best_lamp_result.notes:
-            return self.best_lamp_result.notes
-        return 0
-    
-    @property
-    def is_battle(self):
-        """battleオプションありかどうか"""
-        if self.best_score_result and self.best_score_result.option:
-            return self.best_score_result.option.battle
-        return None
 
 class SortableItem(QTableWidgetItem):
     '''UserRoleに渡された数値でソートするための表アイテム。表示とソートを分ける時に使う。'''
@@ -234,8 +135,8 @@ class ScoreViewer(QMainWindow):
         self.config = config
         self.result_database = result_database
         self.rival_manager = rival_manager
-        self.scores: Dict[str, ScoreData] = {}  # key: (title, style, difficulty)
-        self.current_selected_score: Optional[ScoreData] = None  # 現在選択中の譜面
+        self.scores: Dict[str, OneBestData] = {}  # key: (title, style, difficulty)
+        self.current_selected_score: Optional[OneBestData] = None  # 現在選択中の譜面
         self._rival_win_filter: Optional[str] = None  # "my_wins", "rival_wins", "draws", or None
         self._rival_win_filter_name: str = ""  # フィルタ対象のライバル名
         self._challenges: Dict[tuple, str] = {}  # {(title, mode): rival_name}
@@ -610,6 +511,9 @@ class ScoreViewer(QMainWindow):
             # 全リザルトを処理
             for result in self.result_database.results:
                 self.process_result(result)
+
+            # 共通処理によって全譜面の自己べを取得
+            # self.scores = self.result_database.get_best_all_charts()
             
             logger.info(f"{len(self.scores)}件の譜面データを読み込みました")
         
@@ -618,14 +522,14 @@ class ScoreViewer(QMainWindow):
             logger.error(traceback.format_exc())
     
     def process_result(self, result: OneResult):
-        """1つのリザルトを処理"""
+        """1つのリザルトを処理。自己ベストの取得処理が別になってしまっているので直したい TODO"""
         try:
             # キー生成 (title, style, difficulty)
             key = (result.title, result.play_style, result.difficulty)
             
             # スコアデータ取得または作成
             if key not in self.scores:
-                score = ScoreData()
+                score = OneBestData()
                 score.title = result.title
                 score.style = result.play_style
                 score.difficulty = result.difficulty
@@ -822,7 +726,7 @@ class ScoreViewer(QMainWindow):
             logger.error(f"テーブル更新エラー: {e}")
             logger.error(traceback.format_exc())
     
-    def _get_basic_filtered_scores(self) -> List[ScoreData]:
+    def _get_basic_filtered_scores(self) -> List[OneBestData]:
         """基本フィルタ（Style/Level/検索）のみを適用したスコアリストを返す"""
         filtered = []
 
@@ -876,7 +780,7 @@ class ScoreViewer(QMainWindow):
 
         return filtered
 
-    def apply_filters(self) -> List[ScoreData]:
+    def apply_filters(self) -> List[OneBestData]:
         """全フィルター（基本 + ライバル勝敗）を適用してスコアリストを返す"""
         filtered = self._get_basic_filtered_scores()
 
@@ -908,7 +812,7 @@ class ScoreViewer(QMainWindow):
 
         return filtered
     
-    def add_table_row(self, score: ScoreData, show_bpi: bool = False):
+    def add_table_row(self, score: OneBestData, show_bpi: bool = False):
         """テーブルに1行追加"""
         row = self.table.rowCount()
         self.table.insertRow(row)
@@ -1064,7 +968,7 @@ class ScoreViewer(QMainWindow):
         except:
             return ("NO PLAY", QColor(200, 200, 200))
     
-    def update_rival_table(self, score: ScoreData):
+    def update_rival_table(self, score: OneBestData):
         """ライバル欄を更新（自己ベスト + ライバルスコアを表示）"""
         try:
             self.rival_table.setRowCount(0)
@@ -1137,7 +1041,7 @@ class ScoreViewer(QMainWindow):
         except Exception as e:
             logger.error(f"ライバル欄更新エラー: {e}")
     
-    def update_playlog_table(self, score: ScoreData):
+    def update_playlog_table(self, score: OneBestData):
         """プレーログ欄を更新（選択中の曲のプレーログを表示）"""
         try:
             self.playlog_table.setRowCount(0)

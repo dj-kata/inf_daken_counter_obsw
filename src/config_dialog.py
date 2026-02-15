@@ -132,7 +132,7 @@ class PklImportWorker(QThread):
                 option = PlayOption(None)
                 option.convert_from_v2(item[-2])
                 notes = item[3]
-                mode = detect_mode.result
+                mode = detect_mode.select # result / selectどっちにすべきか?
                 try:
                     result = OneResult(title=item[1],
                                        play_style=style,
@@ -150,6 +150,8 @@ class PklImportWorker(QThread):
                     )
                     
                     # リザルト登録処理
+                    if 'True Blue' == item[1]:
+                        print(result)
                     if self.result_database.add(result):
                         registered_count += 1
                 except:

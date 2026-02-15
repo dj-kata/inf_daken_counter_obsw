@@ -2,7 +2,7 @@
 from .classes import *
 from .funcs import *
 from .songinfo import *
-from .result import PlayOption, OneResult, DetailedResult
+from .result import PlayOption, OneResult, DetailedResult, OneBestData
 from .logger import get_logger
 from .config import Config
 logger = get_logger(__name__)
@@ -174,6 +174,17 @@ class ResultDatabase:
             フィルタ済みリザルトのリスト
         """
         filtered = []
+        # 2024/1/1以降に登録されたリザルトからノーツ数を抽出(検算用)
+        notes = None
+        for r in reversed(results):
+            if r.result.detect_mode != detect_mode.result:
+                continue
+            if r.result.timestamp < datetime.datetime(2024,1,1).timestamp():
+                break
+            if r.result.notes:
+                notes = r.result.notes
+                break
+
         for r in results:
             # detect_mode.play は常に除外（途中落ちの判定ができないため）
             if r.result.detect_mode == detect_mode.play:
@@ -195,6 +206,8 @@ class ResultDatabase:
                     continue
                 if r.result.detect_mode != detect_mode.result:
                     continue
+            elif (notes and r.result.notes) and notes != r.result.notes: # 古いリザルトでノーツ数がおかしいものを弾く
+                continue
             else:
                 # 通常: playspeed=None かつ battleでない detect_mode.result / detect_mode.select
                 if r.result.playspeed is not None:
@@ -204,6 +217,48 @@ class ResultDatabase:
 
             filtered.append(r)
         return filtered
+    
+    def get_best_all_charts(self)-> Dict[tuple, OneBestData]: 
+        """全譜面のbestを取得。スコアビューワなどから使う。"""
+        # 全譜面の一覧を先に取得
+        ret:Dict[tuple, OneBestData] = {}
+        charts = set()
+        for r in reversed(self.results):
+            battle = r.option.battle if r.option else None
+            key = (r.title, r.play_style, r.difficulty, r.playspeed, battle)
+            charts.add(key)
+
+        for k in list(charts):
+            playspeed = k[3]
+            battle = k[4]
+            if playspeed: continue
+            if battle: continue
+            results = self.search(title=k[0], style=k[1], difficulty=k[2])
+            songinfo = self.song_database.search(title=k[0], play_style=k[1], difficulty=k[2])
+            filtered = self._filter_results_for_best(results, playspeed=playspeed, battle=battle)
+
+            best = OneBestData()
+            best.title = k[0]
+            best.style = k[1]
+            best.difficulty = k[2]
+            best.songinfo = songinfo
+
+            tmp_best_score = 0
+            tmp_best_lamp  = clear_lamp.noplay
+            tmp_min_bp     = 99999999
+
+            for r in filtered:
+                if r.result.score > tmp_best_score:
+                    best.best_score_result = r
+                    tmp_best_score = r.result.score
+                if r.result.lamp.value > tmp_best_lamp.value:
+                    best.best_lamp_result = r
+                    tmp_best_lamp = r.result.lamp
+                if r.result.bp < tmp_min_bp:
+                    best.min_bp_result = r
+                    tmp_min_bp = r.result.bp
+            ret[(k[0], k[1], k[2])] = best
+        return ret
 
     def add(self, result:OneResult) -> bool:
         """リザルト登録用関数。chart_id情報を何も渡さなくても受ける(途中落ちのノーツ数保存用)
@@ -294,6 +349,7 @@ class ResultDatabase:
         if not filtered:
             return [None, None, None]
         for r in filtered:
+            logger.debug(f'HOGE, filtered r = {r}')
             if option: # オプション指定がある場合は、arrangeが一致するもののみ通す
                 if option.arrange is not r.result.option.arrange or option.flip is not r.result.option.flip or option.special is not r.result.option.special:
                     continue

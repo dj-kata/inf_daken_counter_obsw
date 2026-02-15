@@ -213,7 +213,7 @@ class OneResult:
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""
         if self.lamp and self.score:
-            return f"detect_mode:{self.detect_mode.name}, song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, bp:{self.bp}, judge:{self.judge}, lamp:{self.lamp.name}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_updated:{self.is_updated()}(pre score:{self.pre_score}, bp:{self.pre_bp}, lamp:{self.pre_lamp}), notes:{self.notes}, is_arcade:{self.is_arcade}, timestamp:{datetime.datetime.fromtimestamp(self.timestamp)}"
+            return f"detect_mode:{self.detect_mode.name}, song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, lamp:{self.lamp.name}, bp:{self.bp}, judge:{self.judge}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_updated:{self.is_updated()}(pre score:{self.pre_score}, bp:{self.pre_bp}, lamp:{self.pre_lamp}), notes:{self.notes}, is_arcade:{self.is_arcade}, timestamp:{datetime.datetime.fromtimestamp(self.timestamp)}"
         else:
             return "not a result data!"
 
@@ -305,8 +305,8 @@ class DetailedResult():
     def __str__(self):
         """主要情報の文字列を出力。ログ用(overrided)"""
         msg = f"=== DetailedResult === \nchart:{get_title_with_chart(self.result.title, self.result.play_style, self.result.difficulty)}\n"
-        msg += f"info:{self.songinfo}\n"
         msg += f"result:{self.result}\n"
+        msg += f"info:{self.songinfo}\n"
         if self.score_rate_with_rankdiff:
             if self.result.judge:
                 msg += f"({''.join(self.score_rate_with_rankdiff)}, {self.result.judge.score_rate*100:.2f}%)"
@@ -324,3 +324,102 @@ class DetailedResult():
         if not isinstance(other, DetailedResult):
             return False
         return (self.result == other.result)
+
+class OneBestData:
+    """1譜面の自己ベスト情報"""
+    def __init__(self):
+        self.title: str = ""
+        self.style: play_style = play_style.sp
+        self.difficulty: difficulty = difficulty.hyper
+        self.songinfo = None  # SongInfoオブジェクト
+        self.best_score_result: OneResult = None  # ベストスコア時のOneResult
+        self.min_bp_result: OneResult = None  # 最小BP時のOneResult
+        self.best_lamp_result: OneResult = None  # 最良ランプのOneResult
+        self.last_result: OneResult = None  # 最終プレー
+    
+    @property
+    def chart(self) -> str:
+        """譜面名 (SPA, SPH, DPA, etc.)"""
+        return get_chart_name(self.style, self.difficulty)
+    
+    @property
+    def level(self) -> str:
+        """レベル"""
+        if self.songinfo and hasattr(self.songinfo, 'level'):
+            return str(self.songinfo.level)
+        return ""
+    
+    @property
+    def dp_unofficial(self) -> str:
+        """非公式難易度"""
+        if self.songinfo and hasattr(self.songinfo, 'dp_unofficial'):
+            return str(self.songinfo.dp_unofficial)
+        return ""
+    
+    @property
+    def lamp(self) -> clear_lamp:
+        """最良ランプ"""
+        if self.best_lamp_result:
+            return self.best_lamp_result.lamp
+        return clear_lamp.noplay
+    
+    @property
+    def best_score(self) -> int:
+        """ベストスコア"""
+        if self.best_score_result:
+            return self.best_score_result.score if self.best_score_result.score else 0
+        return 0
+    
+    @property
+    def score_rate(self) -> float:
+        """スコアレート"""
+        if self.best_score_result and self.best_score_result.notes:
+            return self.best_score / (self.best_score_result.notes * 2)
+        return 0.0
+    
+    @property
+    def min_bp(self) -> int:
+        """最小BP"""
+        if self.min_bp_result:
+            return self.min_bp_result.bp if self.min_bp_result.bp is not None else 99999
+        return 99999
+    
+    @property
+    def best_score_option(self) -> str:
+        """ベストスコア時のオプション"""
+        if self.best_score_result and self.best_score_result.option:
+            return str(self.best_score_result.option)
+        return ""
+    
+    @property
+    def min_bp_option(self) -> str:
+        """最小BP時のオプション"""
+        if self.min_bp_result and self.min_bp_result.option:
+            return str(self.min_bp_result.option)
+        return ""
+    
+    @property
+    def last_play_date(self) -> str:
+        """最終プレー日"""
+        if self.last_result:
+            return datetime.fromtimestamp(self.last_result.timestamp).strftime('%Y-%m-%d %H:%M')
+        return ""
+    
+    @property
+    def notes(self) -> int:
+        """ノーツ数"""
+        # ベストスコア時のノーツ数を優先
+        if self.best_score_result and self.best_score_result.notes:
+            return self.best_score_result.notes
+        if self.min_bp_result and self.min_bp_result.notes:
+            return self.min_bp_result.notes
+        if self.best_lamp_result and self.best_lamp_result.notes:
+            return self.best_lamp_result.notes
+        return 0
+    
+    @property
+    def is_battle(self):
+        """battleオプションありかどうか"""
+        if self.best_score_result and self.best_score_result.option:
+            return self.best_score_result.option.battle
+        return None

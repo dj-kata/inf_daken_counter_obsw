@@ -338,5 +338,3 @@ class unofficial_difficulty(Enum):
             if len(diff) == 2:
                 ret += '+'
             return ret
-
-        
