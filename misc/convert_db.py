@@ -521,7 +521,7 @@ for k in dp:
         dp_not_found.append(k)
 
 # DP ereter難易度 (EC/HC/EXH diff)
-ereter = get_ereter_dp(download=True)
+ereter = get_ereter_dp(download=False)
 
 conv_ereter = {
     # ereter側の曲名: inf-notebook側の曲名

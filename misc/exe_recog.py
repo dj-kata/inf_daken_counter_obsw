@@ -65,8 +65,18 @@ if __name__ == '__main__':
     # a.play_style = play_style.dp
     # a.chart_id = (a.title, a.play_style, a.difficulty)
     # rdb.results[-1] = a
+    rdb.results[-1].option.battle = True
+    rdb.results[-1].play_style = play_style.dp
+    rdb.results[-1].playspeed = None
+    rdb.results[-1].option.arrange = 'MIR / OFF'
+
+    rdb.results[-4].option.battle = True
+    rdb.results[-4].play_style = play_style.dp
+    rdb.results[-4].option.arrange = 'S-RAN / S-RAN'
     rdb.broadcast_today_updates_data(datetime.datetime.now().timestamp() - 96*3600)
-    rdb.broadcast_history_cursong_data('AA', play_style.sp, difficulty.another)
+    # rdb.broadcast_history_cursong_data('AA', play_style.sp, difficulty.another)
+    rdb.broadcast_history_cursong_data('Red. by Jack Trance', play_style.dp, difficulty.another, battle=True)
+    rdb.broadcast_today_stats_data(datetime.datetime.now().timestamp())
     # time.sleep(5)
     # rdb.broadcast_history_cursong_data('Lords Of The Roundtable', play_style.sp, difficulty.another, playspeed=0.95)
     # rdb.broadcast_history_cursong_data('Carmina', play_style.sp, difficulty.another)
@@ -74,3 +84,4 @@ if __name__ == '__main__':
     time.sleep(4)
 
     rdb.shutdown_servers()
+    print(rdb.results[-1])
