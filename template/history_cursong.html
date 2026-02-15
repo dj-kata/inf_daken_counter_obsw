@@ -123,6 +123,9 @@
                 margin: 0 0 8px 0;
                 color: #ce93d8;
                 text-shadow: 2px 2px 0 #000;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
             }
             
             .best-item {
@@ -348,14 +351,38 @@
                 50%  { background-color: #ffff28; }
                 100% { background-color: #ff2828; }
             }
-            sp12hard{
-                color:#ff86b4;
-                padding: 0px;
+            .sp12-info {
+                font-size: 30px;
+                margin-left: 10px;
             }
-            sp12clear{
+            .sp12-clear {
                 color:#9ee7ff;
-                padding: 0px;
-                display: none;
+            }
+            .sp12-hard {
+                color:#ff86b4;
+            }
+            .sp12-slash {
+                color: #888;
+            }
+
+            .best-lamp-area {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 20px;
+            }
+
+            .best-lamp-box {
+                display: inline-block;
+                width: 22px;
+                height: 22px;
+                border-radius: 4px;
+                vertical-align: middle;
+            }
+
+            .ereter-value {
+                color: #ffa;
+                text-shadow: 2px 2px 0 #000;
             }
             .playspeed-high{
                 color: #ff7;
@@ -441,7 +468,14 @@
         var playspeed = Number(data.playspeed) || 1.0;
         var diff_color = getDifficultyColor(difficulty);
         var dp_unofficial_lv = data.dp_unofficial_lv;
-       
+        var sp_12hard = data.sp_12hard || '';
+        var sp_12clear = data.sp_12clear || '';
+        var sp_11hard = data.sp_11hard || '';
+        var sp_11clear = data.sp_11clear || '';
+        var dp_ereter_easy = data.dp_ereter_easy || '';
+        var dp_ereter_hard = data.dp_ereter_hard || '';
+        var dp_ereter_exh = data.dp_ereter_exh || '';
+
         if (playspeed>1.0){
             music = "<span class='playspeed-high'>["+playspeed+"X]</span> " + music;
         }else if (playspeed != 1.0) {
@@ -451,6 +485,15 @@
         var level_str = '<span class="title-level">☆' + lv + '</span>'
         if (dp_unofficial_lv != ""){
             level_str += ' <span class="dp-unofficial">(' + dp_unofficial_lv + ')</span>'
+        }
+        if (sp_12clear || sp_12hard) {
+            level_str += '<span class="sp12-info">(<span class="sp12-clear">' + (sp_12clear || '?') + '</span>'
+                       + '<span class="sp12-slash">/</span>'
+                       + '<span class="sp12-hard">' + (sp_12hard || '?') + '</span>)</span>';
+        } else if (sp_11clear || sp_11hard) {
+            level_str += '<span class="sp12-info">(<span class="sp12-clear">' + (sp_11clear || '?') + '</span>'
+                       + '<span class="sp12-slash">/</span>'
+                       + '<span class="sp12-hard">' + (sp_11hard || '?') + '</span>)</span>';
         }
         level_str += '<span class="title-difficulty ' + diff_color + '">' + difficulty + '</span>';
         document.querySelector('.title-level-difficulty').innerHTML = level_str;
@@ -479,6 +522,51 @@
         document.querySelector('.score-info').innerHTML = score_html;
         
         // BEST BP表示
+        var best_lamp = Number(data.best_lamp) || 0;
+        var best_lamp_opt = data.best_lamp_opt || '';
+
+        // ランプHTML生成
+        function getLampBoxHtml(lampVal, size) {
+            var cls = '';
+            if (lampVal == 1) cls = 'failed';
+            else if (lampVal == 2) cls = 'ac';
+            else if (lampVal == 3) cls = 'ec';
+            else if (lampVal == 4) cls = 'nc';
+            else if (lampVal == 5) cls = 'hc';
+            else if (lampVal == 6) cls = 'exh';
+            else if (lampVal == 7) cls = 'fc';
+            if (!cls) return '';
+            return '<span class="best-lamp-box ' + cls + '" style="width:'+size+'px;height:'+size+'px;"></span>';
+        }
+
+        function getLampName(lampVal) {
+            var names = {1:'FAILED', 2:'A-CLEAR', 3:'E-CLEAR', 4:'CLEAR', 5:'H-CLEAR', 6:'EXH', 7:'FC'};
+            return names[lampVal] || '';
+        }
+
+        // dp_ereter値の取得(best_lampに応じて)
+        function getEreterValue(lampVal, easy, hard, exh) {
+            if (!easy && !hard && !exh) return '';
+            if (lampVal == 3 || lampVal == 4) return easy;   // easy/clear → dp_ereter_easy
+            if (lampVal == 5) return hard;                     // hard → dp_ereter_hard
+            if (lampVal == 6 || lampVal == 7) return exh;      // exh/fc → dp_ereter_exh
+            return '';  // failed/ac以下は非表示
+        }
+
+        // ベストランプをBPラベル行の右側に表示
+        var bp_h2 = document.querySelector('.bp-card-header');
+        var lamp_area_html = '';
+        if (best_lamp > 0) {
+            lamp_area_html += '<span class="best-lamp-area">';
+            lamp_area_html += getLampBoxHtml(best_lamp, 22);
+            var ereter_val = getEreterValue(best_lamp, dp_ereter_easy, dp_ereter_hard, dp_ereter_exh);
+            if (ereter_val) {
+                lamp_area_html += '<span class="ereter-value">' + ereter_val + '</span>';
+            }
+            lamp_area_html += '</span>';
+        }
+        bp_h2.innerHTML = '💔 BP' + lamp_area_html;
+
         var bp_html = '';
         if (best_bp == 99999999){
             bp_html += '<div class="best-item">';
@@ -673,7 +761,7 @@
                 
                 <!-- BPカード -->
                 <div class="best-card">
-                    <h2>💔 BP</h2>
+                    <h2 class="bp-card-header">💔 BP</h2>
                     <div class="bp-info"></div>
                 </div>
                 

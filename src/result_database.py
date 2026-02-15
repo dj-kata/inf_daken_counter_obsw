@@ -42,7 +42,9 @@ def _extract_songinfo_fields(songinfo) -> dict:
     fields = {}
     for attr, key in [('dp_unofficial', 'dp_unofficial_lv'),
                        ('sp12_hard', 'sp_12hard'), ('sp12_clear', 'sp_12clear'),
-                       ('sp11_hard', 'sp_11hard'), ('sp11_clear', 'sp_11clear')]:
+                       ('sp11_hard', 'sp_11hard'), ('sp11_clear', 'sp_11clear'),
+                       ('dp_ereter_easy', 'dp_ereter_easy'), ('dp_ereter_hard', 'dp_ereter_hard'),
+                       ('dp_ereter_exh', 'dp_ereter_exh')]:
         val = getattr(songinfo, attr, None)
         fields[key] = str(val) if val else ""
     return fields
