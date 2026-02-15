@@ -355,6 +355,10 @@ class ResultDatabase:
 
             entry = best_results[key]
 
+            # ノーツ数を記録（リザルトから取得）
+            if result.notes and not entry.get('notes'):
+                entry['notes'] = result.notes
+
             # ベストスコア更新
             if result.score and result.score > entry['best_score']:
                 entry['best_score'] = result.score
@@ -579,8 +583,8 @@ class ResultDatabase:
             }
             entry['lamps'][lamp_key_map.get(lamp, 'failed')] += 1
 
-            # スコアレート分類
-            notes = songinfo.notes if hasattr(songinfo, 'notes') and songinfo.notes else None
+            # スコアレート分類（songinfo.notesが無い場合はリザルト側のnotesをフォールバック）
+            notes = songinfo.notes if hasattr(songinfo, 'notes') and songinfo.notes else value.get('notes')
             if notes and value['best_score'] > 0:
                 rate = value['best_score'] / (notes * 2)
                 if rate >= 16 / 18:
