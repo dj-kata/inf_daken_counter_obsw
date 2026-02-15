@@ -636,11 +636,16 @@ class ResultDatabase:
             if r.result.lamp.value > best_lamp:
                 best_lamp = r.result.lamp.value
                 best_lamp_opt = r.result.option
-            if r.result.judge:
-                if not r.result.dead and r.result.judge.pr + r.result.judge.bd < best_bp:
-                    best_bp = r.result.judge.pr + r.result.judge.bd
-                    best_bp_opt = r.result.option
-            else:
+            if r.result.judge: # リザルト画面からの取得
+                if battle:
+                    if r.result.judge.pr + r.result.judge.bd < best_bp:
+                        best_bp = r.result.judge.pr + r.result.judge.bd
+                        best_bp_opt = r.result.option
+                else:
+                    if not r.result.dead and r.result.judge.pr + r.result.judge.bd < best_bp:
+                        best_bp = r.result.judge.pr + r.result.judge.bd
+                        best_bp_opt = r.result.option
+            else: # 選曲画面からの取得
                 if r.result.bp and r.result.bp < best_bp:
                     best_bp = r.result.bp
                     best_bp_opt = r.result.option
@@ -777,7 +782,7 @@ class ResultDatabase:
                     timestamp
                 ]
                 if mode == '':
-                    logger.debug(f'mode is None, skipped!, row={row}')
+                    # logger.debug(f'mode is None, skipped!, row={row}')
                     continue
                 writer.writerow(row)
 
