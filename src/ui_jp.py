@@ -231,6 +231,7 @@ class UIText:
         hide_source = "ソースを非表示"
         switch_scene = "シーンを切り替え"
         set_monitor_source = "監視対象ソース指定"
+        autosave_source = "キャプチャを自動保存"
 
     class main:
         '''main window'''

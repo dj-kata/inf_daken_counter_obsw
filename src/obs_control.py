@@ -154,7 +154,8 @@ class OBSControlWindow:
         "show_source": "ソースを表示",
         "hide_source": "ソースを非表示",
         "switch_scene": "シーンを切り替え",
-        "set_monitor_source": "監視対象ソース指定"
+        "set_monitor_source": "監視対象ソース指定",
+        "autosave_capture": "終了時にキャプチャ自動保存"
     }
     
     # 色定義
@@ -170,10 +171,11 @@ class OBSControlWindow:
     }
     
     ACTION_COLORS = {
-        "show_source": "#E8FFE8",       # 薄い緑
-        "hide_source": "#FFE8E8",       # 薄い赤
-        "switch_scene": "#E8E8FF",      # 薄い青
-        "set_monitor_source": "#FFFACD" # 薄い黄色
+        "show_source": "#E8FFE8",        # 薄い緑
+        "hide_source": "#FFE8E8",        # 薄い赤
+        "switch_scene": "#E8E8FF",       # 薄い青
+        "set_monitor_source": "#FFFACD", # 薄い黄色
+        "autosave_source": "#eeff99"        # 薄い黄色
     }
     
     def __init__(self, parent, obs_manager, config:Config=Config(), on_close_callback=None):

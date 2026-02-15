@@ -388,11 +388,17 @@ class OBSWebSocketManager(QObject):
             self.screen = None
     
     @_require_connection
-    def save_screenshot_dst(self, source: str, dst: str) -> bool:
+    def save_screenshot_dst(self, source: str, dst: str, disable_wh:bool=False) -> bool:
         """スクリーンショットを保存"""
+        if disable_wh:
+            picw = None
+            pich = None
+        else:
+            picw = self.picw
+            pich = self.pich
         self.client.save_source_screenshot(
             source, 'png', dst,
-            self.picw, self.pich, 100
+            picw, pich, 100
         )
         return True
 

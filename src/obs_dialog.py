@@ -56,6 +56,7 @@ class OBSControlDialog(QDialog):
         self.ACTIONS = [
             ("show_source",        self.ui.obs_action.show_source),
             ("hide_source",        self.ui.obs_action.hide_source),
+            ("autosave_source",     self.ui.obs_action.autosave_source),
             ("switch_scene",       self.ui.obs_action.switch_scene),
             ("set_monitor_source", self.ui.obs_action.set_monitor_source),
         ]
@@ -64,6 +65,7 @@ class OBSControlDialog(QDialog):
         self.ACTION_COLORS = {
             "show_source": QColor("#e8f5e9"),    # 薄い緑
             "hide_source": QColor("#ffebee"),    # 薄い赤
+            "autosave_source": QColor("#fff2dd"),   # 薄い青
             "switch_scene": QColor("#e3f2fd"),   # 薄い青
         }
     
@@ -278,7 +280,7 @@ class OBSControlDialog(QDialog):
             self.target_scene_combo.setEnabled(False)
             self.target_source_combo.setEnabled(False)
             self.switch_scene_combo.setEnabled(True)
-        elif action_id in ("show_source", "hide_source"):
+        elif action_id in ("show_source", "hide_source", "autosave_source"):
             # ソース表示/非表示
             self.timing_combo.setEnabled(True)
             self.target_scene_combo.setEnabled(True)
@@ -319,7 +321,7 @@ class OBSControlDialog(QDialog):
                 "action": action_id,
             }
             
-            if action_id == "show_source" or action_id == "hide_source":
+            if action_id in ("show_source", "hide_source", "autosave_source"):
                 # ソース表示・非表示
                 target_scene = self.target_scene_combo.currentText()
                 target_source = self.target_source_combo.currentText()

@@ -230,6 +230,7 @@ class UIText:
         hide_source = "hide source"
         switch_scene = "switch scene"
         set_monitor_source = "set monitor source"
+        autosave_source = "auto-save capture of source"
 
     class main:
         '''main window'''

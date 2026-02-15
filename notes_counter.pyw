@@ -457,6 +457,18 @@ class MainWindow(MainWindowUI):
                                     self.obs_manager.disable_source(mod_scene_name, scene_item_id)
                                 state = "表示" if enabled else "非表示"
                                 print(f"ソースを{state}: {scene_name}/{source_name} (id:{scene_item_id})")
+
+                    elif action == "autosave_source": # キャプチャを自動保存
+                        scene_name = setting.get("scene")
+                        source_name = setting.get("source")
+                        if scene_name and source_name:
+                            mod_scene_name, scene_item_id = self.obs_manager.search_itemid(scene_name, source_name)
+                            if scene_item_id:
+                                filename = os.path.splitext(source_name)[0]
+                                filename += f"_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
+                                dst = Path(self.config.image_save_path).resolve() / filename
+                                # print('HOGEHOGE', mod_scene_name, scene_item_id, str(dst))
+                                self.obs_manager.save_screenshot_dst(source_name, str(dst), disable_wh=True)
                                 
                 except Exception as e:
                     print(f"制御実行エラー (trigger: {trigger}, setting: {setting}): {e}")
