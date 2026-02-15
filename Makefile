@@ -4,7 +4,7 @@ project_name=inf_daken_counter
 target=$(project_name)/.built  # timestampファイルにすることで連続でmakeできないように対策
 target_zip=$(project_name).zip
 srcs=$(wildcard *.py) $(wildcard *.pyw) $(wildcard src/*.py) $(wildcard misc/*.py)
-html_files=$(wildcard html/*.html)
+html_files=$(wildcard template/*.html)
 version=$(shell head -n1 version.txt)
 
 # all: $(target_zip)
