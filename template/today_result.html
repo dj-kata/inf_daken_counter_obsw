@@ -256,6 +256,9 @@
             .playspeed-low{
                 color: #f7f;
             }
+            .battle{
+                color: #7fa;
+            }
         </style>
     </head>
     <body>
@@ -343,6 +346,7 @@
                 var pre_bp = Number(item.pre_bp) || 0;
                 var bpi = item.bpi || '';
                 var opt = item.opt || '';
+                var battle = Number(item.battle) || 0;
                 var sp_12hard = item.sp_12hard || '';
                 var sp_12clear = item.sp_12clear || '';
                 var playspeed = Number(item.playspeed) || 1.0;
@@ -416,26 +420,27 @@
                                    '<span class="sp12-slash">/</span>' +
                                    '<span class="sp12-hard">' + hard_text + '</span>';
                 }
-                if (dp_unofficial_lv != ""){
+                if (battle == 0 && dp_unofficial_lv != ""){
                     level_display = dp_unofficial_lv;
                 }
                 
                 // DBx系オプションの処理
-                var is_battle = opt.indexOf("BATTLE") >= 0;
-                var title_prefix = '';
-                if (is_battle) {
+                var title_prefix = "";
+                if (battle == 1) {
                     var with_scratch = opt.indexOf("A-SCR") < 0 ? "皿" : "";
+                    title_prefix = "<span class='battle'>["; + with_scratch
                     if ((opt.indexOf("MIR / OFF") >= 0) || (opt.indexOf("OFF / MIR") >= 0)) {
-                        title_prefix = '(' + with_scratch + 'DBM)';
+                        title_prefix += 'DBM';
                     } else if (opt.indexOf("OFF / OFF") >= 0) {
-                        title_prefix = '(' + with_scratch + 'DB)';
+                        title_prefix += 'DB';
                     } else if (opt.indexOf("RAN / RAN") >= 0) {
-                        title_prefix = '(' + with_scratch + 'DBR)';
+                        title_prefix += 'DBR';
                     } else if (opt.indexOf("S-RAN / S-RAN") >= 0) {
-                        title_prefix = '(' + with_scratch + 'DBSR)';
+                        title_prefix += 'DBSR';
                     } else if (opt.indexOf("H-RAN / H-RAN") >= 0) {
-                        title_prefix = '(' + with_scratch + 'DBHR)';
+                        title_prefix += 'DBHR';
                     }
+                    title_prefix += "]</span> ";
                 }
                 
                 // テーブル行HTML生成
@@ -456,18 +461,21 @@
                     title = "<span class='playspeed-low'>["+playspeed+"X]</span> "+title;
                 }
                 out += title + '</td>';
+                out += '<td class="' + score_class + '">' + score + '</td>';
+                out += '<td>' + rankdiff + '</td>';
+                out += '<td class="' + bpi_class + '">' + bpi + '</td>';
                 
-                if (is_battle) {
-                    // BATTLE系の場合
-                    out += '<td class="' + score_class + '">bp' + bp + '</td>';
-                    out += '<td></td>';
-                    out += '<td></td>';
-                } else {
-                    // 通常の場合
-                    out += '<td class="' + score_class + '">' + score + '</td>';
-                    out += '<td>' + rankdiff + '</td>';
-                    out += '<td class="' + bpi_class + '">' + bpi + '</td>';
-                }
+                // if (battle == 1) {
+                //     // BATTLE系の場合
+                //     out += '<td class="' + score_class + '">bp' + bp + '</td>';
+                //     out += '<td></td>';
+                //     out += '<td></td>';
+                // } else {
+                //     // 通常の場合
+                //     out += '<td class="' + score_class + '">' + score + '</td>';
+                //     out += '<td>' + rankdiff + '</td>';
+                //     out += '<td class="' + bpi_class + '">' + bpi + '</td>';
+                // }
                 
                 // オプション
                 out += '<td>' + opt + '</td>';

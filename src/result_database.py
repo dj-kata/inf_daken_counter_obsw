@@ -464,6 +464,7 @@ class ResultDatabase:
                 'pre_bp': r.pre_bp if r.pre_bp is not None else 0,
                 'pre_lamp': r.pre_lamp.value if r.pre_lamp is not None else 0,
                 'opt': r.option.__str__() if r.option else "",
+                'battle': r.option.battle if r.option else 0,
                 'playspeed': r.playspeed if r.playspeed else 1.0,
                 'score_rate': r.score / r.notes / 2 if r.notes else 0
             }
@@ -660,7 +661,8 @@ class ResultDatabase:
             'best_bp': best_bp,
             'best_bp_opt': best_bp_opt.__str__() if best_bp_opt else "",
             'best_score': best_score,
-            'best_score_opt': best_score_opt.__str__() if best_score_opt else ""
+            'best_score_opt': best_score_opt.__str__() if best_score_opt else "",
+            'battle': best_score_opt.battle if best_score_opt else 0,
         }
 
         if songinfo and hasattr(songinfo, 'bpi_ave') and songinfo.bpi_ave:

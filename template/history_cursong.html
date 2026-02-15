@@ -390,6 +390,9 @@
             .playspeed-low{
                 color: #f7f;
             }
+            .battle{
+                color: #7fa;
+            }
 
         </style>
     </head>
@@ -475,7 +478,15 @@
         var dp_ereter_easy = data.dp_ereter_easy || '';
         var dp_ereter_hard = data.dp_ereter_hard || '';
         var dp_ereter_exh = data.dp_ereter_exh || '';
+        var battle = data.battle || 0;
+        var best_score_opt = data.best_score_opt || "";
 
+        // DBx系オプションの処理
+        var opt = best_score_opt;
+        var title_prefix = "";
+        if (battle == 1) {
+            music = "<span class='battle'>[DBx]</span> " + music;
+        }
         if (playspeed>1.0){
             music = "<span class='playspeed-high'>["+playspeed+"X]</span> " + music;
         }else if (playspeed != 1.0) {
