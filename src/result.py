@@ -165,8 +165,11 @@ class OneResult:
         """更新があるかどうかを返す
 
         Returns:
-            bool: ランプ、スコア、BPのいずれかが更新されていればTrue
+            bool: ランプ、スコア、BPのいずれかが更新されていればTrue。
+                  自己ベストが存在しない(初プレー)場合もTrue。
         """
+        if self.pre_score is None:
+            return True
         ret = False
         ret = True if self.pre_score and self.score > self.pre_score else ret
         ret = True if self.pre_lamp and self.lamp.value > self.pre_lamp.value else ret

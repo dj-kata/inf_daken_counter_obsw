@@ -289,6 +289,8 @@ class ResultDatabase:
             key = calc_chart_id(title, style, difficulty)
         results = self.search(chart_id=key)
         filtered = self._filter_results_for_best(results, playspeed=playspeed, battle=battle)
+        if not filtered:
+            return [None, None, None]
         for r in filtered:
             if option: # オプション指定がある場合は、arrangeが一致するもののみ通す
                 if option.arrange is not r.result.option.arrange or option.flip is not r.result.option.flip or option.special is not r.result.option.special:
@@ -452,9 +454,9 @@ class ResultDatabase:
                 'score': r.score,
                 'bp': r.judge.pr + r.judge.bd if r.judge else r.bp,
                 'lamp': r.lamp.value,
-                'pre_score': r.pre_score,
-                'pre_bp': r.pre_bp,
-                'pre_lamp': r.pre_lamp.value,
+                'pre_score': r.pre_score if r.pre_score is not None else 0,
+                'pre_bp': r.pre_bp if r.pre_bp is not None else 0,
+                'pre_lamp': r.pre_lamp.value if r.pre_lamp is not None else 0,
                 'opt': r.option.__str__() if r.option else "",
                 'playspeed': r.playspeed if r.playspeed else 1.0,
                 'score_rate': r.score / r.notes / 2 if r.notes else 0
@@ -689,9 +691,9 @@ class ResultDatabase:
                 'score_rate': r.result.score / r.result.notes / 2 if r.result.notes else 0,
                 'bp': r.result.bp,
                 'bprate': r.result.bp / r.result.notes if r.result.notes else 0,
-                'pre_score': r.result.pre_score,
-                'pre_lamp': r.result.pre_lamp.value,
-                'pre_bp': r.result.pre_bp,
+                'pre_score': r.result.pre_score if r.result.pre_score is not None else 0,
+                'pre_lamp': r.result.pre_lamp.value if r.result.pre_lamp is not None else 0,
+                'pre_bp': r.result.pre_bp if r.result.pre_bp is not None else 0,
                 'opt': r.result.option.__str__() if r.result.option else ""
             }
 
