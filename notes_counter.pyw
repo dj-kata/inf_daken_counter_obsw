@@ -467,7 +467,6 @@ class MainWindow(MainWindowUI):
                                 filename = os.path.splitext(source_name)[0]
                                 filename += f"_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
                                 dst = Path(self.config.image_save_path).resolve() / filename
-                                # print('HOGEHOGE', mod_scene_name, scene_item_id, str(dst))
                                 self.obs_manager.save_screenshot_dst(source_name, str(dst), disable_wh=True)
                                 
                 except Exception as e:
