@@ -56,6 +56,4 @@ clean:
 	@rm -rf __pycache__
 
 test:
-	@$(wuv) run $(main_file_name).pyw
-dtest:
 	@$(wuv) run python $(main_file_name).pyw
