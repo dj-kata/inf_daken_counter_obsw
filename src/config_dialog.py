@@ -250,7 +250,7 @@ class ConfigDialog(QDialog):
         other_layout.addRow(self.ui.feature.image_save_path, path_layout)
         
         self.autoload_offset_spin = QSpinBox()
-        self.autoload_offset_spin.setRange(0, 100)
+        self.autoload_offset_spin.setRange(0, 100000)
         other_layout.addRow(self.ui.feature.autoload_offset, self.autoload_offset_spin)
         
         self.websocket_data_port = QLineEdit()
