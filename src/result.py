@@ -402,7 +402,7 @@ class OneBestData:
     def last_play_date(self) -> str:
         """最終プレー日"""
         if self.last_result:
-            return datetime.fromtimestamp(self.last_result.timestamp).strftime('%Y-%m-%d %H:%M')
+            return datetime.datetime.fromtimestamp(self.last_result.timestamp).strftime('%Y-%m-%d %H:%M')
         return ""
     
     @property
