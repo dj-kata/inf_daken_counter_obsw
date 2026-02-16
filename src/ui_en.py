@@ -71,6 +71,7 @@ class UIText:
         image_save_path = 'Image save path:'
         autoload_offset = 'Auto-load offset:'
         websocket_port = 'Data display port:'
+        keep_on_top = 'Always on Top'
     
     class music_pack:
         """Music pack settings tab"""

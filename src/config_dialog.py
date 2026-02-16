@@ -257,7 +257,11 @@ class ConfigDialog(QDialog):
         validator = QIntValidator(1000,65535)
         self.websocket_data_port.setValidator(validator)
         other_layout.addRow(self.ui.feature.websocket_port, self.websocket_data_port)
-        
+
+        # 最前面表示 
+        self.keep_on_top_check = QCheckBox(self.ui.feature.keep_on_top)
+        other_layout.addRow(self.keep_on_top_check)
+
         layout.addWidget(other_group)
         layout.addStretch()
         
@@ -698,6 +702,7 @@ class ConfigDialog(QDialog):
     def load_config_values(self):
         """設定値を読み込んでUIに反映"""
         # 機能設定
+        self.keep_on_top_check.setChecked(self.config.keep_on_top)
         self.enable_autotweet_check.setChecked(self.config.enable_autotweet)
         self.enable_judge_check.setChecked(self.config.enable_judge)
         self.enable_folder_updates_check.setChecked(self.config.enable_folder_updates)
@@ -748,6 +753,7 @@ class ConfigDialog(QDialog):
         # UIから設定値を取得してConfigに保存
         
         # 機能設定
+        self.config.keep_on_top = self.keep_on_top_check.isChecked()
         self.config.enable_autotweet = self.enable_autotweet_check.isChecked()
         self.config.enable_judge = self.enable_judge_check.isChecked()
         self.config.enable_folder_updates = self.enable_folder_updates_check.isChecked()

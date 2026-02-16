@@ -6,7 +6,7 @@ OBS連携による自動リザルト保存アプリケーション
 import sys
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer,Qt
 import traceback
 import datetime
 from pathlib import Path
@@ -99,6 +99,8 @@ class MainWindow(MainWindowUI):
         
         # UI初期化
         self.init_ui()
+        # 最前面表示
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, self.config.keep_on_top)
         
         # OBS接続
         self.obs_manager.connect()
@@ -212,6 +214,10 @@ class MainWindow(MainWindowUI):
         self.result_database.broadcast_graph_data(self.start_time_with_offset)
         self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
         self.set_today_judge()
+
+        # 最前面表示
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, self.config.keep_on_top)
+        self.show()
 
         # OBS接続状態の再評価
         if not self.obs_manager.is_connected:

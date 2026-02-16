@@ -17,6 +17,10 @@ class Config:
         self.autoload_offset = 4
         self.main_window_geometry = None
 
+        # 基本機能
+        self.keep_on_top = False # 常時最前表示
+        '''常に最前表示する'''
+
         # ツイート機能関連
         self.enable_autotweet = False # 終了時の自動ツイート
         self.enable_judge = False # 判定部分
@@ -74,6 +78,7 @@ class Config:
                     self.websocket_host = config_data.get("websocket_host", "localhost")
                     self.websocket_port = config_data.get("websocket_port", 4444)
                     self.websocket_password = config_data.get("websocket_password", "")
+                    self.keep_on_top = config_data.get("keep_on_top", False)
                     self.enable_autotweet = config_data.get("enable_autotweet", False)
                     self.enable_judge = config_data.get("enable_judge", True)
                     self.enable_folder_updates = config_data.get("enable_folder_updates", False)
@@ -142,6 +147,7 @@ class Config:
             "websocket_host": self.websocket_host,
             "websocket_port": self.websocket_port,
             "websocket_password": self.websocket_password,
+            "keep_on_top": self.keep_on_top,
             "enable_autotweet": self.enable_autotweet,
             "enable_judge": self.enable_judge,
             "enable_folder_updates": self.enable_folder_updates,
