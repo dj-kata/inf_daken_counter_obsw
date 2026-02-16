@@ -122,7 +122,9 @@ class OBSWebSocketManager(QObject):
             
         except Exception as e:
             self.is_connected = False
-            self.client = None
+            if self.client:
+                self.client.disconnect()
+                self.client = None
             error_msg = f"{self.ui.obs.status_connection_failed}: {str(e)}"
             self._emit_status(error_msg, False)
             logger.error(f"OBS WebSocket connection failed: {e}")

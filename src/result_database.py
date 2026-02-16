@@ -307,7 +307,6 @@ class ResultDatabase:
         if not filtered:
             return [None, None, None]
         for r in filtered:
-            logger.debug(f'HOGE, filtered r = {r}')
             if option: # オプション指定がある場合は、arrangeが一致するもののみ通す
                 if option.arrange is not r.result.option.arrange or option.flip is not r.result.option.flip or option.special is not r.result.option.special:
                     continue

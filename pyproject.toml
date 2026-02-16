@@ -1,7 +1,7 @@
 [project]
 name = "inf-daken-counter-obsw"
 version = "0.1.0"
-description = "Add your description here"
+description = "INFINITAS打鍵カウンタ"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

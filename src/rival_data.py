@@ -69,25 +69,35 @@ class RivalFetchWorker(QThread):
 
     def cancel(self):
         self._is_cancelled = True
+        self.wait()
 
     def run(self):
-        results = []
-        for config in self.rival_configs:
-            if self._is_cancelled:
-                break
-            rival = RivalData(config["name"])
-            try:
-                url = self._convert_to_direct_url(config["url"])
-                response = requests.get(url, timeout=15)
-                response.raise_for_status()
-                style = config.get("style", "SP").upper()
-                self._parse_csv(response.text, rival, style)
-                logger.info(f"ライバル '{rival.name}' のCSVを取得しました ({len(rival.scores)}件)")
-            except Exception as e:
-                rival.error = str(e)
-                logger.warning(f"ライバル '{config['name']}' のCSV取得に失敗: {e}")
-            results.append(rival)
-        self.finished.emit(results)
+        logger.debug(f"hoge")
+        try:
+            results = []
+            for config in self.rival_configs:
+                logger.debug(f"config={config}")
+                if self._is_cancelled:
+                    break
+                rival = RivalData(config["name"])
+                logger.debug(f"rival={rival}")
+                try:
+                    url = self._convert_to_direct_url(config["url"])
+                    response = requests.get(url, timeout=15)
+                    response.raise_for_status()
+                    style = config.get("style", "SP").upper()
+                    self._parse_csv(response.text, rival, style)
+                    logger.info(f"ライバル '{rival.name}' のCSVを取得しました ({len(rival.scores)}件)")
+                except Exception as e:
+                    rival.error = str(e)
+                    logger.warning(f"ライバル '{config['name']}' のCSV取得に失敗: {e}")
+                results.append(rival)
+                logger.debug(f"rival added")
+            self.finished.emit(results)
+        except Exception as e:
+            logger.error(traceback.format_exc())
+        finally:
+            self.finished.disconnect()
 
     @staticmethod
     def _convert_to_direct_url(url: str) -> str:

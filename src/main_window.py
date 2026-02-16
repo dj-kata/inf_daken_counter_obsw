@@ -235,34 +235,38 @@ class MainWindowUI(QMainWindow):
     def update_display(self):
         """表示更新"""
         # OBS接続状態
-        status_msg, is_connected = self.obs_manager.get_status()
-        self.obs_status_label.setText(status_msg)
-        if is_connected:
-            self.obs_status_label.setStyleSheet("color: green; font-weight: bold;")
-        else:
-            self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")
-        
-        # モード表示
-        mode_names = {
-            detect_mode.init: self.ui.mode.init,
-            detect_mode.play: self.ui.mode.play,
-            detect_mode.select: self.ui.mode.select,
-            detect_mode.result: self.ui.mode.result
-        }
-        self.mode_label.setText(mode_names.get(self.current_mode, "不明"))
-        
-        # 起動時間
-        elapsed = int(time.time() - self.start_time)
-        hours = elapsed // 3600
-        minutes = (elapsed % 3600) // 60
-        seconds = elapsed % 60
-        self.uptime_label.setText(f"{hours:02d}:{minutes:02d}:{seconds:02d}")
-        
-        # 統計情報
-        self.today_keystroke_count = self.today_judge.notes
-        self.keystroke_label.setText(str(self.today_keystroke_count))
-        self.result_count_label.setText(str(self.play_count))
-        self.last_song_label.setText(self.last_saved_song)
+        try:
+            status_msg, is_connected = self.obs_manager.get_status()
+            self.obs_status_label.setText(status_msg)
+            if is_connected:
+                self.obs_status_label.setStyleSheet("color: green; font-weight: bold;")
+            else:
+                self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")
+
+            # モード表示
+            mode_names = {
+                detect_mode.init: self.ui.mode.init,
+                detect_mode.play: self.ui.mode.play,
+                detect_mode.select: self.ui.mode.select,
+                detect_mode.result: self.ui.mode.result
+            }
+            self.mode_label.setText(mode_names.get(self.current_mode, "不明"))
+
+            # 起動時間
+            elapsed = int(time.time() - self.start_time)
+            hours = elapsed // 3600
+            minutes = (elapsed % 3600) // 60
+            seconds = elapsed % 60
+            self.uptime_label.setText(f"{hours:02d}:{minutes:02d}:{seconds:02d}")
+
+            # 統計情報
+            self.today_keystroke_count = self.today_judge.notes
+            self.keystroke_label.setText(str(self.today_keystroke_count))
+            self.result_count_label.setText(str(self.play_count))
+            self.last_song_label.setText(self.last_saved_song)
+        except:
+            import traceback
+            logger.debug(traceback.format_exc())
 
     def open_score_viewer(self):
         """スコアビューワを開く"""
