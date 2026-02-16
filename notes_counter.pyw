@@ -4,6 +4,7 @@ OBS連携による自動リザルト保存アプリケーション
 """
 
 import sys
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtCore import QTimer
 import traceback
@@ -721,6 +722,7 @@ def check_resource():
     logger.debug('check_resource start')
     for res_name, load_func in _RESOURCES:
         if check_latest(storage_acc, f'{res_name}.res'):
+            logger.debug(f"check ok, {res_name}")
             load_func()
     check_latest(storage_acc, musicnamechanges_filename)
     logger.debug('end')
@@ -735,6 +737,7 @@ def main():
     app.setStyle("Fusion")  # モダンなスタイルを適用
     
     window = MainWindow()
+    window.setWindowIcon(QIcon('src/icon.ico'))
     window.show()
     
     sys.exit(app.exec())

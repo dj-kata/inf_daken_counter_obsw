@@ -48,6 +48,10 @@ if os.path.exists("infnotebook"):
 if os.path.exists("recognition_images"):
     include_files.append(("recognition_images/", "recognition_images/"))
 
+# アイコンファイル
+if os.path.exists('src/icon.ico'):
+    include_files.append(('src/icon.ico', 'src/icon.ico'))
+
 # ビルドオプション
 build_exe_options = {
     # 含めるパッケージ
@@ -188,7 +192,7 @@ executables = [
         script="notes_counter.pyw",
         base=base,
         target_name="notes_counter.exe" if sys.platform == "win32" else "IIDXHelper",
-        icon=None,  # アイコンファイルがあれば指定: "resources/icon.ico"
+        icon='src/icon.ico',  # アイコンファイルがあれば指定: "resources/icon.ico"
         shortcut_name="notes_counter",
         shortcut_dir="DesktopFolder",
     )
