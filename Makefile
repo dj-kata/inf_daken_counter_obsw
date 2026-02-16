@@ -14,9 +14,9 @@ all: $(target_zip)
 $(target_zip): $(target) $(html_files) version.txt
 	@rm -rf $(target_zip)
 	@cp version.txt $(project_name)
-	@cp icon.ico $(project_name)
 	@cp -a template $(project_name)
-	@cp -a resources $(project_name)
+	@mkdir -p $(project_name)/infnotebook
+	@cp -a infnotebook/resources $(project_name)/infnotebook/
 	@cp songinfo.infdc $(project_name)
 	@rm -rf $(project_name)/log
 	@rm -rf $(project_name)/*.json

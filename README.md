@@ -1,3 +1,22 @@
+# TODO
+- OBSが掴めない && offsetを4→1000にすると1分ぐらいで強制終了してしまう。
+  - OBSが掴めれば問題ないので放置かな…
+- scoreviewerのload_score()をresult_database.get_all_best_results()でやるように直す
+- (db準備後)ノーツ数がおかしいリザルトを削除するボタン
+- songinfo管理用GUI作成(ノーツ数や難易度などを変更したい)
+- 速度変更時にhistory_cursongに反映されてない。AAA乗ってる曲を初めて1.1倍でやってAAだったときに保存されない(1.1倍の初プレーなので本来は保存される)
+- シーンコレクション切り替え
+- 完走してない曲が選曲から取り込めない
+- HTML,XML周り
+  - 現在プレイ中の曲名
+  - 難易度情報(Lv, 地力表、AAA BPIなど)
+  - 現在のプレイの予測グラフ(cur, 自己べ, 目標(BPIとかAAAとか))
+  - BPI次の大台まであとX点
+- スコアレートビュー
+  - 正確なノーツ数を使わないとなので難しいかも
+- playの検出が全0の時だけになっているが果たしてこれでよいか(取りこぼさないか)は要検討
+- cbの検出が上手くできないため、途中落ちリザルトのBPはやや高め(空プアの分)に出るがfailsafeとなっているので放置。
+
 # INFINITAS打鍵カウンタ(OBS websocket版)
 beatmania IIDX INFINITAS専用の打鍵カウンタです。
 
@@ -368,6 +387,24 @@ v2.0.20から自動更新機能を追加しました。
 
 当分ないと思いますが、プレー画面のレイアウトが変わると使えなくなります。  
 その際はなるべく早く対応するつもりですが、ベストエフォートな対応となりますことをご了承ください。
+
+# for developers
+環境構築方法は以下。  
+Windows版uvのインストールが必要となります。(以下wuvとして記載)
+```bash
+git clone https://github.com/dj-kata/inf_daken_counter_obsw.git
+cd inf_daken_counter_obsw
+git clone https://github.com/kaktuswald/inf-notebook.git infnotebook
+touch infnotebook/__init__.py
+
+# (Windows版uvを使う)
+wuv sync
+
+# inf-notebook実行時に生成される最新のresourcesディレクトリをコピー
+cp -a $(inf-notebook-binary-dir)/resources inf_daken_counter_obsw/
+
+make
+```
 
 # ライセンス
 Apache License 2.0に準じるものとします。
