@@ -145,7 +145,7 @@ class ScoreViewer(QMainWindow):
             self.rival_manager.rivals_loaded.connect(self._on_rivals_loaded)
         
         # ウィンドウ設定
-        self.setWindowTitle("スコアビューワ")
+        self.setWindowTitle("INFINITAS daken counter - Score Viewer")
         geo = self.config.score_viewer_geometry
         if geo and len(geo) == 4:
             self.setGeometry(geo[0], geo[1], geo[2], geo[3])
