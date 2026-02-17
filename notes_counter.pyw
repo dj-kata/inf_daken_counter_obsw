@@ -591,10 +591,12 @@ class MainWindow(MainWindowUI):
         msg = f"plays:{self.play_count}, notes:{self.today_judge.notes:,}, {self.today_judge.score_rate*100:.2f}%\n"
         if self.config.enable_judge:
             msg += f"(PG:{self.today_judge.pg:,}, GR:{self.today_judge.gr:,}, GD:{self.today_judge.gd:,}, BD:{self.today_judge.bd:,}, PR:{self.today_judge.pr:,}, CB:{self.today_judge.cb:,})\n"
-        if self.config.enable_folder_updates:
-            msg += self._collect_today_updates()
+
         ontime = datetime.datetime.now() - datetime.datetime.fromtimestamp(self.start_time)
         msg += f"uptime: {str(ontime).split('.')[0]}\n"
+        
+        if self.config.enable_folder_updates:
+            msg += self._collect_today_updates()
         date = datetime.datetime.fromtimestamp(self.start_time)
         msg += f"({date.year}/{date.month:02d}: {self.result_database.get_monthly_notes():,})\n"
         msg += '#INFINITAS_daken_counter\n'
