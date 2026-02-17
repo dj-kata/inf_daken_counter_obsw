@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INFINITAS打鍵カウンタ 説明書</title>
+    <link rel="stylesheet" href="base.css">
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>INFINITAS打鍵カウンタ 説明書</h1>
+        <div class="highlight-box">
+            <strong>INFINITAS daken counter</strong> - beatmaniaIIDX INFINITAS向け補助ツール
+        </div>
+
+        <div class="description">
+            <h2>これは何？</h2>
+            <p>OBS配信などに使えるデジタル時計風HTMLです。ライブ配信っぽさを出しています。</p>
+            
+            <div class="feature-image">
+                <img src="https://github.com/user-attachments/assets/54153964-113a-4cdf-adf3-beda7d14713e" alt="通常時の時計表示" />
+            </div>
+
+            <p>カスタムプロパティを設定することで、以下のように指定時刻に光らせることができます。</p>
+            
+            <div class="feature-image">
+                <img src="https://github.com/user-attachments/assets/4e751dba-a6c0-486e-a0b5-49347c70aeec" alt="光る演出の時計表示" />
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h2>使用方法</h2>
+            <p>OBSに設定する場合は以下の通り。</p>
+            <ol>
+                <li>ソースの追加（+マーク）→ブラウザを選択</li>
+                <li>URLに使いたいデザインの公開URL（上述）を設定してOKをクリック</li>
+                <li>余白の調整をする場合、ソースの大きさを上記の推奨値にする</li>
+            </ol>
+            
+            <div class="feature-image">
+                <img src="https://github.com/user-attachments/assets/b1f8a4b4-e794-4b62-b7b7-20ceb2c393b8" alt="OBS設定画面" />
+            </div>
+        </div>
+
+        <h2>カスタマイズ</h2>
+        <p>ブラウザソースのカスタムCSSでデザインを変更することができます。<br>
+        利用できるカスタムプロパティは以下。</p>
+
+        <pre><code><span class="css-comment">/* OBSがデフォルトで挿入する部分 */</span>
+        <span class="css-selector">body</span><span class="css-brace">{</span>
+            <span class="css-property">background-color</span><span class="css-colon">:</span> <span class="css-function">rgba</span><span class="css-paren">(</span><span class="css-number">0</span><span class="css-comma">,</span> <span class="css-number">0</span><span class="css-comma">,</span> <span class="css-number">0</span><span class="css-comma">,</span> <span class="css-number">0.0</span><span class="css-paren">)</span><span class="css-semicolon">;</span> <span class="css-comment">/* 4つ目(不透明度)を1.0に近づけると背景色が濃くなります */</span>
+            <span class="css-property">margin</span><span class="css-colon">:</span> <span class="css-number">0</span><span class="css-unit">px</span> <span class="css-value">auto</span><span class="css-semicolon">;</span>
+            <span class="css-property">overflow</span><span class="css-colon">:</span> <span class="css-value">hidden</span><span class="css-semicolon">;</span>
+        <span class="css-brace">}</span>
+        
+        <span class="css-comment">/* 本アプリの設定 */</span>
+        <span class="css-selector">:root</span><span class="css-brace">{</span>
+            <span class="css-property">--enable-flash</span><span class="css-colon">:</span> <span class="css-number">0</span><span class="css-semicolon">;</span>                            <span class="css-comment">/* 1:指定時刻に光る機能を有効にする */</span>
+            <span class="css-property">--flash-hh</span><span class="css-colon">:</span> <span class="css-number">23</span><span class="css-semicolon">;</span>                               <span class="css-comment">/* 光る機能の指定時刻(XX)) */</span>
+            <span class="css-property">--flash-mm</span><span class="css-colon">:</span> <span class="css-number">56</span><span class="css-semicolon">;</span>                               <span class="css-comment">/* 光る機能の指定時刻(YY)) */</span>
+            <span class="css-property">--color-live</span><span class="css-colon">:</span> <span class="css-color">#ff0040</span><span class="css-semicolon">;</span>                        <span class="css-comment">/* Liveの部分の色 */</span>
+            <span class="css-property">--color-frame</span><span class="css-colon">:</span> <span class="css-color">#0ff</span><span class="css-semicolon">;</span>                          <span class="css-comment">/* フレームの色 */</span>
+            <span class="css-property">--color-time</span><span class="css-colon">:</span> <span class="css-color">#0ff</span><span class="css-semicolon">;</span>                           <span class="css-comment">/* 時刻の色 */</span>
+            <span class="css-property">--color-date</span><span class="css-colon">:</span> <span class="css-color">#0f8</span><span class="css-semicolon">;</span>                           <span class="css-comment">/* 日付の色 */</span>
+            <span class="css-property">--color-flash</span><span class="css-colon">:</span> <span class="css-color">#fa0</span><span class="css-semicolon">;</span>                          <span class="css-comment">/* 光る演出の色 */</span>
+            <span class="css-property">--color-scanning-line</span><span class="css-colon">:</span> <span class="css-color">#0ff</span><span class="css-semicolon">;</span>                  <span class="css-comment">/* 走査線の色 */</span>
+            <span class="css-property">--color-shadow1</span><span class="css-colon">:</span> <span class="css-function">rgba</span><span class="css-paren">(</span><span class="css-number">0</span><span class="css-comma">,</span> <span class="css-number">255</span><span class="css-comma">,</span> <span class="css-number">255</span><span class="css-comma">,</span> <span class="css-number">0.3</span><span class="css-paren">)</span><span class="css-semicolon">;</span>      <span class="css-comment">/* 枠につける影の色1 */</span>
+            <span class="css-property">--color-shadow2</span><span class="css-colon">:</span> <span class="css-function">rgba</span><span class="css-paren">(</span><span class="css-number">0</span><span class="css-comma">,</span> <span class="css-number">255</span><span class="css-comma">,</span> <span class="css-number">255</span><span class="css-comma">,</span> <span class="css-number">0.6</span><span class="css-paren">)</span><span class="css-semicolon">;</span>      <span class="css-comment">/* 枠につける影の色2 */</span>
+            <span class="css-property">--enable-scanning-line</span><span class="css-colon">:</span> <span class="css-number">1</span><span class="css-semicolon">;</span>                    <span class="css-comment">/* 1:走査線を有効にする */</span>
+        <span class="css-brace">}</span>
+        <span class="css-comment">/* パネル内のみ色を変更する場合は下記を設定 */</span>
+        <span class="css-selector">.clock-container</span><span class="css-brace">{</span>
+            <span class="css-property">background-color</span><span class="css-colon">:</span> <span class="css-function">rgba</span><span class="css-paren">(</span><span class="css-number">0</span><span class="css-comma">,</span> <span class="css-number">0</span><span class="css-comma">,</span> <span class="css-number">0</span><span class="css-comma">,</span> <span class="css-number">0.95</span><span class="css-paren">)</span><span class="css-semicolon">;</span> <span class="css-comment">/* 4つ目(不透明度)を1.0に近づけると背景色が濃くなります */</span>
+        <span class="css-brace">}</span></code></pre>
+
+        <div class="footer">
+            <h2>その他</h2>
+            <p>個人利用・商用問わず自由にお使いください。概要欄などにURLを記載してもらえると喜びます。</p>
+            
+            <br>
+            <strong>引用例：</strong><br>
+            <div style="background: #f8f9dd; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                INFINITAS打鍵カウンタ<br>
+                <a href="https://dj-kata.github.io/inf_daken_counter_obsw" target="_blank">https://dj-kata.github.io/inf_daken_counter_obsw</a>
+            </div>
+
+            <br>
+            <p><strong>一部のフォントについて：</strong><br>
+            数字のフォントについては、DSEG14を利用させてもらっています。<br>
+            <a href="https://www.keshikan.net/fonts.html" target="_blank">https://www.keshikan.net/fonts.html</a></p>
+        </div>
+    </div>
+</body>
+</html>
