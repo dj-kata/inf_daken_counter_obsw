@@ -33,6 +33,29 @@ class ScreenReader:
 
     def update_screen_from_file(self, _file:str):
         self.screen = open_screenimage(_file)
+        # ライバル欄をカットした画像だった場合の対応
+        if 'cut2p' in _file or 'cut1p' in _file:
+            canvas = Image.new("RGB", (1920,1080), (0, 0, 0))
+            w,h = self.screen.original.size
+            if w == 1360:
+                if 'cut2p' in _file:
+                    canvas.paste(self.screen.original, (1920 - w, 0))
+                    canvas_array = np.pad(
+                        self.screen.np_value, 
+                        pad_width=((0, 0), (1920-w, 0), (0, 0)), 
+                        mode='constant', 
+                        constant_values=0
+                    )
+                else:
+                    canvas.paste(self.screen.original, (0, 0))
+                    canvas_array = np.pad(
+                        self.screen.np_value, 
+                        pad_width=((0, 0), (0, 1920-w), (0, 0)), 
+                        mode='constant', 
+                        constant_values=0
+                    )
+                self.screen.original = canvas
+                self.screen.np_value = canvas_array
 
     def update_screen(self, screen):
         '''OBSManagerから受け取ったscreenをセットする'''
