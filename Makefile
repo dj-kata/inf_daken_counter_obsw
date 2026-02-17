@@ -20,7 +20,6 @@ $(target_zip): $(target) $(html_files) version.txt
 	@cp songinfo.infdc $(project_name)
 	@rm -rf $(project_name)/log
 	@rm -rf $(project_name)/*.json
-	@cp -a /mnt/d/bin/YouTubeLive/inf_daken_counter/resources $(project_name)/
 	@zip -r $(target_zip) $(project_name)/*
 
 $(target): $(srcs)
