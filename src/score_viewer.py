@@ -544,20 +544,34 @@ class ScoreViewer(QMainWindow):
             # ベストスコア更新
             if result.score and (not score.best_score_result or result.score > score.best_score_result.score):
                 score.best_score_result = result
+            elif result.detect_mode == detect_mode.result and result.score and (result.score == score.best_score_result.score):
+                score.best_score_result.option = result.option
             
             # 最小BP更新
             current_bp = result.bp if result.bp is not None else 99999
             best_bp = score.min_bp_result.bp if score.min_bp_result and score.min_bp_result.bp is not None else 99999
             if current_bp < best_bp:
                 score.min_bp_result = result
+            elif current_bp == best_bp and result.detect_mode == detect_mode.result:
+                score.min_bp_result.option = result.option
             
             # クリアランプ更新（最高値）
-            if result.lamp and (not score.best_lamp_result or result.lamp.value > score.best_lamp_result.lamp.value):
-                score.best_lamp_result = result
+            if result.lamp:
+                if (not score.best_lamp_result or result.lamp.value > score.best_lamp_result.lamp.value):
+                    score.best_lamp_result = result
+                if result.lamp.value == score.best_lamp_result.lamp.value and result.detect_mode == detect_mode.result:
+                    score.best_lamp_result.option = result.option
             
             # 最終プレー日更新
             if not score.last_result or result.timestamp > score.last_result.timestamp:
                 score.last_result = result
+
+            # ノーツ数を埋めておく
+            if result.notes:
+                if score.best_lamp_result:
+                    score.best_lamp_result.notes = result.notes
+                if score.min_bp_result:
+                    score.min_bp_result.notes = result.notes
         
         except Exception as e:
             logger.error(f"リザルト処理エラー: {e}")
@@ -902,6 +916,8 @@ class ScoreViewer(QMainWindow):
 
         # スコアレート (column 8)
         rate_str = f"{score.score_rate * 100:.2f}%" if score.score_rate > 0 else ""
+        if score.notes:
+            rate_str = f"{score.best_score *50 / score.notes:.2f}"
         item = QTableWidgetItem(rate_str)
         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.table.setItem(row, 8, item)
