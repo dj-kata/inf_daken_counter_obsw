@@ -472,7 +472,7 @@ class MainWindow(MainWindowUI):
                             mod_scene_name, scene_item_id = self.obs_manager.search_itemid(scene_name, source_name)
                             if scene_item_id:
                                 # 表示しておかないと最新の状態を保存できないので表示
-                                self.obs_manager.enable_source(mod_scene_name, scene_item_id)
+                                # self.obs_manager.enable_source(mod_scene_name, scene_item_id)
                                 filename = os.path.splitext(source_name)[0]
                                 filename += f"_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
                                 dst = Path(self.config.image_save_path).resolve() / filename
@@ -594,7 +594,7 @@ class MainWindow(MainWindowUI):
 
         ontime = datetime.datetime.now() - datetime.datetime.fromtimestamp(self.start_time)
         msg += f"uptime: {str(ontime).split('.')[0]}\n"
-        
+
         if self.config.enable_folder_updates:
             msg += self._collect_today_updates()
         date = datetime.datetime.fromtimestamp(self.start_time)
