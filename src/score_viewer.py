@@ -526,6 +526,9 @@ class ScoreViewer(QMainWindow):
         try:
             # キー生成 (title, style, difficulty)
             key = (result.title, result.play_style, result.difficulty)
+
+            if result.detect_mode == detect_mode.play:
+                return
             
             # スコアデータ取得または作成
             if key not in self.scores:
@@ -1080,7 +1083,8 @@ class ScoreViewer(QMainWindow):
             for result in self.result_database.results:
                 if (result.title == score.title and 
                     result.play_style == score.style and 
-                    result.difficulty == score.difficulty):
+                    result.difficulty == score.difficulty and
+                    result.detect_mode != detect_mode.play):
                     playlogs.append(result)
             
             # タイムスタンプで降順ソート（新しい順）
