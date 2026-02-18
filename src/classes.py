@@ -420,6 +420,17 @@ class option_gauge(Enum):
         }
         return _CONVERT[self]
 
+    def __str__(self):
+        '''文字出力用'''
+        _CONVERT = {
+            self.off: 'normal',
+            self.a_easy: 'assist',
+            self.easy: 'easy',
+            self.hard: 'hard',
+            self.exh:  'exh',
+        }
+        return _CONVERT[self]
+
 class option_assist(Enum):
     '''オプション画面のアシストプレー機能取得専用'''
     off = 0
@@ -427,3 +438,8 @@ class option_assist(Enum):
     legacy = 2
     key_assist = 3
     any_key = 4
+
+class option_flip(Enum):
+    '''オプション画面のflip機能取得専用'''
+    off = 0
+    flip = 1

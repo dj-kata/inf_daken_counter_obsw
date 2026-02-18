@@ -200,6 +200,7 @@ class ScreenReader:
             arrange = None
             gauge = None
             assist = None
+            flip = None
             if style == play_style.sp:
                 for i in range(5):
                     tmp_arrange = option_arrange(i)
@@ -239,7 +240,9 @@ class ScreenReader:
                         gauge = tmp_gauge
                     if img.getpixel(PosOption.get(style, tmp_assist))[0] > 100:
                         assist = tmp_assist
-            return (arrange, gauge, assist)
+                if img.getpixel(PosOption.get(style, option_flip(1)))[0] > 100:
+                    flip = 'FLIP'
+            return (arrange, gauge, assist, flip)
 
         def read_hran() -> bool:
             '''H乱かどうか'''
@@ -251,7 +254,7 @@ class ScreenReader:
 
         ret.play_style = read_style()
         is_hran = read_hran()
-        ret.arrange, ret.option_gauge, ret.option_assist = read_option(is_hran, ret.play_style)
+        ret.arrange, ret.option_gauge, ret.option_assist, ret.flip = read_option(is_hran, ret.play_style)
         ret.battle = read_battle()
 
         return ret
@@ -328,9 +331,10 @@ class ScreenReader:
         '''
         ret = False
         img = self.screen.original
-        tmp = imagehash.average_hash(img.crop((87,836,160,937)))
-        hash_target = imagehash.hex_to_hash('fe1e7efe1fb4e000')
-        ret = (hash_target - tmp) < 10
+        tmp = imagehash.average_hash(img.crop((263,837,359,855)))
+        # img.crop((263,837,359,855)).save('hoge.png')
+        hash_target = imagehash.hex_to_hash('857f6f848584e6e7')
+        ret = (hash_target - tmp) < 5
 
         return ret
 

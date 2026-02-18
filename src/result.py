@@ -98,7 +98,7 @@ class PlayOption():
             if self.battle:
                 out = 'BATTLE, ' + out
             if self.flip:
-                out += ',FLIP'
+                out += ', FLIP'
             if self.assist:
                 out += f',{self.assist}'
         return out
@@ -114,12 +114,12 @@ class CurrentOption(PlayOption):
         self.option_assist:option_assist = None
         '''アシストオプション'''
 
-    def __str__(self):
-        ret = f'play_style:{self.play_style.name}, ' if self.play_style else 'play_style: None, '
-        ret += f'gauge:{self.option_gauge}, '
-        ret += f'assist:{self.option_assist}, '
-        ret += f' option: {super().__str__()}'
-        return ret
+    # def __str__(self):
+    #     ret = f'play_style:{self.play_style.name}, ' if self.play_style else 'play_style: None, '
+    #     ret += f'gauge:{self.option_gauge}, '
+    #     ret += f'assist:{self.option_assist}, '
+    #     ret += f' option: {super().__str__()}'
+    #     return ret
 
 class OneResult:
     """1曲分のリザルトを表すクラス。ファイルへの保存用。"""

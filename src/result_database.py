@@ -2,7 +2,7 @@
 from .classes import *
 from .funcs import *
 from .songinfo import *
-from .result import PlayOption, OneResult, DetailedResult, OneBestData
+from .result import PlayOption, CurrentOption, OneResult, DetailedResult, OneBestData
 from .logger import get_logger
 from .config import Config
 logger = get_logger(__name__)
@@ -136,6 +136,11 @@ class ResultDatabase:
     def broadcast_graph_data(self, start_time: int):
         """グラフデータをWebSocketで配信"""
         return self.get_graph_data(start_time)
+
+    @_ws_broadcast('update_option_data')
+    def broadcast_option_data(self, option:CurrentOption):
+        """グラフデータをWebSocketで配信"""
+        return self.get_option_data(option)
 
     @_ws_broadcast('update_today_updates_data')
     def broadcast_today_updates_data(self, start_time: int):
@@ -730,6 +735,15 @@ class ResultDatabase:
             items.append(item)
 
         data['items'] = items
+        return data
+    
+    def get_option_data(self, option:CurrentOption) -> dict:
+        '''最後に設定したオプションをdictとして出力。WebSocketへの送信用。'''
+        data = {
+            'option':str(option), # battle, OFF/OFFとか
+            'gauge': str(option.option_gauge), # easyとかexhとか
+            'play_style': str(option.play_style.name.upper()), # SP/DP
+        }
         return data
 
     def write_best_csv(self, csv_path=None):

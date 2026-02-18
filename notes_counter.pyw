@@ -365,8 +365,6 @@ class MainWindow(MainWindowUI):
                         self.process_result_mode()
                     elif self.current_mode == detect_mode.option:
                         self.process_option_mode()
-                    elif self.current_mode == detect_mode.init:
-                        self.process_option_screen()
         
         except Exception as e:
             logger.error(f"メインループエラー: {traceback.format_exc()}")
@@ -564,8 +562,9 @@ class MainWindow(MainWindowUI):
             # logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
 
     def process_option_mode(self):
-        """リザルト画面での処理"""
+        """オプション画面での処理"""
         self.current_option = self.screen_reader.read_option_screen()
+        self.result_database.broadcast_option_data(self.current_option)
     
     def closeEvent(self, event):
         """アプリ終了時に実行する処理"""

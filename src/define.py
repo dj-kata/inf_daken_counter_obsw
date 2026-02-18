@@ -120,6 +120,9 @@ class PosOption:
         (play_style.dp, option_assist.legacy):     (1388, 639),
         (play_style.dp, option_assist.key_assist): (1388, 679),
         (play_style.dp, option_assist.any_key):    (1388, 719),
+        # 
+        (play_style.dp, option_flip.off):          (1588, 559),
+        (play_style.dp, option_flip.flip):         (1588, 599),
     }
     @classmethod
     def get(cls, style:play_style, type, is_left:bool=None) -> tuple:

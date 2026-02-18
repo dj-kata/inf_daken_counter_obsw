@@ -36,6 +36,7 @@ class DataWebSocketServer:
         
         # 各HTMLページ用の最新データ
         self.graph_data = None
+        self.option_data = None
         self.today_updates_data = None
         self.history_cursong_data = None
         self.today_stats_data = None
@@ -50,6 +51,11 @@ class DataWebSocketServer:
             await websocket.send(json.dumps({
                 'type': 'graph',
                 'data': self.graph_data
+            }))
+        if self.option_data:
+            await websocket.send(json.dumps({
+                'type': 'graph',
+                'data': self.option_data
             }))
         if self.today_updates_data:
             await websocket.send(json.dumps({
@@ -98,6 +104,19 @@ class DataWebSocketServer:
         if self.clients:
             message = json.dumps({
                 'type': 'graph',
+                'data': data
+            })
+            await asyncio.gather(
+                *[client.send(message) for client in self.clients],
+                return_exceptions=True
+            )
+    
+    async def broadcast_option_data(self, data: dict):
+        """オプションデータをブロードキャスト"""
+        self.option_data = data
+        if self.clients:
+            message = json.dumps({
+                'type': 'option',
                 'data': data
             })
             await asyncio.gather(
@@ -187,6 +206,14 @@ class DataWebSocketServer:
         if self.loop:
             asyncio.run_coroutine_threadsafe(
                 self.broadcast_graph_data(data),
+                self.loop
+            )
+    
+    def update_option_data(self, data: dict):
+        """グラフデータを更新（同期メソッド）"""
+        if self.loop:
+            asyncio.run_coroutine_threadsafe(
+                self.broadcast_option_data(data),
                 self.loop
             )
     
