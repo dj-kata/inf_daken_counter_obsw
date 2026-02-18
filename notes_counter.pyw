@@ -526,6 +526,14 @@ class MainWindow(MainWindowUI):
             result.timestamp = self.result_timestamp
             if result and result.chart_id:
                 if result == self.result_pre:
+                    # DBxの場合の処理
+                    if result.option.battle and result.lamp == clear_lamp.assist:
+                        if result.judge.cb == 0:
+                            # CB0ならフルコンにする
+                            result.lamp = clear_lamp.fc
+                        elif (self.current_option.option_gauge is not None):
+                            # ゲージを検出できていた場合、そのゲージにする
+                            result.lamp = self.current_option.option_gauge.convert()
                     # リザルトを保存
                     if self.result_database.add(result):
                         self.result_database.save()

@@ -409,6 +409,16 @@ class option_gauge(Enum):
     hard = 3
     exh = 4
 
+    def convert(self):
+        _CONVERT = {
+            self.off: clear_lamp.clear,
+            self.a_easy: clear_lamp.assist,
+            self.easy: clear_lamp.easy,
+            self.hard: clear_lamp.hard,
+            self.exh: clear_lamp.exh,
+        }
+        return _CONVERT[self]
+
 class option_assist(Enum):
     '''オプション画面のアシストプレー機能取得専用'''
     off = 0
