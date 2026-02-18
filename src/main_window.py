@@ -248,7 +248,8 @@ class MainWindowUI(QMainWindow):
                 detect_mode.init: self.ui.mode.init,
                 detect_mode.play: self.ui.mode.play,
                 detect_mode.select: self.ui.mode.select,
-                detect_mode.result: self.ui.mode.result
+                detect_mode.result: self.ui.mode.result,
+                detect_mode.option: self.ui.mode.option
             }
             self.mode_label.setText(mode_names.get(self.current_mode, "不明"))
 

@@ -500,84 +500,41 @@ class ScoreViewer(QMainWindow):
         self.table.setStyleSheet("font-size: 14px;")
     
     def load_scores(self):
-        """全スコアを読み込んで集計"""
+        """全スコアを読み込んで集計。result_database.get_all_best_results()を使用。"""
         try:
             self.scores.clear()
-            
+
             if not self.result_database or not self.result_database.results:
                 logger.warning("プレーログが空です")
                 return
-            
-            # 全リザルトを処理
-            for result in self.result_database.results:
-                self.process_result(result)
 
-            # 共通処理によって全譜面の自己べを取得
-            # self.scores = self.result_database.get_best_all_charts()
-            
+            # result_databaseの共通処理で全譜面の自己べを取得
+            all_bests = self.result_database.get_all_best_results()
+
+            # battle有無でキーが分かれているので、(title, style, difficulty)にマージする
+            for (title, style, diff, battle), best in all_bests.items():
+                key = (title, style, diff)
+                if key not in self.scores:
+                    self.scores[key] = best
+                else:
+                    existing = self.scores[key]
+                    # ベストスコアが高い方を採用
+                    if best.best_score > existing.best_score:
+                        existing.best_score_result = best.best_score_result
+                    # 最小BPが低い方を採用
+                    if best.min_bp < existing.min_bp:
+                        existing.min_bp_result = best.min_bp_result
+                    # ベストランプが高い方を採用
+                    if best.lamp.value > existing.lamp.value:
+                        existing.best_lamp_result = best.best_lamp_result
+                    # 最終プレー日が新しい方を採用
+                    if best.last_result and (not existing.last_result or best.last_result.timestamp > existing.last_result.timestamp):
+                        existing.last_result = best.last_result
+
             logger.info(f"{len(self.scores)}件の譜面データを読み込みました")
-        
+
         except Exception as e:
             logger.error(f"スコア読み込みエラー: {e}")
-            logger.error(traceback.format_exc())
-    
-    def process_result(self, result: OneResult):
-        """1つのリザルトを処理。自己ベストの取得処理が別になってしまっているので直したい TODO"""
-        try:
-            # キー生成 (title, style, difficulty)
-            key = (result.title, result.play_style, result.difficulty)
-
-            if result.detect_mode == detect_mode.play:
-                return
-            
-            # スコアデータ取得または作成
-            if key not in self.scores:
-                score = OneBestData()
-                score.title = result.title
-                score.style = result.play_style
-                score.difficulty = result.difficulty
-                
-                # songinfo取得
-                score.songinfo = self.result_database.song_database.search(chart_id=result.chart_id)
-                
-                self.scores[key] = score
-            else:
-                score = self.scores[key]
-            
-            # ベストスコア更新
-            if result.score and (not score.best_score_result or result.score > score.best_score_result.score):
-                score.best_score_result = result
-            elif result.detect_mode == detect_mode.result and result.score and (result.score == score.best_score_result.score):
-                score.best_score_result.option = result.option
-            
-            # 最小BP更新
-            current_bp = result.bp if result.bp is not None else 99999
-            best_bp = score.min_bp_result.bp if score.min_bp_result and score.min_bp_result.bp is not None else 99999
-            if current_bp < best_bp:
-                score.min_bp_result = result
-            elif current_bp == best_bp and result.detect_mode == detect_mode.result:
-                score.min_bp_result.option = result.option
-            
-            # クリアランプ更新（最高値）
-            if result.lamp:
-                if (not score.best_lamp_result or result.lamp.value > score.best_lamp_result.lamp.value):
-                    score.best_lamp_result = result
-                if result.lamp.value == score.best_lamp_result.lamp.value and result.detect_mode == detect_mode.result:
-                    score.best_lamp_result.option = result.option
-            
-            # 最終プレー日更新
-            if not score.last_result or result.timestamp > score.last_result.timestamp:
-                score.last_result = result
-
-            # ノーツ数を埋めておく
-            if result.notes:
-                if score.best_lamp_result:
-                    score.best_lamp_result.notes = result.notes
-                if score.min_bp_result:
-                    score.min_bp_result.notes = result.notes
-        
-        except Exception as e:
-            logger.error(f"リザルト処理エラー: {e}")
             logger.error(traceback.format_exc())
 
     

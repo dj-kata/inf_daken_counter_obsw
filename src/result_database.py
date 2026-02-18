@@ -16,7 +16,7 @@ import functools
 import csv
 from collections import defaultdict
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 
 
 def _ws_broadcast(ws_method_name: str):
@@ -335,114 +335,70 @@ class ResultDatabase:
                 break
         return ret
 
-    def get_all_best_results(self):
-        """全譜面のベストリザルトを集計（battle有効/無効を別々に集計）
+    def get_all_best_results(self) -> Dict[tuple, OneBestData]:
+        """全譜面のベストリザルトをOneBestDataとして集計（battle有効/無効を別々に集計）
+        detect_mode.playのリザルトは除外する。
+        optionはdetect_mode.resultの場合にのみ有効とする。
+        bp, lamp, scoreが同点の場合、detect_mode.resultのオプションで上書きする。
 
         Returns:
-            dict: (title, play_style, difficulty, battle)のtupleをキーとした辞書。
-                  各要素は以下のキーを持つ辞書:
-                - best_score: ベストスコア
-                - best_score_option: ベストスコア時のオプション
-                - min_bp: 最小BP
-                - min_bp_option: 最小BP時のオプション
-                - last_play_timestamp: 最終プレー日のタイムスタンプ
-                - best_lamp: ベストランプ
+            Dict[tuple, OneBestData]: (title, play_style, difficulty, battle)をキーとした辞書
         """
-        best_results = {}
+        best_results: Dict[tuple, OneBestData] = {}
 
         for result in self.results:
-            # battleの判定
-            battle = result.option.battle if result.option else None
+            if result.detect_mode == detect_mode.play:
+                continue
 
-            # キーをtupleで作成
+            battle = result.option.battle if result.option else None
             key = (result.title, result.play_style, result.difficulty, battle)
 
-            # 初期化
             if key not in best_results:
-                best_results[key] = {
-                    'best_score': 0,
-                    'best_score_option': None,
-                    'min_bp': 99999999,
-                    'min_bp_option': None,
-                    'last_play_timestamp': 0,
-                    'best_lamp': clear_lamp(0),
-                }
-
-            entry = best_results[key]
-
-            # ノーツ数を記録（リザルトから取得）
-            if result.notes and not entry.get('notes'):
-                entry['notes'] = result.notes
+                best = OneBestData()
+                best.title = result.title
+                best.style = result.play_style
+                best.difficulty = result.difficulty
+                best.songinfo = self.song_database.search(chart_id=result.chart_id)
+                best_results[key] = best
+            else:
+                best = best_results[key]
 
             # ベストスコア更新
-            if result.score and result.score > entry['best_score']:
-                entry['best_score'] = result.score
-                entry['best_score_option'] = result.option
+            if result.score and (not best.best_score_result or result.score > best.best_score_result.score):
+                best.best_score_result = result
+            elif (result.detect_mode == detect_mode.result and result.score
+                  and best.best_score_result and result.score == best.best_score_result.score):
+                best.best_score_result.option = result.option
 
             # 最小BP更新
-            bp = None
-            if result.judge:
-                bp = result.judge.bd + result.judge.pr
-            elif result.bp:
-                bp = result.bp
-
-            if bp is not None and bp < entry['min_bp']:
-                entry['min_bp'] = bp
-                entry['min_bp_option'] = result.option
-
-            # 最終プレー日更新
-            if result.timestamp > entry['last_play_timestamp']:
-                entry['last_play_timestamp'] = result.timestamp
+            current_bp = result.bp if result.bp is not None else 99999
+            best_bp = best.min_bp_result.bp if best.min_bp_result and best.min_bp_result.bp is not None else 99999
+            if current_bp < best_bp:
+                best.min_bp_result = result
+            elif current_bp == best_bp and result.detect_mode == detect_mode.result:
+                if best.min_bp_result:
+                    best.min_bp_result.option = result.option
 
             # ベストランプ更新
-            if result.lamp and result.lamp.value > entry['best_lamp'].value:
-                entry['best_lamp'] = result.lamp
+            if result.lamp:
+                if not best.best_lamp_result or result.lamp.value > best.best_lamp_result.lamp.value:
+                    best.best_lamp_result = result
+                elif result.lamp.value == best.best_lamp_result.lamp.value and result.detect_mode == detect_mode.result:
+                    if best.best_lamp_result:
+                        best.best_lamp_result.option = result.option
+
+            # 最終プレー日更新
+            if not best.last_result or result.timestamp > best.last_result.timestamp:
+                best.last_result = result
+
+            # ノーツ数を埋めておく
+            if result.notes:
+                if best.best_lamp_result:
+                    best.best_lamp_result.notes = result.notes
+                if best.min_bp_result:
+                    best.min_bp_result.notes = result.notes
 
         return best_results
-
-    def get_best_all_charts(self)-> Dict[tuple, OneBestData]: 
-        """全譜面のbestを取得。スコアビューワなどから使う想定で作ったが、get_all_best_resultsでやるように直すべきかも TODO
-        
-        """
-        # 全譜面の一覧を先に取得
-        ret:Dict[tuple, OneBestData] = {}
-        charts = set()
-        for r in reversed(self.results):
-            battle = r.option.battle if r.option else None
-            key = (r.title, r.play_style, r.difficulty, r.playspeed, battle)
-            charts.add(key)
-
-        for k in list(charts):
-            playspeed = k[3]
-            battle = k[4]
-            if playspeed: continue
-            if battle: continue
-            results = self.search(title=k[0], style=k[1], difficulty=k[2])
-            songinfo = self.song_database.search(title=k[0], play_style=k[1], difficulty=k[2])
-            filtered = self._filter_results_for_best(results, playspeed=playspeed, battle=battle)
-
-            best = OneBestData()
-            best.title = k[0]
-            best.style = k[1]
-            best.difficulty = k[2]
-            best.songinfo = songinfo
-
-            tmp_best_score = 0
-            tmp_best_lamp  = clear_lamp.noplay
-            tmp_min_bp     = 99999999
-
-            for r in filtered:
-                if r.result.score > tmp_best_score:
-                    best.best_score_result = r
-                    tmp_best_score = r.result.score
-                if r.result.lamp.value > tmp_best_lamp.value:
-                    best.best_lamp_result = r
-                    tmp_best_lamp = r.result.lamp
-                if r.result.bp < tmp_min_bp:
-                    best.min_bp_result = r
-                    tmp_min_bp = r.result.bp
-            ret[(k[0], k[1], k[2])] = best
-        return ret
 
     def get_graph_data(self, start_time:int) -> dict:
         '''本日のノーツ数用データを辞書形式で返す'''
@@ -608,16 +564,13 @@ class ResultDatabase:
         bests = self.get_all_best_results()
         level_stats = {'sp': {}, 'dp': {}}
 
-        for (title, style, diff, battle), value in bests.items():
+        for (title, style, diff, battle), best in bests.items():
             if battle:
                 continue
-            songinfo = self.song_database.search(
-                title=title, play_style=style, difficulty=diff
-            )
-            if not songinfo or not hasattr(songinfo, 'level') or not songinfo.level:
+            if not best.songinfo or not hasattr(best.songinfo, 'level') or not best.songinfo.level:
                 continue
 
-            lv = str(songinfo.level)
+            lv = str(best.songinfo.level)
             style_key = 'sp' if style == play_style.sp else 'dp'
 
             if lv not in level_stats[style_key]:
@@ -634,7 +587,7 @@ class ResultDatabase:
             entry['total'] += 1
 
             # ランプ分類
-            lamp = value['best_lamp']
+            lamp = best.lamp
             lamp_key_map = {
                 clear_lamp.fc: 'fc', clear_lamp.exh: 'exh',
                 clear_lamp.hard: 'hard', clear_lamp.clear: 'clear',
@@ -644,9 +597,9 @@ class ResultDatabase:
             entry['lamps'][lamp_key_map.get(lamp, 'failed')] += 1
 
             # スコアレート分類（songinfo.notesが無い場合はリザルト側のnotesをフォールバック）
-            notes = songinfo.notes if hasattr(songinfo, 'notes') and songinfo.notes else value.get('notes')
-            if notes and value['best_score'] > 0:
-                rate = value['best_score'] / (notes * 2)
+            notes = best.songinfo.notes if hasattr(best.songinfo, 'notes') and best.songinfo.notes else best.notes
+            if notes and best.best_score > 0:
+                rate = best.best_score / (notes * 2)
                 if rate >= 16 / 18:
                     entry['scores']['AAA'] += 1
                 elif rate >= 14 / 18:
@@ -797,35 +750,34 @@ class ResultDatabase:
             writer = csv.writer(f, lineterminator="\n")
             writer.writerow(header)
 
-            for key,value in zip(bests.keys(), bests.values()):
-                row = []
-                lv = ''
-                title = escape_for_csv(key[0])
-                mode = get_chart_name(key[1], key[2])
-                if key[3]: # DBx
+            for (title_str, style, diff, battle), best in bests.items():
+                lv = best.level
+                title = escape_for_csv(title_str)
+                mode = get_chart_name(style, diff)
+                if battle: # DBx
                     mode = 'DB' + mode[-1]
-                lamp = str(value['best_lamp'])
-                score = value['best_score']
-                bp = value['min_bp']
-                if bp == 99999999:
+                lamp = str(best.lamp)
+                score = best.best_score
+                bp = best.min_bp
+                if bp >= 99999:
                     bp = ''
-                best_score_opt = value['best_score_option'].__str__()
-                if best_score_opt in ('unknown', 'None') or not best_score_opt:
+                best_score_opt = best.best_score_option
+                if best_score_opt in ('unknown', 'None', '?') or not best_score_opt:
                     best_score_opt = '?'
                 if best_score_opt == 'REGULAR':
-                    if key[1] == play_style.sp:
+                    if style == play_style.sp:
                         best_score_opt = 'OFF'
                     else:
                         best_score_opt = 'OFF/OFF'
-                min_bp_opt = value['min_bp_option'].__str__()
-                if min_bp_opt in ('unknown', 'None') or not min_bp_opt:
+                min_bp_opt = best.min_bp_option
+                if min_bp_opt in ('unknown', 'None', '?') or not min_bp_opt:
                     min_bp_opt = '?'
                 if min_bp_opt == 'REGULAR':
-                    if key[1] == play_style.sp:
+                    if style == play_style.sp:
                         min_bp_opt = 'OFF'
                     else:
                         min_bp_opt = 'OFF/OFF'
-                timestamp = datetime.datetime.fromtimestamp(value['last_play_timestamp']).strftime('%Y/%m/%d %H:%M')
+                timestamp = best.last_play_date
                 row = [
                     lv,
                     title,
@@ -839,7 +791,6 @@ class ResultDatabase:
                     timestamp
                 ]
                 if mode == '':
-                    # logger.debug(f'mode is None, skipped!, row={row}')
                     continue
                 writer.writerow(row)
 
@@ -854,8 +805,7 @@ class ResultDatabase:
         # 全曲の自己べを取得
         bests = self.get_all_best_results()
         titles = []
-        for k in bests.keys():
-            title, style, diff, battle = k
+        for (title, style, diff, battle) in bests.keys():
             if battle:
                 continue
             if style != play_style: # SP/DPどちらかのみ
@@ -869,19 +819,19 @@ class ResultDatabase:
             line += 'TECHNO,SLAKE,0,'
             # beginner, normalは1つもないので埋めておく
             line += '0,0,0,0,---,NO PLAY,---,3,0,0,0,---,NO PLAY,---,'
-            if (t, play_style, difficulty.hyper, None) in bests.keys():
+            if (t, play_style, difficulty.hyper, None) in bests:
                 s = bests[(t, play_style, difficulty.hyper, None)]
-                line += f"12,{s['best_score']},0,0,---,NO PLAY,---,"
+                line += f"12,{s.best_score},0,0,---,NO PLAY,---,"
             else:
                 line += '3,0,0,0,---,NO PLAY,---,'
-            if (t, play_style, difficulty.another, None) in bests.keys():
+            if (t, play_style, difficulty.another, None) in bests:
                 s = bests[(t, play_style, difficulty.another, None)]
-                line += f"12,{s['best_score']},0,0,---,NO PLAY,---,"
+                line += f"12,{s.best_score},0,0,---,NO PLAY,---,"
             else:
                 line += '3,0,0,0,---,NO PLAY,---,'
-            if (t, play_style, difficulty.leggendaria, None) in bests.keys():
+            if (t, play_style, difficulty.leggendaria, None) in bests:
                 s = bests[(t, play_style, difficulty.leggendaria, None)]
-                line += f"12,{s['best_score']},0,0,---,NO PLAY,---,"
+                line += f"12,{s.best_score},0,0,---,NO PLAY,---,"
             else:
                 line += '3,0,0,0,---,NO PLAY,---,'
             now = datetime.datetime.now()
