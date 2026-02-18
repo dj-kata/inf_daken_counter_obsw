@@ -91,12 +91,12 @@ class PlayOption():
     def __str__(self):
         out = '?'
         if self.valid:
-            if self.battle:
-                out += 'BATTLE, '
             if not self.arrange:
                 out = 'REGULAR'
             else:
                 out = self.arrange
+            if self.battle:
+                out = 'BATTLE, ' + out
             if self.flip:
                 out += ',FLIP'
             if self.assist:

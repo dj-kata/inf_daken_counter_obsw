@@ -213,15 +213,13 @@ class ScreenReader:
                         gauge = tmp_gauge
                     if img.getpixel(PosOption.get(style, tmp_assist))[0] > 100:
                         assist = tmp_assist
-            else:
+            else: # DP
                 left_arrange = None
                 right_arrange = None
                 if img.getpixel(PosOption.get(style, option_arrange.sync_ran))[0] > 100:
-                    left_arrange = 'SYNC-RANDOM'
-                    right_arrange = ''
+                    arrange = str(option_arrange.sync_ran)
                 elif img.getpixel(PosOption.get(style, option_arrange.symm_ran))[0] > 100:
-                    left_arrange = 'SYMM-RANDOM'
-                    right_arrange = ''
+                    arrange = str(option_arrange.symm_ran)
                 else:
                     for i in range(5): # 左右レーン
                         tmp_arrange = option_arrange(i)
@@ -233,6 +231,7 @@ class ScreenReader:
                             right_arrange = str(tmp_arrange)
                             if tmp_arrange == option_arrange.s_random and is_hran:
                                 right_arrange = 'H-RANDOM'
+                    arrange = f'{left_arrange} / {right_arrange}'
                 for i in range(5): # ゲージ、アシスト
                     tmp_gauge = option_gauge(i)
                     tmp_assist = option_assist(i)
@@ -240,7 +239,6 @@ class ScreenReader:
                         gauge = tmp_gauge
                     if img.getpixel(PosOption.get(style, tmp_assist))[0] > 100:
                         assist = tmp_assist
-                arrange = f'{left_arrange} / {right_arrange}'
             return (arrange, gauge, assist)
 
         def read_hran() -> bool:
