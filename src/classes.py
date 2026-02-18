@@ -33,6 +33,44 @@ class clear_lamp(Enum):
         }
         return _LAMP_NAMES.get(self.value, '')
 
+class gauge(Enum):
+    '''グルーブゲージの種類を表すクラス'''
+    assist = 0
+    '''アシストイージー'''
+    easy = 1
+    '''イージー'''
+    normal = 2
+    '''ノマゲ'''
+    hard = 3
+    '''ハードゲージ'''
+    exh = 4
+    '''エクハ'''
+
+    course = 10
+    '''段位ゲージ'''
+    erosion1 = 11
+    '''侵食1'''
+    erosion2 = 12
+    '''侵食2'''
+    erosion3 = 13
+    '''侵食3'''
+    erosion4 = 14
+    '''侵食4'''
+    erosion5 = 15
+    '''侵食5'''
+
+    def __lt__(self, other):
+        return self.value < other.value
+
+    def __str__(self):
+        _LAMP_NAMES = {
+            0: 'assist', 1: 'easy', 2: 'normal', 3: 'hard', 4: 'exh',
+            10: 'course',
+            11: 'erosion lv1', 12: 'erosion lv2', 13: 'erosion lv3',
+            14: 'erosion lv4', 15: 'erosion lv5',
+        }
+        return _LAMP_NAMES.get(self.value, '')
+
 class play_style(Enum):
     """SP/DPのどれであるかを表す列挙型クラス。DBxはここでは考慮しない。"""
     sp  = 0
@@ -174,6 +212,8 @@ class detect_mode(Enum):
     '''選曲画面'''
     result = 3
     '''リザルト画面'''
+    option = 4
+    '''オプション画面'''
 
 class play_mode(Enum):
     """プレー画面のモード用Enum"""
@@ -338,3 +378,41 @@ class unofficial_difficulty(Enum):
             if len(diff) == 2:
                 ret += '+'
             return ret
+
+class option_arrange(Enum):
+    '''オプション画面の譜面配置取得専用'''
+    off = 0
+    random = 1
+    r_random = 2
+    s_random = 3
+    mirror = 4
+    sync_ran = 5
+    symm_ran = 6
+
+    def __str__(self):
+        _STRS = {
+            self.off: 'OFF',
+            self.random: 'RANDOM',
+            self.r_random: 'R-RANDOM',
+            self.s_random: 'S-RANDOM',
+            self.mirror: 'MIRROR',
+            self.sync_ran: 'SYNC-RAN',
+            self.symm_ran: 'SYMM-RAN',
+        }
+        return _STRS[self]
+
+class option_gauge(Enum):
+    '''オプション画面のゲージ取得専用'''
+    off = 0
+    a_easy = 1
+    easy = 2
+    hard = 3
+    exh = 4
+
+class option_assist(Enum):
+    '''オプション画面のアシストプレー機能取得専用'''
+    off = 0
+    a_scr = 1
+    legacy = 2
+    key_assist = 3
+    any_key = 4

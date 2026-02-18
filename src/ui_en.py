@@ -250,3 +250,4 @@ class UIText:
         play = 'play'
         result = 'result'
         select = 'music select'
+        option = 'option'

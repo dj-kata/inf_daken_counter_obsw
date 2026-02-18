@@ -75,3 +75,55 @@ class PosResultJudge:
                 x = 1773 + 28*idx
                 y = 981
         return (x, y, x+23, y+15)
+
+class PosOption:
+    _COORDS = {
+        (play_style.sp, option_arrange.off):      (727, 559),
+        (play_style.sp, option_arrange.random):   (727, 599),
+        (play_style.sp, option_arrange.r_random): (727, 639),
+        (play_style.sp, option_arrange.s_random): (727, 679),
+        (play_style.sp, option_arrange.mirror):   (727, 719),
+        # 
+        (play_style.sp, option_gauge.off):    (935, 559),
+        (play_style.sp, option_gauge.a_easy): (898, 599),
+        (play_style.sp, option_gauge.easy):   (935, 639),
+        (play_style.sp, option_gauge.hard):   (935, 679),
+        (play_style.sp, option_gauge.exh):    (935, 719),
+        # 
+        (play_style.sp, option_assist.off):        (1177, 559),
+        (play_style.sp, option_assist.a_scr):      (1177, 599),
+        (play_style.sp, option_assist.legacy):     (1177, 639),
+        (play_style.sp, option_assist.key_assist): (1177, 679),
+        (play_style.sp, option_assist.any_key):    (1177, 719),
+        # dp
+        (play_style.dp, option_arrange.off,      True): (757, 559),
+        (play_style.dp, option_arrange.random,   True): (757, 599),
+        (play_style.dp, option_arrange.r_random, True): (757, 639),
+        (play_style.dp, option_arrange.s_random, True): (757, 679),
+        (play_style.dp, option_arrange.mirror,   True): (757, 719),
+        (play_style.dp, option_arrange.off,      False): (964, 559),
+        (play_style.dp, option_arrange.random,   False): (964, 599),
+        (play_style.dp, option_arrange.r_random, False): (964, 639),
+        (play_style.dp, option_arrange.s_random, False): (964, 679),
+        (play_style.dp, option_arrange.mirror,   False): (964, 719),
+        (play_style.dp, option_arrange.sync_ran):        (964, 755),
+        (play_style.dp, option_arrange.symm_ran):        (964, 786),
+        # 
+        (play_style.dp, option_gauge.off):         (1158, 559),
+        (play_style.dp, option_gauge.a_easy):      (1121, 599),
+        (play_style.dp, option_gauge.easy):        (1158, 639),
+        (play_style.dp, option_gauge.hard):        (1158, 679),
+        (play_style.dp, option_gauge.exh):         (1158, 719),
+        # 
+        (play_style.dp, option_assist.off):        (1388, 559),
+        (play_style.dp, option_assist.a_scr):      (1388, 599),
+        (play_style.dp, option_assist.legacy):     (1388, 639),
+        (play_style.dp, option_assist.key_assist): (1388, 679),
+        (play_style.dp, option_assist.any_key):    (1388, 719),
+    }
+    @classmethod
+    def get(cls, style:play_style, type, is_left:bool=None) -> tuple:
+        if (is_left is not None) and (style == play_style.dp):
+            return cls._COORDS[(style, type, is_left)]
+        else:
+            return cls._COORDS[(style, type)]

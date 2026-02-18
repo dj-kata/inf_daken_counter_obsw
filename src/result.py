@@ -102,6 +102,24 @@ class PlayOption():
             if self.assist:
                 out += f',{self.assist}'
         return out
+    
+class CurrentOption(PlayOption):
+    '''オプション画面で選択中のオプション。play_styleやゲージなども覚えておく。'''
+    def __init__(self):
+        super().__init__()
+        self.play_style:play_style = None
+        '''SP / DP'''
+        self.option_gauge:option_gauge = None
+        '''ゲージの種類'''
+        self.option_assist:option_assist = None
+        '''アシストオプション'''
+
+    def __str__(self):
+        ret = f'play_style:{self.play_style.name}, ' if self.play_style else 'play_style: None, '
+        ret += f'gauge:{self.option_gauge}, '
+        ret += f'assist:{self.option_assist}, '
+        ret += f' option: {super().__str__()}'
+        return ret
 
 class OneResult:
     """1曲分のリザルトを表すクラス。ファイルへの保存用。"""

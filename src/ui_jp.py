@@ -251,3 +251,4 @@ class UIText:
         play = 'プレイ画面'
         result = 'リザルト画面'
         select = '選曲画面'
+        option = 'オプション画面'

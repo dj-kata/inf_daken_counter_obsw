@@ -94,6 +94,8 @@ class MainWindow(MainWindowUI):
         self.play_count = 0
         self.last_saved_song = "---"
         self.result_pre = None # 1つ前の認識結果
+        self.current_option = None
+        '''最後に設定したオプション'''
         self.last_play_mode = None
         '''現在のプレーモード。playの先頭でセットし、その後の検出で使用。'''
         
@@ -361,6 +363,10 @@ class MainWindow(MainWindowUI):
                         self.process_play_mode()
                     elif self.current_mode == detect_mode.result:
                         self.process_result_mode()
+                    elif self.current_mode == detect_mode.option:
+                        self.process_option_mode()
+                    elif self.current_mode == detect_mode.init:
+                        self.process_option_screen()
         
         except Exception as e:
             logger.error(f"メインループエラー: {traceback.format_exc()}")
@@ -371,6 +377,8 @@ class MainWindow(MainWindowUI):
             return detect_mode.result
         elif self.screen_reader.is_select():
             return detect_mode.select
+        elif self.screen_reader.is_option():
+            return detect_mode.option
         else:
             play_mode = self.screen_reader.is_play()
             if play_mode:
@@ -512,8 +520,6 @@ class MainWindow(MainWindowUI):
     
     def process_result_mode(self):
         """リザルト画面での処理"""
-        # ここにresult画面での処理を実装
-        # 例: リザルト読み取りと保存
         try:
             detailed_result = self.screen_reader.read_result_screen()
             result = detailed_result.result
@@ -548,6 +554,10 @@ class MainWindow(MainWindowUI):
         except Exception:
             pass
             # logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
+
+    def process_option_mode(self):
+        """リザルト画面での処理"""
+        self.current_option = self.screen_reader.read_option_screen()
     
     def closeEvent(self, event):
         """アプリ終了時に実行する処理"""

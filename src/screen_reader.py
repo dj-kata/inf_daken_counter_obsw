@@ -119,6 +119,7 @@ class ScreenReader:
                 lamp = convert_lamp(result.details.clear_type.current)
                 if lamp is None: # 認識失敗とみなす
                     return None
+                # if option.battle and lamp: # battle時は現在のゲージに応じて保存 TODO ゲージをオプションから取得する必要あり
                 chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
                 songinfo = self.songinfo.search(chart_id=chart_id)
                 timestamp = int(datetime.datetime.now().timestamp())
@@ -179,6 +180,83 @@ class ScreenReader:
             detect_mode=detect_mode.play
         )
         return result
+    
+    def read_option_screen(self) -> CurrentOption:
+        '''オプション画面を読み取り、現在のオプションを取得'''
+        img = self.screen.original
+        ret = CurrentOption()
+        ret.valid = True
+
+        def read_style() -> play_style:
+            area = img.crop((1650,840, 1730,900))
+            tmp = imagehash.average_hash(area)
+            hash_target = imagehash.hex_to_hash('00006c242480ffff')
+            if (hash_target - tmp) < 10:
+                return play_style.dp
+            else:
+                return play_style.sp
+            
+        def read_option(is_hran:bool, style:play_style) -> tuple:
+            arrange = None
+            gauge = None
+            assist = None
+            if style == play_style.sp:
+                for i in range(5):
+                    tmp_arrange = option_arrange(i)
+                    tmp_gauge = option_gauge(i)
+                    tmp_assist = option_assist(i)
+                    if img.getpixel(PosOption.get(style, tmp_arrange))[0] > 100:
+                        arrange = str(tmp_arrange)
+                        if tmp_arrange == option_arrange.s_random and is_hran:
+                            arrange = 'H-RANDOM'
+                    if img.getpixel(PosOption.get(style, tmp_gauge))[0] > 100:
+                        gauge = tmp_gauge
+                    if img.getpixel(PosOption.get(style, tmp_assist))[0] > 100:
+                        assist = tmp_assist
+            else:
+                left_arrange = None
+                right_arrange = None
+                if img.getpixel(PosOption.get(style, option_arrange.sync_ran))[0] > 100:
+                    left_arrange = 'SYNC-RANDOM'
+                    right_arrange = ''
+                elif img.getpixel(PosOption.get(style, option_arrange.symm_ran))[0] > 100:
+                    left_arrange = 'SYMM-RANDOM'
+                    right_arrange = ''
+                else:
+                    for i in range(5): # 左右レーン
+                        tmp_arrange = option_arrange(i)
+                        if img.getpixel(PosOption.get(style, tmp_arrange, is_left=True))[0] > 100:
+                            left_arrange = str(tmp_arrange)
+                            if tmp_arrange == option_arrange.s_random and is_hran:
+                                left_arrange = 'H-RANDOM'
+                        if img.getpixel(PosOption.get(style, tmp_arrange, is_left=False))[0] > 100:
+                            right_arrange = str(tmp_arrange)
+                            if tmp_arrange == option_arrange.s_random and is_hran:
+                                right_arrange = 'H-RANDOM'
+                for i in range(5): # ゲージ、アシスト
+                    tmp_gauge = option_gauge(i)
+                    tmp_assist = option_assist(i)
+                    if img.getpixel(PosOption.get(style, tmp_gauge))[0] > 100:
+                        gauge = tmp_gauge
+                    if img.getpixel(PosOption.get(style, tmp_assist))[0] > 100:
+                        assist = tmp_assist
+                arrange = f'{left_arrange} / {right_arrange}'
+            return (arrange, gauge, assist)
+
+        def read_hran() -> bool:
+            '''H乱かどうか'''
+            return img.getpixel((409,898))[-1] < 100
+
+        def read_battle() -> bool:
+            '''Battleかどうか'''
+            return img.getpixel((402,872))[-1] < 100
+
+        ret.play_style = read_style()
+        is_hran = read_hran()
+        ret.arrange, ret.option_gauge, ret.option_assist = read_option(is_hran, ret.play_style)
+        ret.battle = read_battle()
+
+        return ret
         
     def get_judge_from_play_screen(self, mode:play_mode):
         """プレー画面から判定を取得"""
@@ -243,6 +321,19 @@ class ScreenReader:
             det = self.detect_judge(mode)
             if det[0] == '0':
                 ret = mode
+        return ret
+
+    def is_option(self) -> bool:
+        '''オプション設定画面かどうかを判定し、判定結果(True/False)を返す
+        Returns:
+            bool: オプション設定画面であればTrue
+        '''
+        ret = False
+        img = self.screen.original
+        tmp = imagehash.average_hash(img.crop((87,836,160,937)))
+        hash_target = imagehash.hex_to_hash('fe1e7efe1fb4e000')
+        ret = (hash_target - tmp) < 10
+
         return ret
 
     def is_select(self) -> bool:
