@@ -410,6 +410,7 @@ class option_gauge(Enum):
     exh = 4
 
     def convert(self):
+        '''option_gauge形式をclear_lamp形式にコンバート'''
         _CONVERT = {
             self.off: clear_lamp.clear,
             self.a_easy: clear_lamp.assist,
