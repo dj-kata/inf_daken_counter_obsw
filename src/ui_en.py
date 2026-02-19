@@ -40,6 +40,8 @@ class UIText:
         settings_title = 'Settings'
         obs_title = 'OBS Control Settings'
         about_title = 'About'
+        major_update_title = 'TODO: Major update dialog title'
+        import_v2_config_title = 'TODO: v2 config import dialog title'
     
     class dialog:
         """Dialogs"""
@@ -144,6 +146,9 @@ class UIText:
         failed_reconnection_to_obs_with_error = 'Failed to reconnect to OBS:\n{e}'
         target_source_removed = 'Monitored source cleared'
         
+        major_update = 'TODO: Major update notification message'
+        ask_import_v2_config = 'TODO: v2 config import confirmation message'
+
         error_title = 'Error'
         warning_title = 'Warning'
         info_title = 'Information'

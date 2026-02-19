@@ -40,6 +40,8 @@ class UIText:
         settings_title = '基本設定'
         obs_title = 'OBS制御設定'
         about_title = 'バージョン情報'
+        major_update_title = 'TODO: メジャーアップデートダイアログのタイトル'
+        import_v2_config_title = 'TODO: v2設定インポート確認ダイアログのタイトル'
     
     class dialog:
         """ダイアログ"""
@@ -143,6 +145,9 @@ class UIText:
         failed_reconnection_to_obs = 'OBSへの再接続に失敗しました'
         failed_reconnection_to_obs_with_error = 'OBSへの再接続に失敗しました:\n{e}'
         target_source_removed = '監視対象ソースをクリアしました'
+
+        major_update = 'TODO: メジャーアップデートの通知文'
+        ask_import_v2_config = 'TODO: v2設定インポートの確認メッセージ'
 
         error_title = 'エラー'
         warning_title = '警告'

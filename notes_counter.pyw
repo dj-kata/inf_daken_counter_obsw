@@ -107,6 +107,9 @@ class MainWindow(MainWindowUI):
         # OBS接続
         self.obs_manager.connect()
         
+        # v2からの引き継ぎ確認（OBS設定チェックより先に実行）
+        QTimer.singleShot(500, self.check_startup_migration)
+
         # OBS設定チェックと警告表示（接続試行後に少し待ってからチェック）
         QTimer.singleShot(1000, self.check_obs_configuration)
         
@@ -171,7 +174,35 @@ class MainWindow(MainWindowUI):
             msg_box.exec()
             
             logger.warning(f"OBS configuration warning: {warnings}")
-    
+
+    def check_startup_migration(self):
+        """起動時にv2からの引き継ぎが必要か確認し、ダイアログを表示する"""
+        if not Path('settings.json').exists():
+            return
+
+        # メジャーアップデートの通知
+        msg_box = QMessageBox(self)
+        msg_box.setIcon(QMessageBox.Information)
+        msg_box.setWindowTitle(self.ui.window.major_update_title)
+        msg_box.setText(self.ui.message.major_update)
+        msg_box.setStandardButtons(QMessageBox.Ok)
+        msg_box.exec()
+
+        # v2設定インポートの確認
+        reply = QMessageBox.question(
+            self,
+            self.ui.window.import_v2_config_title,
+            self.ui.message.ask_import_v2_config,
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if reply == QMessageBox.Yes:
+            self.import_v2_config()
+
+    def import_v2_config(self):
+        """v2のsettings.jsonからself.configに設定をインポートする (スケルトン)"""
+        # TODO: settings.jsonを読み込んでself.configに反映する処理を実装
+        pass
+
     def open_config_dialog(self):
         """設定ダイアログを開く"""
         old_rivals = copy.deepcopy(self.config.rivals)
