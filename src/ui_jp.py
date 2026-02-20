@@ -40,7 +40,7 @@ class UIText:
         settings_title = '基本設定'
         obs_title = 'OBS制御設定'
         about_title = 'バージョン情報'
-        major_update_title = 'TODO: メジャーアップデートダイアログのタイトル'
+        major_update_title = 'バージョンアップについての確認'
         import_v2_config_title = 'TODO: v2設定インポート確認ダイアログのタイトル'
     
     class dialog:
@@ -146,7 +146,10 @@ class UIText:
         failed_reconnection_to_obs_with_error = 'OBSへの再接続に失敗しました:\n{e}'
         target_source_removed = '監視対象ソースをクリアしました'
 
-        major_update = 'TODO: メジャーアップデートの通知文'
+        major_update = '本アプリはv3へとメジャーアップデートされました。\n\n'
+        major_update += '注意\n従来のHTMLファイルは使えません。\nv3のHTMLはtemplateフォルダにあります。再設定をお願いします。\n\n'
+        major_update += 'v2でのプレーログは基本設定のデータ登録タブからインポート可能です。\n'
+        major_update += 'alllog.pklからのコンバートよりも、リザルト画像からの取り込みがより確実です。'
         ask_import_v2_config = 'TODO: v2設定インポートの確認メッセージ'
 
         error_title = 'エラー'

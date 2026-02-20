@@ -146,7 +146,10 @@ class UIText:
         failed_reconnection_to_obs_with_error = 'Failed to reconnect to OBS:\n{e}'
         target_source_removed = 'Monitored source cleared'
         
-        major_update = 'TODO: Major update notification message'
+        major_update = 'This app has been majorly updated to v3.\n\n'
+        major_update += 'Note:\nPrevious HTML files cannot be used.\nv3 HTML files are located in the template folder. Please reconfigure them.\n\n'
+        major_update += 'You can import v2 playlogs from the Data Import tab in the Configure screen.\n'
+        major_update += 'Importing from result images is more reliable than converting from alllog.pkl.'
         ask_import_v2_config = 'TODO: v2 config import confirmation message'
 
         error_title = 'Error'
