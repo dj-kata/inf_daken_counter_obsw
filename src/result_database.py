@@ -317,7 +317,8 @@ class ResultDatabase:
                     continue
             ret[0] = max(ret[0], r.result.score)
             if r.result.judge:
-                ret[1] = min(ret[1], r.result.judge.bd + r.result.judge.pr)
+                if not r.result.dead:
+                    ret[1] = min(ret[1], r.result.judge.bd + r.result.judge.pr)
             elif r.result.bp: # 選曲画面から登録したものはこちら
                 ret[1] = min(ret[1], r.result.bp)
             ret[2] = clear_lamp(max(ret[2].value, r.result.lamp.value))
@@ -376,7 +377,7 @@ class ResultDatabase:
                 best.best_score_result.option = result.option
 
             # 最小BP更新
-            current_bp = result.bp if result.bp is not None else 99999
+            current_bp = result.bp if (result.bp is not None and not result.dead) else 99999
             best_bp = best.min_bp_result.bp if best.min_bp_result and best.min_bp_result.bp is not None else 99999
             if current_bp < best_bp:
                 best.min_bp_result = result
@@ -653,7 +654,7 @@ class ResultDatabase:
                 best_lamp_opt = r.result.option
             if r.result.judge: # リザルト画面からの取得
                 if battle:
-                    if r.result.judge.pr + r.result.judge.bd < best_bp:
+                    if not r.result.dead and r.result.judge.pr + r.result.judge.bd < best_bp:
                         best_bp = r.result.judge.pr + r.result.judge.bd
                         best_bp_opt = r.result.option
                 else:
