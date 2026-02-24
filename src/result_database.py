@@ -490,7 +490,7 @@ class ResultDatabase:
 
             item.update(_extract_songinfo_fields(songinfo))
 
-            if detailed_result.bpi:
+            if detailed_result.bpi is not None:
                 item['bpi'] = f"{detailed_result.bpi:.2f}"
 
             if detailed_result.score_rate_with_rankdiff:
@@ -702,7 +702,7 @@ class ResultDatabase:
                 if detail.score_rate_with_rankdiff:
                     data['best_rankdiff0'] = detail.score_rate_with_rankdiff[0]
                     data['best_rankdiff1'] = detail.score_rate_with_rankdiff[1]
-            if detail.bpi:
+            if detail.bpi is not None:
                 data['best_bpi'] = f"{detail.bpi:.2f}"
             if detail.score_rate_with_rankdiff:
                 data['rankdiff'] = ''.join(detail.score_rate_with_rankdiff)
@@ -726,7 +726,7 @@ class ResultDatabase:
                 'opt': r.result.option.__str__() if r.result.option else ""
             }
 
-            if r.bpi:
+            if r.bpi is not None:
                 item['bpi'] = f"{r.bpi:.2f}"
             if r.score_rate_with_rankdiff:
                 item['rankdiff'] = ''.join(r.score_rate_with_rankdiff)

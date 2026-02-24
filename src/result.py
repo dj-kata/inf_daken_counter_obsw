@@ -299,8 +299,10 @@ class DetailedResult():
         bpi = None
         try:
             if self.songinfo and self.result.score and self.songinfo.bpi_ave:
-                notes = self.result.notes
-                bpi_coef = self.songinfo.bpi_coef if self.songinfo.bpi_coef>0 else 1.175
+                notes = self.result.notes or self.songinfo.notes
+                if not notes:
+                    return None
+                bpi_coef = self.songinfo.bpi_coef if (self.songinfo.bpi_coef and self.songinfo.bpi_coef > 0) else 1.175
                 s = self.result.score
                 m = notes*2
                 z = self.songinfo.bpi_top
