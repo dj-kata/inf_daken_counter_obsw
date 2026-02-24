@@ -41,7 +41,7 @@ class UIText:
         obs_title = 'OBS Control Settings'
         about_title = 'About'
         major_update_title = 'TODO: Major update dialog title'
-        import_v2_config_title = 'TODO: v2 config import dialog title'
+        import_v2_config_title = 'v2 config importer'
     
     class dialog:
         """Dialogs"""
@@ -150,7 +150,9 @@ class UIText:
         major_update += 'Note:\nPrevious HTML files cannot be used.\nv3 HTML files are located in the template folder. Please reconfigure them.\n\n'
         major_update += 'You can import v2 playlogs from the Data Import tab in the Configure screen.\n'
         major_update += 'Importing from result images is more reliable than converting from alllog.pkl.'
-        ask_import_v2_config = 'TODO: v2 config import confirmation message'
+
+        ask_import_v2_config = 'Do you want to import v2 settings?\n(Some settings, including OBS auto-control, are incompatible.)'
+        notify_rename_v2_config = 'Successfully renamed the imported v2 settings file.\nalllog.pkl -> alllog.pkl.bak'
 
         error_title = 'Error'
         warning_title = 'Warning'

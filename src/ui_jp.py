@@ -41,7 +41,7 @@ class UIText:
         obs_title = 'OBS制御設定'
         about_title = 'バージョン情報'
         major_update_title = 'バージョンアップについての確認'
-        import_v2_config_title = 'TODO: v2設定インポート確認ダイアログのタイトル'
+        import_v2_config_title = 'v2設定のインポート'
     
     class dialog:
         """ダイアログ"""
@@ -150,7 +150,9 @@ class UIText:
         major_update += '注意\n従来のHTMLファイルは使えません。\nv3のHTMLはtemplateフォルダにあります。再設定をお願いします。\n\n'
         major_update += 'v2でのプレーログは基本設定のデータ登録タブからインポート可能です。\n'
         major_update += 'alllog.pklからのコンバートよりも、リザルト画像からの取り込みがより確実です。'
-        ask_import_v2_config = 'TODO: v2設定インポートの確認メッセージ'
+
+        ask_import_v2_config = 'v2の設定をインポートしますか? \n(OBS自動制御設定など一部の設定は引き継げません)'
+        notify_rename_v2_config = 'インポート済みのv2の設定ファイルをリネームしました。\nalllog.pkl -> alllog.pkl.bak'
 
         error_title = 'エラー'
         warning_title = '警告'

@@ -151,6 +151,8 @@ class MainWindow(MainWindowUI):
         status = self.obs_manager.get_detailed_status()
         
         warnings = []
+
+        # TODO 英語化
         
         # OBS WebSocket接続チェック
         if not status['is_connected']:
@@ -200,8 +202,28 @@ class MainWindow(MainWindowUI):
 
     def import_v2_config(self):
         """v2のsettings.jsonからself.configに設定をインポートする (スケルトン)"""
-        # TODO: settings.jsonを読み込んでself.configに反映する処理を実装
-        pass
+        with open('settings.json', 'r') as f:
+            import json
+            v2_settings:dict = json.load(f)
+        self.config.websocket_host = v2_settings['host'] if 'host' in v2_settings else self.config.websocket_host
+        self.config.websocket_port = int(v2_settings['port']) if 'port' in v2_settings else self.config.websocket_port
+        self.config.websocket_password = v2_settings['passwd'] if 'passwd' in v2_settings else self.config.websocket_password
+        self.config.monitor_source_name = v2_settings['obs_source'] if 'obs_source' in v2_settings else self.config.monitor_source_name
+        self.config.image_save_path = v2_settings['autosave_dir'] if 'autosave_dir' in v2_settings else self.config.image_save_path
+        self.config.modify_rivalarea_mode = config_modify_rivalarea.mosaic if v2_settings.get('autosave_mosaic', False) else self.config.modify_rivalarea_mode
+        self.config.enable_autotweet = v2_settings['tweet_on_exit'] if 'tweet_on_exit' in v2_settings else self.config.enable_autotweet
+        self.config.autosave_image_mode = config_autosave_image.all if v2_settings.get('autosave_always', False) in v2_settings else self.config.autosave_image_mode
+        # self.config. = v2_settings['scene_collection'] if 'scene_collection' in v2_settings else self.config.
+
+        QMessageBox.information(
+            self,
+            self.ui.window.import_v2_config_title,
+            self.ui.message.notify_rename_v2_config,
+        )
+
+        file_path = Path('settings.json')
+        file_path.rename('settings.json.bak')
+
 
     def open_config_dialog(self):
         """設定ダイアログを開く"""
