@@ -213,7 +213,7 @@ class MainWindow(MainWindowUI):
         self.config.modify_rivalarea_mode = config_modify_rivalarea.mosaic if v2_settings.get('autosave_mosaic', False) else self.config.modify_rivalarea_mode
         self.config.enable_autotweet = v2_settings['tweet_on_exit'] if 'tweet_on_exit' in v2_settings else self.config.enable_autotweet
         self.config.autosave_image_mode = config_autosave_image.all if v2_settings.get('autosave_always', False) in v2_settings else self.config.autosave_image_mode
-        # self.config. = v2_settings['scene_collection'] if 'scene_collection' in v2_settings else self.config.
+        self.config.obs_scene_collection = v2_settings['scene_collection'] if 'scene_collection' in v2_settings else self.config.obs_scene_collection
 
         QMessageBox.information(
             self,
