@@ -89,6 +89,7 @@ class MainWindow(MainWindowUI):
         self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
         self.result_database.broadcast_graph_data(self.start_time_with_offset)
         self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
+        self.result_database.broadcast_option_data(self.current_option)
         self.result_timestamp = 0
         self.today_keystroke_count = 0
         self.play_count = 0
