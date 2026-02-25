@@ -35,6 +35,7 @@ class Config:
         # OBS自動制御設定
         self.obs_control_settings = []
         self.monitor_source_name = ""
+        self.obs_scene_collection = ""  # 使用するシーンコレクション名（空=未設定）
 
         self.image_save_path = 'results'
 
@@ -95,6 +96,7 @@ class Config:
                     # OBS自動制御設定
                     self.obs_control_settings = config_data.get('obs_control_settings', [])
                     self.monitor_source_name = config_data.get('monitor_source_name', "")
+                    self.obs_scene_collection = config_data.get('obs_scene_collection', "")
 
                     # リザルト画像保存先フォルダ
                     self.image_save_path = config_data.get('image_save_path', 'results')
@@ -155,6 +157,7 @@ class Config:
             "main_window_geometry": self.main_window_geometry,
             "obs_control_settings": self.obs_control_settings,
             "monitor_source_name": self.monitor_source_name,
+            "obs_scene_collection": self.obs_scene_collection,
             "image_save_path": self.image_save_path,
             "websocket_data_port": self.websocket_data_port,
             "target_music_packs": self.target_music_packs,

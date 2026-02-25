@@ -73,6 +73,9 @@ class OBSWebSocketManager(QObject):
         self.picw = 1920
         self.pich = 1080
         self.screen = None
+
+        # 起動時シーンコレクション切り替えフラグ（disconnect後にリセット）
+        self._scene_collection_applied = False
     
     def set_config(self, config: Config):
         """設定をセット"""
@@ -114,10 +117,13 @@ class OBSWebSocketManager(QObject):
             
             self.is_connected = True
             self._emit_status(f"{self.ui.obs.status_connected} ({self.config.websocket_host}:{self.config.websocket_port})", True)
-            
+
+            # 起動時シーンコレクション切り替え
+            self._apply_scene_collection()
+
             # 接続監視スレッドを開始
             self.start_monitor()
-            
+
             return True
             
         except Exception as e:
@@ -149,8 +155,9 @@ class OBSWebSocketManager(QObject):
             except:
                 pass
             self.client = None
-        
+
         self.is_connected = False
+        self._scene_collection_applied = False
         self._emit_status(self.ui.obs.status_disconnected, False)
     
     def start_monitor(self):
@@ -247,6 +254,9 @@ class OBSWebSocketManager(QObject):
                             self._emit_status(f"{self.ui.obs.status_reconnected} ({self.config.websocket_host}:{self.config.websocket_port})", True)
                             logger.info("OBS reconnection successful")
                             consecutive_failures = 0
+
+                            # 起動時シーンコレクション切り替え（未適用の場合のみ）
+                            self._apply_scene_collection()
                             
                         except Exception as e:
                             # 再接続失敗
@@ -343,6 +353,32 @@ class OBSWebSocketManager(QObject):
         """シーン一覧を取得"""
         res = self.client.get_scene_list()
         return res.scenes
+
+    @_require_connection
+    def get_scene_collection_list(self) -> List[str]:
+        """シーンコレクション一覧を取得"""
+        res = self.client.get_scene_collection_list()
+        return res.scene_collections
+
+    @_require_connection
+    def set_scene_collection(self, name: str) -> bool:
+        """シーンコレクションを切り替え"""
+        self.client.set_current_scene_collection(name)
+        logger.info(f"シーンコレクションを切り替えました: {name}")
+        return True
+
+    def _apply_scene_collection(self):
+        """起動時に設定されたシーンコレクションへ切り替え（未適用の場合のみ）"""
+        if self._scene_collection_applied:
+            return
+        if not self.config or not self.config.obs_scene_collection:
+            return
+        try:
+            self.set_scene_collection(self.config.obs_scene_collection)
+            self._scene_collection_applied = True
+            logger.info(f"起動時シーンコレクション適用: {self.config.obs_scene_collection}")
+        except Exception as e:
+            logger.error(f"起動時シーンコレクション切り替えエラー: {e}")
 
     @_require_connection
     def get_source_list(self, scene: str) -> List[str]:
