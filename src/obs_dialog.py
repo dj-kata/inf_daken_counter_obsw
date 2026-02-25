@@ -92,7 +92,18 @@ class OBSControlDialog(QDialog):
         websocket_layout.addRow(self.ui.obs.websocket_password, self.websocket_password_edit)
         
         layout.addWidget(websocket_group)
-        
+
+        # シーンコレクション設定グループ
+        scene_collection_group = QGroupBox(self.ui.obs.scene_collection_group)
+        scene_collection_layout = QFormLayout()
+        scene_collection_group.setLayout(scene_collection_layout)
+
+        self.scene_collection_combo = QComboBox()
+        self.scene_collection_combo.currentIndexChanged.connect(self.on_scene_collection_changed)
+        scene_collection_layout.addRow(self.ui.obs.scene_collection_label, self.scene_collection_combo)
+
+        layout.addWidget(scene_collection_group)
+
         # 監視対象ソース表示
         monitor_group = QGroupBox(self.ui.obs.target_source_group)
         monitor_layout = QHBoxLayout()
@@ -231,27 +242,75 @@ class OBSControlDialog(QDialog):
         if not self.obs_manager.is_connected:
             logger.warning("OBSに接続されていません")
             return
-        
+
         try:
             # OBSからシーン一覧を取得(List[Dict])
             scenes_data = self.obs_manager.get_scene_list()
-            
+
             self.target_scene_combo.clear()
             self.switch_scene_combo.clear()
-            
+
             # scenesデータからシーン名を抽出
             for scene_dict in scenes_data:
                 scene_name = scene_dict.get('sceneName', '')
                 if scene_name:
                     self.target_scene_combo.addItem(scene_name)
                     self.switch_scene_combo.addItem(scene_name)
-            
+
             logger.info(f"シーンリストを更新しました: {len(scenes_data)}件")
-                
+
         except Exception as e:
             logger.error(f"シーン一覧取得エラー: {e}")
             QMessageBox.warning(self, self.ui.message.error_title, f"シーンリストの取得に失敗しました:\n{e}")
+
+        # シーンコレクション一覧を更新
+        self._update_scene_collection_list()
+
+    def _update_scene_collection_list(self):
+        """OBSからシーンコレクション一覧を取得してコンボボックスを更新"""
+        if not self.obs_manager.is_connected:
+            return
+
+        try:
+            collections = self.obs_manager.get_scene_collection_list()
+            if collections is None:
+                return
+
+            # シグナルを一時ブロックして誤動作を防ぐ
+            self.scene_collection_combo.blockSignals(True)
+            self.scene_collection_combo.clear()
+            self.scene_collection_combo.addItem("", None)  # 未設定の空白項目
+            for name in collections:
+                self.scene_collection_combo.addItem(name, name)
+
+            # 現在の設定値を選択
+            current = self.config.obs_scene_collection
+            if current:
+                idx = self.scene_collection_combo.findData(current)
+                if idx >= 0:
+                    self.scene_collection_combo.setCurrentIndex(idx)
+                else:
+                    self.scene_collection_combo.setCurrentIndex(0)
+            else:
+                self.scene_collection_combo.setCurrentIndex(0)
+
+            self.scene_collection_combo.blockSignals(False)
+            logger.info(f"シーンコレクションリストを更新しました: {len(collections)}件")
+
+        except Exception as e:
+            logger.error(f"シーンコレクション一覧取得エラー: {e}")
     
+    def on_scene_collection_changed(self):
+        """シーンコレクション選択変更時にOBS側を切り替える"""
+        name = self.scene_collection_combo.currentData()
+        if not name or not self.obs_manager.is_connected:
+            return
+        try:
+            self.obs_manager.set_scene_collection(name)
+        except Exception as e:
+            logger.error(f"シーンコレクション切り替えエラー: {e}")
+            QMessageBox.warning(self, self.ui.message.error_title, f"シーンコレクションの切り替えに失敗しました:\n{e}")
+
     def on_target_scene_changed(self):
         """対象シーンが変更されたときにソース一覧を更新"""
         scene_name = self.target_scene_combo.currentText()
@@ -504,6 +563,16 @@ class OBSControlDialog(QDialog):
         self.websocket_host_edit.setText(self.config.websocket_host)
         self.websocket_port_spin.setValue(self.config.websocket_port)
         self.websocket_password_edit.setText(self.config.websocket_password)
+
+        # シーンコレクション設定を読み込む（シグナルをブロックして誤動作を防ぐ）
+        self.scene_collection_combo.blockSignals(True)
+        self.scene_collection_combo.clear()
+        self.scene_collection_combo.addItem("", None)
+        saved_collection = self.config.obs_scene_collection
+        if saved_collection:
+            self.scene_collection_combo.addItem(saved_collection, saved_collection)
+            self.scene_collection_combo.setCurrentIndex(1)
+        self.scene_collection_combo.blockSignals(False)
         
         # 監視対象ソースを表示
         if self.config.monitor_source_name:
@@ -579,7 +648,11 @@ class OBSControlDialog(QDialog):
         self.config.websocket_host = self.websocket_host_edit.text()
         self.config.websocket_port = self.websocket_port_spin.value()
         self.config.websocket_password = self.websocket_password_edit.text()
-        
+
+        # シーンコレクション設定を保存
+        selected_collection = self.scene_collection_combo.currentData()
+        self.config.obs_scene_collection = selected_collection if selected_collection else ""
+
         self.config.save_config()
         logger.info("OBS制御設定を保存しました")
         super().accept()
