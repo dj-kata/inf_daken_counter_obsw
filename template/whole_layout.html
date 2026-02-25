@@ -20,7 +20,8 @@
             /* === 分割比率のカスタムプロパティ === */
             --color-upper-border: #055;
             --clock-ratio: 0.6;
-            --comment-ratio: 6.4;
+            --option-ratio: 0.5;
+            --comment-ratio: 5.9;
             
             /* 下段の3つの要素の比率 */
             --bottom-today-ratio: 10;
@@ -263,29 +264,35 @@
             }
         }
 
+        .option-area {
+            flex: var(--option-ratio);
+            background-color: transparent;
+            border: 10px solid var(--color-bg);
+            display: flex;
+        }
+        .option-inner {
+            border: 2px solid #aaaaaa;
+            border-radius: 10px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+
         .comment-area {
             flex: var(--comment-ratio);
             background-color: transparent;
             border: 10px solid var(--color-bg);
             display: flex;
-            flex-direction: column;
             color: none;
             font-size: 18px;
-        }
-        .comment-option-area {
-            flex: 0 0 68px;
-            overflow: hidden;
-            border: 2px solid #aaaaaa;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
         }
         .comment-inner {
             border: 2px solid #aaaaaa;
             border-radius: 10px;
             width: 100%;
-            flex: 1;
-            min-height: 0;
+            height: 100%;
         }
 
         /* 区切り線 - #003背景 */
@@ -418,10 +425,13 @@
                     </div> -->
                 </div>
 
-                <div class="comment-area">
-                    <div class="comment-option-area">
+                <div class="option-area">
+                    <div class="option-inner">
                         <iframe src="./option.html" width="300" height="50" frameborder="0" scrolling="no"></iframe>
                     </div>
+                </div>
+
+                <div class="comment-area">
                     <div class="comment-inner"></div>
                 </div>
             </div>
