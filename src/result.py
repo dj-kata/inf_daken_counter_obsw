@@ -100,7 +100,8 @@ class PlayOption():
             if self.flip:
                 out += ', FLIP'
             if self.assist:
-                out += f',{self.assist}'
+                out += f', {self.assist}'
+        # print('hoge', out, self.assist)
         return out
     
 class CurrentOption(PlayOption):
@@ -114,12 +115,16 @@ class CurrentOption(PlayOption):
         self.option_assist:option_assist = None
         '''アシストオプション'''
 
-    # def __str__(self):
-    #     ret = f'play_style:{self.play_style.name}, ' if self.play_style else 'play_style: None, '
-    #     ret += f'gauge:{self.option_gauge}, '
-    #     ret += f'assist:{self.option_assist}, '
-    #     ret += f' option: {super().__str__()}'
-    #     return ret
+    def __str__(self):
+        if self.option_assist.value > 0:
+            out_dict = {
+                option_assist.a_scr: 'A-SCR',
+                option_assist.legacy: 'LEGACY',
+                option_assist.key_assist: 'KEY ASSIST',
+                option_assist.any_key: 'ANY KEY',
+            }
+            self.assist = out_dict[self.option_assist]
+        return super().__str__()
 
 class OneResult:
     """1曲分のリザルトを表すクラス。ファイルへの保存用。"""

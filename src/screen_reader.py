@@ -242,6 +242,7 @@ class ScreenReader:
                         assist = tmp_assist
                 if img.getpixel(PosOption.get(style, option_flip(1)))[0] > 100:
                     flip = 'FLIP'
+            print(arrange, gauge, assist, flip)
             return (arrange, gauge, assist, flip)
 
         def read_hran() -> bool:
