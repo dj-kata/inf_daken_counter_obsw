@@ -86,10 +86,6 @@ class MainWindow(MainWindowUI):
         self.current_judge = Judge()
         '''このプレーの判定内訳'''
         self.set_today_judge()
-        self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
-        self.result_database.broadcast_graph_data(self.start_time_with_offset)
-        self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
-        self.result_database.broadcast_option_data(self.current_option)
         self.result_timestamp = 0
         self.today_keystroke_count = 0
         self.play_count = 0
@@ -100,6 +96,12 @@ class MainWindow(MainWindowUI):
         self.last_play_mode = None
         '''現在のプレーモード。playの先頭でセットし、その後の検出で使用。'''
         
+        # HTMLを更新しておく
+        self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
+        self.result_database.broadcast_graph_data(self.start_time_with_offset)
+        self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
+        self.result_database.broadcast_option_data(self.current_option)
+
         # UI初期化
         self.init_ui()
         # 最前面表示
