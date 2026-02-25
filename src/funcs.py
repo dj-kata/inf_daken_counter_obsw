@@ -46,10 +46,13 @@ def calc_chart_id(title:str, play_style:play_style, difficulty:difficulty):
         hash = hashlib.sha256(key.encode('utf-8')).hexdigest()
     return hash
 
-def get_chart_name(play_style:play_style, difficulty:difficulty):
+def get_chart_name(play_style:play_style, difficulty:difficulty, battle:bool=None):
     """SPA,DPLのような難易度部分のみの文字列を出力"""
     if play_style and difficulty:
-        return f"{play_style.name.upper()}{difficulty.name.upper()[0]}"
+        if battle:
+            return f"DB{difficulty.name.upper()[0]}"
+        else:
+            return f"{play_style.name.upper()}{difficulty.name.upper()[0]}"
     else:
         return ''
     

@@ -645,11 +645,11 @@ class ResultDatabase:
                 target.append(r)
             if r.result.notes and not notes:
                 notes = r.result.notes
-            if r.result.score > best_score:
+            if r.result.score and r.result.score > best_score:
                 best_score = r.result.score
                 best_score_opt = r.result.option
                 detail = r
-            if r.result.lamp.value > best_lamp:
+            if r.result.lamp and r.result.lamp.value > best_lamp:
                 best_lamp = r.result.lamp.value
                 best_lamp_opt = r.result.option
             if r.result.judge: # リザルト画面からの取得

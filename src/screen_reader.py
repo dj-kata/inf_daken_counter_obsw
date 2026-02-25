@@ -119,7 +119,6 @@ class ScreenReader:
                 lamp = convert_lamp(result.details.clear_type.current)
                 if lamp is None: # 認識失敗とみなす
                     return None
-                # if option.battle and lamp: # battle時は現在のゲージに応じて保存 TODO ゲージをオプションから取得する必要あり
                 chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
                 songinfo = self.songinfo.search(chart_id=chart_id)
                 timestamp = int(datetime.datetime.now().timestamp())
@@ -127,8 +126,11 @@ class ScreenReader:
                 # logger.debug(f"side:{result.play_side}, judge:{judge}")
 
                 if not result.dead: # 完走した場合はCBを正確に計算
-                    cb = bp - (judge.sum - notes)
-                    judge.cb = cb
+                    if option.battle:
+                        judge.cb = judge.bd + judge.pr
+                    else:
+                        cb = bp - (judge.sum - notes)
+                        judge.cb = cb
                 else: # 途中落ちの場合残りノーツを見逃しとして足しておく
                     judge.pr += (notes - judge.notes)
 

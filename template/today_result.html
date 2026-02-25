@@ -429,15 +429,15 @@
                 if (battle == 1) {
                     var with_scratch = opt.indexOf("A-SCR") < 0 ? "皿" : "";
                     title_prefix = "<span class='battle'>["; + with_scratch
-                    if ((opt.indexOf("MIR / OFF") >= 0) || (opt.indexOf("OFF / MIR") >= 0)) {
+                    if ((opt.indexOf("MIR/OFF") >= 0) || (opt.indexOf("OFF/MIR") >= 0)) {
                         title_prefix += 'DBM';
-                    } else if (opt.indexOf("OFF / OFF") >= 0) {
+                    } else if (opt.indexOf("OFF/OFF") >= 0) {
                         title_prefix += 'DB';
-                    } else if (opt.indexOf("RAN / RAN") >= 0) {
+                    } else if (opt.indexOf("RAN/RAN") >= 0) {
                         title_prefix += 'DBR';
-                    } else if (opt.indexOf("S-RAN / S-RAN") >= 0) {
+                    } else if (opt.indexOf("S-RAN/S-RAN") >= 0) {
                         title_prefix += 'DBSR';
-                    } else if (opt.indexOf("H-RAN / H-RAN") >= 0) {
+                    } else if (opt.indexOf("H-RAN/H-RAN") >= 0) {
                         title_prefix += 'DBHR';
                     }
                     title_prefix += "]</span> ";

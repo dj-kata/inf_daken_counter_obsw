@@ -302,7 +302,10 @@ class MainWindow(MainWindowUI):
                         self.statusBar().showMessage(f"伸びていないのでスキップします。", 10000)
                         return False
 
-                filename = f"inf_{detailed_result.result.title}_{get_chart_name(detailed_result.result.play_style, detailed_result.result.difficulty)}"
+                if detailed_result.result.option:
+                    filename = f"inf_{detailed_result.result.title}_{get_chart_name(detailed_result.result.play_style, detailed_result.result.difficulty, detailed_result.result.option.battle)}"
+                else:
+                    filename = f"inf_{detailed_result.result.title}_{get_chart_name(detailed_result.result.play_style, detailed_result.result.difficulty)}"
                 filename += f"_{detailed_result.result.lamp.name}"
                 filename += f"_ex{detailed_result.result.score}"
                 filename += f"_bp{result.judge.bd + result.judge.pr}"
@@ -582,7 +585,7 @@ class MainWindow(MainWindowUI):
                         if result.judge.cb == 0:
                             # CB0ならフルコンにする
                             result.lamp = clear_lamp.fc
-                        elif (self.current_option.option_gauge is not None):
+                        elif self.current_option is not None and self.current_option.option_gauge is not None:
                             # ゲージを検出できていた場合、そのゲージにする
                             result.lamp = self.current_option.option_gauge.convert()
                     # リザルトを保存
@@ -611,8 +614,8 @@ class MainWindow(MainWindowUI):
 
                 self.result_pre = result
         except Exception:
-            pass
             # logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
+            pass
 
     def process_option_mode(self):
         """オプション画面での処理"""
