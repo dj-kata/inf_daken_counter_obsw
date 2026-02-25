@@ -237,9 +237,16 @@ class ResultDatabase:
             logger.info(f"result added! hash:{hash(result)}, len:{len(self.results)}, result:{result}")
             return True
         else:
+            if not result.lamp or not result.score:
+                logger.warning(f"result rejected (lamp or score missing): {result}")
+                return False
             if result not in self.results:
                 battle = True if result.option and result.option.battle else False
                 result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=battle, playspeed=result.playspeed)
+                if result.detect_mode == detect_mode.select and result.pre_score is not None:
+                    if not result.is_updated():
+                        logger.info(f"select result skipped (no update): {result}")
+                        return False
                 self.results.append(result)
                 logger.info(f"result added! hash:{hash(result)}, len:{len(self.results)}, result:{result}")
                 return True
