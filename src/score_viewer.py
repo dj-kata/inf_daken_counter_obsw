@@ -417,21 +417,22 @@ class ScoreViewer(QMainWindow):
     def setup_rival_table(self):
         """ライバルテーブルの初期設定"""
         # 列定義
-        columns = ['player', 'lamp', 'score', 'BP', 'last played']
-        
+        columns = ['rank', 'player', 'lamp', 'score', 'BP', 'last played']
+
         self.rival_table.setColumnCount(len(columns))
         self.rival_table.setHorizontalHeaderLabels(columns)
-        
+
         # ヘッダー設定
         header = self.rival_table.horizontalHeader()
         header.setStretchLastSection(True)
-        
+
         # 列幅設定
-        self.rival_table.setColumnWidth(0, 150)  # プレーヤー名
-        self.rival_table.setColumnWidth(1, 100)  # ランプ
-        self.rival_table.setColumnWidth(2, 100)  # スコア
-        self.rival_table.setColumnWidth(3, 100)  # ミスカウント
-        self.rival_table.setColumnWidth(4, 150)  # 最終プレー日
+        self.rival_table.setColumnWidth(0, 40)   # 順位
+        self.rival_table.setColumnWidth(1, 150)  # プレーヤー名
+        self.rival_table.setColumnWidth(2, 100)  # ランプ
+        self.rival_table.setColumnWidth(3, 100)  # スコア
+        self.rival_table.setColumnWidth(4, 100)  # ミスカウント
+        self.rival_table.setColumnWidth(5, 150)  # 最終プレー日
         
         # 編集不可
         self.rival_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -945,74 +946,102 @@ class ScoreViewer(QMainWindow):
             return ("NO PLAY", QColor(200, 200, 200))
     
     def update_rival_table(self, score: OneBestData):
-        """ライバル欄を更新（自己ベスト + ライバルスコアを表示）"""
+        """ライバル欄を更新（自己ベスト + ライバルスコアをスコア降順で表示）"""
         try:
             self.rival_table.setRowCount(0)
 
             if not score:
                 return
 
-            # Row 0: MY BEST
-            row = 0
-            self.rival_table.insertRow(row)
+            # MY BEST エントリを作成
+            my_best_entry = {
+                'name': '(MY BEST)',
+                'lamp': score.lamp,
+                'score': score.best_score,
+                'bp_str': str(score.min_bp) if score.min_bp < 99999 else "",
+                'last_played': score.last_play_date,
+                'is_my_best': True,
+            }
 
-            item = QTableWidgetItem("(MY BEST)")
-            self.rival_table.setItem(row, 0, item)
-
-            if score.lamp:
-                lamp_name, lamp_color = self.get_lamp_info(score.lamp)
-                item = QTableWidgetItem(lamp_name)
-                item.setTextAlignment(Qt.AlignCenter)
-                if lamp_color:
-                    item.setBackground(QBrush(lamp_color))
-                self.rival_table.setItem(row, 1, item)
-
-            item = QTableWidgetItem(str(score.best_score))
-            item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.rival_table.setItem(row, 2, item)
-
-            bp_str = str(score.min_bp) if score.min_bp < 99999 else ""
-            item = QTableWidgetItem(bp_str)
-            item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.rival_table.setItem(row, 3, item)
-
-            item = QTableWidgetItem(score.last_play_date)
-            item.setTextAlignment(Qt.AlignCenter)
-            self.rival_table.setItem(row, 4, item)
-
-            # ライバル行
+            # ライバルエントリを収集
+            rival_entries = []
             if self.rival_manager:
                 mode = score.chart  # "SPA", "DPN" 等
                 rival_scores = self.rival_manager.get_rival_scores(score.title, mode)
-                rival_scores.sort(key=lambda x: x[1].score, reverse=True)
-
                 for rival_name, entry in rival_scores:
-                    row += 1
-                    self.rival_table.insertRow(row)
+                    rival_entries.append({
+                        'name': rival_name,
+                        'lamp': entry.lamp,
+                        'score': entry.score or 0,
+                        'bp_str': str(entry.bp) if entry.bp < 99999999 else "",
+                        'last_played': entry.last_played,
+                        'is_my_best': False,
+                    })
 
-                    item = QTableWidgetItem(rival_name)
-                    self.rival_table.setItem(row, 0, item)
+            # 全エントリをスコア降順でソート（同点の場合はMY BESTを上に）
+            all_entries = [my_best_entry] + rival_entries
+            all_entries.sort(key=lambda x: (x['score'], x['is_my_best']), reverse=True)
 
-                    lamp_name, lamp_color = self.get_lamp_info(entry.lamp)
-                    item = QTableWidgetItem(lamp_name)
-                    item.setTextAlignment(Qt.AlignCenter)
-                    if lamp_color:
-                        item.setBackground(QBrush(lamp_color))
-                    self.rival_table.setItem(row, 1, item)
+            # 順位を計算（同点は同じ順位、標準競技ランキング: 1,1,3,4...）
+            ranks = []
+            rank = 1
+            for i, entry in enumerate(all_entries):
+                if i == 0:
+                    ranks.append(1)
+                else:
+                    if entry['score'] < all_entries[i - 1]['score']:
+                        rank = i + 1
+                    ranks.append(rank)
 
-                    score_str = str(entry.score) if entry.score else ""
-                    item = QTableWidgetItem(score_str)
-                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                    self.rival_table.setItem(row, 2, item)
+            # MY BEST行の背景色
+            my_best_bg = QColor(60, 80, 120)  # 落ち着いた青
 
-                    bp_str = str(entry.bp) if entry.bp < 99999999 else ""
-                    item = QTableWidgetItem(bp_str)
-                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                    self.rival_table.setItem(row, 3, item)
+            # テーブルに追加
+            for row, (entry, rank) in enumerate(zip(all_entries, ranks)):
+                self.rival_table.insertRow(row)
 
-                    item = QTableWidgetItem(entry.last_played)
-                    item.setTextAlignment(Qt.AlignCenter)
-                    self.rival_table.setItem(row, 4, item)
+                is_my = entry['is_my_best']
+                row_bg = my_best_bg if is_my else None
+                row_fg = QColor(255, 255, 255) if is_my else None  # MY BEST行は白文字
+
+                def make_item(text, alignment=None):
+                    it = QTableWidgetItem(text)
+                    if alignment:
+                        it.setTextAlignment(alignment)
+                    if row_bg:
+                        it.setBackground(QBrush(row_bg))
+                    if row_fg:
+                        it.setForeground(QBrush(row_fg))
+                    return it
+
+                # 順位 (column 0)
+                rank_item = make_item(str(rank), Qt.AlignCenter)
+                self.rival_table.setItem(row, 0, rank_item)
+
+                # プレーヤー名 (column 1)
+                name_item = make_item(entry['name'])
+                if is_my:
+                    font = name_item.font()
+                    font.setBold(True)
+                    name_item.setFont(font)
+                self.rival_table.setItem(row, 1, name_item)
+
+                # ランプ (column 2) — 常にランプ色を使用
+                lamp_name, lamp_color = self.get_lamp_info(entry['lamp'])
+                lamp_item = QTableWidgetItem(lamp_name)
+                lamp_item.setTextAlignment(Qt.AlignCenter)
+                lamp_item.setBackground(QBrush(lamp_color))
+                self.rival_table.setItem(row, 2, lamp_item)
+
+                # スコア (column 3)
+                score_str = str(entry['score']) if entry['score'] else ""
+                self.rival_table.setItem(row, 3, make_item(score_str, Qt.AlignRight | Qt.AlignVCenter))
+
+                # BP (column 4)
+                self.rival_table.setItem(row, 4, make_item(entry['bp_str'], Qt.AlignRight | Qt.AlignVCenter))
+
+                # 最終プレー日 (column 5)
+                self.rival_table.setItem(row, 5, make_item(entry['last_played'], Qt.AlignCenter))
 
         except Exception as e:
             logger.error(f"ライバル欄更新エラー: {e}")
@@ -1329,15 +1358,15 @@ class ScoreViewer(QMainWindow):
                 return
 
             row = selected[0].row()
-            if row == 0:
-                # MY BEST行が選択された場合はバーを非表示
-                self.win_loss_bar.hide()
-                return
-
-            rival_name_item = self.rival_table.item(row, 0)
+            rival_name_item = self.rival_table.item(row, 1)  # column 1: player name
             if not rival_name_item:
                 return
             rival_name = rival_name_item.text()
+
+            if rival_name == '(MY BEST)':
+                # MY BEST行が選択された場合はバーを非表示
+                self.win_loss_bar.hide()
+                return
 
             # ライバルが変わったらフィルターをリセット
             if self._rival_win_filter_name and self._rival_win_filter_name != rival_name:
