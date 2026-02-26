@@ -40,13 +40,14 @@ _BPI_DIFF_BLOCKS = [
 
 class RivalScoreEntry:
     """1譜面分のライバルスコア"""
-    __slots__ = ('lamp', 'score', 'bp', 'last_played')
+    __slots__ = ('lamp', 'score', 'bp', 'last_played', 'option')
 
     def __init__(self):
         self.lamp: clear_lamp = clear_lamp.noplay
         self.score: int = 0
         self.bp: int = 99999999
         self.last_played: str = ""
+        self.option: Optional[str] = None
 
 
 class RivalData:
@@ -147,6 +148,7 @@ class RivalFetchWorker(QThread):
                 entry.score = int(score_str) if score_str else 0
                 entry.bp = int(bp_str) if bp_str else 99999999
                 entry.last_played = str(last_played)
+                entry.option = row[7] if len(row) > 7 and row[7] else None
 
                 rival.scores[(title, mode)] = entry
             except (ValueError, IndexError):

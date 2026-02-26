@@ -65,6 +65,7 @@ class MainWindow(MainWindowUI):
         self.song_database = SongDatabase()
         self.result_database = ResultDatabase(config=self.config)
         self.rival_manager = RivalManager(parent=self)
+        self.result_database.rival_manager = self.rival_manager
         self.screen_reader = ScreenReader()
         
         # OBS接続マネージャーの初期化

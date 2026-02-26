@@ -62,6 +62,7 @@ class ResultDatabase:
         self.ws_server = None
         self.ws_loop = None
         self.ws_thread = None
+        self.rival_manager = None
 
         # configが渡された場合のみWebSocketサーバーを起動
         if config is not None:
@@ -743,6 +744,35 @@ class ResultDatabase:
             items.append(item)
 
         data['items'] = items
+
+        # ライバルランキングデータ
+        mode = get_chart_name(style, difficulty)
+        rival_items = [{
+            'player': '(ME)',
+            'lamp': best_lamp,
+            'score': best_score,
+            'bp': best_bp,
+            'option': best_score_opt.__str__() if best_score_opt else '',
+            'is_me': True,
+        }]
+        if self.rival_manager:
+            for rival_name, entry in self.rival_manager.get_rival_scores(title, mode):
+                rival_items.append({
+                    'player': rival_name,
+                    'lamp': entry.lamp.value,
+                    'score': entry.score,
+                    'bp': entry.bp,
+                    'option': entry.option,  # None → HTML側で"?"を表示
+                    'is_me': False,
+                })
+        rival_items.sort(key=lambda x: (x['score'], x['is_me']), reverse=True)
+        rank = 1
+        for i, item in enumerate(rival_items):
+            if i > 0 and item['score'] < rival_items[i - 1]['score']:
+                rank = i + 1
+            item['rank'] = rank
+        data['rival_items'] = rival_items
+
         return data
     
     def get_option_data(self, option:CurrentOption) -> dict:

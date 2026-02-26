@@ -1203,6 +1203,11 @@ class ScoreViewer(QMainWindow):
                     self.current_selected_score = score
                     self.update_playlog_table(score)
                     self.update_rival_table(score)
+                    self.result_database.broadcast_history_cursong_data(
+                        title=score.title,
+                        style=score.style,
+                        difficulty=score.difficulty,
+                    )
         
         except Exception as e:
             logger.error(f"選択変更エラー: {e}")
