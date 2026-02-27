@@ -150,7 +150,7 @@ _LAMP_MAP = {
 
 def convert_lamp(_lamp) -> clear_lamp | None:
     '''ランプ用文字列をEnumに変換'''
-    return _LAMP_MAP.get(_lamp, clear_lamp.noplay)
+    return _LAMP_MAP.get(_lamp)
 
 _SIDE_MAP = {
     '1P': result_side._1p,
