@@ -5,6 +5,7 @@ from PIL import Image
 import numpy as np
 import imagehash
 import glob
+import gzip
 import urllib, json, requests
 from bs4 import BeautifulSoup
 
@@ -16,11 +17,11 @@ from src.config import Config
 from src.songinfo import *
 logger = get_logger('convert_db')
 
-with open('resources/informations4.0.res', 'rb') as f:
+with gzip.open('infnotebook/resources/informations4.1.res', 'rb') as f:
     detect = pickle.load(f) # bpim, notes
 titles = detect['music']['musics'] # inf-notebook側の曲名リスト
 
-with open('resources/musictable1.1.res', 'rb') as f:
+with gzip.open('infnotebook/resources/musictable1.2.res', 'rb') as f:
     mt = pickle.load(f) # bpim, notes
 versions = mt['versions'] # 1st&substream, 2nd style,...などのキー
 levels = mt['levels'] # SP/DP, 1-12
