@@ -29,6 +29,7 @@ class PlayOption():
 
     def __init__(self, result_options:ResultOptions=None):
         if result_options is not None:
+            self.valid = True
             self.arrange = result_options.arrange
             self.flip = result_options.flip
             self.assist = result_options.assist
