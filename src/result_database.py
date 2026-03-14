@@ -202,7 +202,11 @@ class ResultDatabase:
 
             if playspeed is not None:
                 # playspeed指定時: 同一playspeedの detect_mode.result のみ
-                if r.result.playspeed != playspeed:
+                # None と 1.0 は等価として扱う
+                target_speed = 1.0 if playspeed is None else playspeed
+                result_speed = 1.0 if r.result.playspeed is None else r.result.playspeed
+
+                if result_speed != target_speed:
                     continue
                 if r.result.detect_mode != detect_mode.result:
                     continue
@@ -216,7 +220,8 @@ class ResultDatabase:
                 # continue
             else:
                 # 通常: playspeed=None かつ battleでない detect_mode.result / detect_mode.select
-                if r.result.playspeed is not None:
+                # playspeed=1.0 も通常プレイとして扱う
+                if r.result.playspeed is not None and r.result.playspeed != 1.0:
                     continue
                 if r.result.option and r.result.option.battle:
                     continue

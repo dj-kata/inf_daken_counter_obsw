@@ -44,7 +44,7 @@ from src.update import GitHubUpdater
 sys.path.append('infnotebook')
 from define import define
 # from src.resources import resource, check_latest
-from resources import resource, check_latest
+from resources import resource, download_latestresource
 from record import musicnamechanges_filename
 
 try:
@@ -806,10 +806,10 @@ def check_resource():
     storage_acc = StorageAccessor()
     logger.debug('check_resource start')
     for res_name, load_func in _RESOURCES:
-        if check_latest(storage_acc, f'{res_name}.res'):
+        if download_latestresource(storage_acc, f'{res_name}.res'):
             logger.debug(f"check ok, {res_name}")
             load_func()
-    check_latest(storage_acc, musicnamechanges_filename)
+    download_latestresource(storage_acc, musicnamechanges_filename)
     logger.debug('end')
 
 def main():

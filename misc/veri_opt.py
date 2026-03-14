@@ -13,19 +13,19 @@ from src.result_database import ResultDatabase
 from src.classes import *
 from src.config import Config
 from src.funcs import *
-logger = get_logger('exe_recog')
+logger = get_logger('veri_opt')
 
 if __name__ == '__main__':
     logger.info('start')
     config = Config()
-    rdb = ResultDatabase(config = config)
+    # rdb = ResultDatabase(config = config)
     reader = ScreenReader()
-    # for f in glob.glob('debug/option/*.png'):
-    for f in glob.glob('debug/option/*easy*.png'):
+    for f in glob.glob('debug/option/*.png'):
+    # for f in glob.glob('debug/option/*easy*.png'):
         # logger.info(f'file={f}')
         reader.update_screen_from_file(f)
         if reader.is_option():
             opt = reader.read_option_screen()
-            rdb.broadcast_option_data(opt)
-            print(f, opt)
-    rdb.shutdown_servers()
+            # rdb.broadcast_option_data(opt)
+            print(f, opt.play_style.name, opt)
+    # rdb.shutdown_servers()

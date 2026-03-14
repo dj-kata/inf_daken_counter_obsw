@@ -20,88 +20,115 @@ class PlayOption():
     '''DPオンリー 左右の譜面が入れ替わる'''
     assist = None
     '''A-SCR or LEGACY(オプション画面の構造上兼ねられない点に注意)'''
-    battle = None
+    battle = False
     '''DP時にBATTLEがON 両サイドがSP譜面になる'''
-    special = None
-    '''集計対象とすべきでないスコアのフラグ。H-RAN or BATTLEの場合にTrueとなる。'''
+    allscratch = False
+    '''ALL-SCRATCHがON'''
+    regularspeed = False
+    '''REGUL-SPEEDがON'''
 
-    def __init__(self, option:ResultOptions=None):
-        if option:
-            self.valid = True
-            self.arrange: str = option.arrange
-            self.flip: str = option.flip
-            self.assist: str = option.assist
-            self.battle: bool = option.battle
+    def __init__(self, result_options:ResultOptions=None):
+        if result_options is not None:
+            self.arrange = result_options.arrange
+            self.flip = result_options.flip
+            self.assist = result_options.assist
+            self.battle = result_options.battle
+            self.allscratch = result_options.allscratch
+            self.regularspeed = result_options.regularspeed
 
     @property
-    def special(self) -> bool:
-        """特殊オプション判定（自動計算）"""
-        if not self.arrange:
-            return self.battle
-
-        special_keywords = ['H-RAN', 'BATTLE', 'SYMM-RAN', 'SYNC-RAN']
-        return any(keyword in self.arrange for keyword in special_keywords) or self.battle
-
-    def convert_from_v2(self, opt:str):
-        '''v2の文字列形式でのオプションをv3用に変換してインスタンスに直接書き込む。'''
-        self.valid = True
-        if opt == None: # 正規
-            self.arrange = None
-        elif opt == '?':
-            self.valid = False # 不明だったやつは不明にしておく
-        else:
-            # special は @property で自動計算されるため、ここでの代入は不要
-            if opt.startswith('BATTLE'): # battle有効時はフラグを立てる
-                self.battle = True
-                opt = opt.split('BATTLE, ')[-1]
-            if 'FLIP' in opt: # flip有効時は消す
-                self.flip = 'FLIP'
-                opt = opt.replace(', FLIP', '')
-            if 'A-SCR' in opt:
-                self.assist = 'A-SCR'
-                opt = opt.replace(', A-SCR', '')
-            if 'LEGACY' in opt:
-                self.assist = 'LEGACY'
-                opt = opt.replace(', LEGACY', '')
-
-            if '/' not in opt: # sp
-                if opt == 'R-RAN':
-                    opt = 'R-RANDOM'
-                if opt == 'S-RAN':
-                    opt = 'S-RANDOM'
-                if opt == 'RAN':
-                    opt = 'RANDOM'
-                if opt == 'MIR':
-                    opt = 'MIRROR'
-            self.arrange = opt
+    def special(self):
+        '''保存対象外(特殊配置、allscratch, regularspeed, バトル)'''
+        if self.arrange and any(keyword in self.arrange for keyword in ['H-RAN', 'SYMM-RAN', 'SYNC-RAN']):
+            return True
+        if self.allscratch or self.regularspeed or self.battle:
+            return True
+        return False
 
     def __hash__(self):
-        return hash((self.valid, self.arrange, self.flip, self.assist, self.battle, self.special))
+        return hash((self.arrange, self.flip, self.assist, self.battle, self.allscratch, self.regularspeed))
 
     def __eq__(self, other):
         if not isinstance(other, PlayOption):
             return False
-        return (self.valid == other.valid and
-                self.arrange == other.arrange and
+        return (self.arrange == other.arrange and
                 self.flip == other.flip and
                 self.assist == other.assist and
                 self.battle == other.battle and
-                self.special == other.special)
+                self.allscratch == other.allscratch and
+                self.regularspeed == other.regularspeed)
+
+    def convert_from_v2(self, opt_str:str):
+        '''v2以前の文字列形式のオプションから復元する。特殊な名前の付いたものを優先的に判定する。'''
+        if not opt_str:
+            return
+        
+        if 'BATTLE' in opt_str:
+            self.battle = True
+        if 'ALL-SCR' in opt_str:
+            self.allscratch = True
+        if 'REGUL-SPEED' in opt_str:
+            self.regularspeed = True
+        
+        # 記録対象外の判定（v2文字列から復元する場合もプロパティ経由で判定される）
+        
+        # 残りのオプションをarrange, flip, assistに割り当てる
+        temp_opt = opt_str
+        if self.battle:
+            temp_opt = temp_opt.replace('BATTLE, ', '')
+        if self.allscratch:
+            temp_opt = temp_opt.replace(', ALL-SCR', '')
+        if self.regularspeed:
+            temp_opt = temp_opt.replace(', REGUL-SPEED', '')
+
+        if 'FLIP' in temp_opt:
+            self.flip = 'FLIP'
+            temp_opt = temp_opt.replace(', FLIP', '')
+        if 'A-SCR' in temp_opt:
+            self.assist = 'A-SCR'
+            temp_opt = temp_opt.replace(', A-SCR', '')
+        elif 'LEGACY' in temp_opt:
+            self.assist = 'LEGACY'
+            temp_opt = temp_opt.replace(', LEGACY', '')
+        
+        # 残りがarrange
+        if temp_opt == 'REGULAR':
+            self.arrange = None
+        elif temp_opt == '?':
+            # 不明なオプションはそのままにするか、Noneにするか
+            self.arrange = None # 不明な場合は正規として扱う
+        else:
+            # v2の表記揺れを修正
+            if '/' not in temp_opt: # SP
+                if temp_opt == 'R-RAN':
+                    temp_opt = 'R-RANDOM'
+                if temp_opt == 'S-RAN':
+                    temp_opt = 'S-RANDOM'
+                if temp_opt == 'RAN':
+                    temp_opt = 'RANDOM'
+                if temp_opt == 'MIR':
+                    temp_opt = 'MIRROR'
+            self.arrange = temp_opt
 
     def __str__(self):
-        out = '?'
-        if self.valid:
-            if not self.arrange:
-                out = 'REGULAR'
-            else:
-                out = self.arrange
+        if self.special:
             if self.battle:
-                out = 'BATTLE, ' + out
-            if self.flip:
-                out += ', FLIP'
-            if self.assist:
-                out += f', {self.assist}'
-        # print('hoge', out, self.assist)
+                return 'BATTLE'
+            if self.allscratch:
+                return 'ALL-SCR'
+            if self.regularspeed:
+                return 'REGUL-SPEED'
+            return 'H-RAN etc'
+        
+        if not self.arrange:
+            out = 'REGULAR'
+        else:
+            out = self.arrange
+        
+        if self.flip:
+            out += ', FLIP'
+        if self.assist:
+            out += f', {self.assist}'
         return out
     
 class CurrentOption(PlayOption):
@@ -124,7 +151,13 @@ class CurrentOption(PlayOption):
                 option_assist.any_key: 'ANY KEY',
             }
             self.assist = out_dict[self.option_assist]
-        return super().__str__()
+        
+        base = super().__str__()
+        parts = [base]
+        if self.option_gauge:
+            parts.append(str(self.option_gauge))
+        
+        return ', '.join(parts)
 
 class OneResult:
     """1曲分のリザルトを表すクラス。ファイルへの保存用。"""

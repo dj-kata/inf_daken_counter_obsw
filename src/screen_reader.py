@@ -190,9 +190,9 @@ class ScreenReader:
         ret.valid = True
 
         def read_style() -> play_style:
-            area = img.crop((1650,840, 1730,900))
+            area = img.crop(PosOptionScreen.STYLE_AREA)
             tmp = imagehash.average_hash(area)
-            hash_target = imagehash.hex_to_hash('00006c242480ffff')
+            hash_target = imagehash.hex_to_hash(PosOptionScreen.STYLE_HASH)
             if (hash_target - tmp) < 10:
                 return play_style.dp
             else:
@@ -244,21 +244,32 @@ class ScreenReader:
                         assist = tmp_assist
                 if img.getpixel(PosOption.get(style, option_flip(1)))[0] > 100:
                     flip = 'FLIP'
-            print(arrange, gauge, assist, flip)
+            # print(arrange, gauge, assist, flip)
             return (arrange, gauge, assist, flip)
 
         def read_hran() -> bool:
             '''H乱かどうか'''
-            return img.getpixel((409,898))[-1] < 100
+            return img.getpixel(PosOptionScreen.CHECKBOX_HRAN)[-1] < 100
 
         def read_battle() -> bool:
             '''Battleかどうか'''
-            return img.getpixel((402,872))[-1] < 100
+            return img.getpixel(PosOptionScreen.CHECKBOX_BATTLE)[-1] < 100
+
+        def read_allscratch() -> bool:
+            '''ALL-SCRATCHかどうか'''
+            return img.getpixel(PosOptionScreen.CHECKBOX_ALL_SCRATCH)[-1] < 100
+
+        def read_regularspeed() -> bool:
+            '''REGUL-SPEEDかどうか'''
+            return img.getpixel(PosOptionScreen.CHECKBOX_REGUL_SPEED)[-1] < 100
 
         ret.play_style = read_style()
         is_hran = read_hran()
         ret.arrange, ret.option_gauge, ret.option_assist, ret.flip = read_option(is_hran, ret.play_style)
-        ret.battle = read_battle()
+        if ret.play_style == play_style.dp: # SPを除外しておくことで、灰色になる場合をケアしないようにする
+            ret.battle = read_battle()
+        ret.allscratch = read_allscratch()
+        ret.regularspeed = read_regularspeed()
 
         return ret
         
@@ -334,9 +345,9 @@ class ScreenReader:
         '''
         ret = False
         img = self.screen.original
-        tmp = imagehash.average_hash(img.crop((263,837,359,855)))
-        # img.crop((263,837,359,855)).save('hoge.png')
-        hash_target = imagehash.hex_to_hash('857f6f848584e6e7')
+        tmp = imagehash.average_hash(img.crop(PosOptionScreen.IS_OPTION_AREA))
+        # img.crop(PosOptionScreen.IS_OPTION_AREA).save('hoge.png')
+        hash_target = imagehash.hex_to_hash(PosOptionScreen.IS_OPTION_HASH)
         ret = (hash_target - tmp) < 5
 
         return ret
@@ -349,17 +360,17 @@ class ScreenReader:
         ret = False
         img = self.screen.original
 
-        hash_target = imagehash.hex_to_hash('007e7e5e5a7e7c00')
-        img_1p = img.crop((466,1000,466+27,1000+27))
+        hash_target = imagehash.hex_to_hash(PosMusicSelectScreen.HASH_SELECT)
+        img_1p = img.crop(PosMusicSelectScreen.IS_SELECT_1P)
         h_1p = imagehash.average_hash(img_1p)
-        img_2p = img.crop((1422,1000,1422+27,1000+27))
+        img_2p = img.crop(PosMusicSelectScreen.IS_SELECT_2P)
         h_2p = imagehash.average_hash(img_2p)
         ret = ((hash_target - h_1p) < 10) or ((hash_target - h_2p) < 10)
         # キーボードプレイの場合
-        hash_target = imagehash.hex_to_hash('003c3c3c3c3c3c00')
-        img_1p = img.crop((60,980,60+34,980+47))
+        hash_target = imagehash.hex_to_hash(PosMusicSelectScreen.HASH_SELECT_KB)
+        img_1p = img.crop(PosMusicSelectScreen.IS_SELECT_KB_1P)
         h_1p = imagehash.average_hash(img_1p)
-        img_2p = img.crop((1860,980,1860+34,980+47))
+        img_2p = img.crop(PosMusicSelectScreen.IS_SELECT_KB_2P)
         h_2p = imagehash.average_hash(img_2p)
         ret |= ((hash_target - h_1p) < 10) or ((hash_target - h_2p) < 10)
         #logger.debug(f"ret = {ret}")
@@ -374,9 +385,9 @@ class ScreenReader:
         ret = False
         img = self.screen.original
 
-        hash_target = imagehash.hex_to_hash('e0e0fc063c62e2c3')
-        tmpl = imagehash.average_hash(img.crop((20,28,60,58)))
-        tmpr = imagehash.average_hash(img.crop((1860,28,1900,58)))
+        hash_target = imagehash.hex_to_hash(PosResultScreen.HASH_RESULT)
+        tmpl = imagehash.average_hash(img.crop(PosResultScreen.IS_RESULT_L))
+        tmpr = imagehash.average_hash(img.crop(PosResultScreen.IS_RESULT_R))
         ret = ((hash_target - tmpl) < 10) or ((hash_target - tmpr) < 10)
         #logger.debug(f"ret = {ret}")
 
@@ -391,7 +402,7 @@ class ScreenReader:
         ret = None
         img = self.screen.original
 
-        hash_target = imagehash.hex_to_hash('105f487f5effb700')
+        hash_target = imagehash.hex_to_hash(PosIsPlayHash.HASH)
         for mode in play_mode:
             tmp = imagehash.average_hash(img.crop(PosIsPlay.get(mode)))
             judge = (hash_target - tmp) < 10
@@ -403,8 +414,8 @@ class ScreenReader:
     def is_endselect(self):
         """選曲画面の終了時かどうかを判定"""
         img = self.screen.original
-        tmp = imagehash.average_hash(img.crop((0,0,1920,380)))
-        hash_target = imagehash.hex_to_hash('000018082c3fbffe')
+        tmp = imagehash.average_hash(img.crop(PosMusicSelectScreen.END_SELECT_AREA))
+        hash_target = imagehash.hex_to_hash(PosMusicSelectScreen.END_SELECT_HASH)
         ret = (hash_target - tmp) < 10
         return ret
 
@@ -412,7 +423,7 @@ class ScreenReader:
         """リザルト画面の終了時かどうかを判定"""
         img = self.screen.original
         tmp = imagehash.average_hash(img)
-        hash_target = imagehash.hex_to_hash('f86060d8f8783cfc')
+        hash_target = imagehash.hex_to_hash(PosResultScreen.END_RESULT_HASH)
         ret = (hash_target - tmp) < 10
         #logger.debug(f"ret = {ret}")
         return ret

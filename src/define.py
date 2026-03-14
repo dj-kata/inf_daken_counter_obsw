@@ -130,3 +130,41 @@ class PosOption:
             return cls._COORDS[(style, type, is_left)]
         else:
             return cls._COORDS[(style, type)]
+
+class PosOptionScreen:
+    '''オプション画面に関する座標とハッシュ'''
+    STYLE_AREA = (1650, 840, 1730, 900)
+    STYLE_HASH = '00006c242480ffff'
+    
+    IS_OPTION_AREA = (221, 813, 317, 831)
+    IS_OPTION_HASH = '857f6f848584e6e7'
+
+    CHECKBOX_HRAN         = (415, 898)
+    CHECKBOX_BATTLE       = (409, 872)
+    CHECKBOX_ALL_SCRATCH  = (411, 852)
+    CHECKBOX_REGUL_SPEED  = (207, 903)
+
+class PosMusicSelectScreen:
+    '''選曲画面に関する座標とハッシュ'''
+    IS_SELECT_1P = (466, 1000, 466 + 27, 1000 + 27)
+    IS_SELECT_2P = (1422, 1000, 1422 + 27, 1000 + 27)
+    HASH_SELECT  = '007e7e5e5a7e7c00'
+
+    IS_SELECT_KB_1P = (60, 980, 60 + 34, 980 + 47)
+    IS_SELECT_KB_2P = (1860, 980, 1860 + 34, 980 + 47)
+    HASH_SELECT_KB  = '003c3c3c3c3c3c00'
+
+    END_SELECT_AREA = (0, 0, 1920, 380)
+    END_SELECT_HASH = '000018082c3fbffe'
+
+class PosResultScreen:
+    '''リザルト画面に関する座標とハッシュ'''
+    IS_RESULT_L = (20, 28, 60, 58)
+    IS_RESULT_R = (1860, 28, 1900, 58)
+    HASH_RESULT = 'e0e0fc063c62e2c3'
+
+    END_RESULT_HASH = 'f86060d8f8783cfc'
+
+class PosIsPlayHash:
+    '''プレー画面判定用のハッシュ'''
+    HASH = '105f487f5effb700'

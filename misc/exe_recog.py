@@ -40,7 +40,11 @@ if __name__ == '__main__':
     config = Config()
     rdb = ResultDatabase(config = config)
     reader = ScreenReader()
+    a = 'debug/0126/inf_BEAT PRISONER_SPA_ACLEAR_ex2996_bp23_20260202_004346.png'
+    reader.update_screen_from_file(a)
+    # inf_ATHER_SPA_failed_ex191_bp1329_20260211_022549_cut2p.png
     # for f in glob.glob('debug/0126/*.png'):
+    # for f in glob.glob('pic/inf_*.png'):
     #     # logger.info(f'file={f}')
     #     reader.update_screen_from_file(f)
     #     if reader.is_result():
@@ -54,7 +58,7 @@ if __name__ == '__main__':
 
     # print(rdb)
 
-    print(f'len = {len(rdb.results)}')
+    # print(f'len = {len(rdb.results)}')
 
     # rdb.write_best_csv()
     a = rdb.get_all_best_results()
@@ -65,18 +69,18 @@ if __name__ == '__main__':
     # a.play_style = play_style.dp
     # a.chart_id = (a.title, a.play_style, a.difficulty)
     # rdb.results[-1] = a
-    rdb.results[-1].option.battle = True
-    rdb.results[-1].play_style = play_style.dp
-    rdb.results[-1].playspeed = None
-    rdb.results[-1].option.arrange = 'MIR / OFF'
 
-    rdb.results[-4].option.battle = True
-    rdb.results[-4].play_style = play_style.dp
-    rdb.results[-4].option.arrange = 'S-RAN / S-RAN'
-    rdb.broadcast_today_updates_data(datetime.datetime.now().timestamp() - 96*3600)
-    # rdb.broadcast_history_cursong_data('AA', play_style.sp, difficulty.another)
-    rdb.broadcast_history_cursong_data('Red. by Jack Trance', play_style.dp, difficulty.another, battle=True)
-    rdb.broadcast_today_stats_data(datetime.datetime.now().timestamp())
+    title = '卑弥呼'
+    x = rdb.search(title, play_style.sp, difficulty.another)
+    for s in x:
+        if s.result.detect_mode == detect_mode.result:
+            print(s)
+
+    rdb.broadcast_history_cursong_data(title, play_style.sp, difficulty.another, battle=False)
+    rdb.broadcast_today_stats_data(datetime.datetime.now().timestamp()-48*3600)
+    si = rdb.song_database.search(title='卑弥呼', play_style=play_style.sp, difficulty=difficulty.another)
+    print(si)
+    print(f"bpi_ave={si.bpi_ave}, bpi_top={si.bpi_top}, bpi_coef={si.bpi_coef}, notes={si.notes}")
     # time.sleep(5)
     # rdb.broadcast_history_cursong_data('Lords Of The Roundtable', play_style.sp, difficulty.another, playspeed=0.95)
     # rdb.broadcast_history_cursong_data('Carmina', play_style.sp, difficulty.another)
@@ -85,3 +89,4 @@ if __name__ == '__main__':
 
     rdb.shutdown_servers()
     print(rdb.results[-1])
+si = rdb.song_database.search(title='ADAMANT', play_style=play_style.sp, difficulty=difficulty.another)
