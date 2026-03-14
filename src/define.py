@@ -138,10 +138,11 @@ class PosOptionScreen:
     
     IS_OPTION_AREA = (221, 813, 317, 831)
     IS_OPTION_HASH = '857f6f848584e6e7'
+    IS_OPTION_HASH_DP = 'fb7f89a425c4ef00'
 
     CHECKBOX_HRAN         = (415, 898)
     CHECKBOX_BATTLE       = (409, 872)
-    CHECKBOX_ALL_SCRATCH  = (411, 852)
+    CHECKBOX_ALL_SCRATCH  = (408, 852)
     CHECKBOX_REGUL_SPEED  = (207, 903)
 
 class PosMusicSelectScreen:

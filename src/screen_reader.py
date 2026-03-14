@@ -348,7 +348,8 @@ class ScreenReader:
         tmp = imagehash.average_hash(img.crop(PosOptionScreen.IS_OPTION_AREA))
         # img.crop(PosOptionScreen.IS_OPTION_AREA).save('hoge.png')
         hash_target = imagehash.hex_to_hash(PosOptionScreen.IS_OPTION_HASH)
-        ret = (hash_target - tmp) < 5
+        hash_target_dp = imagehash.hex_to_hash(PosOptionScreen.IS_OPTION_HASH_DP)
+        ret = ((hash_target - tmp) < 5) or ((hash_target_dp - tmp) < 5)
 
         return ret
 

@@ -111,24 +111,27 @@ class PlayOption():
             self.arrange = temp_opt
 
     def __str__(self):
-        if self.special:
+        out = '?'
+        if self.valid:
+            out = ''
             if self.battle:
-                return 'BATTLE'
+                out = 'BATTLE, '
             if self.allscratch:
-                return 'ALL-SCR'
+                out += 'ALL-SCR, '
+            else:
+                if not self.arrange:
+                    out += 'REGULAR, '
+                else:
+                    out += self.arrange + ', '
             if self.regularspeed:
-                return 'REGUL-SPEED'
-            return 'H-RAN etc'
-        
-        if not self.arrange:
-            out = 'REGULAR'
-        else:
-            out = self.arrange
-        
-        if self.flip:
-            out += ', FLIP'
-        if self.assist:
-            out += f', {self.assist}'
+                out += 'REGUL-SPEED, '
+            if self.flip:
+                out += ', FLIP'
+            if self.assist:
+                out += f', {self.assist}'
+        out = out.replace(', , ', ', ')
+        if out[-2:] == ', ':
+            out = out[:-2]
         return out
     
 class CurrentOption(PlayOption):
@@ -154,8 +157,8 @@ class CurrentOption(PlayOption):
         
         base = super().__str__()
         parts = [base]
-        if self.option_gauge:
-            parts.append(str(self.option_gauge))
+        # if self.option_gauge:
+        #     parts.append(str(self.option_gauge))
         
         return ', '.join(parts)
 
