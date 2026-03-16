@@ -246,6 +246,9 @@ class ResultDatabase:
             if not result.lamp or not result.score:
                 logger.warning(f"result rejected (lamp or score missing): {result}")
                 return False
+            if (result.detect_mode == detect_mode.result) and (result.option.valid == False):
+                logger.warning(f"result rejected (option is invalid): {result}")
+                return False
             if result not in self.results:
                 battle = True if result.option and result.option.battle else False
                 result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=battle, playspeed=result.playspeed)
