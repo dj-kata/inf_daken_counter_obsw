@@ -76,7 +76,7 @@ if __name__ == '__main__':
         if s.result.detect_mode == detect_mode.result:
             print(s)
 
-    rdb.broadcast_history_cursong_data(title, play_style.sp, difficulty.another, battle=False)
+    rdb.broadcast_history_cursong_data(title, play_style.sp, difficulty.another, battle=False, allscratch=False, regularspeed=False)
     rdb.broadcast_today_stats_data(datetime.datetime.now().timestamp()-48*3600)
     si = rdb.song_database.search(title='卑弥呼', play_style=play_style.sp, difficulty=difficulty.another)
     print(si)

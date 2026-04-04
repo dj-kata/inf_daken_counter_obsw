@@ -150,9 +150,10 @@ class ResultDatabase:
 
     @_ws_broadcast('update_history_cursong_data')
     def broadcast_history_cursong_data(self, title: str, style, difficulty,
-                                       battle: bool = None, playspeed: float = None):
+                                       battle: bool = None, playspeed: float = None,
+                                       allscratch:bool=False, regularspeed:bool=False):
         """履歴データをWebSocketで配信"""
-        return self.get_history_cursong_data(title, style, difficulty, battle, playspeed)
+        return self.get_history_cursong_data(title, style, difficulty, battle, playspeed, allscratch, regularspeed)
 
     @_ws_broadcast('update_today_stats_data')
     def broadcast_today_stats_data(self, start_time: int):
@@ -162,7 +163,8 @@ class ResultDatabase:
     _SPECIAL_ARRANGE_KEYWORDS = ['H-RAN', 'SYMM-RAN', 'SYNC-RAN']
 
     def _filter_results_for_best(self, results: List[DetailedResult],
-                                  playspeed: float = None, battle: bool = False
+                                  playspeed: float = None, battle: bool = False,
+                                  allscratch:bool = False, regularspeed:bool = False,
                                  ) -> List[DetailedResult]:
         """自己ベスト計算用にリザルトをフィルタリングする。
 
@@ -175,6 +177,8 @@ class ResultDatabase:
             results: フィルタ対象のリザルトリスト
             playspeed: 再生速度（Noneは通常速度）
             battle: バトルモードかどうか
+            allscratch: all-scr利用時かどうか
+            regularspeed: regul-speed利用時かどうか
 
         Returns:
             フィルタ済みリザルトのリスト
@@ -204,6 +208,11 @@ class ResultDatabase:
             # None と 1.0 は等価として扱う
             target_speed = 1.0 if playspeed is None else playspeed
             result_speed = 1.0 if r.result.playspeed is None else r.result.playspeed
+
+            if allscratch != r.result.option.allscratch:
+                continue
+            if regularspeed != r.result.option.regularspeed:
+                continue
 
             if result_speed != target_speed:
                 continue
@@ -251,7 +260,7 @@ class ResultDatabase:
                 return False
             if result not in self.results:
                 battle = True if result.option and result.option.battle else False
-                result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=battle, playspeed=result.playspeed)
+                result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=battle, playspeed=result.playspeed, allscratch=result.option.allscratch, regularspeed=result.option.regularspeed)
                 if result.detect_mode == detect_mode.select and result.pre_score is not None:
                     if not result.is_updated():
                         logger.info(f"select result skipped (no update): {result}")
@@ -303,7 +312,7 @@ class ResultDatabase:
 
     def get_best(self,
                 title:str=None, style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
-                battle:bool=None,option:PlayOption=None,playspeed:float=None
+                battle:bool=None,option:PlayOption=None,playspeed:float=None,allscratch:bool=False,regularspeed:bool=False,
         ) -> List:
         """指定された曲の自己べ(スコア, BP, ランプ)を返す。見つからない場合は0,0を返す。
 
@@ -315,6 +324,8 @@ class ResultDatabase:
             battle (bool, optional): バトルモードの判定に使う. Defaults to None.
             option (PlayOption, optional): 同一オプションのリザルトのみとしたい場合に指定. Defaults to None.
             playspeed (float, optional): 再生速度. Defaults to None.
+            allscratch (bool, optional): all-scrかどうか
+            regularspeed (bool, optional): regul-speedかどうか
 
         Returns:
             List[int]: score, bp, lamp
@@ -324,7 +335,7 @@ class ResultDatabase:
         if title is not None and style is not None and difficulty is not None:
             key = calc_chart_id(title, style, difficulty)
         results = self.search(chart_id=key)
-        filtered = self._filter_results_for_best(results, playspeed=playspeed, battle=battle)
+        filtered = self._filter_results_for_best(results, playspeed=playspeed, battle=battle, allscratch=allscratch, regularspeed=regularspeed)
         if not filtered:
             return [None, None, None]
         for r in filtered:
@@ -641,7 +652,8 @@ class ResultDatabase:
         }
 
     def get_history_cursong_data(self, title:str, style:play_style, difficulty:difficulty,
-                                 battle:bool=None, playspeed:float=None) -> dict:
+                                 battle:bool=None, playspeed:float=None,
+                                 allscratch:bool=False, regularspeed:bool=False) -> dict:
         """指定された曲のプレーログを辞書形式で返す。websocketでの送信用。"""
         songinfo = self.song_database.search(title=title, play_style=style, difficulty=difficulty)
         results = self.search(title=title, style=style, difficulty=difficulty)
@@ -654,7 +666,7 @@ class ResultDatabase:
         best_lamp_opt = None
         notes = None # バグってノーツ数が入っていない場合があるので別処理にする
 
-        filtered = self._filter_results_for_best(results, playspeed=playspeed, battle=battle)
+        filtered = self._filter_results_for_best(results, playspeed=playspeed, battle=battle, allscratch=allscratch, regularspeed=regularspeed)
         target = []
         for r in filtered:
             if r.result.detect_mode == detect_mode.result:

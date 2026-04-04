@@ -1207,6 +1207,8 @@ class ScoreViewer(QMainWindow):
                         title=score.title,
                         style=score.style,
                         difficulty=score.difficulty,
+                        allscratch=False, # スコアビューワではとりあえずOFF固定
+                        regularspeed=False # スコアビューワではとりあえずOFF固定
                     )
         
         except Exception as e:
