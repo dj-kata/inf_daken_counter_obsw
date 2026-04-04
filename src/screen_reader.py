@@ -115,9 +115,12 @@ class ScreenReader:
                 option = PlayOption(result.details.options)
                 playspeed = result.informations.playspeed
                 score = result.details.score.current
+                pre_score = result.details.score.best
                 bp = result.details.miss_count.current
+                pre_bp = result.details.miss_count.best
                 diff = convert_difficulty(result.informations.difficulty)
                 lamp = convert_lamp(result.details.clear_type.current)
+                pre_lamp = convert_lamp(result.details.clear_type.best)
                 if lamp is None: # 認識失敗とみなす
                     logger.error(f"lamp is None!")
                     return None
@@ -142,7 +145,8 @@ class ScreenReader:
                         judge.pr += (notes - judge.notes)
 
                 out_result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
-                                   judge=judge,score=score,bp=bp, notes=notes, dead=result.dead, detect_mode=detect_mode.result)
+                                   judge=judge,score=score,bp=bp, notes=notes, dead=result.dead, detect_mode=detect_mode.result,
+                                   pre_score=pre_score,pre_lamp=pre_lamp,pre_bp=pre_bp)
                 ret = DetailedResult(songinfo=songinfo, result=out_result, result_side=convert_side(result.play_side), level=level)
         except Exception:
             logger.error(traceback.format_exc())
