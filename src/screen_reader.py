@@ -136,7 +136,10 @@ class ScreenReader:
                             cb = bp - (judge.sum - notes)
                         judge.cb = cb
                 else: # 途中落ちの場合残りノーツを見逃しとして足しておく
-                    judge.pr += (notes - judge.notes)
+                    if notes is None:
+                        logger.error(f"notes is None!, Poorの補正に失敗")
+                    else:
+                        judge.pr += (notes - judge.notes)
 
                 out_result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
                                    judge=judge,score=score,bp=bp, notes=notes, dead=result.dead, detect_mode=detect_mode.result)
