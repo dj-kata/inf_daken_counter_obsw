@@ -260,7 +260,8 @@ class ResultDatabase:
                 return False
             if result not in self.results:
                 battle = True if result.option and result.option.battle else False
-                result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=battle, playspeed=result.playspeed, allscratch=result.option.allscratch, regularspeed=result.option.regularspeed)
+                if result.pre_lamp is None:
+                    result.pre_score,result.pre_bp,result.pre_lamp = self.get_best(title=result.title, style=result.play_style, difficulty=result.difficulty, battle=battle, playspeed=result.playspeed, allscratch=result.option.allscratch, regularspeed=result.option.regularspeed)
                 if result.detect_mode == detect_mode.select and result.pre_score is not None:
                     if not result.is_updated():
                         logger.info(f"select result skipped (no update): {result}")
