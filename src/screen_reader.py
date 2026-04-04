@@ -110,7 +110,7 @@ class ScreenReader:
                 title = result.informations.music
                 style = convert_play_style(result.informations.play_mode)
                 level = result.informations.level
-                notes = result.informations.notes
+                notes = judge.notes if result.informations.notes is None else result.informations.notes
                 option = PlayOption(result.details.options)
                 playspeed = result.informations.playspeed
                 score = result.details.score.current
