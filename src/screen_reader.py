@@ -107,6 +107,7 @@ class ScreenReader:
         try:
             result = recog.get_result(self.screen)
             if result:
+                judge = self.read_judge_from_result(convert_side(result.play_side))
                 title = result.informations.music
                 style = convert_play_style(result.informations.play_mode)
                 level = result.informations.level
@@ -118,11 +119,11 @@ class ScreenReader:
                 diff = convert_difficulty(result.informations.difficulty)
                 lamp = convert_lamp(result.details.clear_type.current)
                 if lamp is None: # 認識失敗とみなす
+                    logger.error(f"lamp is None!")
                     return None
                 chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
                 songinfo = self.songinfo.search(chart_id=chart_id)
                 timestamp = int(datetime.datetime.now().timestamp())
-                judge = self.read_judge_from_result(convert_side(result.play_side))
                 # logger.debug(f"side:{result.play_side}, judge:{judge}")
 
                 if not result.dead: # 完走した場合はCBを正確に計算
