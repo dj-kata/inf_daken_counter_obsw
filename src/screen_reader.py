@@ -111,7 +111,7 @@ class ScreenReader:
                 title = result.informations.music
                 style = convert_play_style(result.informations.play_mode)
                 level = result.informations.level
-                notes = judge.notes if result.informations.notes is None else result.informations.notes
+                notes = result.informations.notes
                 option = PlayOption(result.details.options)
                 playspeed = result.informations.playspeed
                 score = result.details.score.current
@@ -130,7 +130,10 @@ class ScreenReader:
                     if option.battle:
                         judge.cb = judge.bd + judge.pr
                     else:
-                        cb = bp - (judge.sum - notes)
+                        if notes is None:
+                            cb = bp - (judge.sum - judge.notes)
+                        else:
+                            cb = bp - (judge.sum - notes)
                         judge.cb = cb
                 else: # 途中落ちの場合残りノーツを見逃しとして足しておく
                     judge.pr += (notes - judge.notes)
