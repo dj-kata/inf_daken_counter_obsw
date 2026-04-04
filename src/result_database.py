@@ -200,16 +200,16 @@ class ResultDatabase:
                 if any(kw in r.result.option.arrange for kw in self._SPECIAL_ARRANGE_KEYWORDS):
                     continue
 
-            if playspeed is not None:
-                # playspeed指定時: 同一playspeedの detect_mode.result のみ
-                # None と 1.0 は等価として扱う
-                target_speed = 1.0 if playspeed is None else playspeed
-                result_speed = 1.0 if r.result.playspeed is None else r.result.playspeed
+            # playspeed指定時: 同一playspeedの detect_mode.result のみ
+            # None と 1.0 は等価として扱う
+            target_speed = 1.0 if playspeed is None else playspeed
+            result_speed = 1.0 if r.result.playspeed is None else r.result.playspeed
 
-                if result_speed != target_speed:
-                    continue
-                if r.result.detect_mode != detect_mode.result:
-                    continue
+            if result_speed != target_speed:
+                continue
+            if r.result.detect_mode != detect_mode.result:
+                continue
+
             elif battle:
                 # battle時: battle=True の detect_mode.result のみ
                 if not (r.result.option and r.result.option.battle):
