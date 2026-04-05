@@ -15,6 +15,9 @@ SP,DPのどちらにも対応しています。
 <img width="450" alt="inf_ディスコルディア_SPA_hard_ex3146_bp48_20260327_190654_cut2p" src="https://github.com/user-attachments/assets/e38e492d-4c6c-4145-b4e9-33f0719bae67" />
 <img width="700" alt="image" src="https://github.com/user-attachments/assets/e2fc41c6-035f-4a42-8719-7dd19fd85588" />
 
+動作例  
+https://youtu.be/6oGS0dvHhGQ
+
 # 動作環境
 下記の環境で確認しています。
 ```
