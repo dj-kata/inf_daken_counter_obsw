@@ -18,7 +18,7 @@ from src.logger import get_logger
 logger = get_logger(__name__)
 
 class GitHubUpdater:
-    def __init__(self, github_author='', github_repo='', current_version='', main_exe_name=None, updator_exe_name=None):
+    def __init__(self, github_author='', github_repo='', zipfile_name='', current_version='', main_exe_name=None, updator_exe_name=None):
         """
         GitHub自動アップデータの初期化
         
@@ -30,6 +30,7 @@ class GitHubUpdater:
         """
         self.github_author = github_author
         self.github_repo = github_repo
+        self.zipfile_name = zipfile_name
         self.current_version = current_version
         self.main_exe_name = main_exe_name or "main.exe"
         self.updator_exe_name = updator_exe_name or "update.exe"
@@ -74,7 +75,7 @@ class GitHubUpdater:
         logger.debug(f"github_repo:{self.github_author}/{self.github_repo}")
         try:
             latest_version = self.get_latest_version()
-            download_url = f"https://github.com/{self.github_author}/{self.github_repo}/releases/download/{latest_version}/{self.github_repo}.zip"
+            download_url = f"https://github.com/{self.github_author}/{self.github_repo}/releases/download/{latest_version}/{self.zipfile_name}"
             logger.debug(f"latest_version:{latest_version}, current:{self.current_version}")
             
             # バージョン比較
@@ -407,6 +408,7 @@ def main():
     updater = GitHubUpdater(
         github_author='dj-kata',
         github_repo='inf_daken_counter_obsw',
+        zipfile_name='inf_daken_counter.zip',
         current_version=SWVER,           # 現在のバージョン
         main_exe_name="notes_counter.exe",  # メインプログラムのexe名
         updator_exe_name="notes_counter.exe",           # アップデート用プログラムのexe名
