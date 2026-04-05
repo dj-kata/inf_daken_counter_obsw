@@ -1,0 +1,441 @@
+import sys
+import os
+from PIL import Image
+import numpy as np
+import imagehash
+import copy
+
+import cv2
+
+sys.path.append('infnotebook')
+from screenshot import Screenshot,open_screenimage
+from recog import Recognition as recog
+from resources import resource
+from define import Define as define
+
+from src.classes import *
+from src.result import *
+from src.define import *
+from src.logger import get_logger
+logger = get_logger(__name__)
+
+class ScreenReader:
+    """ゲーム画面を読むためのクラス。ループの先頭でupdate_screenを叩いてから使うこと。"""
+    def __init__(self):
+        self.songinfo = SongDatabase()
+        self.screen = None
+        self.last_select_title = None
+        '''最後に選曲画面で認識した曲名'''
+        self.last_select_difficulty = None
+        '''最後に選曲画面で認識した難易度'''
+        self.last_select_style = None
+        '''最後に選曲画面で認識したプレイスタイル(SP/DP)'''
+
+    def update_screen_from_file(self, _file:str):
+        self.screen = open_screenimage(_file)
+        # ライバル欄をカットした画像だった場合の対応
+        if 'cut2p' in _file or 'cut1p' in _file:
+            canvas = Image.new("RGB", (1920,1080), (0, 0, 0))
+            w,h = self.screen.original.size
+            if w == 1360:
+                if 'cut2p' in _file:
+                    canvas.paste(self.screen.original, (1920 - w, 0))
+                    canvas_array = np.pad(
+                        self.screen.np_value, 
+                        pad_width=((0, 0), (1920-w, 0), (0, 0)), 
+                        mode='constant', 
+                        constant_values=0
+                    )
+                else:
+                    canvas.paste(self.screen.original, (0, 0))
+                    canvas_array = np.pad(
+                        self.screen.np_value, 
+                        pad_width=((0, 0), (0, 1920-w), (0, 0)), 
+                        mode='constant', 
+                        constant_values=0
+                    )
+                self.screen.original = canvas
+                self.screen.np_value = canvas_array
+
+    def update_screen(self, screen):
+        '''OBSManagerから受け取ったscreenをセットする'''
+        self.screen = screen
+
+    def save_image(self, dst):
+        '''最後に読み込んだゲーム画面を保存'''
+        if self.screen and self.screen.original:
+            self.screen.original.save(dst)
+            return True
+        else:
+            return False
+
+    def read_judge_from_result(self, side:result_side) -> Judge:
+        """リザルト画面から判定部分を読み取る"""
+        img = self.screen.original
+        out = []
+        # for item in ['pg', 'gr', 'gd', 'bd', 'pr', 'cb']:
+        for item in ['pg', 'gr', 'gd', 'bd', 'pr']:
+            line = ''
+            for idx in range(4):
+                digit = img.crop(PosResultJudge.get(side, item, idx))
+
+                fn = lambda x: 255 if x > 220 else 0
+                digit_mono = digit.convert('L').point(fn, mode='1')
+                # digit.save(f"hoge_{['pg', 'gr', 'gd', 'bd', 'pr', 'cb'].index(item)}{item}_{idx}.png")
+                hash = imagehash.phash(digit_mono)
+                # print(item, idx, hash)
+                for i,h in enumerate(hash_digits):
+                    hash_target = imagehash.hex_to_hash(h)
+                    if abs(hash - hash_target) < 10:
+                        if i in (0,8): # 0:198, 
+                            d_sum = np.sum(np.array(digit_mono))
+                            if d_sum > 215:
+                                line += '8'
+                            else:
+                                line += str(i)
+                        else:
+                            line += str(i)
+                        break
+            out.append(line)
+        out.append('0')
+        ret = Judge.from_list(out)
+        return ret
+
+    def read_result_screen(self) -> DetailedResult:
+        """pngファイルを入力してDetailedResultを返す"""
+        ret = None
+        try:
+            result = recog.get_result(self.screen)
+            if result:
+                judge = self.read_judge_from_result(convert_side(result.play_side))
+                title = result.informations.music
+                style = convert_play_style(result.informations.play_mode)
+                level = result.informations.level
+                notes = result.informations.notes
+                option = PlayOption(result.details.options)
+                playspeed = result.informations.playspeed
+                score = result.details.score.current
+                pre_score = result.details.score.best
+                bp = result.details.miss_count.current
+                pre_bp = result.details.miss_count.best
+                diff = convert_difficulty(result.informations.difficulty)
+                lamp = convert_lamp(result.details.clear_type.current)
+                pre_lamp = convert_lamp(result.details.clear_type.best)
+                if lamp is None: # 認識失敗とみなす
+                    logger.error(f"lamp is None!")
+                    return None
+                chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
+                songinfo = self.songinfo.search(chart_id=chart_id)
+                timestamp = int(datetime.datetime.now().timestamp())
+                # logger.debug(f"side:{result.play_side}, judge:{judge}")
+
+                if not result.dead: # 完走した場合はCBを正確に計算
+                    if option.battle:
+                        judge.cb = judge.bd + judge.pr
+                    else:
+                        if notes is None:
+                            cb = bp - (judge.sum - judge.notes)
+                        else:
+                            cb = bp - (judge.sum - notes)
+                        judge.cb = cb
+                else: # 途中落ちの場合残りノーツを見逃しとして足しておく
+                    if notes is None:
+                        logger.error(f"notes is None!, Poorの補正に失敗")
+                    else:
+                        judge.pr += (notes - judge.notes)
+
+                out_result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
+                                   judge=judge,score=score,bp=bp, notes=notes, dead=result.dead, detect_mode=detect_mode.result,
+                                   pre_score=pre_score,pre_lamp=pre_lamp,pre_bp=pre_bp)
+                ret = DetailedResult(songinfo=songinfo, result=out_result, result_side=convert_side(result.play_side), level=level)
+        except Exception:
+            logger.error(traceback.format_exc())
+        return ret
+
+    def read_music_select_screen(self) -> DetailedResult:
+        """pngファイルを入力してDetailedResultを返す"""
+        ret = None
+        np_value = self.screen.np_value[define.musicselect_trimarea_np]
+        title = recog.MusicSelect.get_musicname(np_value)
+        if title:
+            diff = convert_difficulty(recog.MusicSelect.get_difficulty(np_value))
+            lamp = convert_lamp(recog.MusicSelect.get_cleartype(np_value))
+            score = recog.MusicSelect.get_score(np_value)
+            bp = recog.MusicSelect.get_misscount(np_value)
+            style = convert_play_style(recog.MusicSelect.get_playmode(np_value))
+            chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
+            songinfo = self.songinfo.search(chart_id)
+            timestamp = int(datetime.datetime.now().timestamp())
+            option = PlayOption(None)
+            option.valid = False
+            result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=None, option=option,
+                               judge=None,score=score,bp=bp,detect_mode=detect_mode.select)
+            ret = DetailedResult(songinfo=songinfo, result=result)
+
+            # 最後に認識したものを記憶
+            self.last_select_title = title
+            self.last_select_difficulty = diff
+            self.last_select_style = style
+        return ret
+    
+    def read_play_screen(self, judge:Judge) -> OneResult:
+        '''プレー画面からOneResultを作成'''
+        result = OneResult(
+            title=self.last_select_title,
+            play_style=self.last_select_style,
+            difficulty=self.last_select_difficulty,
+            lamp=clear_lamp.failed,
+            timestamp=int(datetime.datetime.now().timestamp()),
+            judge=copy.deepcopy(judge), # copy使わなくてもいいかも? TODO
+            dead=False, # 不明だがとりあえず全てFalseとしておく
+            playspeed=None, # 速度変更中のクイックリトライは正しく記録できないが、ノーツ数しか見ないのでOKとする。
+            option=None,    # battle利用時のクイックリトライは正しく記録できないが、ノーツ数しか見ないのでOKとする。
+            detect_mode=detect_mode.play
+        )
+        return result
+    
+    def read_option_screen(self) -> CurrentOption:
+        '''オプション画面を読み取り、現在のオプションを取得'''
+        img = self.screen.original
+        ret = CurrentOption()
+        ret.valid = True
+
+        def read_style() -> play_style:
+            area = img.crop(PosOptionScreen.STYLE_AREA)
+            tmp = imagehash.average_hash(area)
+            hash_target = imagehash.hex_to_hash(PosOptionScreen.STYLE_HASH)
+            if (hash_target - tmp) < 10:
+                return play_style.dp
+            else:
+                return play_style.sp
+            
+        def read_option(is_hran:bool, style:play_style) -> tuple:
+            arrange = None
+            gauge = None
+            assist = None
+            flip = None
+            if style == play_style.sp:
+                for i in range(5):
+                    tmp_arrange = option_arrange(i)
+                    tmp_gauge = option_gauge(i)
+                    tmp_assist = option_assist(i)
+                    if img.getpixel(PosOption.get(style, tmp_arrange))[0] > 100:
+                        arrange = str(tmp_arrange)
+                        if tmp_arrange == option_arrange.s_random and is_hran:
+                            arrange = 'H-RANDOM'
+                    if img.getpixel(PosOption.get(style, tmp_gauge))[0] > 100:
+                        gauge = tmp_gauge
+                    if img.getpixel(PosOption.get(style, tmp_assist))[0] > 100:
+                        assist = tmp_assist
+            else: # DP
+                left_arrange = None
+                right_arrange = None
+                if img.getpixel(PosOption.get(style, option_arrange.sync_ran))[0] > 100:
+                    arrange = str(option_arrange.sync_ran)
+                elif img.getpixel(PosOption.get(style, option_arrange.symm_ran))[0] > 100:
+                    arrange = str(option_arrange.symm_ran)
+                else:
+                    for i in range(5): # 左右レーン
+                        tmp_arrange = option_arrange(i)
+                        if img.getpixel(PosOption.get(style, tmp_arrange, is_left=True))[0] > 100:
+                            left_arrange = str(tmp_arrange)
+                            if tmp_arrange == option_arrange.s_random and is_hran:
+                                left_arrange = 'H-RANDOM'
+                        if img.getpixel(PosOption.get(style, tmp_arrange, is_left=False))[0] > 100:
+                            right_arrange = str(tmp_arrange)
+                            if tmp_arrange == option_arrange.s_random and is_hran:
+                                right_arrange = 'H-RANDOM'
+                    arrange = f'{left_arrange} / {right_arrange}'
+                for i in range(5): # ゲージ、アシスト
+                    tmp_gauge = option_gauge(i)
+                    tmp_assist = option_assist(i)
+                    if img.getpixel(PosOption.get(style, tmp_gauge))[0] > 100:
+                        gauge = tmp_gauge
+                    if img.getpixel(PosOption.get(style, tmp_assist))[0] > 100:
+                        assist = tmp_assist
+                if img.getpixel(PosOption.get(style, option_flip(1)))[0] > 100:
+                    flip = 'FLIP'
+            # print(arrange, gauge, assist, flip)
+            return (arrange, gauge, assist, flip)
+
+        def read_hran() -> bool:
+            '''H乱かどうか'''
+            return img.getpixel(PosOptionScreen.CHECKBOX_HRAN)[-1] < 100
+
+        def read_battle() -> bool:
+            '''Battleかどうか'''
+            return img.getpixel(PosOptionScreen.CHECKBOX_BATTLE)[-1] < 100
+
+        def read_allscratch() -> bool:
+            '''ALL-SCRATCHかどうか'''
+            return img.getpixel(PosOptionScreen.CHECKBOX_ALL_SCRATCH)[-1] < 100
+
+        def read_regularspeed() -> bool:
+            '''REGUL-SPEEDかどうか'''
+            return img.getpixel(PosOptionScreen.CHECKBOX_REGUL_SPEED)[-1] < 100
+
+        ret.play_style = read_style()
+        is_hran = read_hran()
+        ret.arrange, ret.option_gauge, ret.option_assist, ret.flip = read_option(is_hran, ret.play_style)
+        if ret.play_style == play_style.dp: # SPを除外しておくことで、灰色になる場合をケアしないようにする
+            ret.battle = read_battle()
+        ret.allscratch = read_allscratch()
+        ret.regularspeed = read_regularspeed()
+
+        return ret
+        
+    def get_judge_from_play_screen(self, mode:play_mode):
+        """プレー画面から判定を取得"""
+        try:
+            judge = self.detect_judge(mode)
+            return Judge.from_list(judge)
+        except Exception:
+            print(traceback.format_exc())
+            return None
+
+    def get_judge_img(self, playside:play_mode):
+        '''判定部分を切り出す'''
+        img = self.screen.original
+        # 判定内訳部分のみを切り取る
+        sc = img.crop(PosPlayJudge.get(playside))
+        d = []
+        for j in range(6): # pg～prの5つ
+            tmp_sec = []
+            for i in range(4): # 4文字
+                W = 11
+                H = 11
+                DSEPA = 3
+                HSEPA = 5
+                sx = i*(W+DSEPA)
+                ex = sx+W
+                sy = j*(H+HSEPA)
+                ey = sy+H
+                tmp = np.array(sc.crop((sx,sy,ex,ey)))
+                tmp_sec.append(tmp)
+            d.append(tmp_sec)
+        return np.array(sc), d
+
+    def detect_judge(self, playside):
+        '''プレー画面から判定内訳を取得'''
+        sc,digits = self.get_judge_img(playside)
+        ret = []
+        for jj in digits: # 各判定、ピカグレー>POORの順
+            line = ''
+            for d in jj:
+                dd = d[:,:,2]
+                dd = (dd>100)*255
+                val = dd.sum()
+                tmp = '?'
+                if val == 0:
+                    tmp  = '' # 従来スペースを入れていたが、消しても動く?
+                elif val in judge_digits:
+                    if val == judge_digits[6]: # 6,9がひっくり返しただけで合計値が同じなのでケア
+                        if dd[8,0] == 0:
+                            tmp = '9'
+                        else:
+                            tmp = '6'
+                    else:
+                        tmp = str(judge_digits.index(val))
+                line += tmp 
+            ret.append(line)
+        return ret
+
+    def detect_playside(self) -> play_mode:
+        '''プレイサイド検出を行う'''
+        ret = None
+        for mode in play_mode:
+            det = self.detect_judge(mode)
+            if det[0] == '0':
+                ret = mode
+        return ret
+
+    def is_option(self) -> bool:
+        '''オプション設定画面かどうかを判定し、判定結果(True/False)を返す
+        Returns:
+            bool: オプション設定画面であればTrue
+        '''
+        ret = False
+        img = self.screen.original
+        tmp = imagehash.average_hash(img.crop(PosOptionScreen.IS_OPTION_AREA))
+        # img.crop(PosOptionScreen.IS_OPTION_AREA).save('hoge.png')
+        hash_target = imagehash.hex_to_hash(PosOptionScreen.IS_OPTION_HASH)
+        hash_target_dp = imagehash.hex_to_hash(PosOptionScreen.IS_OPTION_HASH_DP)
+        ret = ((hash_target - tmp) < 5) or ((hash_target_dp - tmp) < 5)
+
+        return ret
+
+    def is_select(self) -> bool:
+        """選曲画面かどうかを判定し、判定結果(True/False)を返す
+        Returns:
+            bool: 選曲画面であればTrue
+        """
+        ret = False
+        img = self.screen.original
+
+        hash_target = imagehash.hex_to_hash(PosMusicSelectScreen.HASH_SELECT)
+        img_1p = img.crop(PosMusicSelectScreen.IS_SELECT_1P)
+        h_1p = imagehash.average_hash(img_1p)
+        img_2p = img.crop(PosMusicSelectScreen.IS_SELECT_2P)
+        h_2p = imagehash.average_hash(img_2p)
+        ret = ((hash_target - h_1p) < 10) or ((hash_target - h_2p) < 10)
+        # キーボードプレイの場合
+        hash_target = imagehash.hex_to_hash(PosMusicSelectScreen.HASH_SELECT_KB)
+        img_1p = img.crop(PosMusicSelectScreen.IS_SELECT_KB_1P)
+        h_1p = imagehash.average_hash(img_1p)
+        img_2p = img.crop(PosMusicSelectScreen.IS_SELECT_KB_2P)
+        h_2p = imagehash.average_hash(img_2p)
+        ret |= ((hash_target - h_1p) < 10) or ((hash_target - h_2p) < 10)
+        #logger.debug(f"ret = {ret}")
+
+        return ret
+
+    def is_result(self) -> bool:
+        """リザルト画面かどうかを判定し、判定結果を返す
+        Returns:
+            bool: Trueならimgがリザルト画面である
+        """
+        ret = False
+        img = self.screen.original
+
+        hash_target = imagehash.hex_to_hash(PosResultScreen.HASH_RESULT)
+        tmpl = imagehash.average_hash(img.crop(PosResultScreen.IS_RESULT_L))
+        tmpr = imagehash.average_hash(img.crop(PosResultScreen.IS_RESULT_R))
+        ret = ((hash_target - tmpl) < 10) or ((hash_target - tmpr) < 10)
+        #logger.debug(f"ret = {ret}")
+
+        return ret
+    
+    def is_play(self) -> play_mode | None:
+        """プレー画面かどうかを判定し、判定結果を返す
+
+        Returns:
+            play_mode | None: 判定結果。どのモードかも返すようにする。
+        """
+        ret = None
+        img = self.screen.original
+
+        hash_target = imagehash.hex_to_hash(PosIsPlayHash.HASH)
+        for mode in play_mode:
+            tmp = imagehash.average_hash(img.crop(PosIsPlay.get(mode)))
+            judge = (hash_target - tmp) < 10
+            # x = img.crop(PosIsPlay.get(mode)).save(f'hoge{mode.value}.png')
+            if judge:
+                return mode
+        return ret
+
+    def is_endselect(self):
+        """選曲画面の終了時かどうかを判定"""
+        img = self.screen.original
+        tmp = imagehash.average_hash(img.crop(PosMusicSelectScreen.END_SELECT_AREA))
+        hash_target = imagehash.hex_to_hash(PosMusicSelectScreen.END_SELECT_HASH)
+        ret = (hash_target - tmp) < 10
+        return ret
+
+    def is_endresult(self):
+        """リザルト画面の終了時かどうかを判定"""
+        img = self.screen.original
+        tmp = imagehash.average_hash(img)
+        hash_target = imagehash.hex_to_hash(PosResultScreen.END_RESULT_HASH)
+        ret = (hash_target - tmp) < 10
+        #logger.debug(f"ret = {ret}")
+        return ret

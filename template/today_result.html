@@ -1,0 +1,517 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Today's Results</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="../out/websocket.css">
+        <style>
+            :root {
+                --skip-no-update: 0; /* 更新のない行を飛ばす */
+            }
+            
+            * {
+                box-sizing: border-box;
+            }
+            
+            body {
+                background: linear-gradient(135deg, #0a0a1f 0%, #1a1a3e 50%, #0a0a1f 100%);
+                margin: 0;
+                padding: 5px 10px 10px 10px;
+                overflow-x: hidden;
+                font-family: 'RocknRoll One', sans-serif;
+                color: #fff;
+            }
+            
+            #all {
+                max-width: 1900px;
+                margin: 0 auto;
+            }
+            
+            /* ヘッダー */
+            .header {
+                background: linear-gradient(135deg, rgba(0, 20, 100, 0.9), rgba(0, 40, 120, 0.9));
+                border-radius: 12px;
+                padding: 15px 25px;
+                margin-bottom: 15px;
+                box-shadow: 0 5px 20px rgba(33, 150, 243, 0.3);
+                border: 2px solid rgba(33, 150, 243, 0.3);
+            }
+            
+            .header h1 {
+                font-size: 42px;
+                margin: 0;
+                color: #aaddff;
+                text-shadow: 3px 3px 0 #000,
+                            -2px 2px 0 #000,
+                            2px -2px 0 #000,
+                            -2px -2px 0 #000;
+            }
+            
+            /* テーブルコンテナ */
+            .results-container {
+                background: linear-gradient(135deg, rgba(30, 30, 60, 0.9), rgba(20, 20, 40, 0.9));
+                border-radius: 12px;
+                padding: 5px 15px 15px 15px;
+                box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+                border: 2px solid rgba(100, 100, 200, 0.3);
+            }
+            
+            /* テーブルスタイル */
+            .results-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            
+            .results-table tr {
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            }
+            
+            .results-table tr.score-updated {
+                background-color: rgba(255, 100, 100, 0.1);
+            }
+            
+            .results-table td {
+                padding: 8px 10px;
+                white-space: nowrap;
+                text-shadow: 2px 2px 0 #000;
+            }
+            
+            /* レベル列 */
+            .results-table td:nth-child(1) {
+                width: 180px;
+                text-align: center;
+                font-size: 36px;
+                color: #ffeb3b;
+                text-shadow: 2px 2px 0 #000;
+            }
+            
+            /* ランプ列 */
+            .results-table td:nth-child(2) {
+                width: 40px;
+                text-align: center;
+            }
+            
+            /* タイトル列 */
+            .results-table td:nth-child(3) {
+                font-size: 36px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 450px;
+            }
+            
+            /* スコア列 */
+            .results-table td:nth-child(4) {
+                width: 200px;
+                text-align: right;
+                font-size: 38px;
+                font-weight: bold;
+            }
+            
+            /* ランク列 */
+            .results-table td:nth-child(5) {
+                width: 200px;
+                text-align: center;
+                font-size: 36px;
+            }
+            
+            /* BPI列 */
+            .results-table td:nth-child(6) {
+                width: 150px;
+                text-align: center;
+                font-size: 32px;
+            }
+            
+            /* オプション列 */
+            .results-table td:nth-child(7) {
+                width: 250px;
+                text-align: right;
+                font-size: 28px;
+                color: #77bb77;
+            }
+            
+            /* 難易度の色分け */
+            .diff-b { color: #88ff88; }  /* Another - 赤 */
+            .diff-a { color: #ff8888; }  /* Another - 赤 */
+            .diff-h { color: #ffff88; }  /* Hyper - 黄色 */
+            .diff-n { color: #8888ff; }  /* Normal - 青 */
+            .diff-l { color: #ff88ff; }  /* Leggendaria - 紫 */
+            
+            /* ランプボックス */
+            .lamp-box {
+                display: inline-block;
+                width: 25px;
+                height: 25px;
+                border-radius: 4px;
+            }
+            
+            /* スコア更新 */
+            .score-updated {
+                color: #ffcccc;
+            }
+            
+            .score-not-updated {
+                color: #999;
+            }
+            
+            /* ランクカラー */
+            .MAX {
+                animation: flashmax 0.4s infinite;
+                font-weight: bold;
+            }
+            
+            @keyframes flashmax {
+                0%   { color: #ff2828; }
+                20%  { color: #d5ff28; }
+                40%  { color: #28ff7e; }
+                60%  { color: #2872ff; }
+                80%  { color: #d528ff; }
+                100% { color: #ff2828; }
+            }
+            
+            .AAA { color: #ffff28; font-weight: bold; }
+            .AA { color: #c3c3c3; font-weight: bold; }
+            .A { color: #2ddf71; }
+            .B { color: #7777ff; }
+            .F { color: #7777ff; }
+            
+            /* BPI */
+            .bpi-positive {
+                color: #44ff44;
+                text-shadow: 0 0 5px rgba(68, 255, 68, 0.5);
+            }
+            
+            .bpi-negative {
+                color: #777733;
+            }
+            
+            /* オプション */
+            .card-option {
+                font-size: 18px;
+                color: #77bb77;
+                text-shadow: 2px 2px 0 #000;
+                margin-top: 5px;
+                text-align: right;
+            }
+            /* クリアランプ */
+            .fc{
+                animation-name: flashfc;
+                animation-duration: 0.2s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashfc {
+                0%   { background-color: #ff2828; }
+                20%  { background-color: #d5ff28; }
+                40%  { background-color: #28ff7e; }
+                60%  { background-color: #2872ff; }
+                80%  { background-color: #d528ff; }
+                100% { background-color: #ff2828; }
+            }
+            .failed{
+                animation-name: flashfailed;
+                animation-duration: 0.08s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashfailed {
+                0%   { background-color: #ff2828; }
+                50%  { background-color: #282828; }
+                100% { background-color: #ff2828; }
+            }
+            .ac{background-color: #ff66ff;}
+            .ec{background-color: #22ff22;}
+            .nc{background-color: #22ccff;}
+            .hc{background-color: #ffffff;}
+            .exh{
+                animation-name: flashexh;
+                animation-duration: 0.08s;
+                animation-iteration-count: infinite;
+            }
+            @keyframes flashexh {
+                0%   { background-color: #ff2828; }
+                50%  { background-color: #ffff28; }
+                100% { background-color: #ff2828; }
+            }
+            
+            /* SP☆12 */
+            .sp12-clear {
+                color: #bbddff;
+                font-size: 24px;
+            }
+            
+            .sp12-slash {
+                color: #ffffff;
+                font-size: 24px;
+            }
+            
+            .sp12-hard {
+                color: #ffaaaa;
+                font-size: 24px;
+            }
+
+            .playspeed-high{
+                color: #ff7;
+            }
+            .playspeed-low{
+                color: #f7f;
+            }
+            .battle{
+                color: #7fa;
+            }
+        </style>
+    </head>
+    <body>
+        <script>
+        // WebSocketポート番号取得
+        function getWebSocketPort() {
+            const port = getComputedStyle(document.documentElement)
+                .getPropertyValue('--websocket-port').trim();
+            return parseInt(port) || 8767;
+        }
+        
+        let ws = null;
+        let reconnectInterval = null;
+        
+        function connectWebSocket() {
+            const WEBSOCKET_PORT = getWebSocketPort();
+            ws = new WebSocket(`ws://localhost:${WEBSOCKET_PORT}`);
+            
+            ws.onopen = function() {
+                console.log('WebSocket接続成功');
+                if (reconnectInterval) {
+                    clearInterval(reconnectInterval);
+                    reconnectInterval = null;
+                }
+            };
+            
+            ws.onmessage = function(event) {
+                try {
+                    const message = JSON.parse(event.data);
+                    if (message.type === 'today_updates') {
+                        updateTodayUpdates(message.data);
+                    }
+                } catch (error) {
+                    console.error('メッセージ解析エラー:', error);
+                }
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocketエラー:', error);
+            };
+            
+            ws.onclose = function() {
+                console.log('WebSocket切断。3秒後に再接続します...');
+                if (!reconnectInterval) {
+                    reconnectInterval = setInterval(connectWebSocket, 3000);
+                }
+            };
+        }
+        
+        function getDifficultyColor(difficulty) {
+            if (!difficulty || difficulty.length < 3) return '';
+            var diffType = difficulty.charAt(2).toUpperCase();
+            
+            switch(diffType) {
+                case 'A': return 'diff-a';
+                case 'H': return 'diff-h';
+                case 'N': return 'diff-n';
+                case 'L': return 'diff-l';
+                case 'B': return 'diff-b';
+                default: return '';
+            }
+        }
+        
+        function updateTodayUpdates(data) {
+            if (!data || !data.items) return;
+            
+            var out = '';
+            // URLパラメータ(today_stats.htmlのiframeから渡される)を優先、なければCSS変数を使用
+            var _urlParams = new URLSearchParams(window.location.search);
+            var skip_no_update = _urlParams.has('skip_no_update')
+                ? Number(_urlParams.get('skip_no_update'))
+                : (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--skip-no-update')) || 0);
+            
+            data.items.forEach(function(item, index) {
+                var lv = item.lv || '';
+                var lamp = Number(item.lamp) || 0;
+                var difficulty = item.difficulty || '';
+                var title = item.title || '';
+                var notes = Number(item.notes) || 0;
+                var score = Number(item.score) || 0;
+                var score_rate = Number(item.score_rate) || 0;
+                var pre_score = Number(item.pre_score) || 0;
+                var bp = Number(item.bp) || 0;
+                var pre_lamp = Number(item.pre_lamp) || 0;
+                var pre_bp = Number(item.pre_bp) || 0;
+                var bpi = item.bpi || '';
+                var opt = item.opt || '';
+                var battle = Number(item.battle) || 0;
+                var sp_12hard = item.sp_12hard || '';
+                var sp_12clear = item.sp_12clear || '';
+                var playspeed = Number(item.playspeed) || 1.0;
+                var dp_unofficial_lv = item.dp_unofficial_lv || "";
+                
+                // 更新なしをスキップ
+                if (skip_no_update == 1 && pre_score >= score && pre_bp <= bp && pre_lamp >= lamp) {
+                    return;
+                }
+                
+                // ランク判定
+                var rank = "B";
+                if (score_rate * 18 > 16) {
+                    rank = 'AAA';
+                } else if (score_rate * 18 > 14) {
+                    rank = 'AA';
+                } else if (score_rate * 18 > 12) {
+                    rank = 'A';
+                } else if (score_rate * 18 > 0) {
+                    rank = 'F';
+                }
+                
+                var rankdiff0 = item.rankdiff0 || '';
+                var rankdiff1 = item.rankdiff1 || '';
+                var rankdiff = '<span class="' + rank + '">' + rankdiff0 + '</span>' + rankdiff1;
+                
+                if (rankdiff0 + rankdiff1 == "MAX+0") {
+                    rankdiff = '<span class="MAX">MAX</span>';
+                }
+                
+                // ランプ表示
+                var lamp_html = '';
+                if (lamp == 1) {
+                    lamp_html = '<span class="lamp-box failed"></span>';
+                } else if (lamp == 2) {
+                    lamp_html = '<span class="lamp-box ac"></span>';
+                } else if (lamp == 3) {
+                    lamp_html = '<span class="lamp-box ec"></span>';
+                } else if (lamp == 4) {
+                    lamp_html = '<span class="lamp-box nc"></span>';
+                } else if (lamp == 5) {
+                    lamp_html = '<span class="lamp-box hc"></span>';
+                } else if (lamp == 6) {
+                    lamp_html = '<span class="lamp-box exh"></span>';
+                } else if (lamp == 7) {
+                    lamp_html = '<span class="lamp-box fc"></span>';
+                }
+                
+                // BPIの色分け
+                var bpi_class = '';
+                if (bpi && bpi !== '??') {
+                    bpi_class = bpi.includes('-') ? 'bpi-negative' : 'bpi-positive';
+                } else {
+                    bpi = '';
+                }
+                
+                // スコア更新チェック
+                var score_class = score > pre_score ? 'score-updated' : 'score-not-updated';
+                var row_class = score > pre_score ? 'score-updated' : '';
+                
+                // 難易度の色
+                var diff_color = getDifficultyColor(difficulty);
+                
+                // レベル表示（SP☆12地力表対応）
+                var level_display = '☆' + lv;
+                if (sp_12clear || sp_12hard) {
+                    var clear_text = sp_12clear || '?';
+                    var hard_text = sp_12hard || '?';
+                    
+                    level_display = '<span class="sp12-clear">' + clear_text + '</span>' +
+                                   '<span class="sp12-slash">/</span>' +
+                                   '<span class="sp12-hard">' + hard_text + '</span>';
+                }
+                if (battle == 0 && dp_unofficial_lv != ""){
+                    level_display = dp_unofficial_lv;
+                }
+                
+                // DBx系オプションの処理
+                var title_prefix = "";
+                if (battle == 1) {
+                    var with_scratch = opt.indexOf("A-SCR") < 0 ? "皿" : "";
+                    title_prefix = "<span class='battle'>["; + with_scratch
+                    if ((opt.indexOf("MIR/OFF") >= 0) || (opt.indexOf("OFF/MIR") >= 0)) {
+                        title_prefix += 'DBM';
+                    } else if (opt.indexOf("OFF/OFF") >= 0) {
+                        title_prefix += 'DB';
+                    } else if (opt.indexOf("RAN/RAN") >= 0) {
+                        title_prefix += 'DBR';
+                    } else if (opt.indexOf("S-RAN/S-RAN") >= 0) {
+                        title_prefix += 'DBSR';
+                    } else if (opt.indexOf("H-RAN/H-RAN") >= 0) {
+                        title_prefix += 'DBHR';
+                    }
+                    title_prefix += "]</span> ";
+                }
+                
+                // テーブル行HTML生成
+                out += '<tr class="' + row_class + '">';
+                
+                // レベル
+                out += '<td>' + level_display + '</td>';
+                
+                // ランプ
+                out += '<td>' + lamp_html + '</td>';
+                
+                // タイトル
+                out += '<td class="' + diff_color + '">';
+                if (title_prefix) out += title_prefix + ' ';
+                if (playspeed>1.0){
+                    title = "<span class='playspeed-high'>["+playspeed+"X]</span> "+title;
+                }else if (playspeed != 1.0) {
+                    title = "<span class='playspeed-low'>["+playspeed+"X]</span> "+title;
+                }
+                out += title + '</td>';
+                out += '<td class="' + score_class + '">' + score + '</td>';
+                out += '<td>' + rankdiff + '</td>';
+                out += '<td class="' + bpi_class + '">' + bpi + '</td>';
+                
+                // if (battle == 1) {
+                //     // BATTLE系の場合
+                //     out += '<td class="' + score_class + '">bp' + bp + '</td>';
+                //     out += '<td></td>';
+                //     out += '<td></td>';
+                // } else {
+                //     // 通常の場合
+                //     out += '<td class="' + score_class + '">' + score + '</td>';
+                //     out += '<td>' + rankdiff + '</td>';
+                //     out += '<td class="' + bpi_class + '">' + bpi + '</td>';
+                // }
+                
+                // オプション
+                out += '<td>' + opt + '</td>';
+                
+                out += '</tr>';
+                
+                if (index == 26) {
+                    return false;
+                }
+            });
+            
+            document.getElementById('results-tbody').innerHTML = out;
+        }
+        
+        window.addEventListener('DOMContentLoaded', function() {
+            connectWebSocket();
+        });
+        
+        window.addEventListener('beforeunload', function() {
+            if (ws) {
+                ws.close();
+            }
+        });
+        </script>
+        
+        <div id="all">
+            <!-- <div class="header">
+                <h1>📊 Recent Update</h1>
+            </div> -->
+            
+            <div class="results-container">
+                <table class="results-table">
+                    <tbody id="results-tbody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </body>
+</html>

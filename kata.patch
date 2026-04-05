@@ -1,0 +1,66 @@
+diff --git a/resources.py b/resources.py
+index 10df2f7..32c9172 100644
+--- a/resources.py
++++ b/resources.py
+@@ -14,7 +14,7 @@ logger.debug(f'loaded resources.py')
+ 
+ from define import define
+ 
+-resources_dirname = 'resources'
++resources_dirname = 'infnotebook/resources'
+ 
+ sounds_dirname = 'sounds'
+ images_dirname = 'images'
+diff --git a/resources/details3.1.res b/resources/details3.1.res
+index 1401556..f2cf1b3 100644
+Binary files a/resources/details3.1.res and b/resources/details3.1.res differ
+diff --git a/resources/details3.1.res.timestamp b/resources/details3.1.res.timestamp
+index 9bd08b7..aff0363 100644
+--- a/resources/details3.1.res.timestamp
++++ b/resources/details3.1.res.timestamp
+@@ -1 +1 @@
+-2026-02-08 12:23:25.620000+00:00
+\ No newline at end of file
++2026-02-13 05:45:03.773000+00:00
+\ No newline at end of file
+diff --git a/resources/informations4.1.res b/resources/informations4.1.res
+index 554fc85..d008148 100644
+Binary files a/resources/informations4.1.res and b/resources/informations4.1.res differ
+diff --git a/resources/informations4.1.res.timestamp b/resources/informations4.1.res.timestamp
+index 8bc526c..fed9ae3 100644
+--- a/resources/informations4.1.res.timestamp
++++ b/resources/informations4.1.res.timestamp
+@@ -1 +1 @@
+-2026-02-08 12:23:25.065000+00:00
+\ No newline at end of file
++2026-02-13 05:45:03.598000+00:00
+\ No newline at end of file
+diff --git a/resources/musicnamechanges.res b/resources/musicnamechanges.res
+index f5a8e96..272efd3 100644
+--- a/resources/musicnamechanges.res
++++ b/resources/musicnamechanges.res
+@@ -1,8 +1,8 @@
+-[
+-    ["♥LOVE2 シュガー→♥", "♥LOVE2 シュガ→♥"],
+-    ["Let's bounce !!", "Let's Bounce !!"],
+-    ["共犯へヴンズコード", "共犯ヘヴンズコード"],
+-    ["Dans la nuit de leternite", "Dans la nuit de l'eternite"],
+-    ["栄光のカンパネラ", "栄冠のカンパネラ"],
+-    ["ウツミウツシ", "ウツシミウツシ"]
+-]
++[
++    ["♥LOVE2 シュガー→♥", "♥LOVE2 シュガ→♥"],
++    ["Let's bounce !!", "Let's Bounce !!"],
++    ["共犯へヴンズコード", "共犯ヘヴンズコード"],
++    ["Dans la nuit de leternite", "Dans la nuit de l'eternite"],
++    ["栄光のカンパネラ", "栄冠のカンパネラ"],
++    ["ウツミウツシ", "ウツシミウツシ"]
++]
+diff --git a/resources/notesradar1.1.res.timestamp b/resources/notesradar1.1.res.timestamp
+deleted file mode 100644
+index 7ca18dc..0000000
+--- a/resources/notesradar1.1.res.timestamp
++++ /dev/null
+@@ -1 +0,0 @@
+-2026-02-08 12:24:18.202000+00:00
+\ No newline at end of file
