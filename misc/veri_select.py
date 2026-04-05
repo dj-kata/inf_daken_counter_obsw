@@ -21,16 +21,16 @@ if __name__ == '__main__':
     # rdb = ResultDatabase(config = config)
     reader = ScreenReader()
     # for f in glob.glob('debug/gc553/*.png'):
-    for f in glob.glob('debug/gc553/*2.png'):
+    for f in glob.glob('debug/gc553/select*.png'):
     # for f in glob.glob('debug/result/*.png'):
         # logger.info(f'file={f}')
         reader.update_screen_from_file(f)
-        if reader.is_result():
-            r = reader.read_result_screen()
+        if reader.is_select():
+            r = reader.read_music_select_screen()
             print(f, type(r))
             if r:
                 # logger.info(f'[RESULT] {r}')
                 r.result.timestamp = os.path.getmtime(f)
                 print(r, r.result)
         else:
-            print('not result...', f)
+            print('not select...', f)

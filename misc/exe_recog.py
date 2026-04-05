@@ -70,7 +70,7 @@ if __name__ == '__main__':
     # a.chart_id = (a.title, a.play_style, a.difficulty)
     # rdb.results[-1] = a
 
-    title = '卑弥呼'
+    title = 'ALTERNATOR'
     x = rdb.search(title, play_style.sp, difficulty.another)
     for s in x:
         if s.result.detect_mode == detect_mode.result:
@@ -78,6 +78,8 @@ if __name__ == '__main__':
 
     rdb.broadcast_history_cursong_data(title, play_style.sp, difficulty.another, battle=False, allscratch=False, regularspeed=False)
     rdb.broadcast_today_stats_data(datetime.datetime.now().timestamp()-48*3600)
+    rdb.broadcast_today_updates_data(0)
+    rdb.broadcast_graph_data(datetime.datetime.now().timestamp()-36*3600)
     si = rdb.song_database.search(title='卑弥呼', play_style=play_style.sp, difficulty=difficulty.another)
     print(si)
     print(f"bpi_ave={si.bpi_ave}, bpi_top={si.bpi_top}, bpi_coef={si.bpi_coef}, notes={si.notes}")
@@ -86,7 +88,7 @@ if __name__ == '__main__':
     # rdb.broadcast_history_cursong_data('Carmina', play_style.sp, difficulty.another)
     # rdb.broadcast_graph_data(datetime.datetime.now().timestamp()-4*3600)
     time.sleep(4)
+    print(rdb.get_monthly_notes())
 
     rdb.shutdown_servers()
-    print(rdb.results[-1])
-si = rdb.song_database.search(title='ADAMANT', play_style=play_style.sp, difficulty=difficulty.another)
+    # print(rdb.results[-1])
