@@ -10,8 +10,10 @@ SP,DPのどちらにも対応しています。
 
 また、HTMLでリアルタイム表示するためのIFを備えており、OBS配信でも使いやすくなっています。
 
-主な機能はこちらの動画で紹介しています。  
-https://www.youtube.com/watch?v=1LSqYLQKDjU
+<img width="900" alt="image" src="https://github.com/user-attachments/assets/756c6650-4a18-496a-b2be-7b2fce05a220" />  
+<img width="700" alt="tmp" src="https://github.com/user-attachments/assets/84ca293c-e186-4fe6-a77c-00fd8dc0152b" />
+<img width="450" alt="inf_ディスコルディア_SPA_hard_ex3146_bp48_20260327_190654_cut2p" src="https://github.com/user-attachments/assets/e38e492d-4c6c-4145-b4e9-33f0719bae67" />
+<img width="700" alt="image" src="https://github.com/user-attachments/assets/e2fc41c6-035f-4a42-8719-7dd19fd85588" />
 
 # 動作環境
 下記の環境で確認しています。
