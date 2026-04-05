@@ -832,7 +832,7 @@ if __name__ == "__main__":
     updater = GitHubUpdater(
         github_author='dj-kata',
         github_repo='inf_daken_counter_obsw',
-        zipfile_name='inf_daken_counter.zip',
+        zipfile_basename='inf_daken_counter',
         current_version=SWVER,           # 現在のバージョン
         main_exe_name="notes_counter.exe",  # メインプログラムのexe名
         updator_exe_name="notes_counter.exe",           # アップデート用プログラムのexe名
