@@ -16,7 +16,7 @@ SP,DPのどちらにも対応しています。
 <img width="700" alt="image" src="https://github.com/user-attachments/assets/e2fc41c6-035f-4a42-8719-7dd19fd85588" />
 
 動作例  
-https://youtu.be/6oGS0dvHhGQ
+<iframe width="560" height="315" src="https://www.youtube.com/embed/6oGS0dvHhGQ" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 # 動作環境
 下記の環境で確認しています。
