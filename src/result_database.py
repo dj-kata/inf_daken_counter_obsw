@@ -184,16 +184,6 @@ class ResultDatabase:
             フィルタ済みリザルトのリスト
         """
         filtered = []
-        # 2024/1/1以降に登録されたリザルトからノーツ数を抽出(検算用)
-        # notes = None
-        # for r in reversed(results):
-        #     if r.result.detect_mode != detect_mode.result:
-        #         continue
-        #     if r.result.timestamp < datetime.datetime(2024,1,1).timestamp():
-        #         break
-        #     if r.result.notes:
-        #         notes = r.result.notes
-        #         break
 
         for r in results:
             # detect_mode.play は常に除外（途中落ちの判定ができないため）
@@ -204,35 +194,31 @@ class ResultDatabase:
                 if any(kw in r.result.option.arrange for kw in self._SPECIAL_ARRANGE_KEYWORDS):
                     continue
 
+            option = r.result.option
+            if option is None:
+                option = PlayOption(None)
+
             # playspeed指定時: 同一playspeedの detect_mode.result のみ
             # None と 1.0 は等価として扱う
             target_speed = 1.0 if playspeed is None else playspeed
             result_speed = 1.0 if r.result.playspeed is None else r.result.playspeed
 
-            if allscratch != r.result.option.allscratch:
+            if allscratch != option.allscratch:
                 continue
-            if regularspeed != r.result.option.regularspeed:
+            if regularspeed != option.regularspeed:
                 continue
-
             if result_speed != target_speed:
                 continue
-            if r.result.detect_mode != detect_mode.result:
-                continue
 
-            elif battle:
-                # battle時: battle=True の detect_mode.result のみ
-                if not (r.result.option and r.result.option.battle):
-                    continue
+            if battle:
                 if r.result.detect_mode != detect_mode.result:
                     continue
-            # elif (notes and r.result.notes) and notes != r.result.notes: # 古いリザルトでノーツ数がおかしいものを弾く
-                # continue
-            else:
-                # 通常: playspeed=None かつ battleでない detect_mode.result / detect_mode.select
-                # playspeed=1.0 も通常プレイとして扱う
-                if r.result.playspeed is not None and r.result.playspeed != 1.0:
+                if not option.battle:
                     continue
-                if r.result.option and r.result.option.battle:
+            else:
+                if r.result.detect_mode == detect_mode.play:
+                    continue
+                if option.battle:
                     continue
 
             filtered.append(r)
@@ -347,7 +333,7 @@ class ResultDatabase:
             if r.result.judge:
                 if not r.result.dead:
                     ret[1] = min(ret[1], r.result.judge.bd + r.result.judge.pr)
-            elif r.result.bp: # 選曲画面から登録したものはこちら
+            elif r.result.bp is not None: # 選曲画面から登録したものはこちら
                 ret[1] = min(ret[1], r.result.bp)
             ret[2] = clear_lamp(max(ret[2].value, r.result.lamp.value))
 
