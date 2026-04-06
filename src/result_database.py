@@ -17,6 +17,7 @@ import csv
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List
+import copy
 
 
 def _ws_broadcast(ws_method_name: str):
@@ -369,6 +370,8 @@ class ResultDatabase:
         for result in self.results:
             if result.detect_mode == detect_mode.play:
                 continue
+            if type(result.score) is not int:
+                continue
 
             battle = result.option.battle if result.option else None
             key = (result.title, result.play_style, result.difficulty, battle)
@@ -385,7 +388,7 @@ class ResultDatabase:
 
             # ベストスコア更新
             if result.score and (not best.best_score_result or result.score > best.best_score_result.score):
-                best.best_score_result = result
+                best.best_score_result = copy.deepcopy(result)
             elif (result.detect_mode == detect_mode.result and result.score
                   and best.best_score_result and result.score == best.best_score_result.score):
                 best.best_score_result.option = result.option
@@ -394,7 +397,7 @@ class ResultDatabase:
             current_bp = result.bp if (result.bp is not None and not result.dead) else 99999
             best_bp = best.min_bp_result.bp if best.min_bp_result and best.min_bp_result.bp is not None else 99999
             if current_bp < best_bp:
-                best.min_bp_result = result
+                best.min_bp_result = copy.deepcopy(result)
             elif current_bp == best_bp and result.detect_mode == detect_mode.result:
                 if best.min_bp_result:
                     best.min_bp_result.option = result.option
@@ -402,7 +405,7 @@ class ResultDatabase:
             # ベストランプ更新
             if result.lamp:
                 if not best.best_lamp_result or result.lamp.value > best.best_lamp_result.lamp.value:
-                    best.best_lamp_result = result
+                    best.best_lamp_result = copy.deepcopy(result)
                 elif result.lamp.value == best.best_lamp_result.lamp.value and result.detect_mode == detect_mode.result:
                     if best.best_lamp_result:
                         best.best_lamp_result.option = result.option

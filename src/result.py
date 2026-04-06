@@ -231,6 +231,9 @@ class OneResult:
         if self.pre_score is None:
             return True
         ret = False
+        print(self.score, self.pre_score)
+        if type(self.score) is not int or type(self.bp) is not int or type(self.lamp) is not clear_lamp:
+            return False
         ret = True if self.score is not None and self.pre_score is not None and self.score > self.pre_score else ret
         ret = True if self.lamp is not None and self.pre_lamp is not None and self.lamp.value > self.pre_lamp.value else ret
         ret = True if self.bp is not None and self.pre_bp is None else ret
