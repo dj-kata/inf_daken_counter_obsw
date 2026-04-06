@@ -173,16 +173,22 @@ def mosaic_rival_area(img:Image, side:result_side) -> Image:
     img_array = np.array(img)
     if side == result_side._1p: # ライバルエリアが右側
         sx=1375
+        rader_sx = 510+1340
     else:
         sx=35
-    sy=270
-    ex=sx+456
-    ey=sy+618
-    rivalarea = img.crop((sx,sy,ex,ey))
-    rivalarea = rivalarea.resize((45,61))
-    rivalarea = rivalarea.resize((456,618))
-    rival_array = np.array(rivalarea)
-    img_array[sy:ey, sx:ex] = rival_array
+        rader_sx = 510
+    img_rader = img.crop((rader_sx, 108, rader_sx+35, 126))
+    hash_rader = imagehash.average_hash(img_rader)
+    # ノーツレーダー画面ならライバル欄は処理しない
+    if abs(hash_rader - imagehash.hex_to_hash('6ff6e66666646611')) < 5:
+        sy=270
+        ex=sx+456
+        ey=sy+618
+        rivalarea = img.crop((sx,sy,ex,ey))
+        rivalarea = rivalarea.resize((45,61))
+        rivalarea = rivalarea.resize((456,618))
+        rival_array = np.array(rivalarea)
+        img_array[sy:ey, sx:ex] = rival_array
     return Image.fromarray(img_array)
 
 def mosaic_other_rival_names(img:Image, side:result_side) -> Image:
