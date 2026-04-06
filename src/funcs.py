@@ -180,7 +180,7 @@ def mosaic_rival_area(img:Image, side:result_side) -> Image:
     img_rader = img.crop((rader_sx, 108, rader_sx+35, 126))
     hash_rader = imagehash.average_hash(img_rader)
     # ノーツレーダー画面ならライバル欄は処理しない
-    if abs(hash_rader - imagehash.hex_to_hash('6ff6e66666646611')) < 5:
+    if abs(hash_rader - imagehash.hex_to_hash('6ff6e66666646611')) > 5:
         sy=270
         ex=sx+456
         ey=sy+618
