@@ -150,8 +150,6 @@ class PklImportWorker(QThread):
                     )
                     
                     # リザルト登録処理
-                    if 'True Blue' == item[1]:
-                        print(result)
                     if self.result_database.add(result):
                         registered_count += 1
                 except:
