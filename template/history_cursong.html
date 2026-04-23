@@ -515,7 +515,7 @@
         var best_score = data.best_score || 0;
         var best_score_rate = data.best_score_rate || 0;
         var best_score_opt = data.best_score_opt || '';
-        var best_bp = data.best_bp || 99999999;
+        var best_bp = (data.best_bp === undefined || data.best_bp === null) ? 99999999: data.best_bp;
         var best_bp_rate = data.best_bp_rate;
         var best_bp_opt = data.best_bp_opt || '';
         var best_bpi = data.best_bpi || '';

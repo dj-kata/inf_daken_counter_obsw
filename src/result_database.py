@@ -680,7 +680,7 @@ class ResultDatabase:
                         best_bp = r.result.judge.pr + r.result.judge.bd
                         best_bp_opt = r.result.option
             else: # 選曲画面からの取得
-                if r.result.bp and r.result.bp < best_bp:
+                if r.result.bp is not None and r.result.bp < best_bp:
                     best_bp = r.result.bp
                     best_bp_opt = r.result.option
 
