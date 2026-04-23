@@ -687,7 +687,7 @@ class ResultDatabase:
         if len(results) == 0:
             return {}
 
-        last_played_time = results[0].result.timestamp
+        last_played_time = max(r.result.timestamp for r in results)
 
         data = {
             'lv': str(songinfo.level) if hasattr(songinfo, 'level') else "",
