@@ -495,6 +495,7 @@ class ResultDatabase:
                 'notes': r.notes,
                 'score': r.score,
                 'bp': r.judge.pr + r.judge.bd if r.judge else r.bp,
+                'dead': bool(r.dead),
                 'lamp': r.lamp.value,
                 'pre_score': r.pre_score if r.pre_score is not None else 0,
                 'pre_bp': r.pre_bp if r.pre_bp is not None else 0,

@@ -533,6 +533,7 @@
                 var score_rate = Number(item.score_rate) || 0;
                 var pre_score = Number(item.pre_score) || 0;
                 var bp = Number(item.bp) || 0;
+                var dead = Boolean(item.dead);
                 var pre_lamp = Number(item.pre_lamp) || 0;
                 var pre_bp = Number(item.pre_bp) || 0;
                 var bpi = item.bpi || '';
@@ -680,9 +681,10 @@
                 }
                 out += '</td>';
                 if (show_bp === 1) {
-                    var bp_class = has_bp_update ? 'bp-updated' : 'bp-not-updated';
-                    out += '<td class="col-bp ' + bp_class + '">' + bp;
-                    if (show_best_delta === 1 && pre_bp > 0){
+                    var bp_class = dead ? 'bp-not-updated': (has_bp_update ? 'bp-updated' : 'bp-not-updated');
+                    var bp_label = dead ? '-' : String(bp);
+                    out += '<td class="col-bp ' + bp_class + '">' + bp_label;
+                    if (!dead && show_best_delta === 1 && pre_bp > 0){
                         out += formatDelta(bp_delta, true);
                     }
                     out += '</td>';
