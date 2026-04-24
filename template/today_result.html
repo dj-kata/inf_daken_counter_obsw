@@ -389,6 +389,19 @@
             return 'option-regular';
         }
 
+        function getOptionDisplayText(token) {
+            var normalized = normalizeOptionKeyword(token);
+            var shortLabels = {
+                'RANDOM': 'RAN',
+                'R-RANDOM': 'R-RAN',
+                'S-RANDOM': 'S-RAN',
+                'H-RANDOM': 'H-RAN',
+                'MIRROR': 'MIR',
+                'REGULAR': 'OFF',
+            };
+            return shortLabels[normalized] || normalized;
+        }
+
         function renderOptionToken(token) {
             var normalized = String(token || '').trim();
             if (!normalized) return '';
@@ -398,13 +411,13 @@
                     .split(/\s*\/\s*/)
                     .map(function(part) {
                         var text = normalizeOptionKeyword(part);
-                        return '<span class="option-part ' + getOptionClass(text) + '">' + escapeHtml(text) + '</span>';
+                        return '<span class="option-part ' + getOptionClass(text) + '">' + escapeHtml(getOptionDisplayText(text)) + '</span>';
                     })
-                    .join('<span class="option-separator"> / </span>')
+                    .join('<span class="option-separator"> / </span>');
             }
 
             var optionText = normalizeOptionKeyword(normalized);
-            return '<span class=option-part ' + getOptionClass(optionText) + '">' + escapeHtml(optionText) + '</span>';
+            return '<span class="option-part ' + getOptionClass(optionText) + '">' + escapeHtml(getOptionDisplayText(optionText)) + '</span>';
         }
 
         function renderOptionText(opt) {
@@ -432,7 +445,7 @@
                 deltaClass = improved ? 'best-delta-up' : 'best-delta-down';
             }
             var sign = delta > 0 ? '+' : '';
-            return '<span class=best-delta >' + deltaClass + '">(' + sign + delta + ')</span>';
+            return '<span class="best-delta >' + deltaClass + '">(' + sign + delta + ')</span>';
         }
 
         function parseBpiValue(bpi){
@@ -627,8 +640,8 @@
                 if (battle == 1) {
                     var compact_opt = opt.replace(/\s+/g, '');
                     var with_scratch = opt.indexOf("A-SCR") < 0 ? "皿" : "";
-                    title_prefix = "<span class='battle'>["; + with_scratch;
-                    if ((compact_opt.indexOf("MIR/OFF") >= 0) || (opt.indexOf("OFF/MIR") >= 0)) {
+                    title_prefix = "<span class='battle'>[" + with_scratch;
+                    if ((compact_opt.indexOf("MIRROR/OFF") >= 0) || (compact_opt.indexOf("OFF/MIRROR") >= 0)) {
                         title_prefix += 'DBM';
                     } else if (compact_opt.indexOf("OFF/OFF") >= 0 || compact_opt.indexOf("REGULAR/REGULAR") >= 0) {
                         title_prefix += 'DB';
@@ -669,11 +682,11 @@
                 if (show_bp === 1) {
                     var bp_class = has_bp_update ? 'bp-updated' : 'bp-not-updated';
                     out += '<td class="col-bp ' + bp_class + '">' + bp;
-                    if (show_bp_delta === 1 && pre_bp > 0){
-                        out += formatDelta(bp_delta, true)
+                    if (show_best_delta === 1 && pre_bp > 0){
+                        out += formatDelta(bp_delta, true);
                     }
+                    out += '</td>';
                 }
-                out += '</td>';
                 out += '<td class="col-rank">' + rankdiff + '</td>';
                 out += '<td class="col-bpi ' + bpi_class + '">' + escapeHtml(bpi) + '</td>';
                 
