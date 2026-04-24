@@ -14,10 +14,12 @@
         }
         :root {
             --notes-graph-days: 7;
-            --skip-no-update: 0;
+            --show-bp: 1;
+            --show-best-delta: 1;
+            --filter-mode: all; /* all, updates_only, bpi_only, updates_or_bpi */
             /* --stats-levels: "sp11,sp12,dp11,dp12"; */
-            --stats-levels: "sp11,sp12";
-            --lv-stats-position: "left"; /* left or bottom */
+            --stats-levels: sp11,sp12;
+            --lv-stats-position: left; /* left or bottom */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -442,6 +444,12 @@
         return params.toString();
     }
 
+    function getCssCustomProperty(name, fallbackValue) {
+        var value = getComputedStyle(document.documentElement).getPropertyValue(name);
+        value = value ? value.trim() : '';
+        return value === '' ? fallbackValue : value;
+    }
+
     function applySkipNoUpdate() {
         if (!iframeReady || !playlogIframe) return;
         try {
@@ -455,20 +463,27 @@
     function applyTodayResultFlags() {
         if (!iframeReady || !playlogIframe) return;
         try {
-            var doc = playlogIframe.contentDocument || playlogIframeo.contentWindow.document;
+            var doc = playlogIframe.contentDocument || playlogIframe.contentWindow.document;
             var currentParams = new URLSearchParams(window.location.search);
             var mappings = [
-                ['--show-bp', 'show_bp'],
-                ['--show-best-delta', 'show_best_delta'],
-                ['--bpi-min', 'bpi_min'],
-                ['--filter-mode', 'filter_mode'],
+                ['--show-bp', 'show_bp', '0'],
+                ['--show-best-delta', 'show_best_delta', '0'],
+                ['--bpi-min', 'bpi_min', '-15'],
+                ['--filter-mode', 'filter_mode', 'all'],
             ];
 
             mappings.forEach(function(item) {
                 var cssName = item[0];
                 var paramName = item[1];
+                var fallbackValue = item[2];
                 if (currentParams.has(paramName)) {
-                    doc.documentElement.style.setPropertyo(cssName, currentParams.get(paramName));
+                    doc.documentElement.style.setProperty(cssName, currentParams.get(paramName));
+                    return;
+                }
+
+                var cssValue = getCssCustomProperty(cssName, fallbackValue);
+                if (cssValue !== '') {
+                    doc.documentElement.style.setProperty(cssName, cssValue);
                 }
             });
         } catch (e) {
