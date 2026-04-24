@@ -438,6 +438,8 @@
                 params.set(key, currentParams.get(key));
             }
         });
+
+        return params.toString();
     }
 
     function applySkipNoUpdate() {
@@ -445,6 +447,30 @@
         try {
             var doc = playlogIframe.contentDocument || playlogIframe.contentWindow.document;
             doc.documentElement.style.setProperty('--skip-no-update', getSkipNoUpdate());
+        } catch (e) {
+            // cross-origin or not ready
+        }
+    }
+
+    function applyTodayResultFlags() {
+        if (!iframeReady || !playlogIframe) return;
+        try {
+            var doc = playlogIframe.contentDocument || playlogIframeo.contentWindow.document;
+            var currentParams = new URLSearchParams(window.location.search);
+            var mappings = [
+                ['--show-bp', 'show_bp'],
+                ['--show-best-delta', 'show_best_delta'],
+                ['--bpi-min', 'bpi_min'],
+                ['--filter-mode', 'filter_mode'],
+            ];
+
+            mappings.forEach(function(item) {
+                var cssName = item[0];
+                var paramName = item[1];
+                if (currentParams.has(paramName)) {
+                    doc.documentElement.style.setPropertyo(cssName, currentParams.get(paramName));
+                }
+            });
         } catch (e) {
             // cross-origin or not ready
         }
@@ -470,6 +496,7 @@
         playlogIframe.addEventListener('load', function() {
             iframeReady = true;
             applySkipNoUpdate();
+            applyTodayResultFlags();
             hideIframeScrollbar();
         });
 

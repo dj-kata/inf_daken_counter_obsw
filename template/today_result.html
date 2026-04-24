@@ -10,6 +10,10 @@
         <style>
             :root {
                 --skip-no-update: 0; /* 更新のない行を飛ばす */
+                --show-bp: 0;
+                --show-best-delta: 0;
+                --bpi-min: -15;
+                --filter-mode: all;
             }
             
             * {
@@ -354,6 +358,29 @@
             return value === null || value === '' ? fallbackValue : value;
         }
 
+        function getCssCustomProperty(name, fallbackValue) {
+            var value = getComputedStyle(document.documentElement).getPropertyValue(name);
+            value = value ? value.trim() : '';
+            return value === '' ? fallbackValue : value;
+        }
+
+        function getNumericFlagWithCss(params, key, cssName, fallbackValue) {
+            if (params.has(key)) {
+                return getNumericFlag(params, key, fallbackValue);
+            }
+            var cssValue = getCssCustomProperty(cssName, '');
+            if (cssValue === '') return fallbackValue;
+            var parsed = Number(cssValue);
+            return Number.isFinite(parsed) ? parsed : fallbackValue;
+        }
+
+        function getStringFlagWithCss(params, key, cssName, fallbackValue) {
+            if (params.has(key)) {
+                return getStringFlag(params, key, fallbackValuel);
+            }
+            return getCssCustomProperty(cssName, fallbackValue);
+        }
+
         function normalizeOptionKeyword(token) {
             normalized = String(token || '')
                 .trim()
@@ -511,13 +538,11 @@
             var out = '';
             // URLパラメータ(today_stats.htmlのiframeから渡される)を優先、なければCSS変数を使用
             var urlParams = new URLSearchParams(window.location.search);
-            var skip_no_update = urlParams.has('skip_no_update')
-                ? Number(urlParams.get('skip_no_update'))
-                : (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--skip-no-update')) || 0);
-            var show_bp = getNumericFlag(urlParams, 'show_bp', 0);
-            var show_best_delta = getNumericFlag(urlParams, 'show_best_delta', 0);
-            var filter_mode = getStringFlag(urlParams, 'filter_mode', 'all');
-            var bpi_min_raw = getStringFlag(urlParams, 'bpi_min', '');
+            var skip_no_update = getNumericFlagWithCss(urlParams, 'skip_no_update', '--skip-no-update', 0);
+            var show_bp = getNumericFlagWithCss(urlParams, 'show_bp', '--show-bp', 0);
+            var show_best_delta = getNumericFlagWithCss(urlParams, 'show_best_delta', '--show-best-delta', 0);
+            var filter_mode = getStringFlagWithCss(urlParams, 'filter_mode', '--filter-mode', 'all');
+            var bpi_min_raw = getStringFlagWithCss(urlParams, 'bpi_min', '--bpi-min', '-15');
             var bpi_min = bpi_min_raw === '' ? null : Number(bpi_min_raw);
             if (!Number.isFinite(bpi_min)) {
                 bpi_min = null;
