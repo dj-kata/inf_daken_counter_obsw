@@ -428,6 +428,18 @@
     var iframeReady = false;
     var playlogIframe = null;
 
+    function buildTodayResultQuery() {
+        var params = new URLSearchParams();
+        var currentParams = new URLSearchParams(window.location.search);
+        params.set('skip_no_update', getSkipNoUpdate());
+
+        ['show_bp', 'show_best_delta', 'bpi_min', 'filter_mode'].forEach(function(key) {
+            if (currentParams.has(key)) {
+                params.set(key, currentParams.get(key));
+            }
+        });
+    }
+
     function applySkipNoUpdate() {
         if (!iframeReady || !playlogIframe) return;
         try {
@@ -465,7 +477,7 @@
         setTimeout(function() {
             // iframe srcにskip-no-updateをURLパラメータとして渡す
             // (file://等のクロスオリジン環境でもCSS注入に頼らず確実に値を伝える)
-            playlogIframe.src = 'today_result.html?skip_no_update=' + getSkipNoUpdate();
+            playlogIframe.src = 'today_result.html?' + buildTodayResultQuery();
             applyLayout();
             connectWebSocket();
         }, 100);

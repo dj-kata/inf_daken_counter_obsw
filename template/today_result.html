@@ -80,7 +80,7 @@
             }
             
             /* レベル列 */
-            .results-table td:nth-child(1) {
+            .results-table td.col-level {
                 width: 180px;
                 text-align: center;
                 font-size: 36px;
@@ -89,13 +89,13 @@
             }
             
             /* ランプ列 */
-            .results-table td:nth-child(2) {
+            .results-table td.col-lamp {
                 width: 40px;
                 text-align: center;
             }
             
             /* タイトル列 */
-            .results-table td:nth-child(3) {
+            .results-table td.col-title {
                 font-size: 36px;
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -103,29 +103,37 @@
             }
             
             /* スコア列 */
-            .results-table td:nth-child(4) {
+            .results-table td.col-score {
                 width: 200px;
                 text-align: right;
                 font-size: 38px;
                 font-weight: bold;
             }
+
+            /* bp */
+            .results-table td.col-bp {
+                width: 160px;
+                text-align: right;
+                font-size: 34px;
+                font-weight: bold;
+            }
             
             /* ランク列 */
-            .results-table td:nth-child(5) {
+            .results-table td.col-rank {
                 width: 200px;
                 text-align: center;
                 font-size: 36px;
             }
             
             /* BPI列 */
-            .results-table td:nth-child(6) {
+            .results-table td.col-bpi {
                 width: 150px;
                 text-align: center;
                 font-size: 32px;
             }
             
             /* オプション列 */
-            .results-table td:nth-child(7) {
+            .results-table td.col-option {
                 width: 250px;
                 text-align: right;
                 font-size: 28px;
@@ -153,6 +161,32 @@
             }
             
             .score-not-updated {
+                color: #999;
+            }
+
+            .bp-updated {
+                color: #aaffaa;
+            }
+            
+            .bp-not-updated {
+                color: #999;
+            }
+
+            .best-delta {
+                display: block;
+                font-size: 20px;
+                line-height: 1.05;
+            }
+
+            .best-delta-up {
+                color: #ffd06b;
+            }
+
+            .best-delta-down {
+                color: #7dffb4;
+            }
+
+            .best-delta-flat {
                 color: #999;
             }
             
@@ -259,6 +293,32 @@
             .battle{
                 color: #7fa;
             }
+
+            .option-text {
+                color: #77bb77;
+            }
+
+            .option-part {
+                display: inline-block;
+            }
+
+            .option-separator {
+                color: #9dc59d;
+            }
+
+            .option-regular { color: #77bb77; }
+            .option-random { color: #ffe066; }
+            .option-r-random { color: #ffb36b; }
+            .option-s-random { color: #7ee7ff; }
+            .option-mirror { color: #ff8ab0; }
+            .option-h-ran { color: #ff6b6b; }
+            .option-sync-ran { color: #b191ff; }
+            .option-symm-ran { color: #d48cff; }
+            .option-battle { color: #7fa; }
+            .option-flip { color: #bcd4ff; }
+            .option-assist { color: #b9ff8a; }
+            .option-special { color: #ffd98a; }
+
         </style>
     </head>
     <body>
@@ -272,6 +332,116 @@
         
         let ws = null;
         let reconnectInterval = null;
+
+        function escapeHtml(value){
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function getNumericFlag(params, key, fallbackValue) {
+            if (!params.has(key)) return fallbackValue;
+            var parsed = Number(params.get(key));
+            return Number.isFinite(parsed) ? parsed : fallbackValue;
+        }
+
+        function getStringFlag(params, key, fallbackValue){
+            if (!params.has(key)) return fallbackValue;
+            var value = params.get(key);
+            return value === null || value === '' ? fallbackValue : value;
+        }
+
+        function normalizeOptionKeyword(token) {
+            normalized = String(token || '')
+                .trim()
+                .toUpperCase()
+                .replace(/\s+/g, ' ');
+
+            var replacements = {
+                'R-RAN': 'R-RANDOM',
+                'S-RAN': 'S-RANDOM',
+                'RAN': 'RANDOM',
+                'MIR': 'MIRROR',
+            }
+
+            return replacements[normalized] || normalized;
+
+        }
+
+        function getOptionClass(token){
+            var normalized = normalizeOptionKeyword(token);
+            if (!normalized) return 'option-regular';
+            if (normalized === 'BATTLE') return 'option-battle';
+            if (normalized === 'FLIP') return 'option-flip';
+            if (normalized === 'A-SCR' || normalized === 'LEGACY') return 'option-assist';
+            if (normalized === 'ALL-SCR' || normalized === 'REGUL-SPEED') return 'option-special';
+            if (normalized === 'REGULAR' || normalized === 'OFF') return 'option-regular';
+            if (normalized === 'RANDOM') return 'option-random';
+            if (normalized === 'R-RANDOM') return 'option-r-random';
+            if (normalized === 'S-RANDOM') return 'option-s-random';
+            if (normalized === 'MIRROR') return 'option-mirror';
+            if (normalized === 'H-RAN') return 'option-h-ran';
+            if (normalized === 'SYNC-RAN') return 'option-sync-ran';
+            if (normalized === 'SYMM-RAN') return 'option-symm-ran';
+            return 'option-regular';
+        }
+
+        function renderOptionToken(token) {
+            var normalized = String(token || '').trim();
+            if (!normalized) return '';
+
+            if (normalized.indexOf('/') >= 0) {
+                return normalized
+                    .split(/\s*\/\s*/)
+                    .map(function(part) {
+                        var text = normalizeOptionKeyword(part);
+                        return '<span class="option-part ' + getOptionClass(text) + '">' + escapeHtml(text) + '</span>';
+                    })
+                    .join('<span class="option-separator"> / </span>')
+            }
+
+            var optionText = normalizeOptionKeyword(normalized);
+            return '<span class=option-part ' + getOptionClass(optionText) + '">' + escapeHtml(optionText) + '</span>';
+        }
+
+        function renderOptionText(opt) {
+            var tokens = String(opt || '')
+                .split(',')
+                .map(function(token) {return token.trim(); })
+                .filter(Boolean);
+
+            if (tokens.length === 0) {
+                return '';
+            }
+
+            return '<span class="option-text">' + tokens.map(renderOptionToken).join('<span class="option-separator">, </span>') + '</span>';
+        }
+
+        function formatDelta(delta, inverse) {
+            if (!Number.isFinite(delta)) return '';
+            if (delta === 0) {
+                return '<span class="best-delta best-delta-flat">(±0)</span>';
+            }
+
+            var improved = inverse ? delta < 0 : delta > 0;
+            var deltaClass = improved ? 'best-delta-down' : 'best-delta-up';
+            if (!inverse) {
+                deltaClass = improved ? 'best-delta-up' : 'best-delta-down';
+            }
+            var sign = delta > 0 ? '+' : '';
+            return '<span class=best-delta >' + deltaClass + '">(' + sign + delta + ')</span>';
+        }
+
+        function parseBpiValue(bpi){
+            if (bpi === '' || bpi === null || bpi === undefined || bpi === '??') {
+                return null;
+            }
+            var numeric = Number(bpi);
+            return Number.isFinite(numeric) ? numeric : null;
+        }
         
         function connectWebSocket() {
             const WEBSOCKET_PORT = getWebSocketPort();
@@ -327,10 +497,18 @@
             
             var out = '';
             // URLパラメータ(today_stats.htmlのiframeから渡される)を優先、なければCSS変数を使用
-            var _urlParams = new URLSearchParams(window.location.search);
-            var skip_no_update = _urlParams.has('skip_no_update')
-                ? Number(_urlParams.get('skip_no_update'))
+            var urlParams = new URLSearchParams(window.location.search);
+            var skip_no_update = urlParams.has('skip_no_update')
+                ? Number(urlParams.get('skip_no_update'))
                 : (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--skip-no-update')) || 0);
+            var show_bp = getNumericFlag(urlParams, 'show_bp', 0);
+            var show_best_delta = getNumericFlag(urlParams, 'show_best_delta', 0);
+            var filter_mode = getStringFlag(urlParams, 'filter_mode', 'all');
+            var bpi_min_raw = getStringFlag(urlParams, 'bpi_min', '');
+            var bpi_min = bpi_min_raw === '' ? null : Number(bpi_min_raw);
+            if (!Number.isFinite(bpi_min)) {
+                bpi_min = null;
+            }
             
             data.items.forEach(function(item, index) {
                 var lv = item.lv || '';
@@ -351,12 +529,32 @@
                 var sp_12clear = item.sp_12clear || '';
                 var playspeed = Number(item.playspeed) || 1.0;
                 var dp_unofficial_lv = item.dp_unofficial_lv || "";
+                var score_delta = score - pre_score;
+                var bp_delta = bp - pre_bp;
+                var has_score_update = score > pre_score;
+                var has_bp_update = pre_bp > 0 && bp < pre_bp;
+                var has_lamp_update = pre_lamp < lamp;
+                var has_update = has_score_update || has_bp_update || has_lamp_update;
+                var bpi_value = parseBpiValue(bpi);
+                var bpi_over_min = bpi_min !== null && bpi_value !== null && bpi_value >= bpi_min;
                 
                 // 更新なしをスキップ
-                if (skip_no_update == 1 && pre_score >= score && pre_bp <= bp && pre_lamp >= lamp) {
+                if (skip_no_update == 1 && !has_update) {
                     return;
                 }
-                
+
+                if (filter_mode === 'updates_only' && !has_update) {
+                    return;
+                }
+
+                if (filter_mode === 'bpi_only' && !bpi_over_min) {
+                    return;
+                }
+
+                if (filter_mode === 'updates_or_bpi' && !has_update && !bpi_over_min) {
+                    return;
+                }
+
                 // ランク判定
                 var rank = "B";
                 if (score_rate * 18 > 16) {
@@ -404,8 +602,8 @@
                 }
                 
                 // スコア更新チェック
-                var score_class = score > pre_score ? 'score-updated' : 'score-not-updated';
-                var row_class = score > pre_score ? 'score-updated' : '';
+                var score_class = has_score_update ? 'score-updated' : 'score-not-updated';
+                var row_class = has_update ? 'score-updated' : '';
                 
                 // 難易度の色
                 var diff_color = getDifficultyColor(difficulty);
@@ -427,17 +625,18 @@
                 // DBx系オプションの処理
                 var title_prefix = "";
                 if (battle == 1) {
+                    var compact_opt = opt.replace(/\s+/g, '');
                     var with_scratch = opt.indexOf("A-SCR") < 0 ? "皿" : "";
-                    title_prefix = "<span class='battle'>["; + with_scratch
-                    if ((opt.indexOf("MIR/OFF") >= 0) || (opt.indexOf("OFF/MIR") >= 0)) {
+                    title_prefix = "<span class='battle'>["; + with_scratch;
+                    if ((compact_opt.indexOf("MIR/OFF") >= 0) || (opt.indexOf("OFF/MIR") >= 0)) {
                         title_prefix += 'DBM';
-                    } else if (opt.indexOf("OFF/OFF") >= 0) {
+                    } else if (compact_opt.indexOf("OFF/OFF") >= 0 || compact_opt.indexOf("REGULAR/REGULAR") >= 0) {
                         title_prefix += 'DB';
-                    } else if (opt.indexOf("RAN/RAN") >= 0) {
+                    } else if (compact_opt.indexOf("RANDOM/RANDOM") >= 0) {
                         title_prefix += 'DBR';
-                    } else if (opt.indexOf("S-RAN/S-RAN") >= 0) {
+                    } else if (compact_opt.indexOf("S-RANDOM/S-RANDOM") >= 0) {
                         title_prefix += 'DBSR';
-                    } else if (opt.indexOf("H-RAN/H-RAN") >= 0) {
+                    } else if (compact_opt.indexOf("H-RAN/H-RAN") >= 0) {
                         title_prefix += 'DBHR';
                     }
                     title_prefix += "]</span> ";
@@ -447,38 +646,39 @@
                 out += '<tr class="' + row_class + '">';
                 
                 // レベル
-                out += '<td>' + level_display + '</td>';
+                out += '<td class="col-level">' + level_display + '</td>';
                 
                 // ランプ
-                out += '<td>' + lamp_html + '</td>';
+                out += '<td class="col-lamp">' + lamp_html + '</td>';
                 
                 // タイトル
-                out += '<td class="' + diff_color + '">';
+                out += '<td class="col-title ' + diff_color + '">';
                 if (title_prefix) out += title_prefix + ' ';
+                var title_label = escapeHtml(title);
                 if (playspeed>1.0){
-                    title = "<span class='playspeed-high'>["+playspeed+"X]</span> "+title;
+                    title_label = "<span class='playspeed-high'>["+playspeed+"X]</span> " + title_label;
                 }else if (playspeed != 1.0) {
-                    title = "<span class='playspeed-low'>["+playspeed+"X]</span> "+title;
+                    title_label = "<span class='playspeed-low'>["+playspeed+"X]</span> " + title_label;
                 }
-                out += title + '</td>';
-                out += '<td class="' + score_class + '">' + score + '</td>';
-                out += '<td>' + rankdiff + '</td>';
-                out += '<td class="' + bpi_class + '">' + bpi + '</td>';
-                
-                // if (battle == 1) {
-                //     // BATTLE系の場合
-                //     out += '<td class="' + score_class + '">bp' + bp + '</td>';
-                //     out += '<td></td>';
-                //     out += '<td></td>';
-                // } else {
-                //     // 通常の場合
-                //     out += '<td class="' + score_class + '">' + score + '</td>';
-                //     out += '<td>' + rankdiff + '</td>';
-                //     out += '<td class="' + bpi_class + '">' + bpi + '</td>';
-                // }
+                out += title_label + '</td>';
+                out += '<td class="col-score ' + score_class + '">' + score;
+                if (show_best_delta === 1){
+                    out += formatDelta(score_delta, false);
+                }
+                out += '</td>';
+                if (show_bp === 1) {
+                    var bp_class = has_bp_update ? 'bp-updated' : 'bp-not-updated';
+                    out += '<td class="col-bp ' + bp_class + '">' + bp;
+                    if (show_bp_delta === 1 && pre_bp > 0){
+                        out += formatDelta(bp_delta, true)
+                    }
+                }
+                out += '</td>';
+                out += '<td class="col-rank">' + rankdiff + '</td>';
+                out += '<td class="col-bpi ' + bpi_class + '">' + escapeHtml(bpi) + '</td>';
                 
                 // オプション
-                out += '<td>' + opt + '</td>';
+                out += '<td class="col-option">' + renderOptionText(opt) + '</td>';
                 
                 out += '</tr>';
                 
