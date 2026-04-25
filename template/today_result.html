@@ -182,12 +182,20 @@
                 line-height: 1.05;
             }
 
-            .best-delta-up {
+            .best-score-delta-up {
                 color: #ffd06b;
             }
 
-            .best-delta-down {
-                color: #7dffb4;
+            .best-score-delta-down {
+                color: #999;
+            }
+
+            .best-bp-delta-up {
+                color: #999;
+            }
+
+            .best-bp-delta-down {
+                color: #aaf;
             }
 
             .best-delta-flat {
@@ -460,19 +468,19 @@
             return '<span class="option-text">' + tokens.map(renderOptionToken).join('<span class="option-separator">, </span>') + '</span>';
         }
 
-        function formatDelta(delta, inverse) {
+        function formatDelta(delta, is_bp) {
             if (!Number.isFinite(delta)) return '';
             if (delta === 0) {
                 return '<span class="best-delta best-delta-flat">(±0)</span>';
             }
 
-            var improved = inverse ? delta < 0 : delta > 0;
-            var deltaClass = improved ? 'best-delta-down' : 'best-delta-up';
-            if (!inverse) {
-                deltaClass = improved ? 'best-delta-up' : 'best-delta-down';
+            var improved = is_bp ? delta < 0 : delta > 0;
+            var deltaClass = improved ? 'best-score-delta-down' : 'best-score-delta-up';
+            if (!is_bp) {
+                deltaClass = improved ? 'best-bp-delta-up' : 'best-bp-delta-down';
             }
             var sign = delta > 0 ? '+' : '';
-            return '<span class="best-delta >' + deltaClass + '">(' + sign + delta + ')</span>';
+            return '<span class="best-delta ' + deltaClass + '">(' + sign + delta + ')</span>';
         }
 
         function parseBpiValue(bpi){
@@ -700,17 +708,19 @@
                     title_label = "<span class='playspeed-low'>["+playspeed+"X]</span> " + title_label;
                 }
                 out += title_label + '</td>';
-                out += '<td class="col-score ' + score_class + '">' + score;
+                // out += '<td class="col-score ' + score_class + '">' + score;
+                out += '<td class="col-score"><span class="' + score_class + '">' + score + '</span>';
                 if (show_best_delta === 1){
-                    out += formatDelta(score_delta, false);
+                    out += formatDelta(score_delta, true);
                 }
                 out += '</td>';
                 if (show_bp === 1) {
                     var bp_class = dead ? 'bp-not-updated': (has_bp_update ? 'bp-updated' : 'bp-not-updated');
                     var bp_label = dead ? '-' : String(bp);
-                    out += '<td class="col-bp ' + bp_class + '">' + bp_label;
+                    // out += '<td class="col-bp ' + bp_class + '">' + bp_label;
+                    out += '<td class="col-bp"><span class="' + bp_class + '">' + bp_label +'</span>';
                     if (!dead && show_best_delta === 1 && pre_bp > 0){
-                        out += formatDelta(bp_delta, true);
+                        out += formatDelta(bp_delta, false);
                     }
                     out += '</td>';
                 }
