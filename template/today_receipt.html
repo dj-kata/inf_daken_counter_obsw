@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <title>Today's Achievements</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="../out/websocket.css">
+        <style>
+            :root {
+                --websocket-port: 8767;
+                --top-bpi-count: 10;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                background: linear-gradient(135deg, #0a0a1f 0%, #1a1a3e 50%, #0a0a1f 100%);
+                margin: 0;
+                padding: 10px 14px 14px 14px;
+                overflow-x: hidden;
+                font-family: 'RocknRoll One', sans-serif;
+                color: #fff;
+            }
+
+            #all {
+                max-width: 1500px;
+                margin: 0 auto;
+            }
+
+            .section {
+                margin-bottom: 16px;
+            }
+
+            .section-title {
+                background: linear-gradient(135deg, rgba(0, 20, 100, 0.88), rgba(0, 40, 120, 0.72));
+                border: 2px solid rgba(33, 150, 243, 0.35);
+                border-radius: 10px 10px 0 0;
+                box-shadow: 0 5px 18px rgba(33, 150, 243, 0.22);
+                color: #aaddff;
+                font-size: 30px;
+                font-weight: bold;
+                margin: 0;
+                padding: 8px 14px;
+                text-shadow: 2px 2px 0 #000;
+            }
+
+            .subsection {
+                background: linear-gradient(135deg, rgba(20, 10, 30, 0.9), rgba(2, 2, 4, 0.9));
+                border: 1px solid rgba(100, 100, 200, 0.3);
+                border-top: 0;
+                padding: 8px 12px 12px 12px;
+            }
+
+            .subsection + .subsection {
+                border-top: 1px solid rgba(255, 255, 255, 0.06);
+            }
+
+            .section .subsection:last-child {
+                border-radius: 0 0 10px 10px;
+            }
+
+            .subsection-title {
+                align-items: center;
+                display: flex;
+                gap: 10px;
+                font-size: 24px;
+                margin: 0 0 5px 0;
+                text-shadow: 2px 2px 0 #000;
+            }
+
+            .count {
+                color: #aaaaff;
+                font-size: 18px;
+            }
+
+            .achievement-table {
+                border-collapse: collapse;
+                table-layout: fixed;
+                width: 100%;
+            }
+
+            .achievement-table td {
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                overflow: hidden;
+                padding: 5px 8px;
+                text-overflow: ellipsis;
+                text-shadow: 2px 2px 0 #000;
+                white-space: nowrap;
+            }
+
+            .achievement-table td {
+                font-size: 25px;
+            }
+
+            .achievement-table tr:last-child td {
+                border-bottom: 0;
+            }
+
+            .col-level {
+                color: #ffeb3b;
+                text-align: center;
+                width: 86px;
+            }
+
+            .col-score,
+            .col-rate,
+            .col-rank,
+            .col-bp,
+            .col-delta,
+            .col-bpi {
+                text-align: right;
+                width: 145px;
+            }
+
+            .col-title {
+                width: auto;
+            }
+
+            .achievement-table td.col-delta {
+                font-size: 16px;
+                line-height: 1.05;
+            }
+
+            .achievement-table td.col-rate {
+                color: #aaa;
+                font-size: 16px;
+                line-height: 1.05;
+            }
+
+            .achievement-table td.col-rank {
+                font-size: 22px;
+                text-align: center;
+                width: 130px;
+            }
+
+            .score-value {
+                color: #ffcccc;
+            }
+
+            .bp-value {
+                color: #aaffaa;
+            }
+
+            .delta-score {
+                color: #ffd06b;
+            }
+
+            .delta-bp {
+                color: #3df;
+            }
+
+            .bpi-positive {
+                color: #44ff44;
+                text-shadow: 0 0 5px rgba(68, 255, 68, 0.5), 2px 2px 0 #000;
+            }
+
+            .bpi-negative {
+                color: #bbb96b;
+            }
+
+            .diff-b { color: #88ff88; }
+            .diff-a { color: #ff8888; }
+            .diff-h { color: #ffff88; }
+            .diff-n { color: #8888ff; }
+            .diff-l { color: #ff88ff; }
+
+            .MAX {
+                animation: flashmax 0.4s infinite;
+                font-weight: bold;
+            }
+
+            @keyframes flashmax {
+                0%   { color: #ff2828; }
+                20%  { color: #d5ff28; }
+                40%  { color: #28ff7e; }
+                60%  { color: #2872ff; }
+                80%  { color: #d528ff; }
+                100% { color: #ff2828; }
+            }
+
+            .AAA { color: #ffff28; font-weight: bold; }
+            .AA { color: #c3c3c3; font-weight: bold; }
+            .A { color: #2ddf71; }
+            .B { color: #7777ff; }
+            .F { color: #7777ff; }
+
+            .lamp-box {
+                display: inline-block;
+                height: 20px;
+                width: 20px;
+                border-radius: 4px;
+                vertical-align: -2px;
+            }
+
+            .fc {
+                animation: flashfc 0.2s infinite;
+            }
+
+            @keyframes flashfc {
+                0%   { background-color: #ff2828; }
+                20%  { background-color: #d5ff28; }
+                40%  { background-color: #28ff7e; }
+                60%  { background-color: #2872ff; }
+                80%  { background-color: #d528ff; }
+                100% { background-color: #ff2828; }
+            }
+
+            .ec { background-color: #22ff22; }
+            .nc { background-color: #22ccff; }
+            .hc { background-color: #ffffff; }
+
+            .exh {
+                animation: flashexh 0.08s infinite;
+            }
+
+            @keyframes flashexh {
+                0%   { background-color: #ff2828; }
+                50%  { background-color: #ffff28; }
+                100% { background-color: #ff2828; }
+            }
+
+            .battle {
+                color: #7fa;
+            }
+
+            .playspeed-high {
+                color: #ff7;
+            }
+
+            .playspeed-low {
+                color: #f7f;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="all"></div>
+
+        <script>
+        function getWebSocketPort() {
+            var port = getComputedStyle(document.documentElement)
+                .getPropertyValue('--websocket-port').trim();
+            return parseInt(port, 10) || 8767;
+        }
+
+        var ws = null;
+        var reconnectInterval = null;
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function getCssCustomProperty(name, fallbackValue) {
+            var value = getComputedStyle(document.documentElement).getPropertyValue(name);
+            value = value ? value.trim() : '';
+            return value === '' ? fallbackValue : value;
+        }
+
+        function getNumericFlagWithCss(params, key, cssName, fallbackValue) {
+            if (params.has(key)) {
+                var fromQuery = Number(params.get(key));
+                return Number.isFinite(fromQuery) ? fromQuery : fallbackValue;
+            }
+            var cssValue = Number(getCssCustomProperty(cssName, fallbackValue));
+            return Number.isFinite(cssValue) ? cssValue : fallbackValue;
+        }
+
+        function getDifficultyColor(difficulty) {
+            if (!difficulty || difficulty.length < 3) return '';
+            switch (difficulty.charAt(2).toUpperCase()) {
+                case 'A': return 'diff-a';
+                case 'H': return 'diff-h';
+                case 'N': return 'diff-n';
+                case 'L': return 'diff-l';
+                case 'B': return 'diff-b';
+                default: return '';
+            }
+        }
+
+        function parseBpiValue(bpi) {
+            if (bpi === '' || bpi === null || bpi === undefined || bpi === '??') {
+                return null;
+            }
+            var numeric = Number(bpi);
+            return Number.isFinite(numeric) ? numeric : null;
+        }
+
+        function getSortLevel(item) {
+            var lv = Number(item.lv);
+            return Number.isFinite(lv) ? lv : -1;
+        }
+
+        function compareLevelDesc(a, b) {
+            var lvDiff = getSortLevel(b) - getSortLevel(a);
+            if (lvDiff !== 0) return lvDiff;
+            return String(a.title || '').localeCompare(String(b.title || ''), 'ja');
+        }
+
+        function formatLevel(item) {
+            var lv = item.lv || '';
+            return lv ? '☆' + escapeHtml(lv) : '';
+        }
+
+        function formatRate(item) {
+            var rate = Number(item.score_rate) || 0;
+            return rate > 0 ? (rate * 100).toFixed(2) + '%' : '';
+        }
+
+        function getRankClass(item) {
+            var scoreRate = Number(item.score_rate) || 0;
+            if (scoreRate * 18 > 16) return 'AAA';
+            if (scoreRate * 18 > 14) return 'AA';
+            if (scoreRate * 18 > 12) return 'A';
+            if (scoreRate * 18 > 0) return 'F';
+            return 'B';
+        }
+
+        function formatRankDiff(item) {
+            var rankdiff0 = item.rankdiff0 || '';
+            var rankdiff1 = item.rankdiff1 || '';
+            if (!rankdiff0 && !rankdiff1) return '';
+            if (rankdiff0 + rankdiff1 === 'MAX+0') {
+                return '<span class="MAX">MAX</span>';
+            }
+            return '<span class="' + getRankClass(item) + '">' + escapeHtml(rankdiff0) + '</span>' + escapeHtml(rankdiff1);
+        }
+
+        function formatBpi(bpi) {
+            var value = parseBpiValue(bpi);
+            if (value === null) return '';
+            return value.toFixed(2);
+        }
+
+        function getBpiClass(bpi) {
+            var value = parseBpiValue(bpi);
+            if (value === null) return '';
+            return value < 0 ? 'bpi-negative' : 'bpi-positive';
+        }
+
+        function getLampBox(lamp) {
+            if (lamp === 3) return '<span class="lamp-box ec"></span>';
+            if (lamp === 4) return '<span class="lamp-box nc"></span>';
+            if (lamp === 5) return '<span class="lamp-box hc"></span>';
+            if (lamp === 6) return '<span class="lamp-box exh"></span>';
+            if (lamp === 7) return '<span class="lamp-box fc"></span>';
+            return '';
+        }
+
+        function getTitlePrefix(item) {
+            var opt = item.opt || '';
+            if (Number(item.battle) !== 1) return '';
+
+            var compactOpt = opt.replace(/\s+/g, '');
+            var withScratch = opt.indexOf('A-SCR') < 0 ? '皿' : '';
+            var label = '[' + withScratch;
+            if (compactOpt.indexOf('MIRROR/OFF') >= 0 || compactOpt.indexOf('OFF/MIRROR') >= 0) {
+                label += 'DBM';
+            } else if (compactOpt.indexOf('OFF/OFF') >= 0 || compactOpt.indexOf('REGULAR/REGULAR') >= 0) {
+                label += 'DB';
+            } else if (compactOpt.indexOf('RANDOM/RANDOM') >= 0) {
+                label += 'DBR';
+            } else if (compactOpt.indexOf('S-RANDOM/S-RANDOM') >= 0) {
+                label += 'DBSR';
+            } else if (compactOpt.indexOf('H-RAN/H-RAN') >= 0) {
+                label += 'DBHR';
+            }
+            label += ']';
+            return '<span class="battle">' + escapeHtml(label) + '</span> ';
+        }
+
+        function formatTitle(item) {
+            var title = escapeHtml(item.title || '');
+            var playspeed = Number(item.playspeed) || 1.0;
+            if (playspeed > 1.0) {
+                title = '<span class="playspeed-high">[' + playspeed + 'X]</span> ' + title;
+            } else if (playspeed !== 1.0) {
+                title = '<span class="playspeed-low">[' + playspeed + 'X]</span> ' + title;
+            }
+            return getTitlePrefix(item) + title;
+        }
+
+        function renderTable(headers, rows, rowRenderer) {
+            var html = '<table class="achievement-table"><tbody>';
+            rows.forEach(function(row) {
+                html += rowRenderer(row);
+            });
+            html += '</tbody></table>';
+            return html;
+        }
+
+        function renderSection(title, contentHtml) {
+            if (!contentHtml) return '';
+            return '<section class="section"><h2 class="section-title">' + escapeHtml(title) + '</h2>' + contentHtml + '</section>';
+        }
+
+        function renderSubsection(title, rows, headers, rowRenderer, lamp) {
+            if (!rows.length) return '';
+            var heading = '';
+            if (title || lamp) {
+                var titleHtml = lamp ? getLampBox(lamp) + '<span>' + escapeHtml(title) + '</span>' : escapeHtml(title);
+                titleHtml += '<span class="count">' + rows.length + '</span>';
+                heading = '<h3 class="subsection-title">' + titleHtml + '</h3>';
+            }
+            return '<div class="subsection">' + heading + renderTable(headers, rows, rowRenderer) + '</div>';
+        }
+
+        function renderBasicRow(item) {
+            var diffColor = getDifficultyColor(item.difficulty || '');
+            return '<tr>' +
+                '<td class="col-level">' + formatLevel(item) + '</td>' +
+                '<td class="col-title ' + diffColor + '">' + formatTitle(item) + '</td>' +
+                '</tr>';
+        }
+
+        function renderBpRow(item) {
+            var diffColor = getDifficultyColor(item.difficulty || '');
+            var bp = Number(item.bp) || 0;
+            var preBp = Number(item.pre_bp) || 0;
+            var delta = preBp - bp;
+            return '<tr>' +
+                '<td class="col-level">' + formatLevel(item) + '</td>' +
+                '<td class="col-bp bp-value">' + bp + '</td>' +
+                '<td class="col-delta delta-bp">-' + delta + '</td>' +
+                '<td class="col-title ' + diffColor + '">' + formatTitle(item) + '</td>' +
+                '</tr>';
+        }
+
+        function renderScoreRow(item) {
+            var diffColor = getDifficultyColor(item.difficulty || '');
+            var score = Number(item.score) || 0;
+            var preScore = Number(item.pre_score) || 0;
+            return '<tr>' +
+                '<td class="col-level">' + formatLevel(item) + '</td>' +
+                '<td class="col-score score-value">' + score + '</td>' +
+                '<td class="col-rate">' + formatRate(item) + '</td>' +
+                '<td class="col-rank">' + formatRankDiff(item) + '</td>' +
+                '<td class="col-delta delta-score">+' + (score - preScore) + '</td>' +
+                '<td class="col-title ' + diffColor + '">' + formatTitle(item) + '</td>' +
+                '</tr>';
+        }
+
+        function renderBpiRow(item) {
+            var diffColor = getDifficultyColor(item.difficulty || '');
+            return '<tr>' +
+                '<td class="col-level">' + formatLevel(item) + '</td>' +
+                '<td class="col-score">' + (Number(item.score) || 0) + '</td>' +
+                '<td class="col-rate">' + formatRate(item) + '</td>' +
+                '<td class="col-rank">' + formatRankDiff(item) + '</td>' +
+                '<td class="col-bpi ' + getBpiClass(item.bpi) + '">' + formatBpi(item.bpi) + '</td>' +
+                '<td class="col-title ' + diffColor + '">' + formatTitle(item) + '</td>' +
+                '</tr>';
+        }
+
+        function normalizeItems(items) {
+            return (items || []).map(function(item, index) {
+                item._index = index;
+                item._bpiValue = parseBpiValue(item.bpi);
+                return item;
+            });
+        }
+
+        function renderAchievements(data) {
+            var items = normalizeItems(data && data.items);
+            var html = '';
+            var urlParams = new URLSearchParams(window.location.search);
+            var topBpiCount = Math.max(1, Math.floor(getNumericFlagWithCss(urlParams, 'top_bpi_count', '--top-bpi-count', 10)));
+
+            var lampDefinitions = [
+                { title: 'New FC', lamp: 7 },
+                { title: 'New EXH', lamp: 6 },
+                { title: 'New Hard', lamp: 5 },
+                { title: 'New Clear', lamp: 4 },
+                { title: 'New Easy', lamp: 3 },
+            ];
+            var lampHeaders = [
+                { label: 'Lv', cls: 'col-level' },
+                { label: 'title', cls: 'col-title' },
+            ];
+            var lampHtml = '';
+            lampDefinitions.forEach(function(def) {
+                var rows = items
+                    .filter(function(item) {
+                        var lamp = Number(item.lamp) || 0;
+                        var preLamp = Number(item.pre_lamp) || 0;
+                        return lamp === def.lamp && preLamp < def.lamp;
+                    })
+                    .sort(compareLevelDesc);
+                lampHtml += renderSubsection(def.title, rows, lampHeaders, renderBasicRow, def.lamp);
+            });
+            html += renderSection('Lamp updates', lampHtml);
+
+            var bpRows = items
+                .filter(function(item) {
+                    var bp = Number(item.bp) || 0;
+                    var preBp = Number(item.pre_bp) || 0;
+                    return !item.dead && preBp > 0 && bp < preBp;
+                })
+                .sort(compareLevelDesc);
+            html += renderSection('BP Updates', renderSubsection('', bpRows, [
+                { label: 'Lv', cls: 'col-level' },
+                { label: 'BP', cls: 'col-bp' },
+                { label: '減った数', cls: 'col-delta' },
+                { label: 'title', cls: 'col-title' },
+            ], renderBpRow));
+
+            var scoreRows = items
+                .filter(function(item) {
+                    return (Number(item.score) || 0) > (Number(item.pre_score) || 0);
+                })
+                .sort(compareLevelDesc);
+            html += renderSection('Score Updates', renderSubsection('', scoreRows, [
+                { label: 'Lv', cls: 'col-level' },
+                { label: 'score', cls: 'col-score' },
+                { label: 'score_rate', cls: 'col-rate' },
+                { label: 'rankdiff', cls: 'col-rank' },
+                { label: '伸びた点数', cls: 'col-delta' },
+                { label: 'title', cls: 'col-title' },
+            ], renderScoreRow));
+
+            var bpiRows = items
+                .filter(function(item) {
+                    return item._bpiValue !== null;
+                })
+                .sort(function(a, b) {
+                    var diff = b._bpiValue - a._bpiValue;
+                    if (diff !== 0) return diff;
+                    return compareLevelDesc(a, b);
+                })
+                .slice(0, topBpiCount);
+            html += renderSection('Top BPI', renderSubsection('', bpiRows, [
+                { label: 'Lv', cls: 'col-level' },
+                { label: 'score', cls: 'col-score' },
+                { label: 'score_rate', cls: 'col-rate' },
+                { label: 'rankdiff', cls: 'col-rank' },
+                { label: 'BPI', cls: 'col-bpi' },
+                { label: 'title', cls: 'col-title' },
+            ], renderBpiRow));
+
+            document.getElementById('all').innerHTML = html;
+        }
+
+        function connectWebSocket() {
+            ws = new WebSocket('ws://localhost:' + getWebSocketPort());
+
+            ws.onopen = function() {
+                if (reconnectInterval) {
+                    clearInterval(reconnectInterval);
+                    reconnectInterval = null;
+                }
+            };
+
+            ws.onmessage = function(event) {
+                try {
+                    var message = JSON.parse(event.data);
+                    if (message.type === 'today_updates') {
+                        renderAchievements(message.data);
+                    }
+                } catch (error) {
+                    console.error('メッセージ解析エラー:', error);
+                }
+            };
+
+            ws.onclose = function() {
+                if (!reconnectInterval) {
+                    reconnectInterval = setInterval(connectWebSocket, 3000);
+                }
+            };
+
+            ws.onerror = function(error) {
+                console.error('WebSocketエラー:', error);
+            };
+        }
+
+        window.addEventListener('DOMContentLoaded', connectWebSocket);
+        window.addEventListener('beforeunload', function() {
+            if (ws) ws.close();
+        });
+        </script>
+    </body>
+</html>
