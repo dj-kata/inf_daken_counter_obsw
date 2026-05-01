@@ -349,6 +349,69 @@
             return value < 0 ? 'bpi-negative' : 'bpi-positive';
         }
 
+        function getChartKey(item) {
+            return [
+                item.title || '',
+                item.difficulty || '',
+            ].join('\u001f');
+        }
+
+        function mergeScoreFields(target, source) {
+            target.score = source.score;
+            target.score_rate = source.score_rate;
+            target.bpi = source.bpi;
+            target._bpiValue = parseBpiValue(source.bpi);
+            target.rankdiff = source.rankdiff || '';
+            target.rankdiff0 = source.rankdiff0 || '';
+            target.rankdiff1 = source.rankdiff1 || '';
+            target.opt = source.opt || target.opt || '';
+            target.dead = Boolean(source.dead);
+        }
+
+        function mergeItemsByChart(items) {
+            var mergedByKey = new Map();
+
+            (items || []).slice().reverse().forEach(function(item, index) {
+                var key = getChartKey(item);
+                var score = Number(item.score) || 0;
+                var bp = Number(item.bp) || 0;
+                var lamp = Number(item.lamp) || 0;
+                var bpiValue = parseBpiValue(item.bpi);
+
+                if (!mergedByKey.has(key)) {
+                    var merged = Object.assign({}, item);
+                    merged._firstIndex = index;
+                    merged._bpiValue = bpiValue;
+                    merged._bpValue = item.dead ? 99999999 : bp;
+                    mergedByKey.set(key, merged);
+                    return;
+                }
+
+                var current = mergedByKey.get(key);
+
+                if (lamp > (Number(current.lamp) || 0)) {
+                    current.lamp = item.lamp;
+                }
+
+                if (score > (Number(current.score) || 0)) {
+                    mergeScoreFields(current, item);
+                } else if (bpiValue !== null && (current._bpiValue === null || current._bpiValue === undefined || bpiValue > current._bpiValue)) {
+                    mergeScoreFields(current, item);
+                }
+
+                if (!item.dead && bp < current._bpValue) {
+                    current.bp = item.bp;
+                    current._bpValue = bp;
+                }
+            });
+
+            return Array.from(mergedByKey.values()).map(function(item, index) {
+                item._index = index;
+                item._bpiValue = parseBpiValue(item.bpi);
+                return item;
+            });
+        }
+
         function getLampBox(lamp) {
             if (lamp === 3) return '<span class="lamp-box ec"></span>';
             if (lamp === 4) return '<span class="lamp-box nc"></span>';
@@ -465,11 +528,7 @@
         }
 
         function normalizeItems(items) {
-            return (items || []).map(function(item, index) {
-                item._index = index;
-                item._bpiValue = parseBpiValue(item.bpi);
-                return item;
-            });
+            return mergeItemsByChart(items);
         }
 
         function renderAchievements(data) {
