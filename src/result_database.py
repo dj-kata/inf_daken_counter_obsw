@@ -359,6 +359,7 @@ class ResultDatabase:
     def get_all_best_results(self) -> Dict[tuple, OneBestData]:
         """全譜面のベストリザルトをOneBestDataとして集計（battle有効/無効を別々に集計）
         detect_mode.playのリザルトは除外する。
+        playspeedがNoneまたは1.0以外のリザルトは除外する。
         optionはdetect_mode.resultの場合にのみ有効とする。
         bp, lamp, scoreが同点の場合、detect_mode.resultのオプションで上書きする。
 
@@ -369,6 +370,12 @@ class ResultDatabase:
 
         for result in self.results:
             if result.detect_mode == detect_mode.play:
+                continue
+            if result.playspeed not in (None, 1.0):
+                continue
+            if result.option.allscratch:
+                continue
+            if result.option.regularspeed:
                 continue
             if type(result.score) is not int:
                 continue

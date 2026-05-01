@@ -366,7 +366,7 @@ class ScoreViewer(QMainWindow):
     def setup_playlog_table(self):
         """プレーログテーブルの初期設定"""
         # 列定義
-        columns = ['プレー日時', 'ランプ', 'スコア', 'BP']
+        columns = ['プレー日時', 'ランプ', 'スコア', 'BP', 'playspeed', 'プレーオプション']
         
         self.playlog_table.setColumnCount(len(columns))
         self.playlog_table.setHorizontalHeaderLabels(columns)
@@ -380,6 +380,8 @@ class ScoreViewer(QMainWindow):
         self.playlog_table.setColumnWidth(1, 100)  # ランプ
         self.playlog_table.setColumnWidth(2, 100)  # スコア
         self.playlog_table.setColumnWidth(3, 100)  # BP
+        self.playlog_table.setColumnWidth(4, 80)   # playspeed
+        self.playlog_table.setColumnWidth(5, 180)  # option
         
         # 編集不可
         self.playlog_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -1108,6 +1110,18 @@ class ScoreViewer(QMainWindow):
                 item = QTableWidgetItem(bp_str)
                 item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 self.playlog_table.setItem(row, 3, item)
+
+                # playspeed
+                playspeed_str = str(log.playspeed if log.playspeed is not None else 1.0)
+                item = QTableWidgetItem(playspeed_str)
+                item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.playlog_table.setItem(row, 4, item)
+
+                # プレーオプション
+                option_str = str(log.option) if log.option else ""
+                item = QTableWidgetItem(option_str)
+                item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                self.playlog_table.setItem(row, 5, item)
         
         except Exception as e:
             logger.error(f"プレーログ欄更新エラー: {e}")
