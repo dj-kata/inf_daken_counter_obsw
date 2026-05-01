@@ -274,6 +274,7 @@ class ResultDatabase:
 
     def search(self,
                 title:str=None, style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
+                battle:bool=False,
         ) -> List[DetailedResult]:
         """全リザルトの中から指定された譜面のプレーログのみを取り出してリストで返す
 
@@ -289,7 +290,7 @@ class ResultDatabase:
         ret:List[DetailedResult] = []
         key = chart_id
         if title is not None and style is not None and difficulty is not None:
-            key = calc_chart_id(title, style, difficulty)
+            key = calc_chart_id(title, style, difficulty, battle=battle)
         songinfo = self.song_database.search(chart_id=key)
 
         for r in self.results:
@@ -321,7 +322,7 @@ class ResultDatabase:
         ret = [0,99999999,clear_lamp(0)]
         key = chart_id
         if title is not None and style is not None and difficulty is not None:
-            key = calc_chart_id(title, style, difficulty)
+            key = calc_chart_id(title, style, difficulty, battle=battle)
         results = self.search(chart_id=key)
         filtered = self._filter_results_for_best(results, playspeed=playspeed, battle=battle, allscratch=allscratch, regularspeed=regularspeed)
         if not filtered:
@@ -653,8 +654,9 @@ class ResultDatabase:
                                  battle:bool=None, playspeed:float=None,
                                  allscratch:bool=False, regularspeed:bool=False) -> dict:
         """指定された曲のプレーログを辞書形式で返す。websocketでの送信用。"""
-        songinfo = self.song_database.search(title=title, play_style=style, difficulty=difficulty)
-        results = self.search(title=title, style=style, difficulty=difficulty)
+        chart_id = calc_chart_id(title, style, difficulty, battle=battle)
+        songinfo = self.song_database.search(chart_id=chart_id)
+        results = self.search(chart_id=chart_id)
         best_score = 0
         best_score_opt = None
         detail = None
@@ -700,7 +702,7 @@ class ResultDatabase:
         data = {
             'lv': str(songinfo.level) if hasattr(songinfo, 'level') else "",
             'music': title,
-            'difficulty': get_chart_name(style, difficulty),
+            'difficulty': get_chart_name(style, difficulty, battle=battle),
             'playspeed':playspeed if playspeed else 1.0,
             'last_played': str(datetime.datetime.fromtimestamp(last_played_time).strftime('%Y/%m/%d')),
             'best_lamp': best_lamp,

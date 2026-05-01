@@ -124,7 +124,7 @@ class ScreenReader:
                 if lamp is None: # 認識失敗とみなす
                     logger.error(f"lamp is None!")
                     return None
-                chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
+                chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff, battle=option.battle)
                 songinfo = self.songinfo.search(chart_id=chart_id)
                 timestamp = int(datetime.datetime.now().timestamp())
                 # logger.debug(f"side:{result.play_side}, judge:{judge}")

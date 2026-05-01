@@ -135,7 +135,7 @@ class ScoreViewer(QMainWindow):
         self.config = config
         self.result_database = result_database
         self.rival_manager = rival_manager
-        self.scores: Dict[str, OneBestData] = {}  # key: (title, style, difficulty)
+        self.scores: Dict[str, OneBestData] = {}  # key: (title, style, difficulty, battle)
         self.current_selected_score: Optional[OneBestData] = None  # 現在選択中の譜面
         self._rival_win_filter: Optional[str] = None  # "my_wins", "rival_wins", "draws", or None
         self._rival_win_filter_name: str = ""  # フィルタ対象のライバル名
@@ -514,9 +514,9 @@ class ScoreViewer(QMainWindow):
             # result_databaseの共通処理で全譜面の自己べを取得
             all_bests = self.result_database.get_all_best_results()
 
-            # battle有無でキーが分かれているので、(title, style, difficulty)にマージする
+            # BattleはDBxとして別譜面扱いにする。通常プレーのNone/Falseだけマージする。
             for (title, style, diff, battle), best in all_bests.items():
-                key = (title, style, diff)
+                key = (title, style, diff, bool(battle))
                 if key not in self.scores:
                     self.scores[key] = best
                 else:
@@ -1069,9 +1069,11 @@ class ScoreViewer(QMainWindow):
             # 選択中の曲のプレーログをフィルタ（全てのdetect_modeを対象）
             playlogs = []
             for result in self.result_database.results:
+                result_battle = result.option.battle if result.option else False
                 if (result.title == score.title and 
                     result.play_style == score.style and 
                     result.difficulty == score.difficulty and
+                    result_battle == bool(score.is_battle) and
                     result.detect_mode != detect_mode.play):
                     playlogs.append(result)
             

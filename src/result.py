@@ -242,7 +242,8 @@ class OneResult:
     @property
     def chart_id(self) -> str:
         """楽曲ID（自動計算）"""
-        return calc_chart_id(self.title, self.play_style, self.difficulty)
+        battle = self.option.battle if self.option else False
+        return calc_chart_id(self.title, self.play_style, self.difficulty, battle=battle)
 
     def __eq__(self, other):
         if not isinstance(other, OneResult):
@@ -404,7 +405,7 @@ class OneBestData:
     @property
     def chart(self) -> str:
         """譜面名 (SPA, SPH, DPA, etc.)"""
-        return get_chart_name(self.style, self.difficulty)
+        return get_chart_name(self.style, self.difficulty, battle=self.is_battle)
     
     @property
     def level(self) -> str:
@@ -484,6 +485,7 @@ class OneBestData:
     @property
     def is_battle(self):
         """battleオプションありかどうか"""
-        if self.best_score_result and self.best_score_result.option:
-            return self.best_score_result.option.battle
-        return None
+        for result in (self.best_score_result, self.min_bp_result, self.best_lamp_result, self.last_result):
+            if result and result.option:
+                return result.option.battle
+        return False

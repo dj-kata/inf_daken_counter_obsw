@@ -38,11 +38,12 @@ def load_ui_text(config):
     
     return UIText
 
-def calc_chart_id(title:str, play_style:play_style, difficulty:difficulty):
-    """楽曲IDを計算する。曲名、スタイル、難易度をキーとしたsha256とする。"""
+def calc_chart_id(title:str, play_style:play_style, difficulty:difficulty, battle:bool=False):
+    """楽曲IDを計算する。Battle時はSP譜面情報を参照する。"""
     hash = None
     if title and play_style and difficulty:
-        key = title + play_style.name + difficulty.name
+        chart_style = type(play_style).sp if battle else play_style
+        key = title + chart_style.name + difficulty.name
         hash = hashlib.sha256(key.encode('utf-8')).hexdigest()
     return hash
 
