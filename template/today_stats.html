@@ -13,13 +13,13 @@
             src: url('./DSEG14Classic-Bold.woff2') format('woff2');
         }
         :root {
-            --notes-graph-days: 7;
-            --show-bp: 1;
-            --show-best-delta: 1;
-            --filter-mode: all; /* all, updates_only, bpi_only, updates_or_bpi */
-            /* --stats-levels: "sp11,sp12,dp11,dp12"; */
-            --stats-levels: sp11,sp12;
-            --lv-stats-position: left; /* left or bottom */
+            --notes-graph-days: 7;     /* ノーツ数グラフの日数 */
+            --show-bp: 1;              /* 1:BP表示あり */
+            --show-best-delta: 1;      /* 1:スコアやBPの差分表示あり */
+            --filter-mode: all;        /* all, updates_only, bpi_only, updates_or_bpi */
+            --stats-levels: sp11,sp12; /* 統計情報の表示対象 */
+            --lv-stats-position: left; /* left/bottom */
+            --playlog-page: result;    /* result/receipt */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -409,6 +409,14 @@
         return (getCSSProp('--lv-stats-position') || 'bottom').replace(/['"]/g, '').toLowerCase();
     }
 
+    function getPlaylogPage() {
+        var raw = (getCSSProp('--playlog-page') || 'result').replace(/['"]/g, '').trim().toLowerCase();
+        if (raw === 'receipt' || raw === 'today_receipt' || raw === 'today_receipt.html') {
+            return 'today_receipt.html';
+        }
+        return 'today_result.html';
+    }
+
     function getStatsLevels() {
         var raw = (getCSSProp('--stats-levels') || 'sp10,sp11,sp12').replace(/['"]/g, '');
         var entries = raw.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s; });
@@ -430,7 +438,7 @@
     var iframeReady = false;
     var playlogIframe = null;
 
-    function buildTodayResultQuery() {
+    function buildPlaylogQuery() {
         var params = new URLSearchParams();
         var currentParams = new URLSearchParams(window.location.search);
         params.set('skip_no_update', getSkipNoUpdate());
@@ -442,6 +450,11 @@
         });
 
         return params.toString();
+    }
+
+    function buildPlaylogSrc() {
+        var query = buildPlaylogQuery();
+        return getPlaylogPage() + (query ? '?' + query : '');
     }
 
     function getCssCustomProperty(name, fallbackValue) {
@@ -491,6 +504,18 @@
         }
     }
 
+    function applyPlaylogFrameStyles() {
+        if (!iframeReady || !playlogIframe) return;
+        try {
+            var doc = playlogIframe.contentDocument || playlogIframe.contentWindow.document;
+            if (getPlaylogPage() === 'today_receipt.html') {
+                doc.documentElement.style.setProperty('--content-max-width', 'none');
+            }
+        } catch (e) {
+            // cross-origin or not ready
+        }
+    }
+
     function hideIframeScrollbar() {
         if (!iframeReady || !playlogIframe) return;
         try {
@@ -510,6 +535,7 @@
         playlogIframe = document.getElementById('playlog-iframe');
         playlogIframe.addEventListener('load', function() {
             iframeReady = true;
+            applyPlaylogFrameStyles();
             applySkipNoUpdate();
             applyTodayResultFlags();
             hideIframeScrollbar();
@@ -519,7 +545,7 @@
         setTimeout(function() {
             // iframe srcにskip-no-updateをURLパラメータとして渡す
             // (file://等のクロスオリジン環境でもCSS注入に頼らず確実に値を伝える)
-            playlogIframe.src = 'today_result.html?' + buildTodayResultQuery();
+            playlogIframe.src = buildPlaylogSrc();
             applyLayout();
             connectWebSocket();
         }, 100);
