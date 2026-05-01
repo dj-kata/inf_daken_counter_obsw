@@ -10,7 +10,8 @@
         <style>
             :root {
                 --websocket-port: 8767;
-                --top-bpi-count: 10;
+                --top-bpi-count: 10;              /* TopBPIの曲数 */
+                --sections: bpi,score,lamp,bp;    /* 表示するセクション。順番も指定可能 */
             }
 
             * {
@@ -271,6 +272,28 @@
             }
             var cssValue = Number(getCssCustomProperty(cssName, fallbackValue));
             return Number.isFinite(cssValue) ? cssValue : fallbackValue;
+        }
+
+        function getStringFlagWithCss(params, key, cssName, fallbackValue) {
+            if (params.has(key)) {
+                var fromQuery = params.get(key);
+                return fromQuery === null || fromQuery === '' ? fallbackValue : fromQuery;
+            }
+            return getCssCustomProperty(cssName, fallbackValue);
+        }
+
+        function parseSectionList(value) {
+            var allowed = { lamp: true, bp: true, score: true, bpi: true };
+            var seen = {};
+            var sections = String(value || '')
+                .split(',')
+                .map(function(section) { return section.trim().toLowerCase(); })
+                .filter(function(section) {
+                    if (!allowed[section] || seen[section]) return false;
+                    seen[section] = true;
+                    return true;
+                });
+            return sections.length ? sections : ['lamp', 'bp', 'score', 'bpi'];
         }
 
         function getDifficultyColor(difficulty) {
@@ -536,77 +559,89 @@
             var html = '';
             var urlParams = new URLSearchParams(window.location.search);
             var topBpiCount = Math.max(1, Math.floor(getNumericFlagWithCss(urlParams, 'top_bpi_count', '--top-bpi-count', 10)));
+            var sections = parseSectionList(getStringFlagWithCss(urlParams, 'sections', '--sections', 'lamp,bp,score,bpi'));
 
-            var lampDefinitions = [
-                { title: 'New FC', lamp: 7 },
-                { title: 'New EXH', lamp: 6 },
-                { title: 'New Hard', lamp: 5 },
-                { title: 'New Clear', lamp: 4 },
-                { title: 'New Easy', lamp: 3 },
-            ];
-            var lampHeaders = [
-                { label: 'Lv', cls: 'col-level' },
-                { label: 'title', cls: 'col-title' },
-            ];
-            var lampHtml = '';
-            lampDefinitions.forEach(function(def) {
-                var rows = items
-                    .filter(function(item) {
-                        var lamp = Number(item.lamp) || 0;
-                        var preLamp = Number(item.pre_lamp) || 0;
-                        return lamp === def.lamp && preLamp < def.lamp;
-                    })
-                    .sort(compareLevelDesc);
-                lampHtml += renderSubsection(def.title, rows, lampHeaders, renderBasicRow, def.lamp);
+            var sectionRenderers = {
+                lamp: function() {
+                    var lampDefinitions = [
+                        { title: 'New FC', lamp: 7 },
+                        { title: 'New EXH', lamp: 6 },
+                        { title: 'New Hard', lamp: 5 },
+                        { title: 'New Clear', lamp: 4 },
+                        { title: 'New Easy', lamp: 3 },
+                    ];
+                    var lampHeaders = [
+                        { label: 'Lv', cls: 'col-level' },
+                        { label: 'title', cls: 'col-title' },
+                    ];
+                    var lampHtml = '';
+                    lampDefinitions.forEach(function(def) {
+                        var rows = items
+                            .filter(function(item) {
+                                var lamp = Number(item.lamp) || 0;
+                                var preLamp = Number(item.pre_lamp) || 0;
+                                return lamp === def.lamp && preLamp < def.lamp;
+                            })
+                            .sort(compareLevelDesc);
+                        lampHtml += renderSubsection(def.title, rows, lampHeaders, renderBasicRow, def.lamp);
+                    });
+                    return renderSection('Lamp updates', lampHtml);
+                },
+                bp: function() {
+                    var bpRows = items
+                        .filter(function(item) {
+                            var bp = Number(item.bp) || 0;
+                            var preBp = Number(item.pre_bp) || 0;
+                            return !item.dead && isValidPreviousBp(preBp) && bp < preBp;
+                        })
+                        .sort(compareLevelDesc);
+                    return renderSection('BP Updates', renderSubsection('', bpRows, [
+                        { label: 'Lv', cls: 'col-level' },
+                        { label: 'BP', cls: 'col-bp' },
+                        { label: '減った数', cls: 'col-delta' },
+                        { label: 'title', cls: 'col-title' },
+                    ], renderBpRow));
+                },
+                score: function() {
+                    var scoreRows = items
+                        .filter(function(item) {
+                            return (Number(item.score) || 0) > (Number(item.pre_score) || 0);
+                        })
+                        .sort(compareLevelDesc);
+                    return renderSection('Score Updates', renderSubsection('', scoreRows, [
+                        { label: 'Lv', cls: 'col-level' },
+                        { label: 'score', cls: 'col-score' },
+                        { label: 'score_rate', cls: 'col-rate' },
+                        { label: 'rankdiff', cls: 'col-rank' },
+                        { label: '伸びた点数', cls: 'col-delta' },
+                        { label: 'title', cls: 'col-title' },
+                    ], renderScoreRow));
+                },
+                bpi: function() {
+                    var bpiRows = items
+                        .filter(function(item) {
+                            return item._bpiValue !== null;
+                        })
+                        .sort(function(a, b) {
+                            var diff = b._bpiValue - a._bpiValue;
+                            if (diff !== 0) return diff;
+                            return compareLevelDesc(a, b);
+                        })
+                        .slice(0, topBpiCount);
+                    return renderSection('Top BPI', renderSubsection('', bpiRows, [
+                        { label: 'Lv', cls: 'col-level' },
+                        { label: 'score', cls: 'col-score' },
+                        { label: 'score_rate', cls: 'col-rate' },
+                        { label: 'rankdiff', cls: 'col-rank' },
+                        { label: 'BPI', cls: 'col-bpi' },
+                        { label: 'title', cls: 'col-title' },
+                    ], renderBpiRow));
+                },
+            };
+
+            sections.forEach(function(section) {
+                html += sectionRenderers[section]();
             });
-            html += renderSection('Lamp updates', lampHtml);
-
-            var bpRows = items
-                .filter(function(item) {
-                    var bp = Number(item.bp) || 0;
-                    var preBp = Number(item.pre_bp) || 0;
-                    return !item.dead && isValidPreviousBp(preBp) && bp < preBp;
-                })
-                .sort(compareLevelDesc);
-            html += renderSection('BP Updates', renderSubsection('', bpRows, [
-                { label: 'Lv', cls: 'col-level' },
-                { label: 'BP', cls: 'col-bp' },
-                { label: '減った数', cls: 'col-delta' },
-                { label: 'title', cls: 'col-title' },
-            ], renderBpRow));
-
-            var scoreRows = items
-                .filter(function(item) {
-                    return (Number(item.score) || 0) > (Number(item.pre_score) || 0);
-                })
-                .sort(compareLevelDesc);
-            html += renderSection('Score Updates', renderSubsection('', scoreRows, [
-                { label: 'Lv', cls: 'col-level' },
-                { label: 'score', cls: 'col-score' },
-                { label: 'score_rate', cls: 'col-rate' },
-                { label: 'rankdiff', cls: 'col-rank' },
-                { label: '伸びた点数', cls: 'col-delta' },
-                { label: 'title', cls: 'col-title' },
-            ], renderScoreRow));
-
-            var bpiRows = items
-                .filter(function(item) {
-                    return item._bpiValue !== null;
-                })
-                .sort(function(a, b) {
-                    var diff = b._bpiValue - a._bpiValue;
-                    if (diff !== 0) return diff;
-                    return compareLevelDesc(a, b);
-                })
-                .slice(0, topBpiCount);
-            html += renderSection('Top BPI', renderSubsection('', bpiRows, [
-                { label: 'Lv', cls: 'col-level' },
-                { label: 'score', cls: 'col-score' },
-                { label: 'score_rate', cls: 'col-rate' },
-                { label: 'rankdiff', cls: 'col-rank' },
-                { label: 'BPI', cls: 'col-bpi' },
-                { label: 'title', cls: 'col-title' },
-            ], renderBpiRow));
 
             document.getElementById('all').innerHTML = html;
         }
