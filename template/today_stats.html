@@ -20,6 +20,8 @@
             --stats-levels: sp11,sp12; /* 統計情報の表示対象 */
             --lv-stats-position: left; /* left/bottom */
             --playlog-page: result;    /* result/receipt */
+            --receipt-top-bpi-count: 10;              /* receiptのTopBPI曲数 */
+            --receipt-sections: bpi,score,lamp,bp;    /* receiptの表示セクション */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -448,6 +450,25 @@
                 params.set(key, currentParams.get(key));
             }
         });
+
+        if (getPlaylogPage() === 'today_receipt.html') {
+            var receiptMappings = [
+                ['top_bpi_count', '--receipt-top-bpi-count', '10'],
+                ['sections', '--receipt-sections', 'bpi,score,lamp,bp'],
+            ];
+
+            receiptMappings.forEach(function(item) {
+                var paramName = item[0];
+                var cssName = item[1];
+                var fallbackValue = item[2];
+                if (currentParams.has(paramName)) {
+                    params.set(paramName, currentParams.get(paramName));
+                    return;
+                }
+
+                params.set(paramName, getCssCustomProperty(cssName, fallbackValue).replace(/['"]/g, ''));
+            });
+        }
 
         return params.toString();
     }
