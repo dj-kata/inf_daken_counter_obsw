@@ -13,6 +13,7 @@
                 --top-bpi-count: 10;              /* TopBPIの曲数 */
                 --sections: bpi,score,lamp,bp;    /* 表示するセクション。順番も指定可能 */
                 --content-max-width: 1500px;
+                --hide-zero-pre-score: 1;         /* 1:scoreセクションでpre_score=0を非表示 */
             }
 
             * {
@@ -562,6 +563,7 @@
             var urlParams = new URLSearchParams(window.location.search);
             var topBpiCount = Math.max(1, Math.floor(getNumericFlagWithCss(urlParams, 'top_bpi_count', '--top-bpi-count', 10)));
             var sections = parseSectionList(getStringFlagWithCss(urlParams, 'sections', '--sections', 'lamp,bp,score,bpi'));
+            var hideZeroPreScore = getNumericFlagWithCss(urlParams, 'hide_zero_pre_score', '--hide-zero-pre-score', 0) === 1;
 
             var sectionRenderers = {
                 lamp: function() {
@@ -607,7 +609,9 @@
                 score: function() {
                     var scoreRows = items
                         .filter(function(item) {
-                            return (Number(item.score) || 0) > (Number(item.pre_score) || 0);
+                            var preScore = Number(item.pre_score) || 0;
+                            if (hideZeroPreScore && preScore === 0) return false;
+                            return (Number(item.score) || 0) > preScore;
                         })
                         .sort(compareLevelDesc);
                     return renderSection('Score Updates', renderSubsection('', scoreRows, [

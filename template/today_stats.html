@@ -13,15 +13,16 @@
             src: url('./DSEG14Classic-Bold.woff2') format('woff2');
         }
         :root {
-            --notes-graph-days: 7;     /* ノーツ数グラフの日数 */
-            --show-bp: 1;              /* 1:BP表示あり */
-            --show-best-delta: 1;      /* 1:スコアやBPの差分表示あり */
-            --filter-mode: all;        /* all, updates_only, bpi_only, updates_or_bpi */
-            --stats-levels: sp11,sp12; /* 統計情報の表示対象 */
-            --lv-stats-position: left; /* left/bottom */
-            --playlog-page: result;    /* result/receipt */
-            --receipt-top-bpi-count: 10;              /* receiptのTopBPI曲数 */
-            --receipt-sections: bpi,score,lamp,bp;    /* receiptの表示セクション */
+            --notes-graph-days: 7;                      /* ノーツ数グラフの日数 */
+            --show-bp: 1;                               /* 1:BP表示あり */
+            --show-best-delta: 1;                       /* 1:スコアやBPの差分表示あり */
+            --filter-mode: all;                         /* all,updates_only,bpi_only,updates_or_bpi */
+            --stats-levels: sp11,sp12;                  /* Lv統計情報の表示対象(sp11,dp10など。カンマで区切る。) */
+            --lv-stats-position: left;                  /* Lv統計情報の表示位置 left/bottom */
+            --playlog-page: result;                     /* result/receipt */
+            --receipt-top-bpi-count: 10;                /* receiptのTopBPI曲数 */
+            --receipt-sections: bpi,score,lamp,bp;      /* receiptの表示セクション */
+            --receipt-hide-zero-pre-score: 1;           /* 1:receiptのscoreでpre_score=0を非表示 */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -455,6 +456,7 @@
             var receiptMappings = [
                 ['top_bpi_count', '--receipt-top-bpi-count', '10'],
                 ['sections', '--receipt-sections', 'bpi,score,lamp,bp'],
+                ['hide_zero_pre_score', '--receipt-hide-zero-pre-score', '0'],
             ];
 
             receiptMappings.forEach(function(item) {
