@@ -23,6 +23,12 @@
             --receipt-top-bpi-count: 10;                /* receiptのTopBPI曲数 */
             --receipt-sections: bpi,score,lamp,bp;      /* receiptの表示セクション */
             --receipt-hide-zero-pre-score: 1;           /* 1:receiptのscoreでpre_score=0を非表示 */
+            --monthly-notes-count: 3;                   /* 月間ノーツ数の表示月数 */
+            --period-notes-unit: k;                     /* raw/k */
+            --monthly-notes-label-color: #aaddff;     /* 月間ノーツ数のラベル色 */
+            --monthly-notes-value-color: #ffbb77;     /* 月間ノーツ数の数字色 */
+            --yearly-notes-label-color: #aaddff;      /* 年間ノーツ数のラベル色 */
+            --yearly-notes-value-color: #ff77ff;      /* 年間ノーツ数の数字色 */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -141,6 +147,42 @@
             margin-top: 4px;
             text-shadow: 1px 1px 0 #000;
         }
+
+        .notes-period-summary {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .notes-period-card {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(170, 221, 255, 0.18);
+            border-radius: 6px;
+            padding: 8px 6px;
+            text-align: center;
+            min-width: 0;
+        }
+
+        .notes-period-label {
+            font-size: 15px;
+            line-height: 1.1;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        .notes-period-value {
+            font-size: 24px;
+            line-height: 1.15;
+            margin-top: 4px;
+            font-weight: bold;
+            text-shadow: 2px 2px 0 #000;
+            white-space: nowrap;
+        }
+
+        .notes-period-card.monthly .notes-period-label { color: var(--monthly-notes-label-color); }
+        .notes-period-card.monthly .notes-period-value { color: var(--monthly-notes-value-color); }
+        .notes-period-card.yearly .notes-period-label { color: var(--yearly-notes-label-color); }
+        .notes-period-card.yearly .notes-period-value { color: var(--yearly-notes-value-color); }
 
         /* --- Level Histogram --- */
         .lv-hist-section {
@@ -367,6 +409,7 @@
         <div class="notes-section">
             <div class="section-title">Notes</div>
             <div class="notes-graph" id="notes-graph"></div>
+            <div class="notes-period-summary" id="notes-period-summary"></div>
         </div>
 
         <!-- Level Histogram -->
@@ -392,6 +435,10 @@
     function getCSSProp(name) {
         // Force style recalculation to ensure latest values
         document.documentElement.offsetHeight;
+        if (document.body) {
+            var bodyValue = getComputedStyle(document.body).getPropertyValue(name).trim();
+            if (bodyValue) return bodyValue;
+        }
         var value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
         return value;
     }
@@ -404,6 +451,22 @@
         return parseInt(getCSSProp('--notes-graph-days')) || 5;
     }
 
+    function getMonthlyNotesCount() {
+        return Math.max(0, parseInt(getCSSProp('--monthly-notes-count')) || 3);
+    }
+
+    function getPeriodNotesUnit() {
+        return (getCSSProp('--period-notes-unit') || 'raw').replace(/['"]/g, '').trim().toLowerCase();
+    }
+
+    function formatPeriodNotes(notes) {
+        notes = Number(notes) || 0;
+        if (getPeriodNotesUnit() === 'k') {
+            return Math.floor(notes / 1000).toLocaleString() + 'k';
+        }
+        return notes.toLocaleString();
+    }
+
     function getSkipNoUpdate() {
         return parseInt(getCSSProp('--skip-no-update')) || 0;
     }
@@ -413,7 +476,9 @@
     }
 
     function getPlaylogPage() {
-        var raw = (getCSSProp('--playlog-page') || 'result').replace(/['"]/g, '').trim().toLowerCase();
+        var params = new URLSearchParams(window.location.search);
+        var raw = params.get('playlog_page') || params.get('playlog-page') || params.get('page') || getCSSProp('--playlog-page') || 'result';
+        raw = raw.replace(/['"]/g, '').trim().toLowerCase();
         if (raw === 'receipt' || raw === 'today_receipt' || raw === 'today_receipt.html') {
             return 'today_receipt.html';
         }
@@ -633,6 +698,7 @@
             applyLayout();
             renderHeader(data);
             renderNotesGraph(data.daily_notes || []);
+            renderNotesPeriodSummary(data.monthly_notes || [], data.yearly_notes || null);
             renderLvHist(data.today_level_distribution || {});
             renderLvStats(data.level_stats || {});
             applySkipNoUpdate();
@@ -688,6 +754,34 @@
             html += '<div class="notes-bar-date">' + d.date + '</div>';
             html += '</div>';
         });
+
+        container.innerHTML = html;
+    }
+
+    function renderNotesPeriodSummary(monthlyNotes, yearlyNotes) {
+        var container = document.getElementById('notes-period-summary');
+        if (!container) return;
+
+        var count = getMonthlyNotesCount();
+        var displayedMonthlyNotes = count > 0 ? monthlyNotes.slice(-count) : [];
+        var html = '';
+        displayedMonthlyNotes.forEach(function(item) {
+            var label = item.label || '--/--';
+            var notes = Number(item.notes) || 0;
+            html += '<div class="notes-period-card monthly">';
+            html += '<div class="notes-period-label">' + label + '</div>';
+            html += '<div class="notes-period-value">' + formatPeriodNotes(notes) + '</div>';
+            html += '</div>';
+        });
+
+        if (yearlyNotes) {
+            var yearLabel = yearlyNotes.label || 'Year';
+            var yearNotes = Number(yearlyNotes.notes) || 0;
+            html += '<div class="notes-period-card yearly">';
+            html += '<div class="notes-period-label">' + yearLabel + '</div>';
+            html += '<div class="notes-period-value">' + formatPeriodNotes(yearNotes) + '</div>';
+            html += '</div>';
+        }
 
         container.innerHTML = html;
     }

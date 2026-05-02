@@ -357,6 +357,63 @@ class ResultDatabase:
                 break
         return ret
 
+    def get_recent_monthly_notes(self, target: datetime.datetime = None, months: int = 3) -> List[dict]:
+        '''targetを含む直近monthsヶ月分のノーツ数を算出'''
+        if target is None:
+            target = datetime.datetime.now()
+
+        month_keys = []
+        year = target.year
+        month = target.month
+        for _ in range(months):
+            month_keys.append((year, month))
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
+
+        totals = {key: 0 for key in month_keys}
+        oldest_year, oldest_month = month_keys[-1]
+
+        for r in reversed(self.results):
+            if r.detect_mode != detect_mode.play or not r.judge:
+                continue
+
+            result_date = datetime.datetime.fromtimestamp(r.timestamp)
+            key = (result_date.year, result_date.month)
+            if key not in totals and key < (oldest_year, oldest_month):
+                break
+
+            if key in totals:
+                totals[key] += r.judge.notes
+
+        return [
+            {
+                'label': f'{year}/{month:02d}',
+                'notes': totals[(year, month)],
+            }
+            for year, month in reversed(month_keys)
+        ]
+
+    def get_yearly_notes(self, target: datetime.datetime = None) -> int:
+        '''target年のノーツ数を算出'''
+        if target is None:
+            target = datetime.datetime.now()
+
+        ret = 0
+        for r in reversed(self.results):
+            if r.detect_mode != detect_mode.play or not r.judge:
+                continue
+
+            result_date = datetime.datetime.fromtimestamp(r.timestamp)
+            if result_date.year < target.year:
+                break
+
+            if result_date.year == target.year:
+                ret += r.judge.notes
+
+        return ret
+
     def get_all_best_results(self) -> Dict[tuple, OneBestData]:
         """全譜面のベストリザルトをOneBestDataとして集計（battle有効/無効を別々に集計）
         detect_mode.playのリザルトは除外する。
@@ -646,6 +703,11 @@ class ResultDatabase:
             'playcount': playcount,
             'score_rate': score_rate_str,
             'daily_notes': daily_notes,
+            'monthly_notes': self.get_recent_monthly_notes(now, 12),
+            'yearly_notes': {
+                'label': f'{now.year}',
+                'notes': self.get_yearly_notes(now),
+            },
             'today_level_distribution': level_dist,
             'level_stats': level_stats,
         }
