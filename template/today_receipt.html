@@ -110,6 +110,27 @@
                 width: 86px;
             }
 
+            .achievement-table td.col-lamp-level {
+                line-height: 1.05;
+                text-overflow: clip;
+                width: 180px;
+            }
+
+            .sp12-clear {
+                color: #bbddff;
+                font-size: 19px;
+            }
+
+            .sp12-slash {
+                color: #ffffff;
+                font-size: 19px;
+            }
+
+            .sp12-hard {
+                color: #ffaaaa;
+                font-size: 19px;
+            }
+
             .col-score,
             .col-rate,
             .col-rank,
@@ -335,6 +356,17 @@
             return lv ? '☆' + escapeHtml(lv) : '';
         }
 
+        function formatLampLevel(item) {
+            var sp12Clear = item.sp_12clear || '';
+            var sp12Hard = item.sp_12hard || '';
+            if (sp12Clear || sp12Hard) {
+                return '<span class="sp12-clear">' + escapeHtml(sp12Clear || '?') + '</span>' +
+                    '<span class="sp12-slash">/</span>' +
+                    '<span class="sp12-hard">' + escapeHtml(sp12Hard || '?') + '</span>';
+            }
+            return formatLevel(item);
+        }
+
         function formatRate(item) {
             var rate = Number(item.score_rate) || 0;
             return rate > 0 ? (rate * 100).toFixed(2) + '%' : '';
@@ -508,7 +540,7 @@
         function renderBasicRow(item) {
             var diffColor = getDifficultyColor(item.difficulty || '');
             return '<tr>' +
-                '<td class="col-level">' + formatLevel(item) + '</td>' +
+                '<td class="col-level col-lamp-level">' + formatLampLevel(item) + '</td>' +
                 '<td class="col-title ' + diffColor + '">' + formatTitle(item) + '</td>' +
                 '</tr>';
         }
