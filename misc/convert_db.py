@@ -1,6 +1,9 @@
 import sys
+import argparse
 import pickle
 import os
+import shutil
+from pathlib import Path
 from PIL import Image
 import numpy as np
 import imagehash
@@ -17,6 +20,42 @@ from src.config import Config
 from src.songinfo import *
 logger = get_logger('convert_db')
 
+OUT_DIR = Path('out')
+
+
+def get_pkl_path(filename):
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    pkl_path = OUT_DIR / filename
+    legacy_path = Path(filename)
+    if not pkl_path.exists() and legacy_path.exists():
+        shutil.copy2(legacy_path, pkl_path)
+    return pkl_path
+
+
+def str_to_bool(value):
+    if isinstance(value, bool):
+        return value
+    value = value.lower()
+    if value in ('1', 'true', 'yes', 'y', 'on'):
+        return True
+    if value in ('0', 'false', 'no', 'n', 'off'):
+        return False
+    raise argparse.ArgumentTypeError(f"invalid boolean value: {value}")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--download',
+        nargs='?',
+        const=True,
+        default=False,
+        type=str_to_bool,
+        help='download source data before generating local pkl caches',
+    )
+    return parser.parse_args()
+
+
 with gzip.open('infnotebook/resources/informations4.1.res', 'rb') as f:
     detect = pickle.load(f) # bpim, notes
 titles = detect['music']['musics'] # inf-notebook側の曲名リスト
@@ -28,20 +67,13 @@ levels = mt['levels'] # SP/DP, 1-12
 leggendarias = mt['leggendarias'] # SP/DP
 beginners = mt['beginners'] #(list)
 
-with open('noteslist.pkl', 'rb') as f:
-    noteslist = pickle.load(f) # bpim, notes
-# with open('sp_12jiriki.pkl', 'rb') as f:
-    # sp12 = pickle.load(f) # hard/clear
-with open('dp_unofficial.pkl', 'rb') as f:
-    dp12 = pickle.load(f) # title
-
 def get_ereter_dp(download=False):
     """ereter.netからDP統計データ(EC/HC/EXH diff)を取得する
 
     Returns:
         dict: key=(title, play_style.dp, difficulty), value={'easy':float, 'hard':float, 'exh':float}
     """
-    pkl_path = 'ereter_dp.pkl'
+    pkl_path = get_pkl_path('ereter_dp.pkl')
     if download:
         url = 'https://ereter.net/iidxsongs/analytics/perlevel/'
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -92,60 +124,18 @@ def get_bpim_data(download=False):
     Returns:
         ret (dict): BPIM定義情報。key: 曲名___SPAのような形式, value: 
     """
+    pkl_path = get_pkl_path('bpi.pkl')
     if download:
-        res = requests.get('https://bpim.msqkn310.workers.dev/release') # 定義ファイルのURL
-        ret_json = json.loads(res.text)
-
-        ret = {}
-
-        for s in ret_json['body']:
-            title = s['title']
-            lvidx = int(s['difficulty'])
-            diff = '???'
-            style = play_style.sp
-            if lvidx == 10: # spl
-                style = play_style.sp
-                diff = difficulty.leggendaria
-            elif lvidx == 11: # dpl
-                diff = 'DPL'
-                style = play_style.dp
-                diff = difficulty.leggendaria
-            elif lvidx == 3: # sph
-                diff = 'SPH'
-                style = play_style.sp
-                diff = difficulty.hyper
-            elif lvidx == 4: # spa
-                diff = 'SPA'
-                style = play_style.sp
-                diff = difficulty.another
-            elif lvidx == 8: # dph
-                diff = 'DPH'
-                style = play_style.dp
-                diff = difficulty.hyper
-            elif lvidx == 9: # dpa
-                style = play_style.dp
-                diff = difficulty.another
-
-            wr = int(s['wr'])
-            avg = int(s['avg'])
-            notes = int(s['notes'])
-            coef = -1
-            if 'coef' in s.keys():
-                coef = s['coef']
-            ret[(title,style,diff)] = {
-                'wr':wr,
-                'avg':avg,
-                'notes':notes,
-                'coef':coef,
-            }
-        with open('bpi.pkl', 'wb') as f:
-            pickle.dump(ret, f)
-    with open('bpi.pkl', 'rb') as f:
+        print("BPIM download is disabled; using cached out/bpi.pkl")
+    if not pkl_path.exists():
+        raise FileNotFoundError(f"{pkl_path} not found. Put cached bpi.pkl under out/ or project root.")
+    with open(pkl_path, 'rb') as f:
         ret = pickle.load(f)
 
     return ret
 
 def get_sp12_unofficial(download=False):
+    pkl_path = get_pkl_path('sp12.pkl')
     if download:
         url = 'https://sp12.iidx.app/api/v1/sheets'
         headers = { "User-Agent" :  "Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)" }
@@ -198,9 +188,9 @@ def get_sp12_unofficial(download=False):
             hard = unofficial_difficulty(unoff_conv[hard])
             sp12[(title,play_style.sp,diff)] = {'title':title, 'difficulty':diff, 'clear':clear, 'hard':hard}
 
-        with open('sp12.pkl', 'wb') as f:
+        with open(pkl_path, 'wb') as f:
             pickle.dump(sp12, f)
-    with open('sp12.pkl', 'rb') as f:
+    with open(pkl_path, 'rb') as f:
         sp12 = pickle.load(f)
     return sp12
 
@@ -252,6 +242,7 @@ def set_sp12unofficial(titles:list, sdb:SongDatabase, conv_unof_infn:dict):
 
 def get_dp_unofficial(conv, download=False):
     '''DP非公式難易度表の取得'''
+    pkl_path = get_pkl_path('dp_unofficial.pkl')
     vers = ['RA', 'ROOT', 'SINO', 'CB', 'DJT', 'sub', 'HERO', 'HSKY', 'CH', '4th'
         , 'PEN', 'SIR', '1st', '2nd', '5th', '6th', '7th', '8th', '9th', '10th'
         , 'GOLD', 'RED', 'COP', 'EMP', 'BIS',  'TRI', 'LC', 'DD', 'RDT', 'SPD']
@@ -292,10 +283,10 @@ def get_dp_unofficial(conv, download=False):
             r = session.post(url, data=data)
             dic = parse_lv_table(r.text)
             songdb.update(dic)
-        with open('dp_unofficial.pkl', 'wb') as f:
+        with open(pkl_path, 'wb') as f:
             pickle.dump(songdb, f)
     else:
-        with open('dp_unofficial.pkl', 'rb') as f:
+        with open(pkl_path, 'rb') as f:
             songdb = pickle.load(f)
     return songdb
 
@@ -346,8 +337,11 @@ def set_bpim(bpi:dict, sdb:SongDatabase, conv:dict=None):
             not_found.append(k)
     return not_found
 
-sp12 = get_sp12_unofficial()
-bpi = get_bpim_data()
+args = parse_args() if __name__ == '__main__' else argparse.Namespace(download=False)
+download = args.download
+
+sp12 = get_sp12_unofficial(download=download)
+bpi = get_bpim_data(download=download)
 
 diff_str = ['BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA']
 for style in play_style:
@@ -510,7 +504,7 @@ for i in range(1, 11):
     set_lvall(play_style.dp, i, levels, sdb)
 
 # DP非公式難易度
-dp = get_dp_unofficial(conv_dp, download=False)
+dp = get_dp_unofficial(conv_dp, download=download)
 
 dp_not_found = []
 for k in dp:
@@ -522,7 +516,7 @@ for k in dp:
         dp_not_found.append(k)
 
 # DP ereter難易度 (EC/HC/EXH diff)
-ereter = get_ereter_dp(download=False)
+ereter = get_ereter_dp(download=download)
 
 conv_ereter = {
     # ereter側の曲名: inf-notebook側の曲名
