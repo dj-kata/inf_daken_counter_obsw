@@ -733,9 +733,14 @@ class ResultDatabase:
         notes = None # バグってノーツ数が入っていない場合があるので別処理にする
 
         filtered = self._filter_results_for_best(results, playspeed=playspeed, battle=battle, allscratch=allscratch, regularspeed=regularspeed)
+        include_legacy_v2_logs = bool(self.config and getattr(self.config, 'include_legacy_v2_logs', False))
         target = []
         for r in filtered:
             if r.result.detect_mode == detect_mode.result:
+                target.append(r)
+            elif (include_legacy_v2_logs and
+                  r.result.detect_mode == detect_mode.select and
+                  r.result.timestamp != 0):
                 target.append(r)
             if r.result.notes and not notes:
                 notes = r.result.notes

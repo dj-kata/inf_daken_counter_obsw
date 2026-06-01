@@ -447,6 +447,9 @@ class ConfigDialog(QDialog):
         pkl_desc_label = QLabel(self.ui.data_import.from_pkl_description)
         pkl_import_layout.addWidget(pkl_desc_label)
 
+        self.include_legacy_v2_logs_check = QCheckBox(self.ui.data_import.include_legacy_v2_logs)
+        pkl_import_layout.addWidget(self.include_legacy_v2_logs_check)
+
         # 登録ボタン
         self.pkl_import_button = QPushButton(self.ui.data_import.from_pkl_button)
         self.pkl_import_button.clicked.connect(self.on_import_from_pkl)
@@ -732,6 +735,9 @@ class ConfigDialog(QDialog):
         if hasattr(self.config, 'write_statistics'):
             self.write_statistics_check.setChecked(self.config.write_statistics)
 
+        if hasattr(self.config, 'include_legacy_v2_logs'):
+            self.include_legacy_v2_logs_check.setChecked(self.config.include_legacy_v2_logs)
+
         # ライバル設定
         if hasattr(self, 'rival_list_table'):
             from PySide6.QtWidgets import QTableWidgetItem
@@ -779,6 +785,7 @@ class ConfigDialog(QDialog):
         self.config.autosave_image_mode = config_autosave_image(self.autosave_button_group.checkedId())
         self.config.modify_rivalarea_mode = config_modify_rivalarea(self.rivalarea_button_group.checkedId())
         self.config.write_statistics = self.write_statistics_check.isChecked()
+        self.config.include_legacy_v2_logs = self.include_legacy_v2_logs_check.isChecked()
         
         # ライバル設定
         if hasattr(self, 'rival_list_table'):

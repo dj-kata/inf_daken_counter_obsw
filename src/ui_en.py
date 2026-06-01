@@ -109,6 +109,7 @@ class UIText:
         from_pkl_button = 'Select alllog.pkl to import'
         from_pkl_description = 'Select alllog.pkl file saved by inf_daken_counter v2'
         from_pkl_dialog_description = 'Select alllog.pkl'
+        include_legacy_v2_logs = 'Include logs from v2 or earlier in stats'
         
         cancel_button = 'Cancel'
         processing = 'Processing...'

@@ -109,6 +109,7 @@ class UIText:
         from_pkl_button = 'alllog.pklを選択して登録'
         from_pkl_description = 'v2で出力したalllog.pklからプレーログを登録します'
         from_pkl_dialog_description = 'alllog.pklを選択してください'
+        include_legacy_v2_logs = 'v2以前のログを集計対象とする'
         
         cancel_button = 'キャンセル'
         processing = '処理中...'

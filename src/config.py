@@ -60,6 +60,7 @@ class Config:
         self.autosave_image_mode = config_autosave_image.only_updates  # 画像保存条件
         self.modify_rivalarea_mode = config_modify_rivalarea.invalid  # ライバル欄編集方法
         self.write_statistics = False  # 統計情報を書き込むか
+        self.include_legacy_v2_logs = False  # v2以前のログを集計対象にするか
 
         # ライバルスコア設定
         self.rivals = []  # [{"name": "...", "url": "..."}]
@@ -133,6 +134,7 @@ class Config:
                     self.autosave_image_mode = config_autosave_image(config_data.get('autosave_image_mode', config_autosave_image.invalid.value))
                     self.modify_rivalarea_mode = config_modify_rivalarea(config_data.get('modify_rivalarea_mode', config_modify_rivalarea.invalid.value))
                     self.write_statistics = config_data.get('write_statistics', False)
+                    self.include_legacy_v2_logs = config_data.get('include_legacy_v2_logs', False)
 
                     # ライバルスコア設定
                     self.rivals = config_data.get('rivals', [])
@@ -164,6 +166,7 @@ class Config:
             "autosave_image_mode": self.autosave_image_mode.value,
             "modify_rivalarea_mode": self.modify_rivalarea_mode.value,
             "write_statistics": self.write_statistics,
+            "include_legacy_v2_logs": self.include_legacy_v2_logs,
             "language": self.language,
             "score_viewer_style": self.score_viewer_style,
             "score_viewer_levels": self.score_viewer_levels,
