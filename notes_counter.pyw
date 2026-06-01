@@ -596,6 +596,9 @@ class MainWindow(MainWindowUI):
                             # ゲージを検出できていた場合、そのゲージにする
                             result.lamp = self.current_option.option_gauge.convert()
                     # リザルトを保存
+                    bpi_detail = detailed_result.bpi_detail
+                    if bpi_detail.source == 'bpim2' and bpi_detail.value is not None:
+                        result.bpim2 = bpi_detail.value
                     if self.result_database.add(result):
                         self.result_database.save()
                         if self.score_viewer:

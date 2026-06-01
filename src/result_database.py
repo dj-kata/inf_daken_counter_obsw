@@ -457,6 +457,8 @@ class ResultDatabase:
             elif (result.detect_mode == detect_mode.result and result.score
                   and best.best_score_result and result.score == best.best_score_result.score):
                 best.best_score_result.option = result.option
+                if getattr(result, 'bpim2', None) is not None:
+                    best.best_score_result.bpim2 = result.bpim2
 
             # 最小BP更新
             current_bp = result.bp if (result.bp is not None and not result.dead) else 99999
