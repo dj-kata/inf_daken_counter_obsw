@@ -44,6 +44,7 @@ class OneSongInfo:
                     bpi_top:int=None,
                     bpi_coef:float=None,
                     bpi_title:str=None,
+                    bpim2_title:str=None,
                     dp_unofficial:str=None,
                     dp_ereter_easy:str=None,
                     dp_ereter_hard:str=None,
@@ -94,6 +95,8 @@ class OneSongInfo:
         """BPI計算用 補正係数"""
         self.bpi_title      = bpi_title
         """BPI用db上の曲名"""
+        self.bpim2_title    = bpim2_title
+        """BPIM2 API問い合わせ用の曲名。表記ゆれ対策"""
         self.dp_unofficial  = dp_unofficial
         """DP非公式難易度"""
         self.dp_ereter_easy = dp_ereter_easy

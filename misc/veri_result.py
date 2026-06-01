@@ -21,16 +21,19 @@ if __name__ == '__main__':
     # rdb = ResultDatabase(config = config)
     reader = ScreenReader()
     # for f in glob.glob('debug/gc553/*.png'):
-    for f in glob.glob('debug/gc553/*2.png'):
+    for f in glob.glob('debug/rival_or_rader/rad*.png'):
     # for f in glob.glob('debug/result/*.png'):
         # logger.info(f'file={f}')
         reader.update_screen_from_file(f)
         if reader.is_result():
             r = reader.read_result_screen()
+            screen = reader.screen.original
+            screen = mosaic_rival_area(screen, r.result_side)
+            # screen.save('tmp.png')
             print(f, type(r))
             if r:
                 # logger.info(f'[RESULT] {r}')
                 r.result.timestamp = os.path.getmtime(f)
-                print(r, r.result)
+                # print(r, r.result)
         else:
             print('not result...', f)

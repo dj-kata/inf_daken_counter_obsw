@@ -2,12 +2,89 @@
 from .classes import *
 from .funcs import *
 from .songinfo import *
+from .logger import get_logger
 import datetime
+from dataclasses import dataclass
+from functools import lru_cache
+import json
 import math
 import sys
+from typing import Optional
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+logger = get_logger(__name__)
 
 sys.path.append('infnotebook')
 from result import ResultOptions
+
+BPIM2_API_URL = 'https://bpi2.poyashi.me/api/v1/bpi/calc'
+BPIM2_VERSION = 33
+BPIM2_TIMEOUT_SEC = 2.0
+
+
+@dataclass
+class BpiArenaAverage:
+    rank: str
+    avg_ex_score: int
+
+
+@dataclass
+class BpiDetail:
+    value: Optional[float] = None
+    source: str = 'local'
+    arena_averages: Optional[list[BpiArenaAverage]] = None
+
+    @property
+    def label(self) -> str:
+        return 'BPIM2' if self.source == 'bpim2' else 'BPI'
+
+    @property
+    def arena_average_text(self) -> Optional[str]:
+        if not self.arena_averages:
+            return None
+        return ' / '.join(f"{avg.rank} avg {avg.avg_ex_score}" for avg in self.arena_averages)
+
+
+def _difficulty_to_bpim2_name(diff:difficulty) -> Optional[str]:
+    names = {
+        difficulty.hyper: 'HYPER',
+        difficulty.another: 'ANOTHER',
+        difficulty.leggendaria: 'LEGGENDARIA',
+    }
+    return names.get(diff)
+
+
+def _nearest_arena_averages(arena_averages:dict, score:int) -> list[BpiArenaAverage]:
+    averages = []
+    for rank, data in arena_averages.items():
+        avg_ex_score = data.get('avgExScore') if isinstance(data, dict) else None
+        if avg_ex_score is None:
+            continue
+        averages.append(BpiArenaAverage(rank=rank, avg_ex_score=math.floor(avg_ex_score)))
+    averages.sort(key=lambda avg: abs(avg.avg_ex_score - score))
+    return averages[:2]
+
+
+@lru_cache(maxsize=1024)
+def _fetch_bpim2_bpi(title:str, diff_name:str, score:int, version:int) -> Optional[BpiDetail]:
+    params = urlencode({
+        'title': title,
+        'difficulty': diff_name,
+        'exScore': score,
+        'version': version,
+        'includeRank': 'false',
+    })
+    req = Request(f'{BPIM2_API_URL}?{params}', headers={'User-Agent': 'inf-daken-counter-obsw/0.1'})
+    with urlopen(req, timeout=BPIM2_TIMEOUT_SEC) as res:
+        body = res.read().decode('utf-8')
+    data = json.loads(body)
+    bpi = data.get('bpi')
+    if bpi is None:
+        return None
+    metadata = data.get('metadata') or {}
+    arena_averages = _nearest_arena_averages(metadata.get('arenaAverages') or {}, score)
+    return BpiDetail(value=float(bpi), source='bpim2', arena_averages=arena_averages)
 
 
 class PlayOption():
@@ -303,12 +380,18 @@ class DetailedResult():
         """スコアレート(0.0-1.0; float)"""
         self.score_rate_with_rankdiff = None
         """ランク差分付きのスコアレート(F+0 - MAX+0; str)"""
+        self._bpi_detail = None
         self.update_details()
 
     @property
     def bpi(self) -> float:
         """BPI(自動計算)"""
         return self.get_bpi()
+
+    @property
+    def bpi_detail(self) -> BpiDetail:
+        """BPI値と取得元、BPIM2補足情報を返す。"""
+        return self.get_bpi_detail()
 
     def update_details(self):
         """詳細情報を算出"""
@@ -341,6 +424,45 @@ class DetailedResult():
         Returns:
             str: フォーマット後BPIもしくは??(未定義の場合)
         """
+        return self.get_bpi_detail().value
+
+    def get_bpi_detail(self) -> BpiDetail:
+        if self._bpi_detail is not None:
+            return self._bpi_detail
+
+        bpim2 = self._get_bpim2_bpi_detail()
+        if bpim2 and bpim2.value is not None:
+            self._bpi_detail = bpim2
+            return self._bpi_detail
+
+        self._bpi_detail = BpiDetail(value=self._get_local_bpi(), source='local')
+        return self._bpi_detail
+
+    def _get_bpim2_bpi_detail(self) -> Optional[BpiDetail]:
+        try:
+            if not (self.songinfo and self.result.score is not None):
+                return None
+            if self.result.play_style != play_style.sp:
+                return None
+            level = self.songinfo.level or self.level
+            if level is None or level < 11:
+                return None
+            diff_name = _difficulty_to_bpim2_name(self.result.difficulty)
+            if not diff_name:
+                return None
+            score = int(self.result.score)
+            if score < 0:
+                return None
+            notes = self.result.notes or self.songinfo.notes
+            if notes and score > notes * 2:
+                return None
+            title = getattr(self.songinfo, 'bpim2_title', None) or self.songinfo.title
+            return _fetch_bpim2_bpi(title, diff_name, score, BPIM2_VERSION)
+        except Exception as e:
+            logger.debug(f"BPIM2 BPI取得エラー ({self.result.title}): {e}")
+            return None
+
+    def _get_local_bpi(self) -> Optional[float]:
         bpi = None
         try:
             if self.songinfo and self.result.score and self.songinfo.bpi_ave:
@@ -378,8 +500,9 @@ class DetailedResult():
             else:
                 msg += f"({''.join(self.score_rate_with_rankdiff)})"
         msg += f", detect_mode:{self.result.detect_mode}, judge:[{self.result.judge}]"
-        if self.bpi:
-            msg += f", BPI: {self.bpi}, "
+        bpi_detail = self.bpi_detail
+        if bpi_detail.value is not None:
+            msg += f", {bpi_detail.label}: {bpi_detail.value}, "
         if self.result_side:
             msg += f", side: {self.result_side.name[1:]}"
         msg += 'level:{self.level}'

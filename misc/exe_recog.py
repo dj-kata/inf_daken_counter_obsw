@@ -71,16 +71,18 @@ if __name__ == '__main__':
     # rdb.results[-1] = a
 
     title = 'ALTERNATOR'
+    title = 'Spirit of the Beast'
+    diff=difficulty.hyper
     x = rdb.search(title, play_style.sp, difficulty.another)
     for s in x:
         if s.result.detect_mode == detect_mode.result:
             print(s)
 
-    rdb.broadcast_history_cursong_data(title, play_style.sp, difficulty.another, battle=False, allscratch=False, regularspeed=False)
-    rdb.broadcast_today_stats_data(datetime.datetime.now().timestamp()-48*3600)
-    rdb.broadcast_today_updates_data(0)
+    rdb.broadcast_history_cursong_data(title, play_style.sp, diff, battle=False, allscratch=False, regularspeed=False)
+    rdb.broadcast_today_stats_data(datetime.datetime.now().timestamp()-80*3600)
+    rdb.broadcast_today_updates_data(datetime.datetime.now().timestamp()-80*3600)
     rdb.broadcast_graph_data(datetime.datetime.now().timestamp()-36*3600)
-    si = rdb.song_database.search(title='卑弥呼', play_style=play_style.sp, difficulty=difficulty.another)
+    si = rdb.song_database.search(title=title, play_style=play_style.sp, difficulty=diff)
     print(si)
     print(f"bpi_ave={si.bpi_ave}, bpi_top={si.bpi_top}, bpi_coef={si.bpi_coef}, notes={si.notes}")
     # time.sleep(5)

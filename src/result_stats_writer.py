@@ -65,6 +65,8 @@ class ResultStatsWriter:
         max_notes,
         lamp:clear_lamp,
         bpi=None,
+        bpi_label='BPI',
+        bpi_arena_average_text=None,
         sp12_clear:clear_lamp=None,
         sp12_hard:clear_lamp=None,
         position=(600, 405),  # (x, y) 座標で指定
@@ -159,12 +161,17 @@ class ResultStatsWriter:
         rate = ex_score / max_score*100
         parts = [f"rate: {rate:.2f}%"]
         if bpi is not None:
-            parts.append(f"BPI: {bpi:.2f}")
+            parts.append(f"{bpi_label}: {bpi:.2f}")
         
         text = ", ".join(parts)
         text = self._truncate_text(draw, text, self.main_font, box_width - 30)
         self._draw_text_with_glow(draw, (x, y), text, self.main_font,
                                    fill=(255, 255, 100), glow_color=(80, 80, 0))
+        if bpi_arena_average_text:
+            y += line_height
+            text = self._truncate_text(draw, bpi_arena_average_text, self.sub_font, box_width - 30)
+            self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
+                                       fill=(255, 255, 100), glow_color=(80, 80, 0))
         
         # オーバーレイを合成
         img = Image.alpha_composite(img, overlay)

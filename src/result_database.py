@@ -573,8 +573,12 @@ class ResultDatabase:
 
             item.update(_extract_songinfo_fields(songinfo))
 
-            if detailed_result.bpi is not None:
-                item['bpi'] = f"{detailed_result.bpi:.2f}"
+            bpi_detail = detailed_result.bpi_detail
+            if bpi_detail.value is not None:
+                item['bpi'] = f"{bpi_detail.value:.2f}"
+                item['bpi_label'] = bpi_detail.label
+                if bpi_detail.arena_average_text:
+                    item['bpi_arena_averages'] = bpi_detail.arena_average_text
 
             if detailed_result.score_rate_with_rankdiff:
                 item['rankdiff'] = ''.join(detailed_result.score_rate_with_rankdiff)

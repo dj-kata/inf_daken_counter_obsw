@@ -331,6 +331,7 @@ class MainWindow(MainWindowUI):
                     if detailed_result.songinfo:
                         sp12_clear = detailed_result.songinfo.sp12_clear
                         sp12_hard = detailed_result.songinfo.sp12_hard
+                    bpi_detail = detailed_result.bpi_detail
                     screen = self.result_stats_writer.write_statistics(
                         screen,
                         title=result.title,
@@ -341,7 +342,9 @@ class MainWindow(MainWindowUI):
                         bp=result.judge.bd + result.judge.pr,
                         max_notes=detailed_result.result.notes,
                         lamp=result.lamp,
-                        bpi=detailed_result.bpi,
+                        bpi=bpi_detail.value,
+                        bpi_label=bpi_detail.label,
+                        bpi_arena_average_text=bpi_detail.arena_average_text,
                         sp12_clear=sp12_clear,
                         sp12_hard=sp12_hard,
                     )
@@ -842,4 +845,3 @@ if __name__ == "__main__":
     updater.check_and_update()
     
     main()
-

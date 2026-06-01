@@ -273,10 +273,12 @@ class EditDialog(QDialog):
         self.sb_bpi_top   = self._spinbox(-1, 99999)
         self.dsb_bpi_coef = self._dspinbox(lo=-999.0, hi=999.0)
         self.le_bpi_title = QLineEdit()
+        self.le_bpim2_title = QLineEdit()
         form.addRow('Ave:',       self.sb_bpi_ave)
         form.addRow('Top:',       self.sb_bpi_top)
         form.addRow('Coef:',      self.dsb_bpi_coef)
         form.addRow('BPI Title:', self.le_bpi_title)
+        form.addRow('BPIM2 Title:', self.le_bpim2_title)
 
         # == DP 非公式難易度 ==
         self._section(form, 'DP 非公式難易度')
@@ -404,6 +406,7 @@ class EditDialog(QDialog):
         self.sb_bpi_top.setValue(-1)
         self.dsb_bpi_coef.setValue(self.dsb_bpi_coef.minimum())
         self.le_bpi_title.clear()
+        self.le_bpim2_title.clear()
         self.dsb_dp_unofficial.setValue(self.dsb_dp_unofficial.minimum())
         for dsb in (self.dsb_dp_ereter_easy, self.dsb_dp_ereter_hard, self.dsb_dp_ereter_exh):
             dsb.setValue(dsb.minimum())
@@ -472,6 +475,7 @@ class EditDialog(QDialog):
         self.sb_bpi_top.setValue(c.bpi_top if c.bpi_top is not None else -1)
         self.dsb_bpi_coef.setValue(fv(c.bpi_coef))
         self.le_bpi_title.setText(c.bpi_title or '')
+        self.le_bpim2_title.setText(getattr(c, 'bpim2_title', None) or '')
 
         # DP 非公式難易度
         # dp_unofficial はDBでは float として格納されている
@@ -572,6 +576,7 @@ class EditDialog(QDialog):
         chart.bpi_top   = gi(self.sb_bpi_top)
         chart.bpi_coef  = gf(self.dsb_bpi_coef)
         chart.bpi_title = self.le_bpi_title.text() or None
+        chart.bpim2_title = self.le_bpim2_title.text() or None
 
         # DP 非公式難易度
         chart.dp_unofficial  = gf(self.dsb_dp_unofficial)

@@ -857,9 +857,10 @@ class ScoreViewer(QMainWindow):
             try:
                 if score.best_score_result and score.songinfo:
                     detailed = DetailedResult(score.songinfo, score.best_score_result)
-                    bpi = detailed.get_bpi()
+                    bpi_detail = detailed.bpi_detail
+                    bpi = bpi_detail.value
                     if bpi is not None:
-                        bpi_str = f"{bpi:.2f}"
+                        bpi_str = f"{bpi:.2f}" if bpi_detail.source == 'local' else f"M2 {bpi:.2f}"
                         bpi_value = bpi
             except Exception as e:
                 logger.debug(f"BPI計算エラー ({score.title}): {e}")
