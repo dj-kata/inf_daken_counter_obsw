@@ -261,6 +261,7 @@ class OneResult:
                     notes:int=None,
                     dead:bool=None,
                     average_release:average_release=None,
+                    bpim2:float=None,
                 ):
         self.title = title
         '''曲名'''
@@ -297,6 +298,8 @@ class OneResult:
         self.dead      = dead
         self.average_release = average_release
         '''平均リリース時間のログ。Otoge Input Viewerと連携する時のために準備している。'''
+        self.bpim2 = bpim2
+        '''BPIM2 APIから取得したBPI値。未取得または未対応の場合はNone。'''
 
     def is_updated(self) -> bool:
         """更新があるかどうかを返す
@@ -424,14 +427,24 @@ class DetailedResult():
         Returns:
             str: フォーマット後BPIもしくは??(未定義の場合)
         """
-        return self.get_bpi_detail().value
+        return self.get_local_bpi()
+
+    def get_local_bpi(self) -> Optional[float]:
+        """外部APIを使わず、従来のローカル定義だけでBPIを計算する。"""
+        return self._get_local_bpi()
 
     def get_bpi_detail(self) -> BpiDetail:
         if self._bpi_detail is not None:
             return self._bpi_detail
 
+        saved_bpim2 = getattr(self.result, 'bpim2', None)
+        if saved_bpim2 is not None:
+            self._bpi_detail = BpiDetail(value=saved_bpim2, source='bpim2')
+            return self._bpi_detail
+
         bpim2 = self._get_bpim2_bpi_detail()
         if bpim2 and bpim2.value is not None:
+            self.result.bpim2 = bpim2.value
             self._bpi_detail = bpim2
             return self._bpi_detail
 
@@ -500,9 +513,9 @@ class DetailedResult():
             else:
                 msg += f"({''.join(self.score_rate_with_rankdiff)})"
         msg += f", detect_mode:{self.result.detect_mode}, judge:[{self.result.judge}]"
-        bpi_detail = self.bpi_detail
-        if bpi_detail.value is not None:
-            msg += f", {bpi_detail.label}: {bpi_detail.value}, "
+        bpi = self.get_local_bpi()
+        if bpi is not None:
+            msg += f", BPI: {bpi}, "
         if self.result_side:
             msg += f", side: {self.result_side.name[1:]}"
         msg += 'level:{self.level}'
