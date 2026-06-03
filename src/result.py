@@ -5,7 +5,6 @@ from .songinfo import *
 from .logger import get_logger
 import datetime
 from dataclasses import dataclass
-from functools import lru_cache
 import json
 import math
 import sys
@@ -21,6 +20,9 @@ from result import ResultOptions
 BPIM2_API_URL = 'https://bpi2.poyashi.me/api/v1/bpi/calc'
 BPIM2_VERSION = 33
 BPIM2_TIMEOUT_SEC = 2.0
+BPIM2_NEGATIVE_CACHE_TTL_SEC = 600.0
+_BPIM2_POSITIVE_CACHE = {}
+_BPIM2_NEGATIVE_CACHE = {}
 
 
 @dataclass
@@ -80,8 +82,19 @@ def _nearest_arena_averages(arena_averages:dict, score:int) -> list[BpiArenaAver
     return averages[:2]
 
 
-@lru_cache(maxsize=1024)
 def _fetch_bpim2_bpi(title:str, diff_name:str, score:int, version:int) -> Optional[BpiDetail]:
+    now = datetime.datetime.now().timestamp()
+    cache_key = (title, diff_name, score, version)
+    cached_result = _BPIM2_POSITIVE_CACHE.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
+    cached_until = _BPIM2_NEGATIVE_CACHE.get(cache_key)
+    if cached_until and cached_until > now:
+        return None
+    if cached_until:
+        _BPIM2_NEGATIVE_CACHE.pop(cache_key, None)
+
     params = urlencode({
         'title': title,
         'difficulty': diff_name,
@@ -90,15 +103,22 @@ def _fetch_bpim2_bpi(title:str, diff_name:str, score:int, version:int) -> Option
         'includeRank': 'false',
     })
     req = Request(f'{BPIM2_API_URL}?{params}', headers={'User-Agent': 'inf-daken-counter-obsw/0.1'})
-    with urlopen(req, timeout=BPIM2_TIMEOUT_SEC) as res:
-        body = res.read().decode('utf-8')
-    data = json.loads(body)
+    try:
+        with urlopen(req, timeout=BPIM2_TIMEOUT_SEC) as res:
+            body = res.read().decode('utf-8')
+        data = json.loads(body)
+    except Exception:
+        _BPIM2_NEGATIVE_CACHE[cache_key] = now + BPIM2_NEGATIVE_CACHE_TTL_SEC
+        raise
     bpi = data.get('bpi')
     if bpi is None:
+        _BPIM2_NEGATIVE_CACHE[cache_key] = now + BPIM2_NEGATIVE_CACHE_TTL_SEC
         return None
     metadata = data.get('metadata') or {}
     arena_averages = _nearest_arena_averages(metadata.get('arenaAverages') or {}, score)
-    return BpiDetail(value=float(bpi), source='bpim2', arena_averages=arena_averages)
+    result = BpiDetail(value=float(bpi), source='bpim2', arena_averages=arena_averages)
+    _BPIM2_POSITIVE_CACHE[cache_key] = result
+    return result
 
 
 class PlayOption():

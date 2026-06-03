@@ -809,7 +809,7 @@ class ResultDatabase:
                 if detail.score_rate_with_rankdiff:
                     data['best_rankdiff0'] = detail.score_rate_with_rankdiff[0]
                     data['best_rankdiff1'] = detail.score_rate_with_rankdiff[1]
-            bpim2_detail = detail.get_bpim2_bpi_detail(force_fetch=True)
+            bpim2_detail = detail.get_bpim2_bpi_detail()
             if bpim2_detail and bpim2_detail.value is not None:
                 data['best_bpi'] = f"{bpim2_detail.value:.2f}"
                 data['best_bpi_label'] = bpim2_detail.label
