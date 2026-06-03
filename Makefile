@@ -8,9 +8,8 @@ html_files=$(wildcard template/*.html)
 version=$(shell head -n1 version.txt)
 ZIP ?= 7z a -tzip -mx=1 -mmt=on
 
-# all: $(target_zip)
-top: $(target)
 all: $(target_zip)
+top: $(target)
 
 $(target_zip): $(target) $(html_files) version.txt
 	@rm -rf $(project_name)/tmp

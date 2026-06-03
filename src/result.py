@@ -62,6 +62,20 @@ def _nearest_arena_averages(arena_averages:dict, score:int) -> list[BpiArenaAver
         if avg_ex_score is None:
             continue
         averages.append(BpiArenaAverage(rank=rank, avg_ex_score=math.floor(avg_ex_score)))
+    rank_order = {'A1': 1, 'A2': 2, 'A3': 3, 'A4': 4, 'A5': 5}
+    averages.sort(key=lambda avg: rank_order.get(avg.rank, 99))
+    if len(averages) <= 2:
+        return averages
+
+    if score >= averages[0].avg_ex_score:
+        return averages[:2]
+    if score <= averages[-1].avg_ex_score:
+        return [averages[-1], averages[-2]]
+
+    for high, low in zip(averages, averages[1:]):
+        if high.avg_ex_score >= score >= low.avg_ex_score:
+            return [high, low]
+
     averages.sort(key=lambda avg: abs(avg.avg_ex_score - score))
     return averages[:2]
 
@@ -450,6 +464,20 @@ class DetailedResult():
 
         self._bpi_detail = BpiDetail(value=self._get_local_bpi(), source='local')
         return self._bpi_detail
+
+    def get_bpim2_bpi_detail(self, force_fetch: bool=False) -> Optional[BpiDetail]:
+        """BPIM2のBPI詳細を返す。force_fetch=Trueなら保存済み値があっても現在曲1件だけ再取得する。"""
+        saved_bpim2 = getattr(self.result, 'bpim2', None)
+        if saved_bpim2 is not None and not force_fetch:
+            return BpiDetail(value=saved_bpim2, source='bpim2')
+
+        bpim2 = self._get_bpim2_bpi_detail()
+        if bpim2 and bpim2.value is not None:
+            self.result.bpim2 = bpim2.value
+            return bpim2
+        if saved_bpim2 is not None:
+            return BpiDetail(value=saved_bpim2, source='bpim2')
+        return None
 
     def _get_bpim2_bpi_detail(self) -> Optional[BpiDetail]:
         try:

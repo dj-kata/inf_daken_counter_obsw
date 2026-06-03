@@ -570,6 +570,7 @@ class MainWindow(MainWindowUI):
                 result.bpim2 = bpi_detail.value
             self.statusBar().showMessage(f"選曲画面から自己ベストを登録しました。 -> {result}", 10000)
             self.result_database.save()
+            self.result_database.broadcast_history_cursong_data(title=result.title, style=result.play_style, difficulty=result.difficulty)
             if self.score_viewer:
                 self.score_viewer.refresh_data()
     

@@ -519,8 +519,10 @@
         var best_bp_rate = data.best_bp_rate;
         var best_bp_opt = data.best_bp_opt || '';
         var best_bpi = data.best_bpi || '';
+        var best_bpi_label = data.best_bpi_label || 'BPI';
         var bpi_ave = data.bpi_ave || '';
         var bpi_top = data.bpi_top || '';
+        var bpi_near_averages = data.bpi_near_averages || [];
         
         // BEST SCORE表示
         var score_html = '';
@@ -598,9 +600,10 @@
         document.querySelector('.bp-info').innerHTML = bp_html;
         
         // BPI情報の表示判定
-        var hasBpiData = bpi_ave && bpi_ave !== '' && bpi_ave !== '0' && 
-                         bpi_top && bpi_top !== '' && bpi_top !== '0' &&
-                         best_bpi && best_bpi !== '';
+        var hasLegacyBpiData = bpi_ave && bpi_ave !== '' && bpi_ave !== '0' &&
+                               bpi_top && bpi_top !== '' && bpi_top !== '0';
+        var hasBpim2Data = bpi_near_averages.length > 0;
+        var hasBpiData = best_bpi && best_bpi !== '' && (hasLegacyBpiData || hasBpim2Data);
         
         var bpiCard = document.querySelector('.bpi-card');
         if (hasBpiData) {
@@ -612,27 +615,45 @@
             // BPI情報表示
             var bpi_html = '';
             bpi_html += '<div class="bpi-item">';
-            bpi_html += '<div class="bpi-item-label">自己ベスト</div>';
+            bpi_html += '<div class="bpi-item-label">自己ベスト ' + best_bpi_label + '</div>';
             bpi_html += '<div class="bpi-item-value">' + best_bpi + '</div>';
             bpi_html += '</div>';
-            
-            bpi_html += '<div class="bpi-item">';
-            bpi_html += '<div class="bpi-item-label">皆伝平均</div>';
-            bpi_html += '<div class="bpi-item-value">' + bpi_ave_num.toLocaleString() + '</div>';
-            var diff_ave = best_score - bpi_ave_num;
-            var diff_ave_str = (diff_ave >= 0 ? '+' : '') + diff_ave;
-            var diff_ave_class = diff_ave >= 0 ? 'positive' : 'negative';
-            bpi_html += '<div class="bpi-comparison ' + diff_ave_class + '">' + diff_ave_str + '</div>';
-            bpi_html += '</div>';
-            
-            bpi_html += '<div class="bpi-item">';
-            bpi_html += '<div class="bpi-item-label">全国TOP</div>';
-            bpi_html += '<div class="bpi-item-value">' + bpi_top_num.toLocaleString() + '</div>';
-            var diff_top = best_score - bpi_top_num;
-            var diff_top_str = (diff_top >= 0 ? '+' : '') + diff_top;
-            var diff_top_class = diff_top >= 0 ? 'positive' : 'negative';
-            bpi_html += '<div class="bpi-comparison ' + diff_top_class + '">' + diff_top_str + '</div>';
-            bpi_html += '</div>';
+
+            if (hasBpim2Data) {
+                var display_averages = bpi_near_averages.slice(0, 2).sort(function(a, b) {
+                    var rankOrder = {'A1': 1, 'A2': 2, 'A3': 3, 'A4': 4, 'A5': 5};
+                    return (rankOrder[b.rank] || 99) - (rankOrder[a.rank] || 99);
+                });
+                display_averages.forEach(function(avg) {
+                    var avg_score = Number(avg.score) || 0;
+                    bpi_html += '<div class="bpi-item">';
+                    bpi_html += '<div class="bpi-item-label">' + avg.rank + '平均</div>';
+                    bpi_html += '<div class="bpi-item-value">' + avg_score.toLocaleString() + '</div>';
+                    var diff_avg = best_score - avg_score;
+                    var diff_avg_str = (diff_avg >= 0 ? '+' : '') + diff_avg;
+                    var diff_avg_class = diff_avg >= 0 ? 'positive' : 'negative';
+                    bpi_html += '<div class="bpi-comparison ' + diff_avg_class + '">' + diff_avg_str + '</div>';
+                    bpi_html += '</div>';
+                });
+            } else {
+                bpi_html += '<div class="bpi-item">';
+                bpi_html += '<div class="bpi-item-label">皆伝平均</div>';
+                bpi_html += '<div class="bpi-item-value">' + bpi_ave_num.toLocaleString() + '</div>';
+                var diff_ave = best_score - bpi_ave_num;
+                var diff_ave_str = (diff_ave >= 0 ? '+' : '') + diff_ave;
+                var diff_ave_class = diff_ave >= 0 ? 'positive' : 'negative';
+                bpi_html += '<div class="bpi-comparison ' + diff_ave_class + '">' + diff_ave_str + '</div>';
+                bpi_html += '</div>';
+
+                bpi_html += '<div class="bpi-item">';
+                bpi_html += '<div class="bpi-item-label">全国TOP</div>';
+                bpi_html += '<div class="bpi-item-value">' + bpi_top_num.toLocaleString() + '</div>';
+                var diff_top = best_score - bpi_top_num;
+                var diff_top_str = (diff_top >= 0 ? '+' : '') + diff_top;
+                var diff_top_class = diff_top >= 0 ? 'positive' : 'negative';
+                bpi_html += '<div class="bpi-comparison ' + diff_top_class + '">' + diff_top_str + '</div>';
+                bpi_html += '</div>';
+            }
             
             document.querySelector('.bpi-info').innerHTML = bpi_html;
         } else {

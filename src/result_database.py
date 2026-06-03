@@ -765,6 +765,9 @@ class ResultDatabase:
                     best_bp = r.result.bp
                     best_bp_opt = r.result.option
 
+        if not notes and songinfo and getattr(songinfo, 'notes', None):
+            notes = songinfo.notes
+
         if len(results) == 0:
             return {}
 
@@ -801,8 +804,18 @@ class ResultDatabase:
                 if detail.score_rate_with_rankdiff:
                     data['best_rankdiff0'] = detail.score_rate_with_rankdiff[0]
                     data['best_rankdiff1'] = detail.score_rate_with_rankdiff[1]
-            if detail.bpi is not None:
+            bpim2_detail = detail.get_bpim2_bpi_detail(force_fetch=True)
+            if bpim2_detail and bpim2_detail.value is not None:
+                data['best_bpi'] = f"{bpim2_detail.value:.2f}"
+                data['best_bpi_label'] = bpim2_detail.label
+                if bpim2_detail.arena_averages:
+                    data['bpi_near_averages'] = [
+                        {'rank': avg.rank, 'score': avg.avg_ex_score}
+                        for avg in bpim2_detail.arena_averages
+                    ]
+            elif detail.bpi is not None:
                 data['best_bpi'] = f"{detail.bpi:.2f}"
+                data['best_bpi_label'] = 'BPI'
             if detail.score_rate_with_rankdiff:
                 data['rankdiff'] = ''.join(detail.score_rate_with_rankdiff)
                 data['rankdiff0'] = detail.score_rate_with_rankdiff[0]
@@ -825,8 +838,14 @@ class ResultDatabase:
                 'opt': r.result.option.__str__() if r.result.option else ""
             }
 
-            if r.bpi is not None:
-                item['bpi'] = f"{r.bpi:.2f}"
+            bpim2 = getattr(r.result, 'bpim2', None)
+            if bpim2 is not None:
+                item['bpi'] = f"{bpim2:.2f}"
+                item['bpi_label'] = 'BPIM2'
+            else:
+                if r.bpi is not None:
+                    item['bpi'] = f"{r.bpi:.2f}"
+                    item['bpi_label'] = 'BPI'
             if r.score_rate_with_rankdiff:
                 item['rankdiff'] = ''.join(r.score_rate_with_rankdiff)
                 item['rankdiff0'] = r.score_rate_with_rankdiff[0]
