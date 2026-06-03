@@ -395,7 +395,7 @@
             var value = parseBpiValue(bpi);
             if (value === null) return '';
             var label = item.bpi_label || 'BPI';
-            return label === 'BPIM2' ? 'M2 ' + value.toFixed(2) : value.toFixed(2);
+            return label === 'BPIM2' ? value.toFixed(2) : value.toFixed(2) + '(old)';
         }
 
         function isValidPreviousBp(preBp) {

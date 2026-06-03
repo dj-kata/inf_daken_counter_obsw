@@ -646,8 +646,8 @@
                 var bpi_display = bpi;
                 if (bpi && bpi !== '??') {
                     bpi_class = bpi.includes('-') ? 'bpi-negative' : 'bpi-positive';
-                    if (bpi_label === 'BPIM2') {
-                        bpi_display = 'M2 ' + bpi;
+                    if (bpi_label !== 'BPIM2') {
+                        bpi_display = bpi + '(old)';
                     }
                 } else {
                     bpi = '';
