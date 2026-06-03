@@ -453,11 +453,12 @@ class DetailedResult():
 
     def _get_bpim2_bpi_detail(self) -> Optional[BpiDetail]:
         try:
-            if not (self.songinfo and self.result.score is not None):
+            if not (self.result and self.result.score is not None):
                 return None
             if self.result.play_style != play_style.sp:
                 return None
-            level = self.songinfo.level or self.level
+            songinfo_level = getattr(self.songinfo, 'level', None)
+            level = songinfo_level or self.level
             if level is None or level < 11:
                 return None
             diff_name = _difficulty_to_bpim2_name(self.result.difficulty)
@@ -466,10 +467,15 @@ class DetailedResult():
             score = int(self.result.score)
             if score < 0:
                 return None
-            notes = self.result.notes or self.songinfo.notes
+            songinfo_notes = getattr(self.songinfo, 'notes', None)
+            notes = self.result.notes or songinfo_notes
             if notes and score > notes * 2:
                 return None
-            title = getattr(self.songinfo, 'bpim2_title', None) or self.songinfo.title
+            title = (getattr(self.songinfo, 'bpim2_title', None)
+                     or getattr(self.songinfo, 'title', None)
+                     or self.result.title)
+            if not title:
+                return None
             return _fetch_bpim2_bpi(title, diff_name, score, BPIM2_VERSION)
         except Exception as e:
             logger.debug(f"BPIM2 BPI取得エラー ({self.result.title}): {e}")

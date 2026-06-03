@@ -565,6 +565,9 @@ class MainWindow(MainWindowUI):
         self.result_database.broadcast_history_cursong_data(title=result.title, style=result.play_style, difficulty=result.difficulty)
         # 自己べ登録
         if self.result_database.add(result):
+            bpi_detail = detailed_result.bpi_detail
+            if bpi_detail.source == 'bpim2' and bpi_detail.value is not None:
+                result.bpim2 = bpi_detail.value
             self.statusBar().showMessage(f"選曲画面から自己ベストを登録しました。 -> {result}", 10000)
             self.result_database.save()
             if self.score_viewer:
