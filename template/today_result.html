@@ -570,6 +570,7 @@
                 var pre_lamp = Number(item.pre_lamp) || 0;
                 var pre_bp = Number(item.pre_bp) || 0;
                 var bpi = item.bpi || '';
+                var bpi_label = item.bpi_label || 'BPI';
                 var opt = item.opt || '';
                 var battle = Number(item.battle) || 0;
                 var sp_12hard = item.sp_12hard || '';
@@ -642,10 +643,15 @@
                 
                 // BPIの色分け
                 var bpi_class = '';
+                var bpi_display = bpi;
                 if (bpi && bpi !== '??') {
                     bpi_class = bpi.includes('-') ? 'bpi-negative' : 'bpi-positive';
+                    if (bpi_label === 'BPIM2') {
+                        bpi_display = 'M2 ' + bpi;
+                    }
                 } else {
                     bpi = '';
+                    bpi_display = '';
                 }
                 
                 // スコア更新チェック
@@ -725,7 +731,7 @@
                     out += '</td>';
                 }
                 out += '<td class="col-rank">' + rankdiff + '</td>';
-                out += '<td class="col-bpi ' + bpi_class + '">' + escapeHtml(bpi) + '</td>';
+                out += '<td class="col-bpi ' + bpi_class + '">' + escapeHtml(bpi_display) + '</td>';
                 
                 // オプション
                 out += '<td class="col-option">' + renderOptionText(opt) + '</td>';

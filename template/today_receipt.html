@@ -390,10 +390,12 @@
             return '<span class="' + getRankClass(item) + '">' + escapeHtml(rankdiff0) + '</span>' + escapeHtml(rankdiff1);
         }
 
-        function formatBpi(bpi) {
+        function formatBpi(item) {
+            var bpi = item.bpi;
             var value = parseBpiValue(bpi);
             if (value === null) return '';
-            return value.toFixed(2);
+            var label = item.bpi_label || 'BPI';
+            return label === 'BPIM2' ? 'M2 ' + value.toFixed(2) : value.toFixed(2);
         }
 
         function isValidPreviousBp(preBp) {
@@ -417,6 +419,7 @@
             target.score = source.score;
             target.score_rate = source.score_rate;
             target.bpi = source.bpi;
+            target.bpi_label = source.bpi_label || target.bpi_label || 'BPI';
             target._bpiValue = parseBpiValue(source.bpi);
             target.rankdiff = source.rankdiff || '';
             target.rankdiff0 = source.rankdiff0 || '';
@@ -579,7 +582,7 @@
                 '<td class="col-score">' + (Number(item.score) || 0) + '</td>' +
                 '<td class="col-rate">' + formatRate(item) + '</td>' +
                 '<td class="col-rank">' + formatRankDiff(item) + '</td>' +
-                '<td class="col-bpi ' + getBpiClass(item.bpi) + '">' + formatBpi(item.bpi) + '</td>' +
+                '<td class="col-bpi ' + getBpiClass(item.bpi) + '">' + formatBpi(item) + '</td>' +
                 '<td class="col-title ' + diffColor + '">' + formatTitle(item) + '</td>' +
                 '</tr>';
         }

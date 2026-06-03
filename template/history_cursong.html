@@ -187,6 +187,49 @@
                 flex: 1;
                 text-align: center;
             }
+
+            .bpi-item.bpi-rank {
+                border-radius: 10px;
+                padding: 6px 8px;
+                border: 2px solid var(--rank-color);
+                background: linear-gradient(135deg, var(--rank-bg), rgba(20, 20, 40, 0.65));
+                box-shadow: 0 0 14px var(--rank-glow);
+            }
+
+            .bpi-rank .bpi-item-label,
+            .bpi-rank .bpi-item-value {
+                color: var(--rank-color);
+            }
+
+            .bpi-rank-a1 {
+                --rank-color: #ffd54f;
+                --rank-bg: rgba(255, 213, 79, 0.18);
+                --rank-glow: rgba(255, 213, 79, 0.35);
+            }
+
+            .bpi-rank-a2 {
+                --rank-color: #64d8ff;
+                --rank-bg: rgba(100, 216, 255, 0.16);
+                --rank-glow: rgba(100, 216, 255, 0.32);
+            }
+
+            .bpi-rank-a3 {
+                --rank-color: #69f0ae;
+                --rank-bg: rgba(105, 240, 174, 0.15);
+                --rank-glow: rgba(105, 240, 174, 0.3);
+            }
+
+            .bpi-rank-a4 {
+                --rank-color: #ffb74d;
+                --rank-bg: rgba(255, 183, 77, 0.16);
+                --rank-glow: rgba(255, 183, 77, 0.32);
+            }
+
+            .bpi-rank-a5 {
+                --rank-color: #ff8a80;
+                --rank-bg: rgba(255, 138, 128, 0.16);
+                --rank-glow: rgba(255, 138, 128, 0.32);
+            }
             
             .bpi-item-label {
                 font-size: 20px;
@@ -626,7 +669,8 @@
                 });
                 display_averages.forEach(function(avg) {
                     var avg_score = Number(avg.score) || 0;
-                    bpi_html += '<div class="bpi-item">';
+                    var rank_class = 'bpi-rank-' + String(avg.rank || '').toLowerCase();
+                    bpi_html += '<div class="bpi-item bpi-rank ' + rank_class + '">';
                     bpi_html += '<div class="bpi-item-label">' + avg.rank + '平均</div>';
                     bpi_html += '<div class="bpi-item-value">' + avg_score.toLocaleString() + '</div>';
                     var diff_avg = best_score - avg_score;

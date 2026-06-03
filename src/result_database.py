@@ -575,10 +575,15 @@ class ResultDatabase:
 
             item.update(_extract_songinfo_fields(songinfo))
 
-            bpi = detailed_result.get_local_bpi()
-            if bpi is not None:
-                item['bpi'] = f"{bpi:.2f}"
-                item['bpi_label'] = 'BPI'
+            bpim2 = getattr(r, 'bpim2', None)
+            if bpim2 is not None:
+                item['bpi'] = f"{bpim2:.2f}"
+                item['bpi_label'] = 'BPIM2'
+            else:
+                bpi = detailed_result.get_local_bpi()
+                if bpi is not None:
+                    item['bpi'] = f"{bpi:.2f}"
+                    item['bpi_label'] = 'BPI'
 
             if detailed_result.score_rate_with_rankdiff:
                 item['rankdiff'] = ''.join(detailed_result.score_rate_with_rankdiff)
