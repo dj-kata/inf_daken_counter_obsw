@@ -853,6 +853,7 @@ class ScoreViewer(QMainWindow):
         # BPI (column 6)
         bpi_str = ""
         bpi_value = None
+        is_legacy_bpi = False
         if show_bpi:
             try:
                 if score.best_score_result and score.songinfo:
@@ -864,7 +865,8 @@ class ScoreViewer(QMainWindow):
                         detailed = DetailedResult(score.songinfo, score.best_score_result)
                         bpi = detailed.get_local_bpi()
                         if bpi is not None:
-                            bpi_str = f"{bpi:.2f}(old)"
+                            bpi_str = f"{bpi:.2f}"
+                            is_legacy_bpi = True
                     if bpi is not None:
                         bpi_value = bpi
             except Exception as e:
@@ -876,6 +878,8 @@ class ScoreViewer(QMainWindow):
         else:
             item.setData(Qt.UserRole, -16)
         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        if is_legacy_bpi:
+            item.setBackground(QBrush(QColor(230, 230, 230)))
         self.table.setItem(row, 6, item)
 
         # ベストスコア (column 7)
