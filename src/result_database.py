@@ -1125,7 +1125,7 @@ class ResultDatabase:
                 timestamp = best.last_play_date
                 row = [
                     lv,
-                    title,
+                    title_str,
                     mode,
                     lamp,
                     score,
