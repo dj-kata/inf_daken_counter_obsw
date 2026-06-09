@@ -859,12 +859,12 @@ class ScoreViewer(QMainWindow):
                     bpim2 = getattr(score.best_score_result, 'bpim2', None)
                     if bpim2 is not None:
                         bpi = bpim2
-                        bpi_str = f"M2 {bpi:.2f}"
+                        bpi_str = f"{bpi:.2f}"
                     else:
                         detailed = DetailedResult(score.songinfo, score.best_score_result)
                         bpi = detailed.get_local_bpi()
                         if bpi is not None:
-                            bpi_str = f"{bpi:.2f}"
+                            bpi_str = f"{bpi:.2f}(old)"
                     if bpi is not None:
                         bpi_value = bpi
             except Exception as e:
