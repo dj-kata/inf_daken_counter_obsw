@@ -6,13 +6,14 @@ OBS連携による自動リザルト保存アプリケーション
 import sys
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
-from PySide6.QtCore import QTimer,Qt
+from PySide6.QtCore import QTimer,Qt,Signal
 import traceback
 import datetime
 from pathlib import Path
 import webbrowser, urllib
 import copy
 import os
+import threading
 
 try:
     import keyboard
@@ -26,7 +27,7 @@ from src.config import Config
 from src.classes import detect_mode, play_style, difficulty, clear_lamp
 from src.funcs import *
 from src.obs_websocket_manager import OBSWebSocketManager
-from src.songinfo import SongDatabase
+from src.songinfo import SongDatabase, download_latest_songinfo
 from src.screen_reader import ScreenReader
 from src.result import OneResult, DetailedResult
 from src.result_database import ResultDatabase
@@ -57,6 +58,7 @@ except Exception:
 
 class MainWindow(MainWindowUI):
     """メインウィンドウクラス - 制御ロジックを担当"""
+    songinfo_update_finished = Signal(bool, str)
     
     def __init__(self):
         # 設定とデータベースの初期化
@@ -67,6 +69,7 @@ class MainWindow(MainWindowUI):
         self.rival_manager = RivalManager(parent=self)
         self.result_database.rival_manager = self.rival_manager
         self.screen_reader = ScreenReader()
+        self.songinfo_update_finished.connect(self.on_songinfo_update_finished)
         
         # OBS接続マネージャーの初期化
         self.obs_manager = OBSWebSocketManager()
@@ -114,6 +117,9 @@ class MainWindow(MainWindowUI):
         # v2からの引き継ぎ確認（OBS設定チェックより先に実行）
         QTimer.singleShot(500, self.check_startup_migration)
 
+        # 曲情報DBを起動後にバックグラウンド更新し、完了次第反映
+        QTimer.singleShot(0, self.start_songinfo_update)
+
         # OBS設定チェックと警告表示（接続試行後に少し待ってからチェック）
         QTimer.singleShot(1000, self.check_obs_configuration)
         
@@ -139,6 +145,44 @@ class MainWindow(MainWindowUI):
             self.rival_manager.start_fetch(self.config.rivals)
 
         logger.info("アプリケーション起動完了")
+
+    def start_songinfo_update(self):
+        """songinfo.infdcの更新をバックグラウンドで開始"""
+        threading.Thread(target=self._download_songinfo_update, daemon=True).start()
+
+    def _download_songinfo_update(self):
+        try:
+            count = download_latest_songinfo()
+            self.songinfo_update_finished.emit(
+                True, f"曲情報DBを更新しました ({count}譜面)"
+            )
+        except Exception:
+            logger.error(f"曲情報DB更新エラー: {traceback.format_exc()}")
+            self.songinfo_update_finished.emit(False, "曲情報DBの更新に失敗しました")
+
+    def on_songinfo_update_finished(self, success: bool, message: str):
+        """DL済みの曲情報DBを即座に再読込し、表示データへ反映"""
+        if success:
+            self.song_database.load()
+            self.result_database.song_database.load()
+            self.screen_reader.songinfo.load()
+            self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
+            self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
+            if self.result_pre and self.result_pre.chart_id:
+                option = self.result_pre.option
+                self.result_database.broadcast_history_cursong_data(
+                    title=self.result_pre.title,
+                    style=self.result_pre.play_style,
+                    difficulty=self.result_pre.difficulty,
+                    battle=option.battle if option else None,
+                    playspeed=self.result_pre.playspeed,
+                )
+            if self.score_viewer:
+                self.score_viewer.refresh_data()
+            logger.info(message)
+        else:
+            logger.warning(message)
+        self.statusBar().showMessage(message, 3000)
 
     @property
     def start_time(self) -> int:

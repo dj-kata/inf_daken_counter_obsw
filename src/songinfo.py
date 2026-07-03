@@ -3,12 +3,15 @@ from .funcs import *
 from .logger import get_logger
 logger = get_logger(__name__)
 import bz2, pickle
+import os
+import urllib.request
 from typing import List, Dict
 import traceback
 from pathlib import Path
 
 # dbfile = Path('src')/'songinfo.infdc'
 dbfile = Path('.')/'songinfo.infdc'
+songinfo_download_url = "https://github.com/dj-kata/inf_daken_counter_obsw/raw/refs/heads/master/songinfo.infdc"
 
 class OneSongInfo:
     """1譜面分の曲情報を表すクラス"""
@@ -178,6 +181,36 @@ class SongDatabase:
         for v in self.songs.values():
             ret += v.__str__()+'\n'
         return ret
+
+
+def download_latest_songinfo(url: str = songinfo_download_url, dst: Path = dbfile) -> int:
+    """最新のsonginfo.infdcをダウンロードし、検証できた場合だけ差し替える"""
+    dst = Path(dst)
+    tmp = dst.with_name(f"{dst.name}.download")
+
+    try:
+        with urllib.request.urlopen(url, timeout=20) as response:
+            with open(tmp, "wb") as f:
+                while True:
+                    chunk = response.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+
+        with bz2.BZ2File(tmp, "rb", compresslevel=9) as f:
+            songs = pickle.load(f)
+
+        if not isinstance(songs, dict) or not songs:
+            raise ValueError("downloaded songinfo is empty or invalid")
+
+        os.replace(tmp, dst)
+        return len(songs)
+    finally:
+        try:
+            if tmp.exists():
+                tmp.unlink()
+        except Exception:
+            logger.error(traceback.format_exc())
 
 
 if __name__ == '__main__':
