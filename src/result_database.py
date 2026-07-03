@@ -320,6 +320,35 @@ class ResultDatabase:
         with bz2.BZ2File("playlog.infdc", "wb", compresslevel=9) as f:
             pickle.dump(self.results, f)
 
+    def _result_matches_chart(
+        self,
+        result: OneResult,
+        chart_id: str = None,
+        title: str = None,
+        style: play_style = None,
+        difficulty: difficulty = None,
+        battle: bool = False,
+    ) -> bool:
+        """chart_idの完全一致に加え、songinfo更新前後の表記差も同一譜面として扱う。"""
+        if chart_id and result.chart_id == chart_id:
+            return True
+        if title is None or style is None or difficulty is None:
+            return False
+        result_battle = result.option.battle if result.option else False
+        if bool(result_battle) != bool(battle):
+            return False
+        return calc_chart_lookup_key(
+            result.title, result.play_style, result.difficulty, battle=result_battle
+        ) == calc_chart_lookup_key(title, style, difficulty, battle=battle)
+
+    def _search_songinfo_for_result(self, result: OneResult) -> OneSongInfo:
+        """保存当時の曲名表記が古くても現在のsonginfoを返す。"""
+        return self.song_database.search(
+            title=result.title,
+            play_style=result.play_style,
+            difficulty=result.difficulty,
+        )
+
     def search(
         self,
         title: str = None,
@@ -343,11 +372,14 @@ class ResultDatabase:
         key = chart_id
         if title is not None and style is not None and difficulty is not None:
             key = calc_chart_id(title, style, difficulty, battle=battle)
-        songinfo = self.song_database.search(chart_id=key)
+        songinfo = self.song_database.search(
+            title=title, play_style=style, difficulty=difficulty
+        ) or self.song_database.search(chart_id=key)
 
         for r in self.results:
-            if r.chart_id == key:
-                detail = DetailedResult(songinfo, r)
+            if self._result_matches_chart(r, key, title, style, difficulty, battle):
+                detail_songinfo = songinfo or self._search_songinfo_for_result(r)
+                detail = DetailedResult(detail_songinfo, r)
                 ret.append(detail)
         return ret
 
@@ -383,7 +415,12 @@ class ResultDatabase:
         key = chart_id
         if title is not None and style is not None and difficulty is not None:
             key = calc_chart_id(title, style, difficulty, battle=battle)
-        results = self.search(chart_id=key)
+        if title is not None and style is not None and difficulty is not None:
+            results = self.search(
+                title=title, style=style, difficulty=difficulty, battle=battle
+            )
+        else:
+            results = self.search(chart_id=key)
         filtered = self._filter_results_for_best(
             results,
             playspeed=playspeed,
@@ -520,7 +557,7 @@ class ResultDatabase:
                 best.title = result.title
                 best.style = result.play_style
                 best.difficulty = result.difficulty
-                best.songinfo = self.song_database.search(chart_id=result.chart_id)
+                best.songinfo = self._search_songinfo_for_result(result)
                 best_results[key] = best
             else:
                 best = best_results[key]
@@ -862,8 +899,12 @@ class ResultDatabase:
     ) -> dict:
         """指定された曲のプレーログを辞書形式で返す。websocketでの送信用。"""
         chart_id = calc_chart_id(title, style, difficulty, battle=battle)
-        songinfo = self.song_database.search(chart_id=chart_id)
-        results = self.search(chart_id=chart_id)
+        songinfo = self.song_database.search(
+            title=title, play_style=style, difficulty=difficulty
+        ) or self.song_database.search(chart_id=chart_id)
+        results = self.search(
+            title=title, style=style, difficulty=difficulty, battle=battle
+        )
         best_score = 0
         best_score_opt = None
         detail = None

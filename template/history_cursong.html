@@ -514,7 +514,7 @@
         var notes = data.notes || 0;
         var playspeed = Number(data.playspeed) || 1.0;
         var diff_color = getDifficultyColor(difficulty);
-        var dp_unofficial_lv = data.dp_unofficial_lv;
+        var dp_unofficial_lv = data.dp_unofficial_lv || '';
         var sp_12hard = data.sp_12hard || '';
         var sp_12clear = data.sp_12clear || '';
         var sp_11hard = data.sp_11hard || '';

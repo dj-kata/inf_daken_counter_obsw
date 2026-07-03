@@ -54,6 +54,23 @@ def calc_chart_id(
     return hash
 
 
+def normalize_song_title_for_lookup(title: str) -> str:
+    """songinfo更新前後の軽微な表記差を吸収する検索用タイトル。"""
+    if not title:
+        return ""
+    return re.sub(r"[\s　☆★]", "", title)
+
+
+def calc_chart_lookup_key(
+    title: str, play_style: play_style, difficulty: difficulty, battle: bool = False
+) -> tuple:
+    """譜面同一判定用のキー。chart_idが変わる程度の表記差を吸収する。"""
+    if not title or not play_style or not difficulty:
+        return None
+    chart_style = type(play_style).sp if battle else play_style
+    return (normalize_song_title_for_lookup(title), chart_style, difficulty)
+
+
 def get_chart_name(play_style: play_style, difficulty: difficulty, battle: bool = None):
     """SPA,DPLのような難易度部分のみの文字列を出力"""
     if play_style and difficulty:

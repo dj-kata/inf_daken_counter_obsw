@@ -126,8 +126,18 @@ class SongDatabase:
     def __init__(self):
         self.songs:Dict[str, OneSongInfo] = {}
         """曲情報(OneSongInfo)を格納するリスト.keyはchart_idとする。"""
+        self.lookup_keys:Dict[tuple, str] = {}
+        """軽微な表記差を吸収する検索用キーからchart_idへの索引。"""
         self.load()
         self.save()
+
+    def _rebuild_lookup_keys(self):
+        """songinfo更新前のログ表記でも現在のsonginfoを引けるように索引を作る。"""
+        self.lookup_keys = {}
+        for chart_id, song in self.songs.items():
+            key = calc_chart_lookup_key(song.title, song.play_style, song.difficulty)
+            if key and key not in self.lookup_keys:
+                self.lookup_keys[key] = chart_id
 
     def search(self,
                title:str=None, play_style:play_style=None, difficulty:difficulty=None, chart_id:str=None,
@@ -139,6 +149,11 @@ class SongDatabase:
         elif title is not None and play_style is not None and difficulty is not None:
             key = calc_chart_id(title, play_style, difficulty)
         ret = self.songs.get(key, None)
+        if ret is None and title is not None and play_style is not None and difficulty is not None:
+            lookup_key = calc_chart_lookup_key(title, play_style, difficulty)
+            fallback_chart_id = self.lookup_keys.get(lookup_key)
+            if fallback_chart_id:
+                ret = self.songs.get(fallback_chart_id, None)
         # logger.debug(f"title:{title}, {play_style}, {difficulty}, key:{key}, ret:{ret}")
         return ret
     
@@ -161,12 +176,16 @@ class SongDatabase:
     def add(self, songinfo:OneSongInfo):
         '''曲情報を追加'''
         self.songs[songinfo.chart_id] = songinfo
+        lookup_key = calc_chart_lookup_key(songinfo.title, songinfo.play_style, songinfo.difficulty)
+        if lookup_key:
+            self.lookup_keys[lookup_key] = songinfo.chart_id
 
     def load(self):
         """pklファイルから曲情報を読み出す"""
         try:
             with bz2.BZ2File(dbfile, 'rb', compresslevel=9) as f:
                 self.songs = pickle.load(f)
+            self._rebuild_lookup_keys()
         except Exception:
             logger.error(traceback.format_exc())
 

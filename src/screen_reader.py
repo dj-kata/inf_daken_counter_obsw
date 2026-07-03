@@ -164,7 +164,7 @@ class ScreenReader:
             bp = recog.MusicSelect.get_misscount(np_value)
             style = convert_play_style(recog.MusicSelect.get_playmode(np_value))
             chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
-            songinfo = self.songinfo.search(chart_id)
+            songinfo = self.songinfo.search(chart_id=chart_id)
             timestamp = int(datetime.datetime.now().timestamp())
             option = PlayOption(None)
             option.valid = False
