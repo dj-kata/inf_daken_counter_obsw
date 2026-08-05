@@ -9,7 +9,7 @@ import numpy as np
 import imagehash
 import glob
 import gzip
-import urllib, json, requests
+import urllib.request, json, requests
 from bs4 import BeautifulSoup
 
 from src.screen_reader import ScreenReader
@@ -30,6 +30,14 @@ def get_pkl_path(filename):
     if not pkl_path.exists() and legacy_path.exists():
         shutil.copy2(legacy_path, pkl_path)
     return pkl_path
+
+
+def load_pickle_or_empty(pkl_path:Path, label:str):
+    if not pkl_path.exists():
+        print(f"{pkl_path} not found; skipping {label}.")
+        return {}
+    with open(pkl_path, 'rb') as f:
+        return pickle.load(f)
 
 
 def str_to_bool(value):
@@ -53,6 +61,11 @@ def parse_args():
         type=str_to_bool,
         help='download source data before generating local pkl caches',
     )
+    parser.add_argument(
+        '--legacy-bpi',
+        action='store_true',
+        help='embed cached legacy BPI Manager v1 definitions for local fallback',
+    )
     return parser.parse_args()
 
 
@@ -75,48 +88,49 @@ def get_ereter_dp(download=False):
     """
     pkl_path = get_pkl_path('ereter_dp.pkl')
     if download:
-        url = 'https://ereter.net/iidxsongs/analytics/perlevel/'
-        headers = {"User-Agent": "Mozilla/5.0"}
-        res = requests.get(url, headers=headers)
-        res.encoding = res.apparent_encoding
-        soup = BeautifulSoup(res.text, features='html.parser')
-        table = soup.find('table')
-        rows = table.find('tbody').find_all('tr')
-        ret = {}
-        for row in rows:
-            cols = row.find_all('td')
-            if len(cols) < 5:
-                continue
-            title_text = cols[1].get_text(strip=True)
-            # "Kailua (ANOTHER)" -> title="Kailua", diff="ANOTHER"
-            # 末尾の (DIFFICULTY) を分離
-            paren_idx = title_text.rfind('(')
-            if paren_idx == -1:
-                continue
-            title = title_text[:paren_idx].strip()
-            diff_str = title_text[paren_idx+1:].rstrip(')')
-            diff = convert_difficulty(diff_str)
-            if diff is None:
-                continue
-            ec_text = cols[2].get_text(strip=True).replace('★', '')
-            hc_text = cols[3].get_text(strip=True).replace('★', '')
-            exh_text = cols[4].get_text(strip=True).replace('★', '')
-            try:
-                ec = float(ec_text)
-                hc = float(hc_text)
-                exh = float(exh_text)
-            except ValueError:
-                continue
-            ret[(title, play_style.dp, diff)] = {'easy': ec, 'hard': hc, 'exh': exh}
-        with open(pkl_path, 'wb') as f:
-            pickle.dump(ret, f)
-        print(f"ereter DP: {len(ret)} charts scraped")
-    with open(pkl_path, 'rb') as f:
-        ret = pickle.load(f)
-    return ret
+        try:
+            url = 'https://ereter.net/iidxsongs/analytics/perlevel/'
+            headers = {"User-Agent": "Mozilla/5.0"}
+            res = requests.get(url, headers=headers)
+            res.encoding = res.apparent_encoding
+            soup = BeautifulSoup(res.text, features='html.parser')
+            table = soup.find('table')
+            rows = table.find('tbody').find_all('tr')
+            ret = {}
+            for row in rows:
+                cols = row.find_all('td')
+                if len(cols) < 5:
+                    continue
+                title_text = cols[1].get_text(strip=True)
+                # "Kailua (ANOTHER)" -> title="Kailua", diff="ANOTHER"
+                # 末尾の (DIFFICULTY) を分離
+                paren_idx = title_text.rfind('(')
+                if paren_idx == -1:
+                    continue
+                title = title_text[:paren_idx].strip()
+                diff_str = title_text[paren_idx+1:].rstrip(')')
+                diff = convert_difficulty(diff_str)
+                if diff is None:
+                    continue
+                ec_text = cols[2].get_text(strip=True).replace('★', '')
+                hc_text = cols[3].get_text(strip=True).replace('★', '')
+                exh_text = cols[4].get_text(strip=True).replace('★', '')
+                try:
+                    ec = float(ec_text)
+                    hc = float(hc_text)
+                    exh = float(exh_text)
+                except ValueError:
+                    continue
+                ret[(title, play_style.dp, diff)] = {'easy': ec, 'hard': hc, 'exh': exh}
+            with open(pkl_path, 'wb') as f:
+                pickle.dump(ret, f)
+            print(f"ereter DP: {len(ret)} charts scraped")
+        except Exception as e:
+            print(f"ereter DP download failed; using cached data if available: {e}")
+    return load_pickle_or_empty(pkl_path, 'ereter DP data')
 
 def get_bpim_data(download=False):
-    """BPI Managerの定義データを取得して整理する
+    """BPI Managerの旧ローカル定義データを読み込む
 
     Args:
         songs (dict): 曲リストの辞書。keyが曲名。
@@ -126,77 +140,74 @@ def get_bpim_data(download=False):
     """
     pkl_path = get_pkl_path('bpi.pkl')
     if download:
-        print("BPIM download is disabled; using cached out/bpi.pkl")
-    if not pkl_path.exists():
-        raise FileNotFoundError(f"{pkl_path} not found. Put cached bpi.pkl under out/ or project root.")
-    with open(pkl_path, 'rb') as f:
-        ret = pickle.load(f)
-
-    return ret
+        print("Legacy BPIM download is disabled; BPIM2 is calculated at runtime.")
+    return load_pickle_or_empty(pkl_path, 'legacy local BPI data')
 
 def get_sp12_unofficial(download=False):
     pkl_path = get_pkl_path('sp12.pkl')
     if download:
-        url = 'https://sp12.iidx.app/api/v1/sheets'
-        headers = { "User-Agent" :  "Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)" }
-        req = urllib.request.Request(url, None, headers)
-        tmp = urllib.request.urlopen(req).read()
+        try:
+            url = 'https://sp12.iidx.app/api/v1/sheets'
+            headers = { "User-Agent" :  "Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)" }
+            req = urllib.request.Request(url, None, headers)
+            tmp = urllib.request.urlopen(req).read()
 
-        tmp_sp12 = json.loads(tmp)['sheets']
-        unoff_conv = {
-            '地力S+':19,
-            '個人差S+':18,
-            '地力S':17,
-            '個人差S':16,
-            '地力A+':15,
-            '個人差A+':14,
-            '地力A':13,
-            '個人差A':12,
-            '地力B+':11,
-            '個人差B+':10,
-            '地力B':9,
-            '個人差B':8,
-            '地力C':7,
-            '個人差C':6,
-            '地力D':5,
-            '個人差D':4,
-            '地力E':3,
-            '個人差E':2,
-            '地力F':1,
-            '難易度未定':0,
-        }
-        sp12 = {} # (title, play_style.sp, difficulty)をキーとする
-        for s in tmp_sp12:
-            title = s['title']
-            diff = difficulty.another
-            if '[H]' == s['title'][-3:]:
-                title = s['title'][:-3]
-                diff = difficulty.hyper
-            if '[A]' == s['title'][-3:]:
-                title = s['title'][:-3]
+            tmp_sp12 = json.loads(tmp)['sheets']
+            unoff_conv = {
+                '地力S+':19,
+                '個人差S+':18,
+                '地力S':17,
+                '個人差S':16,
+                '地力A+':15,
+                '個人差A+':14,
+                '地力A':13,
+                '個人差A':12,
+                '地力B+':11,
+                '個人差B+':10,
+                '地力B':9,
+                '個人差B':8,
+                '地力C':7,
+                '個人差C':6,
+                '地力D':5,
+                '個人差D':4,
+                '地力E':3,
+                '個人差E':2,
+                '地力F':1,
+                '難易度未定':0,
+            }
+            sp12 = {} # (title, play_style.sp, difficulty)をキーとする
+            for s in tmp_sp12:
+                title = s['title']
                 diff = difficulty.another
-            if '†' == s['title'][-1]:
-                title = s['title'][:-1]
-                diff = difficulty.leggendaria
-            if 'n_clear_string' in s.keys():
-                clear = s['n_clear_string']
-            if 'clear_string' in s.keys():
-                clear = s['clear_string']
-            hard = s['hard_string']
-            print(s, title, clear, hard)
-            clear = unofficial_difficulty(unoff_conv[clear])
-            hard = unofficial_difficulty(unoff_conv[hard])
-            sp12[(title,play_style.sp,diff)] = {'title':title, 'difficulty':diff, 'clear':clear, 'hard':hard}
+                if '[H]' == s['title'][-3:]:
+                    title = s['title'][:-3]
+                    diff = difficulty.hyper
+                if '[A]' == s['title'][-3:]:
+                    title = s['title'][:-3]
+                    diff = difficulty.another
+                if '†' == s['title'][-1]:
+                    title = s['title'][:-1]
+                    diff = difficulty.leggendaria
+                if 'n_clear_string' in s.keys():
+                    clear = s['n_clear_string']
+                if 'clear_string' in s.keys():
+                    clear = s['clear_string']
+                hard = s['hard_string']
+                print(s, title, clear, hard)
+                clear = unofficial_difficulty(unoff_conv[clear])
+                hard = unofficial_difficulty(unoff_conv[hard])
+                sp12[(title,play_style.sp,diff)] = {'title':title, 'difficulty':diff, 'clear':clear, 'hard':hard}
 
-        with open(pkl_path, 'wb') as f:
-            pickle.dump(sp12, f)
-    with open(pkl_path, 'rb') as f:
-        sp12 = pickle.load(f)
-    return sp12
+            with open(pkl_path, 'wb') as f:
+                pickle.dump(sp12, f)
+        except Exception as e:
+            print(f"SP12 unofficial download failed; using cached data if available: {e}")
+    return load_pickle_or_empty(pkl_path, 'SP12 unofficial data')
 
 def set_sp12unofficial(titles:list, sdb:SongDatabase, conv_unof_infn:dict):
     '''12地力表のデータを登録'''
     ########           12地力表          ##########
+    not_found = []
     for s in titles: # inf-notebookの曲名
         title = s['music']
         tmp_d =s['difficulty']
@@ -216,7 +227,7 @@ def set_sp12unofficial(titles:list, sdb:SongDatabase, conv_unof_infn:dict):
                 sp12_hard = sp12[(title,play_style.sp,diff)]['hard'],
                 sp12_title = title,
             )
-            sdb.add(new)
+            add_preserving_existing(sdb, new)
         elif (title, play_style.sp, diff) in conv_unof_infn.keys():
             new_title = conv_unof_infn[(title, play_style.sp, diff)]
             new = OneSongInfo(
@@ -228,7 +239,7 @@ def set_sp12unofficial(titles:list, sdb:SongDatabase, conv_unof_infn:dict):
                 sp12_hard = sp12[(new_title,play_style.sp,diff)]['hard'],
                 sp12_title = title,
             )
-            sdb.add(new)
+            add_preserving_existing(sdb, new)
         else:
             new = OneSongInfo(
                 title = title,
@@ -236,7 +247,7 @@ def set_sp12unofficial(titles:list, sdb:SongDatabase, conv_unof_infn:dict):
                 difficulty=diff,
                 level=12,
             )
-            sdb.add(new)
+            add_preserving_existing(sdb, new)
             not_found.append((title, play_style.sp, diff))
     return not_found
 
@@ -273,22 +284,22 @@ def get_dp_unofficial(conv, download=False):
                 ret[title] = unofficial_lv
         return ret
     if download:
-        session = requests.session()
-        url = 'https://zasa.sakura.ne.jp/dp/rank.php'
-        songdb = {}
-        # 古い順に実行すればOK。同じkeyが即上書きとすれば最新の難易度だけ残る。
-        for ver in list(range(1,31)):
-            print(f"ver = {ver}")
-            data={'env':f'a{ver:02d}0', 'submit':'表示', 'cat':'0', 'mode':'m1', 'offi':'0'}
-            r = session.post(url, data=data)
-            dic = parse_lv_table(r.text)
-            songdb.update(dic)
-        with open(pkl_path, 'wb') as f:
-            pickle.dump(songdb, f)
-    else:
-        with open(pkl_path, 'rb') as f:
-            songdb = pickle.load(f)
-    return songdb
+        try:
+            session = requests.session()
+            url = 'https://zasa.sakura.ne.jp/dp/rank.php'
+            songdb = {}
+            # 古い順に実行すればOK。同じkeyが即上書きとすれば最新の難易度だけ残る。
+            for ver in list(range(1,31)):
+                print(f"ver = {ver}")
+                data={'env':f'a{ver:02d}0', 'submit':'表示', 'cat':'0', 'mode':'m1', 'offi':'0'}
+                r = session.post(url, data=data)
+                dic = parse_lv_table(r.text)
+                songdb.update(dic)
+            with open(pkl_path, 'wb') as f:
+                pickle.dump(songdb, f)
+        except Exception as e:
+            print(f"DP unofficial download failed; using cached data if available: {e}")
+    return load_pickle_or_empty(pkl_path, 'DP unofficial data')
 
 def set_lvall(style:play_style, lv:int, titles:dict, sdb:SongDatabase):
     '''指定レベルの曲を全て追加。特にチェックをしない'''
@@ -313,11 +324,58 @@ def set_lvall(style:play_style, lv:int, titles:dict, sdb:SongDatabase):
             difficulty=diff,
             level=lv,
         )
-        sdb.add(new)
+        add_preserving_existing(sdb, new)
+
+def preserve_songinfo(existing:OneSongInfo, new:OneSongInfo):
+    """既存DBにしかない手入力/旧キャッシュ由来の補助情報を引き継ぐ。"""
+    if existing is None:
+        return new
+
+    preserve_attrs = [
+        'notes',
+        'version',
+        'music_pack',
+        'min_bpm',
+        'max_bpm',
+        'rader_notes',
+        'rader_peak',
+        'rader_scratch',
+        'rader_soflan',
+        'rader_charge',
+        'rader_chord',
+        'sp11_hard',
+        'sp11_clear',
+        'cpi_easy',
+        'cpi_clear',
+        'cpi_hard',
+        'cpi_exh',
+        'cpi_fc',
+        'katate_12',
+        'katate_11',
+        'bpim2_title',
+        'dp_unofficial',
+        'dp_ereter_easy',
+        'dp_ereter_hard',
+        'dp_ereter_exh',
+    ]
+    for attr in preserve_attrs:
+        if getattr(new, attr, None) is None:
+            setattr(new, attr, getattr(existing, attr, None))
+    return new
+
+def add_preserving_existing(sdb:SongDatabase, new:OneSongInfo):
+    existing = sdb.search(
+        title=new.title,
+        play_style=new.play_style,
+        difficulty=new.difficulty,
+    )
+    sdb.add(preserve_songinfo(existing, new))
 
 def set_bpim(bpi:dict, sdb:SongDatabase, conv:dict=None):
     '''SongDatabaseにBPI Manager用データを埋め込む。見つからなかった曲一覧を返す'''
     not_found = []
+    if not bpi:
+        return not_found
     for k in bpi.keys():
         if sdb.search(title=k[0], play_style=k[1], difficulty=k[2]):
             chart_id = calc_chart_id(k[0], k[1], k[2])
@@ -341,7 +399,7 @@ args = parse_args() if __name__ == '__main__' else argparse.Namespace(download=F
 download = args.download
 
 sp12 = get_sp12_unofficial(download=download)
-bpi = get_bpim_data(download=download)
+bpi = get_bpim_data(download=download) if getattr(args, 'legacy_bpi', False) else {}
 
 diff_str = ['BEGINNER', 'NORMAL', 'HYPER', 'ANOTHER', 'LEGGENDARIA']
 for style in play_style:
