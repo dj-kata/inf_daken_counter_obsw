@@ -643,10 +643,12 @@
         document.querySelector('.bp-info').innerHTML = bp_html;
         
         // BPI情報の表示判定
-        var hasLegacyBpiData = bpi_ave && bpi_ave !== '' && bpi_ave !== '0' &&
+        var isBpim2 = best_bpi_label === 'BPIM2';
+        var hasLegacyBpiData = !isBpim2 &&
+                               bpi_ave && bpi_ave !== '' && bpi_ave !== '0' &&
                                bpi_top && bpi_top !== '' && bpi_top !== '0';
-        var hasBpim2Data = bpi_near_averages.length > 0;
-        var hasBpiData = best_bpi && best_bpi !== '' && (hasLegacyBpiData || hasBpim2Data);
+        var hasBpim2Data = isBpim2 && bpi_near_averages.length > 0;
+        var hasBpiData = best_bpi && best_bpi !== '' && (isBpim2 || hasLegacyBpiData);
         
         var bpiCard = document.querySelector('.bpi-card');
         if (hasBpiData) {
