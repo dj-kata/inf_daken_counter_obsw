@@ -4,10 +4,14 @@
 import argparse
 import bz2
 import csv
+import io
 import pickle
 import re
+import shutil
+import subprocess
 import sys
 import unicodedata
+import urllib.error
 import urllib.request
 from collections import defaultdict
 from pathlib import Path
@@ -24,6 +28,10 @@ SHEET_GID = "1439819974"
 CSV_URL = (
     f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export"
     f"?format=csv&gid={SHEET_GID}"
+)
+ALT_CSV_URL = (
+    f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export"
+    f"?format=csv&id={SPREADSHEET_ID}&gid={SHEET_GID}&single=true"
 )
 
 CIRCLED_DIGITS = {
@@ -77,13 +85,53 @@ def read_csv_rows(args):
         with args.input_csv.open(encoding="utf-8-sig", newline="") as f:
             return list(csv.reader(f))
 
+    urls = [args.url]
+    if args.url == CSV_URL:
+        urls.append(ALT_CSV_URL)
+
+    errors = []
+    for url in urls:
+        try:
+            return csv_rows_from_text(download_text_with_urllib(url))
+        except Exception as e:
+            errors.append(f"{url}: {type(e).__name__}: {e}")
+
+    curl_path = shutil.which("curl")
+    if curl_path:
+        for url in urls:
+            try:
+                return csv_rows_from_text(download_text_with_curl(curl_path, url))
+            except Exception as e:
+                errors.append(f"curl {url}: {type(e).__name__}: {e}")
+
+    raise RuntimeError("CSV download failed:\n  " + "\n  ".join(errors))
+
+
+def csv_rows_from_text(text):
+    if text.lstrip().startswith("<"):
+        raise ValueError("downloaded content looks like HTML, not CSV")
+    rows = list(csv.reader(io.StringIO(text)))
+    if not rows or not any("片手難易度表" in cell for row in rows[:5] for cell in row):
+        raise ValueError("downloaded CSV does not look like the katate difficulty sheet")
+    return rows
+
+
+def download_text_with_urllib(url):
     req = urllib.request.Request(
-        args.url,
+        url,
         headers={"User-Agent": "Mozilla/5.0"},
     )
     with urllib.request.urlopen(req, timeout=30) as response:
-        text = response.read().decode("utf-8-sig")
-    return list(csv.reader(text.splitlines()))
+        return response.read().decode("utf-8-sig")
+
+
+def download_text_with_curl(curl_path, url):
+    result = subprocess.run(
+        [curl_path, "-L", "--fail", "--silent", "--show-error", url],
+        check=True,
+        capture_output=True,
+    )
+    return result.stdout.decode("utf-8-sig")
 
 
 def parse_chart_title(text):
@@ -208,7 +256,10 @@ def update_song_database(sdb, katate, clear_missing=False):
     updated = []
     matched_chart_ids = set()
 
-    for (title, _style, diff), values in sorted(katate.items()):
+    for (title, _style, diff), values in sorted(
+        katate.items(),
+        key=lambda item: (item[0][0], item[0][2].value),
+    ):
         chart_id = find_chart_id(sdb, fuzzy_index, title, diff)
         if chart_id is None:
             unmatched.append((title, diff, values))
