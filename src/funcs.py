@@ -181,6 +181,7 @@ def convert_difficulty(_difficulty) -> difficulty | None:
 
 
 _LAMP_MAP = {
+    "NO PLAY": clear_lamp.noplay,
     "NOPLAY": clear_lamp.noplay,
     "FAILED": clear_lamp.failed,
     "A-CLEAR": clear_lamp.assist,

@@ -133,21 +133,25 @@ class StorageAccessor():
         if result.informations is None:
             informations_trim = True
         else:
-            if result.informations.play_mode is None:
+            playmode = getattr(result.informations, 'playmode', getattr(result.informations, 'play_mode', None))
+            songname = getattr(result.informations, 'songname', getattr(result.informations, 'music', None))
+            if playmode is None:
                 informations_trim = True
             if result.informations.difficulty is None:
                 informations_trim = True
             if result.informations.level is None:
                 informations_trim = True
-            if result.informations.music is None:
+            if songname is None:
                 informations_trim = True
 
         if result.details is None:
             details_trim = True
         else:
-            if result.details.clear_type is None or result.details.clear_type.current is None:
+            cleartype = getattr(result.details, 'cleartype', getattr(result.details, 'clear_type', None))
+            djlevel = getattr(result.details, 'djlevel', getattr(result.details, 'dj_level', None))
+            if cleartype is None or cleartype.current is None:
                 details_trim = True
-            if result.details.dj_level is None or result.details.dj_level.current is None:
+            if djlevel is None or djlevel.current is None:
                 details_trim = True
             if result.details.score is None or result.details.score.current is None:
                 details_trim = True
@@ -160,8 +164,8 @@ class StorageAccessor():
             trim = image.crop(define.informations_trimarea)
             Thread(target=self._upload_image_to_bucket, args=('informations', object_name, trim,)).start()
         if details_trim:
-            play_side = result.play_side
-            trim = image.crop(define.details_trimarea[play_side])
+            playside = getattr(result, 'playside', getattr(result, 'play_side', None))
+            trim = image.crop(define.details_trimarea[playside])
             image_draw = ImageDraw.Draw(trim)
             image_draw.rectangle(result_rivalname_fillbox, fill=0)
             Thread(target=self._upload_image_to_bucket, args=('details', object_name, trim,)).start()

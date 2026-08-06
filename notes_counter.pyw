@@ -126,12 +126,14 @@ class MainWindow(MainWindowUI):
     """メインウィンドウクラス - 制御ロジックを担当"""
     songinfo_update_finished = Signal(bool, str)
     manual_music_select_import_requested = Signal()
+    bpim2_fetch_finished = Signal(object, object)
     
     def __init__(self):
         # 設定とデータベースの初期化
         self.config = Config()
         super().__init__(self.config)
         self.manual_music_select_import_requested.connect(self.manual_music_select_import)
+        self.bpim2_fetch_finished.connect(self.on_bpim2_fetch_finished)
         self.song_database = SongDatabase()
         self.result_database = ResultDatabase(config=self.config)
         self.rival_manager = RivalManager(parent=self)
@@ -675,18 +677,18 @@ class MainWindow(MainWindowUI):
         result.timestamp = 0 # 更新日は不明という扱いにする
         # xml更新
         self.result_database.broadcast_history_cursong_data(title=result.title, style=result.play_style, difficulty=result.difficulty)
+        if not getattr(detailed_result, 'music_select_difficulty_confirmed', False):
+            return False
         if not self.config.enable_music_select_score_import:
             return False
         # 自己べ登録
         if self.result_database.add(result):
-            bpi_detail = detailed_result.bpi_detail
-            if bpi_detail.source == 'bpim2' and bpi_detail.value is not None:
-                result.bpim2 = bpi_detail.value
             self.statusBar().showMessage(f"選曲画面から自己ベストを登録しました。 -> {result}", 10000)
             self.result_database.save()
             self.result_database.broadcast_history_cursong_data(title=result.title, style=result.play_style, difficulty=result.difficulty)
             if self.score_viewer:
                 self.score_viewer.refresh_data()
+            self.fetch_bpim2_async(detailed_result)
 
     def _parse_manual_chart(self, chart_text: str, fallback_style: play_style = None):
         """手動登録ダイアログの譜面表記を play_style / difficulty に変換する"""
@@ -714,15 +716,45 @@ class MainWindow(MainWindowUI):
         result = detailed_result.result
         result.timestamp = 0 # 更新日は不明という扱いにする
         if self.result_database.add(result):
-            bpi_detail = detailed_result.bpi_detail
-            if bpi_detail.source == 'bpim2' and bpi_detail.value is not None:
-                result.bpim2 = bpi_detail.value
             self.result_database.save()
             self.result_database.broadcast_history_cursong_data(title=result.title, style=result.play_style, difficulty=result.difficulty)
             if self.score_viewer:
                 self.score_viewer.refresh_data()
+            self.fetch_bpim2_async(detailed_result)
             return True
         return False
+
+    def fetch_bpim2_async(self, detailed_result: DetailedResult):
+        """BPIM2取得をUIスレッドから逃がす。登録自体は待たせない。"""
+        if not detailed_result or not detailed_result.result:
+            return
+        result = detailed_result.result
+        if getattr(result, 'bpim2', None) is not None:
+            return
+
+        def worker():
+            try:
+                bpi_detail = detailed_result._get_bpim2_bpi_detail()
+                if bpi_detail and bpi_detail.source == 'bpim2' and bpi_detail.value is not None:
+                    self.bpim2_fetch_finished.emit(result, bpi_detail)
+            except Exception:
+                logger.debug(f"BPIM2 async fetch failed: {traceback.format_exc()}")
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def on_bpim2_fetch_finished(self, result: OneResult, bpi_detail):
+        """バックグラウンド取得したBPIM2を保存・再配信する。"""
+        if not result or not bpi_detail or bpi_detail.value is None:
+            return
+        result.bpim2 = bpi_detail.value
+        self.result_database.save()
+        self.result_database.broadcast_history_cursong_data(
+            title=result.title,
+            style=result.play_style,
+            difficulty=result.difficulty,
+        )
+        if self.score_viewer:
+            self.score_viewer.refresh_data()
 
     def manual_music_select_import(self):
         """選曲画面から認識したスコアを確認して手動登録する"""
@@ -798,15 +830,13 @@ class MainWindow(MainWindowUI):
                             # ゲージを検出できていた場合、そのゲージにする
                             result.lamp = self.current_option.option_gauge.convert()
                     # リザルトを保存
-                    bpi_detail = detailed_result.bpi_detail
-                    if bpi_detail.source == 'bpim2' and bpi_detail.value is not None:
-                        result.bpim2 = bpi_detail.value
                     if self.result_database.add(result):
                         self.result_database.save()
                         if self.score_viewer:
                             self.score_viewer.refresh_data()
                         self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
                         self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
+                        self.fetch_bpim2_async(detailed_result)
 
                         # 画像の保存
                         if self.config.autosave_image_mode is not config_autosave_image.invalid:
@@ -1004,10 +1034,15 @@ class MainWindow(MainWindowUI):
         )
 
 _RESOURCES = [
+    (define.screenrecognition_resourcename, resource.load_resource_screenrecognition),
     (define.informations_resourcename, resource.load_resource_informations),
     (define.details_resourcename,      resource.load_resource_details),
+    (define.resultothers_resourcename, resource.load_resource_resultothers),
     (define.musictable_resourcename,   resource.load_resource_musictable),
     (define.musicselect_resourcename,  resource.load_resource_musicselect),
+    (define.notesradar_resourcename,   resource.load_resource_notesradar),
+    (define.unofficialdifficulty_resourcename, resource.load_resource_unofficialdifficulty),
+    (define.deeper_resourcename,       resource.load_resource_deeper),
 ]
 
 def check_resource():

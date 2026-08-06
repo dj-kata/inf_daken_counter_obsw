@@ -14,8 +14,7 @@ from .config import Config
 from src.logger import get_logger
 logger = get_logger(__name__)
 
-sys.path.append('infnotebook')
-from screenshot import Screenshot,open_screenimage
+from src.infnotebook_compat import Screenshot, open_screenimage
 
 try:
     from obsws_python import ReqClient

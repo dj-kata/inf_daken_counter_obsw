@@ -409,9 +409,7 @@ class OBSWebSocketManager(QObject):
     def screenshot(self):
         """OBSソースのキャプチャをself.screenに格納"""
         import os
-        import sys
-        sys.path.append('infnotebook')
-        from screenshot import open_screenimage
+        from src.infnotebook_compat import open_screenimage
         
         os.makedirs('out', exist_ok=True)
         dst = os.path.abspath('out/capture.png')

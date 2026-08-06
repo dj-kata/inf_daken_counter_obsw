@@ -7,8 +7,7 @@ import copy
 
 import cv2
 
-sys.path.append('infnotebook')
-from screenshot import Screenshot,open_screenimage
+from src.infnotebook_compat import Screenshot, open_screenimage
 from recog import Recognition as recog
 from resources import resource
 from define import Define as define
@@ -18,6 +17,13 @@ from src.result import *
 from src.define import *
 from src.logger import get_logger
 logger = get_logger(__name__)
+
+def _get_attr(obj, *names):
+    """infnotebookのバージョン差分を吸収して属性を取得する"""
+    for name in names:
+        if hasattr(obj, name):
+            return getattr(obj, name)
+    return None
 
 class ScreenReader:
     """ゲーム画面を読むためのクラス。ループの先頭でupdate_screenを叩いてから使うこと。"""
@@ -107,29 +113,47 @@ class ScreenReader:
         try:
             result = recog.get_result(self.screen)
             if result:
-                judge = self.read_judge_from_result(convert_side(result.play_side))
-                title = result.informations.music
-                style = convert_play_style(result.informations.play_mode)
-                level = result.informations.level
-                notes = result.informations.notes
-                option = PlayOption(result.details.options)
-                playspeed = result.informations.playspeed
-                score = result.details.score.current
-                pre_score = result.details.score.best
-                bp = result.details.miss_count.current
-                pre_bp = result.details.miss_count.best
-                diff = convert_difficulty(result.informations.difficulty)
-                lamp = convert_lamp(result.details.clear_type.current)
-                pre_lamp = convert_lamp(result.details.clear_type.best)
+                result_side = _get_attr(result, 'playside', 'play_side')
+                informations = result.informations
+                details = result.details
+                if result_side is None or informations is None or details is None:
+                    logger.warning(
+                        f"result screen incomplete: side={result_side}, "
+                        f"informations={informations is not None}, details={details is not None}"
+                    )
+                    return None
+                judge = self.read_judge_from_result(convert_side(result_side))
+                title = _get_attr(informations, 'songname', 'music')
+                style = convert_play_style(_get_attr(informations, 'playmode', 'play_mode'))
+                level = informations.level
+                notes = informations.notes
+                option = PlayOption(details.options)
+                playspeed = informations.playspeed
+                misscount = _get_attr(details, 'misscount', 'miss_count')
+                if details.score is None or misscount is None:
+                    logger.warning("result screen incomplete: score or misscount is None")
+                    return None
+                score = details.score.current
+                pre_score = details.score.best
+                bp = misscount.current
+                pre_bp = misscount.best
+                diff = convert_difficulty(informations.difficulty)
+                cleartype = _get_attr(details, 'cleartype', 'clear_type')
+                if cleartype is None:
+                    logger.warning("result screen incomplete: cleartype is None")
+                    return None
+                lamp = convert_lamp(cleartype.current)
+                pre_lamp = convert_lamp(cleartype.best)
                 if lamp is None: # 認識失敗とみなす
                     logger.error(f"lamp is None!")
                     return None
                 chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff, battle=option.battle)
                 songinfo = self.songinfo.search(chart_id=chart_id)
                 timestamp = int(datetime.datetime.now().timestamp())
-                # logger.debug(f"side:{result.play_side}, judge:{judge}")
+                # logger.debug(f"side:{result_side}, judge:{judge}")
 
-                if not result.dead: # 完走した場合はCBを正確に計算
+                is_dead = _get_attr(result, 'is_dead', 'dead')
+                if not is_dead: # 完走した場合はCBを正確に計算
                     if option.battle:
                         judge.cb = judge.bd + judge.pr
                     else:
@@ -145,9 +169,9 @@ class ScreenReader:
                         judge.pr += (notes - judge.notes)
 
                 out_result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=playspeed, option=option,
-                                   judge=judge,score=score,bp=bp, notes=notes, dead=result.dead, detect_mode=detect_mode.result,
+                                   judge=judge,score=score,bp=bp, notes=notes, dead=is_dead, detect_mode=detect_mode.result,
                                    pre_score=pre_score,pre_lamp=pre_lamp,pre_bp=pre_bp)
-                ret = DetailedResult(songinfo=songinfo, result=out_result, result_side=convert_side(result.play_side), level=level)
+                ret = DetailedResult(songinfo=songinfo, result=out_result, result_side=convert_side(result_side), level=level)
         except Exception:
             logger.error(traceback.format_exc())
         return ret
@@ -156,20 +180,27 @@ class ScreenReader:
         """pngファイルを入力してDetailedResultを返す"""
         ret = None
         np_value = self.screen.np_value[define.musicselect_trimarea_np]
-        title = recog.MusicSelect.get_musicname(np_value)
+        title_reader = getattr(recog.MusicSelect, 'get_songname', None) or getattr(recog.MusicSelect, 'get_musicname', None)
+        if title_reader is None:
+            logger.error("music select title reader is not available")
+            return None
+        title = title_reader(np_value)
         if title:
             recognized_difficulty = recog.MusicSelect.get_difficulty(np_value)
             try:
                 confirm_difficulty = recog.MusicSelect.confirm_difficulty(np_value)
             except Exception:
                 logger.error(traceback.format_exc())
-                return None
-            if confirm_difficulty is None or recognized_difficulty != confirm_difficulty:
+                confirm_difficulty = None
+            is_difficulty_confirmed = (
+                confirm_difficulty is not None
+                and recognized_difficulty == confirm_difficulty
+            )
+            if not is_difficulty_confirmed:
                 logger.warning(
                     f"music select difficulty mismatch: "
                     f"recognized={recognized_difficulty}, confirmed={confirm_difficulty}, title={title}"
                 )
-                return None
 
             diff = convert_difficulty(recognized_difficulty)
             lamp = convert_lamp(recog.MusicSelect.get_cleartype(np_value))
@@ -178,10 +209,9 @@ class ScreenReader:
             style = convert_play_style(recog.MusicSelect.get_playmode(np_value))
             if diff is None or lamp is None or score is None or style is None:
                 logger.warning(
-                    f"music select result rejected: "
+                    f"music select result incomplete: "
                     f"title={title}, style={style}, difficulty={diff}, lamp={lamp}, score={score}, bp={bp}"
                 )
-                return None
             chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
             songinfo = self.songinfo.search(chart_id=chart_id)
             timestamp = int(datetime.datetime.now().timestamp())
@@ -190,6 +220,7 @@ class ScreenReader:
             result = OneResult(title=title, play_style=style, difficulty=diff, lamp=lamp, timestamp=timestamp, playspeed=None, option=option,
                                judge=None,score=score,bp=bp,detect_mode=detect_mode.select)
             ret = DetailedResult(songinfo=songinfo, result=result)
+            ret.music_select_difficulty_confirmed = is_difficulty_confirmed
 
             # 最後に認識したものを記憶
             self.last_select_title = title
