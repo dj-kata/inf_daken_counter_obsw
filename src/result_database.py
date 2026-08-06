@@ -21,6 +21,16 @@ from typing import Dict, List
 import copy
 
 
+def _to_int_or_none(value):
+    """文字列/数値のどちらで来てもintへ寄せる。変換不能ならNone。"""
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _ws_broadcast(ws_method_name: str):
     """WebSocket配信用デコレータ。ws_serverがNoneなら何もしない。"""
 
@@ -569,14 +579,16 @@ class ResultDatabase:
             ):
                 best.best_score_result = copy.deepcopy(result)
             elif (
-                result.detect_mode == detect_mode.result
-                and result.score
+                result.score
                 and best.best_score_result
                 and result.score == best.best_score_result.score
             ):
-                best.best_score_result.option = result.option
+                if result.detect_mode == detect_mode.result:
+                    best.best_score_result.option = result.option
                 if getattr(result, "bpim2", None) is not None:
                     best.best_score_result.bpim2 = result.bpim2
+                if getattr(result, "bpim2_arena_averages", None):
+                    best.best_score_result.bpim2_arena_averages = result.bpim2_arena_averages
 
             # 最小BP更新
             current_bp = (
@@ -934,12 +946,21 @@ class ResultDatabase:
                 and r.result.timestamp != 0
             ):
                 target.append(r)
-            if r.result.notes and not notes:
-                notes = r.result.notes
-            if r.result.score and r.result.score > best_score:
-                best_score = r.result.score
+            result_notes = _to_int_or_none(r.result.notes)
+            if result_notes and not notes:
+                notes = result_notes
+            result_score = _to_int_or_none(r.result.score)
+            if result_score and result_score > best_score:
+                best_score = result_score
                 best_score_opt = r.result.option
                 detail = r
+            elif result_score and result_score == best_score and detail:
+                current_has_averages = bool(getattr(detail.result, "bpim2_arena_averages", None))
+                candidate_has_averages = bool(getattr(r.result, "bpim2_arena_averages", None))
+                if candidate_has_averages and not current_has_averages:
+                    detail = r
+                elif getattr(r.result, "bpim2", None) is not None and getattr(detail.result, "bpim2", None) is None:
+                    detail = r
             if r.result.lamp and r.result.lamp.value > best_lamp:
                 best_lamp = r.result.lamp.value
                 best_lamp_opt = r.result.option
@@ -964,7 +985,7 @@ class ResultDatabase:
                     best_bp_opt = r.result.option
 
         if not notes and songinfo and getattr(songinfo, "notes", None):
-            notes = songinfo.notes
+            notes = _to_int_or_none(songinfo.notes)
 
         if len(results) == 0:
             return {}
@@ -1008,6 +1029,12 @@ class ResultDatabase:
             if bpim2 is not None:
                 data["best_bpi"] = f"{bpim2:.2f}"
                 data["best_bpi_label"] = "BPIM2"
+                arena_averages = getattr(detail.result, "bpim2_arena_averages", None)
+                if arena_averages:
+                    data["bpi_near_averages"] = [
+                        {"rank": avg.rank, "score": avg.avg_ex_score}
+                        for avg in arena_averages
+                    ]
             elif detail.bpi is not None:
                 data["best_bpi"] = f"{detail.bpi:.2f}"
                 data["best_bpi_label"] = "BPI"

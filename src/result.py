@@ -16,9 +16,13 @@ logger = get_logger(__name__)
 
 sys.path.append('infnotebook')
 from result import ResultOptions
+try:
+    from bpim2 import bpim2_getchartbpi, bpim2_savecache
+except Exception:
+    bpim2_getchartbpi = None
+    bpim2_savecache = None
 
 BPIM2_API_URL = 'https://bpi2.poyashi.me/api/v1/bpi/calc'
-BPIM2_VERSION = 33
 BPIM2_TIMEOUT_SEC = 2.0
 BPIM2_NEGATIVE_CACHE_TTL_SEC = 600.0
 _BPIM2_POSITIVE_CACHE = {}
@@ -63,6 +67,9 @@ def _nearest_arena_averages(arena_averages:dict, score:int) -> list[BpiArenaAver
         avg_ex_score = data.get('avgExScore') if isinstance(data, dict) else None
         if avg_ex_score is None:
             continue
+        avg_ex_score = _to_int_or_none(avg_ex_score)
+        if not avg_ex_score:
+            continue
         averages.append(BpiArenaAverage(rank=rank, avg_ex_score=math.floor(avg_ex_score)))
     rank_order = {'A1': 1, 'A2': 2, 'A3': 3, 'A4': 4, 'A5': 5}
     averages.sort(key=lambda avg: rank_order.get(avg.rank, 99))
@@ -82,43 +89,75 @@ def _nearest_arena_averages(arena_averages:dict, score:int) -> list[BpiArenaAver
     return averages[:2]
 
 
-def _fetch_bpim2_bpi(title:str, diff_name:str, score:int, version:int) -> Optional[BpiDetail]:
+def _extract_arena_averages(data: dict, score:int) -> list[BpiArenaAverage]:
+    """BPIM2 APIレスポンスから近いランク平均を取り出す。"""
+    metadata = data.get('metadata') or {}
+    candidates = [
+        metadata.get('arenaAverages'),
+        metadata.get('rankAverages'),
+        data.get('arenaAverages'),
+        data.get('rankAverages'),
+    ]
+    for candidate in candidates:
+        if isinstance(candidate, dict):
+            averages = _nearest_arena_averages(candidate, score)
+            if averages:
+                return averages
+    return []
+
+
+def _fetch_bpim2_bpi(title:str, diff_name:str, score:int) -> Optional[BpiDetail]:
     now = datetime.datetime.now().timestamp()
-    cache_key = (title, diff_name, score, version)
+    cache_key = (title, diff_name, score)
     cached_result = _BPIM2_POSITIVE_CACHE.get(cache_key)
     if cached_result is not None:
         return cached_result
 
     cached_until = _BPIM2_NEGATIVE_CACHE.get(cache_key)
-    if cached_until and cached_until > now:
-        return None
-    if cached_until:
+    can_try_direct_api = not (cached_until and cached_until > now)
+    if cached_until and can_try_direct_api:
         _BPIM2_NEGATIVE_CACHE.pop(cache_key, None)
 
-    params = urlencode({
-        'title': title,
-        'difficulty': diff_name,
-        'exScore': score,
-        'version': version,
-        'includeRank': 'false',
-    })
-    req = Request(f'{BPIM2_API_URL}?{params}', headers={'User-Agent': 'inf-daken-counter-obsw/0.1'})
-    try:
-        with urlopen(req, timeout=BPIM2_TIMEOUT_SEC) as res:
-            body = res.read().decode('utf-8')
-        data = json.loads(body)
-    except Exception:
-        _BPIM2_NEGATIVE_CACHE[cache_key] = now + BPIM2_NEGATIVE_CACHE_TTL_SEC
-        raise
-    bpi = data.get('bpi')
-    if bpi is None:
-        _BPIM2_NEGATIVE_CACHE[cache_key] = now + BPIM2_NEGATIVE_CACHE_TTL_SEC
+    if can_try_direct_api:
+        params = urlencode({
+            'title': title,
+            'difficulty': diff_name,
+            'exScore': score,
+        })
+        req = Request(f'{BPIM2_API_URL}?{params}', headers={'User-Agent': 'inf-daken-counter-obsw/0.1'})
+        try:
+            with urlopen(req, timeout=BPIM2_TIMEOUT_SEC) as res:
+                body = res.read().decode('utf-8')
+            data = json.loads(body)
+        except Exception:
+            _BPIM2_NEGATIVE_CACHE[cache_key] = now + BPIM2_NEGATIVE_CACHE_TTL_SEC
+        else:
+            bpi = data.get('bpi')
+            if bpi is not None:
+                arena_averages = _extract_arena_averages(data, score)
+                result = BpiDetail(value=float(bpi), source='bpim2', arena_averages=arena_averages)
+                _BPIM2_POSITIVE_CACHE[cache_key] = result
+                return result
+            _BPIM2_NEGATIVE_CACHE[cache_key] = now + BPIM2_NEGATIVE_CACHE_TTL_SEC
+
+    if bpim2_getchartbpi is not None:
+        bpi = bpim2_getchartbpi(title, diff_name, score)
+        if bpi is not None:
+            result = BpiDetail(value=float(bpi), source='bpim2')
+            _BPIM2_POSITIVE_CACHE[cache_key] = result
+            return result
+
+    return None
+
+
+def _to_int_or_none(value) -> Optional[int]:
+    """文字列/数値のどちらで来てもintへ寄せる。変換不能ならNone。"""
+    if value is None:
         return None
-    metadata = data.get('metadata') or {}
-    arena_averages = _nearest_arena_averages(metadata.get('arenaAverages') or {}, score)
-    result = BpiDetail(value=float(bpi), source='bpim2', arena_averages=arena_averages)
-    _BPIM2_POSITIVE_CACHE[cache_key] = result
-    return result
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 class PlayOption():
@@ -505,8 +544,9 @@ class DetailedResult():
                 return None
             if self.result.play_style != play_style.sp:
                 return None
-            songinfo_level = getattr(self.songinfo, 'level', None)
-            level = songinfo_level or self.level
+            songinfo_level = _to_int_or_none(getattr(self.songinfo, 'level', None))
+            detail_level = _to_int_or_none(self.level)
+            level = songinfo_level or detail_level
             if level is None or level < 11:
                 return None
             diff_name = _difficulty_to_bpim2_name(self.result.difficulty)
@@ -515,8 +555,9 @@ class DetailedResult():
             score = int(self.result.score)
             if score < 0:
                 return None
-            songinfo_notes = getattr(self.songinfo, 'notes', None)
-            notes = self.result.notes or songinfo_notes
+            songinfo_notes = _to_int_or_none(getattr(self.songinfo, 'notes', None))
+            result_notes = _to_int_or_none(self.result.notes)
+            notes = result_notes or songinfo_notes
             if notes and score > notes * 2:
                 return None
             title = (getattr(self.songinfo, 'bpim2_title', None)
@@ -524,7 +565,7 @@ class DetailedResult():
                      or self.result.title)
             if not title:
                 return None
-            return _fetch_bpim2_bpi(title, diff_name, score, BPIM2_VERSION)
+            return _fetch_bpim2_bpi(title, diff_name, score)
         except Exception as e:
             logger.debug(f"BPIM2 BPI取得エラー ({self.result.title}): {e}")
             return None

@@ -681,7 +681,7 @@
                     bpi_html += '<div class="bpi-comparison ' + diff_avg_class + '">' + diff_avg_str + '</div>';
                     bpi_html += '</div>';
                 });
-            } else {
+            } else if (!isBpim2) {
                 bpi_html += '<div class="bpi-item">';
                 bpi_html += '<div class="bpi-item-label">皆伝平均</div>';
                 bpi_html += '<div class="bpi-item-value">' + bpi_ave_num.toLocaleString() + '</div>';

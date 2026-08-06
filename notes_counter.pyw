@@ -38,7 +38,7 @@ from src.funcs import *
 from src.obs_websocket_manager import OBSWebSocketManager
 from src.songinfo import SongDatabase, download_latest_songinfo
 from src.screen_reader import ScreenReader
-from src.result import OneResult, DetailedResult
+from src.result import OneResult, DetailedResult, bpim2_savecache
 from src.result_database import ResultDatabase
 from src.result_stats_writer import ResultStatsWriter
 from src.rival_data import RivalManager
@@ -169,6 +169,12 @@ class MainWindow(MainWindowUI):
         '''最後に設定したオプション'''
         self.last_play_mode = None
         '''現在のプレーモード。playの先頭でセットし、その後の検出で使用。'''
+        self._bpim2_fetching_keys = set()
+        '''BPIM2取得中の譜面キー。選曲画面で同じ曲を連打しないためのガード。'''
+        self._pending_select_bpim2_args = None
+        '''選曲画面でカーソル停止待ち中の譜面キー。'''
+        self._scheduled_select_bpim2_args = None
+        '''現在タイマーに積まれている選曲画面BPI取得キー。'''
         
         # HTMLを更新しておく
         self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
@@ -205,6 +211,11 @@ class MainWindow(MainWindowUI):
         self.display_timer = QTimer()
         self.display_timer.timeout.connect(self.update_display)
         self.display_timer.start(500)
+
+        # 選曲画面BPI取得はカーソルが一定時間止まってから実行する
+        self.select_bpim2_timer = QTimer()
+        self.select_bpim2_timer.setSingleShot(True)
+        self.select_bpim2_timer.timeout.connect(self.fetch_pending_select_bpim2)
         
         # グローバルホットキーの登録
         self.setup_global_hotkeys()
@@ -677,6 +688,7 @@ class MainWindow(MainWindowUI):
         result.timestamp = 0 # 更新日は不明という扱いにする
         # xml更新
         self.result_database.broadcast_history_cursong_data(title=result.title, style=result.play_style, difficulty=result.difficulty)
+        self.schedule_select_bpim2_fetch(result.title, result.play_style, result.difficulty)
         if not getattr(detailed_result, 'music_select_difficulty_confirmed', False):
             return False
         if not self.config.enable_music_select_score_import:
@@ -688,7 +700,6 @@ class MainWindow(MainWindowUI):
             self.result_database.broadcast_history_cursong_data(title=result.title, style=result.play_style, difficulty=result.difficulty)
             if self.score_viewer:
                 self.score_viewer.refresh_data()
-            self.fetch_bpim2_async(detailed_result)
 
     def _parse_manual_chart(self, chart_text: str, fallback_style: play_style = None):
         """手動登録ダイアログの譜面表記を play_style / difficulty に変換する"""
@@ -724,35 +735,93 @@ class MainWindow(MainWindowUI):
             return True
         return False
 
+    def _bpim2_fetch_key(self, result: OneResult):
+        if not result:
+            return None
+        return (result.title, result.play_style, result.difficulty, result.score)
+
     def fetch_bpim2_async(self, detailed_result: DetailedResult):
         """BPIM2取得をUIスレッドから逃がす。登録自体は待たせない。"""
         if not detailed_result or not detailed_result.result:
             return
         result = detailed_result.result
-        if getattr(result, 'bpim2', None) is not None:
+        key = self._bpim2_fetch_key(result)
+        if key is None or key in self._bpim2_fetching_keys:
             return
+        self._bpim2_fetching_keys.add(key)
 
         def worker():
             try:
                 bpi_detail = detailed_result._get_bpim2_bpi_detail()
                 if bpi_detail and bpi_detail.source == 'bpim2' and bpi_detail.value is not None:
                     self.bpim2_fetch_finished.emit(result, bpi_detail)
+                else:
+                    logger.debug(f"BPIM2 async fetch returned no value: {result}")
             except Exception:
                 logger.debug(f"BPIM2 async fetch failed: {traceback.format_exc()}")
+            finally:
+                self._bpim2_fetching_keys.discard(key)
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def schedule_select_bpim2_fetch(self, title, style, difficulty):
+        """選曲画面でカーソルが止まってからBPIM2を取得するよう予約する。"""
+        if not title or not style or not difficulty:
+            self._pending_select_bpim2_args = None
+            self._scheduled_select_bpim2_args = None
+            self.select_bpim2_timer.stop()
+            return
+        args = (title, style, difficulty)
+        self._pending_select_bpim2_args = args
+        if self._scheduled_select_bpim2_args == args:
+            return
+        self._scheduled_select_bpim2_args = args
+        self.select_bpim2_timer.start(1000)
+
+    def fetch_pending_select_bpim2(self):
+        """最後に予約された選曲画面の譜面についてBPIM2取得を開始する。"""
+        if not self._pending_select_bpim2_args:
+            return
+        title, style, difficulty = self._pending_select_bpim2_args
+        self._scheduled_select_bpim2_args = self._pending_select_bpim2_args
+        self.fetch_current_best_bpim2_async(title, style, difficulty)
+
+    def fetch_current_best_bpim2_async(self, title, style, difficulty):
+        """表示中譜面の保存済みベストBPIを、infnotebook側キャッシュ/APIで更新する。"""
+        results = self.result_database.search(title=title, style=style, difficulty=difficulty)
+        best_detail = None
+        best_score = None
+        for detail in results:
+            score = detail.result.score
+            if type(score) is not int:
+                continue
+            if best_score is None or score > best_score:
+                best_score = score
+                best_detail = detail
+            elif score == best_score and best_detail:
+                if getattr(detail.result, 'bpim2', None) is None:
+                    best_detail = detail
+                elif not getattr(detail.result, 'bpim2_arena_averages', None):
+                    best_detail = detail
+        if best_detail is not None:
+            self.fetch_bpim2_async(best_detail)
 
     def on_bpim2_fetch_finished(self, result: OneResult, bpi_detail):
         """バックグラウンド取得したBPIM2を保存・再配信する。"""
         if not result or not bpi_detail or bpi_detail.value is None:
             return
         result.bpim2 = bpi_detail.value
+        result.bpim2_arena_averages = bpi_detail.arena_averages
+        arena_count = len(bpi_detail.arena_averages or [])
+        logger.info(f"BPIM2 fetched: {result.title} {get_chart_name(result.play_style, result.difficulty)} score={result.score} bpi={bpi_detail.value:.2f} arena_averages={arena_count}")
         self.result_database.save()
         self.result_database.broadcast_history_cursong_data(
             title=result.title,
             style=result.play_style,
             difficulty=result.difficulty,
         )
+        self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
+        self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
         if self.score_viewer:
             self.score_viewer.refresh_data()
 
@@ -885,10 +954,14 @@ class MainWindow(MainWindowUI):
         # csv出力
         csv_path = self.config.csv_export_path or None
         self.result_database.write_best_csv(csv_path=csv_path)
+
+        if bpim2_savecache is not None:
+            bpim2_savecache()
         
         # タイマーを停止
         self.main_timer.stop()
         self.display_timer.stop()
+        self.select_bpim2_timer.stop()
 
         # スコアビューワを終了
         if self.score_viewer is not None:
