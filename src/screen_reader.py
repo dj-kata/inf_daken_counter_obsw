@@ -158,11 +158,30 @@ class ScreenReader:
         np_value = self.screen.np_value[define.musicselect_trimarea_np]
         title = recog.MusicSelect.get_musicname(np_value)
         if title:
-            diff = convert_difficulty(recog.MusicSelect.get_difficulty(np_value))
+            recognized_difficulty = recog.MusicSelect.get_difficulty(np_value)
+            try:
+                confirm_difficulty = recog.MusicSelect.confirm_difficulty(np_value)
+            except Exception:
+                logger.error(traceback.format_exc())
+                return None
+            if confirm_difficulty is None or recognized_difficulty != confirm_difficulty:
+                logger.warning(
+                    f"music select difficulty mismatch: "
+                    f"recognized={recognized_difficulty}, confirmed={confirm_difficulty}, title={title}"
+                )
+                return None
+
+            diff = convert_difficulty(recognized_difficulty)
             lamp = convert_lamp(recog.MusicSelect.get_cleartype(np_value))
             score = recog.MusicSelect.get_score(np_value)
             bp = recog.MusicSelect.get_misscount(np_value)
             style = convert_play_style(recog.MusicSelect.get_playmode(np_value))
+            if diff is None or lamp is None or score is None or style is None:
+                logger.warning(
+                    f"music select result rejected: "
+                    f"title={title}, style={style}, difficulty={diff}, lamp={lamp}, score={score}, bp={bp}"
+                )
+                return None
             chart_id = calc_chart_id(title=title, play_style=style, difficulty=diff)
             songinfo = self.songinfo.search(chart_id=chart_id)
             timestamp = int(datetime.datetime.now().timestamp())

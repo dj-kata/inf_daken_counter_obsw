@@ -228,6 +228,9 @@ class ConfigDialog(QDialog):
         
         self.enable_folder_updates_check = QCheckBox(self.ui.feature.enable_folder_updates)
         tweet_layout.addWidget(self.enable_folder_updates_check)
+
+        self.enable_music_select_score_import_check = QCheckBox(self.ui.feature.enable_music_select_score_import)
+        tweet_layout.addWidget(self.enable_music_select_score_import_check)
         
         layout.addWidget(tweet_group)
         
@@ -707,6 +710,7 @@ class ConfigDialog(QDialog):
         self.enable_autotweet_check.setChecked(self.config.enable_autotweet)
         self.enable_judge_check.setChecked(self.config.enable_judge)
         self.enable_folder_updates_check.setChecked(self.config.enable_folder_updates)
+        self.enable_music_select_score_import_check.setChecked(self.config.enable_music_select_score_import)
         self.autoload_offset_spin.setValue(self.config.autoload_offset)
         if hasattr(self, 'websocket_data_port') and hasattr(self.config, 'websocket_data_port'):
             self.websocket_data_port.setText(str(self.config.websocket_data_port))
@@ -761,6 +765,7 @@ class ConfigDialog(QDialog):
         self.config.enable_autotweet = self.enable_autotweet_check.isChecked()
         self.config.enable_judge = self.enable_judge_check.isChecked()
         self.config.enable_folder_updates = self.enable_folder_updates_check.isChecked()
+        self.config.enable_music_select_score_import = self.enable_music_select_score_import_check.isChecked()
         self.config.autoload_offset = self.autoload_offset_spin.value()
         # WebSocketデータポート設定
         try:

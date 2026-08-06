@@ -19,6 +19,7 @@ class UIText:
         base_config = '基本設定(&C)...'
         obs_config = 'OBS制御設定(&O)...'
         save_image = '画像保存(&S)'
+        manual_music_select_import = '選曲画面から手動登録(&R)'
         exit = '終了(&X)'
         
         # ツールメニュー
@@ -68,6 +69,7 @@ class UIText:
         enable_autotweet = '終了時の自動ツイートを有効にする'
         enable_judge = '判定部分を含める'
         enable_folder_updates = 'フォルダごとの更新数を表示(開発中)'
+        enable_music_select_score_import = '選曲画面から自己ベストを登録する'
         
         other_group = 'その他'
         image_save_path = '画像保存先:'
@@ -258,6 +260,20 @@ class UIText:
         last_saved_song = '最後に保存した曲:'
         save_image = '画像保存 (F6)'
         status_ready = '準備完了'
+
+    class manual_music_select_import:
+        '''選曲画面からの手動登録'''
+        title = '選曲画面から手動登録'
+        recognized_title = '曲名:'
+        recognized_chart = '難易度:'
+        recognized_lamp = 'ランプ:'
+        recognized_score = 'スコア:'
+        recognized_bp = 'BP:'
+        register = '登録'
+        invalid_chart_title = '難易度の指定が不正です'
+        invalid_chart_message = '難易度は SPA, SPH, DPA, DPL などの形式で入力してください。'
+        registered = '選曲画面から手動登録しました。 -> {result}'
+        not_registered = '登録対象の更新がありませんでした。'
 
     class mode:
         '''検出モード用'''

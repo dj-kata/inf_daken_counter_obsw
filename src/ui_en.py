@@ -19,6 +19,7 @@ class UIText:
         base_config = 'Configure(&C)...'
         obs_config = 'OBS Settings(&O)...'
         save_image = '&Save Image'
+        manual_music_select_import = 'Register from Song Selection(&R)'
         exit = 'E&xit'
         
         # ツールメニュー
@@ -68,6 +69,7 @@ class UIText:
         enable_autotweet = 'Enable auto-tweet on exit'
         enable_judge = 'Include judge data'
         enable_folder_updates = 'Show folder update count(coming soon)'
+        enable_music_select_score_import = 'Register best scores from song selection screen'
         
         other_group = 'Other'
         image_save_path = 'Image save path:'
@@ -257,6 +259,20 @@ class UIText:
         last_saved_song = 'last saved song:'
         save_image = 'Save Image (F6)'
         status_ready = 'Ready'
+
+    class manual_music_select_import:
+        '''Manual import from song selection screen'''
+        title = 'Register from Song Selection'
+        recognized_title = 'Title:'
+        recognized_chart = 'Chart:'
+        recognized_lamp = 'Lamp:'
+        recognized_score = 'Score:'
+        recognized_bp = 'BP:'
+        register = 'Register'
+        invalid_chart_title = 'Invalid chart'
+        invalid_chart_message = 'Enter a chart such as SPA, SPH, DPA, or DPL.'
+        registered = 'Registered from song selection screen. -> {result}'
+        not_registered = 'No score update to register.'
 
     class mode:
         '''検出モード用'''

@@ -5,7 +5,16 @@ OBS連携による自動リザルト保存アプリケーション
 
 import sys
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
+    QLineEdit,
+    QMessageBox,
+    QVBoxLayout,
+)
 from PySide6.QtCore import QTimer,Qt,Signal
 import traceback
 import datetime
@@ -56,14 +65,73 @@ try:
 except Exception:
     SWVER = "0.0.0"
 
+class MusicSelectScoreImportDialog(QDialog):
+    """選曲画面から認識したスコアを確認して手動登録するダイアログ"""
+
+    CHART_CANDIDATES = ["SPB", "SPN", "SPH", "SPA", "SPL", "DPN", "DPH", "DPA", "DPL"]
+
+    def __init__(self, ui, result: OneResult, parent=None):
+        super().__init__(parent)
+        self.ui = ui
+        self.setWindowTitle(self.ui.manual_music_select_import.title)
+
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        form_layout = QFormLayout()
+        layout.addLayout(form_layout)
+
+        self.title_edit = QLineEdit(result.title or "")
+        form_layout.addRow(self.ui.manual_music_select_import.recognized_title, self.title_edit)
+
+        self.chart_combo = QComboBox()
+        self.chart_combo.setEditable(True)
+        self.chart_combo.addItems(self.CHART_CANDIDATES)
+        chart_name = get_chart_name(result.play_style, result.difficulty)
+        if chart_name:
+            index = self.chart_combo.findText(chart_name)
+            if index >= 0:
+                self.chart_combo.setCurrentIndex(index)
+            else:
+                self.chart_combo.setEditText(chart_name)
+        form_layout.addRow(self.ui.manual_music_select_import.recognized_chart, self.chart_combo)
+
+        lamp_text = str(result.lamp) if result.lamp else ""
+        form_layout.addRow(self.ui.manual_music_select_import.recognized_lamp, QLineEdit(lamp_text))
+        score_text = "" if result.score is None else str(result.score)
+        form_layout.addRow(self.ui.manual_music_select_import.recognized_score, QLineEdit(score_text))
+        bp_text = "" if result.bp is None else str(result.bp)
+        form_layout.addRow(self.ui.manual_music_select_import.recognized_bp, QLineEdit(bp_text))
+
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.button(QDialogButtonBox.Ok).setText(self.ui.manual_music_select_import.register)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+        # ランプ/スコア/BPは確認用なので編集不可にする
+        for row in range(2, 5):
+            widget = form_layout.itemAt(row, QFormLayout.FieldRole).widget()
+            widget.setReadOnly(True)
+
+    @property
+    def edited_title(self) -> str:
+        return self.title_edit.text().strip()
+
+    @property
+    def edited_chart(self) -> str:
+        return self.chart_combo.currentText().strip()
+
 class MainWindow(MainWindowUI):
     """メインウィンドウクラス - 制御ロジックを担当"""
     songinfo_update_finished = Signal(bool, str)
+    manual_music_select_import_requested = Signal()
     
     def __init__(self):
         # 設定とデータベースの初期化
         self.config = Config()
         super().__init__(self.config)
+        self.manual_music_select_import_requested.connect(self.manual_music_select_import)
         self.song_database = SongDatabase()
         self.result_database = ResultDatabase(config=self.config)
         self.rival_manager = RivalManager(parent=self)
@@ -607,6 +675,8 @@ class MainWindow(MainWindowUI):
         result.timestamp = 0 # 更新日は不明という扱いにする
         # xml更新
         self.result_database.broadcast_history_cursong_data(title=result.title, style=result.play_style, difficulty=result.difficulty)
+        if not self.config.enable_music_select_score_import:
+            return False
         # 自己べ登録
         if self.result_database.add(result):
             bpi_detail = detailed_result.bpi_detail
@@ -617,6 +687,90 @@ class MainWindow(MainWindowUI):
             self.result_database.broadcast_history_cursong_data(title=result.title, style=result.play_style, difficulty=result.difficulty)
             if self.score_viewer:
                 self.score_viewer.refresh_data()
+
+    def _parse_manual_chart(self, chart_text: str, fallback_style: play_style = None):
+        """手動登録ダイアログの譜面表記を play_style / difficulty に変換する"""
+        normalized = chart_text.strip().upper().replace(" ", "").replace("　", "")
+        style = fallback_style
+        diff_text = normalized
+
+        if normalized.startswith("SP"):
+            style = play_style.sp
+            diff_text = normalized[2:]
+        elif normalized.startswith("DP"):
+            style = play_style.dp
+            diff_text = normalized[2:]
+        elif normalized.startswith("DB"):
+            style = play_style.dp
+            diff_text = normalized[2:]
+
+        diff = convert_difficulty(diff_text)
+        if style is None or diff is None:
+            return None, None
+        return style, diff
+
+    def _register_music_select_result(self, detailed_result: DetailedResult) -> bool:
+        """選曲画面由来のリザルトを通常の選曲画面登録と同じ扱いで保存する"""
+        result = detailed_result.result
+        result.timestamp = 0 # 更新日は不明という扱いにする
+        if self.result_database.add(result):
+            bpi_detail = detailed_result.bpi_detail
+            if bpi_detail.source == 'bpim2' and bpi_detail.value is not None:
+                result.bpim2 = bpi_detail.value
+            self.result_database.save()
+            self.result_database.broadcast_history_cursong_data(title=result.title, style=result.play_style, difficulty=result.difficulty)
+            if self.score_viewer:
+                self.score_viewer.refresh_data()
+            return True
+        return False
+
+    def manual_music_select_import(self):
+        """選曲画面から認識したスコアを確認して手動登録する"""
+        if not self.screen_reader.is_select():
+            return False
+
+        detailed_result = self.screen_reader.read_music_select_screen()
+        if not detailed_result:
+            return False
+
+        result = detailed_result.result
+        if not (result and result.title and result.lamp and result.score is not None):
+            return False
+
+        dialog = MusicSelectScoreImportDialog(self.ui, result, self)
+        if dialog.exec() != QDialog.Accepted:
+            return False
+
+        style, diff = self._parse_manual_chart(dialog.edited_chart, fallback_style=result.play_style)
+        if not dialog.edited_title or style is None or diff is None:
+            QMessageBox.warning(
+                self,
+                self.ui.manual_music_select_import.invalid_chart_title,
+                self.ui.manual_music_select_import.invalid_chart_message,
+            )
+            return False
+
+        result.title = dialog.edited_title
+        result.play_style = style
+        result.difficulty = diff
+
+        # 曲名/譜面を編集した場合も、登録先の曲情報は編集後の内容に合わせる
+        detailed_result.songinfo = self.result_database.song_database.search(
+            title=result.title,
+            play_style=result.play_style,
+            difficulty=result.difficulty,
+        ) or self.result_database.song_database.search(chart_id=result.chart_id)
+        detailed_result._bpi_detail = None
+
+        if self._register_music_select_result(detailed_result):
+            self.statusBar().showMessage(
+                self.ui.manual_music_select_import.registered.format(result=result),
+                10000,
+            )
+            return True
+
+        self.statusBar().showMessage(self.ui.manual_music_select_import.not_registered, 5000)
+        return False
     
     def process_play_mode(self):
         """プレー画面での処理"""

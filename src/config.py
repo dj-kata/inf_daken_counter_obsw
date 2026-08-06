@@ -25,6 +25,7 @@ class Config:
         self.enable_autotweet = False # 終了時の自動ツイート
         self.enable_judge = False # 判定部分
         self.enable_folder_updates = True # フォルダごとの更新数表示
+        self.enable_music_select_score_import = True # 選曲画面から自己ベストを取り込む
         
         # ウィンドウ位置設定
         self.main_window_x = 100
@@ -84,6 +85,7 @@ class Config:
                     self.enable_autotweet = config_data.get("enable_autotweet", False)
                     self.enable_judge = config_data.get("enable_judge", True)
                     self.enable_folder_updates = config_data.get("enable_folder_updates", False)
+                    self.enable_music_select_score_import = config_data.get("enable_music_select_score_import", True)
                     self.autoload_offset = config_data.get("autoload_offset", 0)
                     self.main_window_geometry = config_data.get("main_window_geometry", None)
                     
@@ -155,6 +157,7 @@ class Config:
             "enable_autotweet": self.enable_autotweet,
             "enable_judge": self.enable_judge,
             "enable_folder_updates": self.enable_folder_updates,
+            "enable_music_select_score_import": self.enable_music_select_score_import,
             "autoload_offset": self.autoload_offset,
             "main_window_geometry": self.main_window_geometry,
             "obs_control_settings": self.obs_control_settings,

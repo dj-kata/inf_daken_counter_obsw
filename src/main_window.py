@@ -136,6 +136,11 @@ class MainWindowUI(QMainWindow):
         save_image_action.setShortcut("F6")
         save_image_action.triggered.connect(self.save_image)
         file_menu.addAction(save_image_action)
+
+        manual_music_select_import_action = QAction(self.ui.menu.manual_music_select_import, self)
+        manual_music_select_import_action.setShortcut("F7")
+        manual_music_select_import_action.triggered.connect(self.manual_music_select_import)
+        file_menu.addAction(manual_music_select_import_action)
         
         file_menu.addSeparator() ##############################################
         
@@ -217,6 +222,11 @@ class MainWindowUI(QMainWindow):
                 # F6キーをグローバルホットキーとして登録
                 keyboard.add_hotkey('f6', self.save_image, suppress=False)
                 logger.info("グローバルホットキー (F6) を登録しました")
+                if hasattr(self, 'manual_music_select_import_requested'):
+                    keyboard.add_hotkey('f7', self.manual_music_select_import_requested.emit, suppress=False)
+                else:
+                    keyboard.add_hotkey('f7', self.manual_music_select_import, suppress=False)
+                logger.info("グローバルホットキー (F7) を登録しました")
             except Exception as e:
                 logger.error(f"グローバルホットキー登録エラー: {e}")
                 logger.warning("グローバルホットキーの登録に失敗しました。管理者権限で実行してください。")
@@ -229,6 +239,8 @@ class MainWindowUI(QMainWindow):
             try:
                 keyboard.remove_hotkey('f6')
                 logger.info("グローバルホットキー (F6) を解除しました")
+                keyboard.remove_hotkey('f7')
+                logger.info("グローバルホットキー (F7) を解除しました")
             except Exception as e:
                 logger.error(f"グローバルホットキー解除エラー: {e}")
     
@@ -363,6 +375,10 @@ class MainWindowUI(QMainWindow):
     
     def save_image(self):
         """画像保存処理（サブクラスで実装）"""
+        raise NotImplementedError
+
+    def manual_music_select_import(self):
+        """選曲画面から手動でスコア登録（サブクラスで実装）"""
         raise NotImplementedError
     
     def tweet(self):
