@@ -346,18 +346,15 @@ class OBSWebSocketManager(QObject):
         if not self.config:
             return self.ui.obs.not_configured, False
         elif self.is_direct_capture() and not self.is_obs_control_enabled():
-            error = self.direct_capture.last_error if self.direct_capture else ""
-            if error:
-                return f'直接取得: <span style="color:#d93025;">{error}</span> / OBS制御: -', False
-            return f'{self._direct_capture_status_html()} / OBS制御: -', True
+            self._probe_direct_capture_if_needed()
+            direct_status, direct_ready = self._direct_capture_status()
+            return f'{direct_status} / OBS制御: -', direct_ready
         elif self.is_direct_capture() and self.is_obs_control_enabled():
-            error = self.direct_capture.last_error if self.direct_capture else ""
-            direct_status = self._direct_capture_status_html()
-            if error:
-                direct_status = f'直接取得: <span style="color:#d93025;">{error}</span>'
+            self._probe_direct_capture_if_needed()
+            direct_status, direct_ready = self._direct_capture_status()
             if not self.is_connected:
                 return f'{direct_status} / OBS制御: <span style="color:#d93025;">未接続</span>', False
-            return f'{direct_status} / OBS制御: <span style="color:#188038;">接続中</span> ({self.config.websocket_host}:{self.config.websocket_port})', True
+            return f'{direct_status} / OBS制御: <span style="color:#188038;">接続中</span> ({self.config.websocket_host}:{self.config.websocket_port})', direct_ready
         elif not OBSWS_AVAILABLE:
             return "obsws_python がインストールされていません", False
         elif not self.is_connected:
@@ -367,8 +364,20 @@ class OBSWebSocketManager(QObject):
         else:
             return f"OBS WebSocket: {self.ui.obs.connected} ({self.config.websocket_host}:{self.config.websocket_port})", True
 
-    def _direct_capture_status_html(self) -> str:
-        return '直接取得: <span style="color:#188038;">OK</span>'
+    def _direct_capture_status(self) -> tuple[str, bool]:
+        error = self.direct_capture.last_error if self.direct_capture else ""
+        if error:
+            return f'直接取得: <span style="color:#d93025;">{error}</span>', False
+        if not self.direct_capture or not self.direct_capture.has_successful_frame:
+            return '直接取得: <span style="color:#5f6368;">未確認</span>', False
+        return '直接取得: <span style="color:#188038;">OK</span>', True
+
+    def _probe_direct_capture_if_needed(self):
+        if not self.direct_capture:
+            return
+        if self.direct_capture.has_successful_frame or self.direct_capture.last_error:
+            return
+        self.screenshot()
     
     def get_detailed_status(self) -> Dict[str, Any]:
         """

@@ -102,6 +102,7 @@ build_exe_options = {
         "src.songinfo",
         "src.config_dialog",
         "src.obs_dialog",
+        "src.direct_window_capture",
         # ctypes関連（Windows APIアクセスに必要）
         "ctypes",
         "ctypes.wintypes",
@@ -115,6 +116,7 @@ build_exe_options = {
         "obsws_python.subs",
         # "obsws_python.base"
         # 認識用
+        "PIL.ImageGrab",
     ],
     
     # 除外するパッケージ（サイズ削減のため）

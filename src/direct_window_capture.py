@@ -17,6 +17,40 @@ logger = get_logger(__name__)
 
 _LANDSCAPE_SIZE = (1920, 1080)
 _MONITORINFOF_PRIMARY = 0x00000001
+_SRCCOPY = 0x00CC0020
+_DIB_RGB_COLORS = 0
+
+
+class _BITMAPINFOHEADER(ctypes.Structure):
+    _fields_ = [
+        ("biSize", wintypes.DWORD),
+        ("biWidth", wintypes.LONG),
+        ("biHeight", wintypes.LONG),
+        ("biPlanes", wintypes.WORD),
+        ("biBitCount", wintypes.WORD),
+        ("biCompression", wintypes.DWORD),
+        ("biSizeImage", wintypes.DWORD),
+        ("biXPelsPerMeter", wintypes.LONG),
+        ("biYPelsPerMeter", wintypes.LONG),
+        ("biClrUsed", wintypes.DWORD),
+        ("biClrImportant", wintypes.DWORD),
+    ]
+
+
+class _RGBQUAD(ctypes.Structure):
+    _fields_ = [
+        ("rgbBlue", ctypes.c_byte),
+        ("rgbGreen", ctypes.c_byte),
+        ("rgbRed", ctypes.c_byte),
+        ("rgbReserved", ctypes.c_byte),
+    ]
+
+
+class _BITMAPINFO(ctypes.Structure):
+    _fields_ = [
+        ("bmiHeader", _BITMAPINFOHEADER),
+        ("bmiColors", ctypes.POINTER(_RGBQUAD)),
+    ]
 
 
 class _MONITORINFO(ctypes.Structure):
@@ -35,40 +69,54 @@ class DirectWindowCapture:
         self.config = config
         self.hwnd: int | None = None
         self.last_error = ""
+        self.has_successful_frame = False
+        self.read_attempt_count = 0
         self._next_error_log_at = 0.0
 
     def set_config(self, config: Config) -> None:
         self.config = config
         self.hwnd = None
         self.last_error = ""
+        self.has_successful_frame = False
+        self.read_attempt_count = 0
 
     def read_frame(self) -> Image.Image | None:
-        if not sys.platform.startswith("win"):
-            self.last_error = "直接取得はWindows専用です"
-            return None
-
-        hwnd = self._ensure_window()
-        if not hwnd:
-            return None
+        self.read_attempt_count += 1
+        if self.read_attempt_count <= 3:
+            logger.info("直接キャプチャ試行: %s回目", self.read_attempt_count)
 
         try:
+            if not sys.platform.startswith("win"):
+                self.last_error = "直接取得はWindows専用です"
+                self.has_successful_frame = False
+                return None
+
+            hwnd = self._ensure_window()
+            if not hwnd:
+                self.has_successful_frame = False
+                return None
+
             x, y, width, height = self._client_geometry(hwnd)
             if width <= 0 or height <= 0:
                 self.last_error = "対象ウィンドウのクライアント領域を取得できません"
                 self.hwnd = None
+                self.has_successful_frame = False
                 return None
 
             image = self._grab_client_area(hwnd, x, y, width, height)
             if image is None:
                 self.last_error = "対象ウィンドウの画像取得に失敗しました"
                 self.hwnd = None
+                self.has_successful_frame = False
                 return None
 
             self.last_error = ""
+            self.has_successful_frame = True
             return self._normalize_size(image)
         except Exception as e:
             self.last_error = str(e)
             self.hwnd = None
+            self.has_successful_frame = False
             self._log_error("直接キャプチャエラー: %s", e)
             return None
 
@@ -89,9 +137,11 @@ class DirectWindowCapture:
 
     def _find_target_window(self) -> int | None:
         user32 = ctypes.windll.user32
+        user32.EnumWindows.argtypes = None
         enum_windows_proc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
         target_exe = self.config.direct_capture_exe.strip().casefold()
         target_title = self.config.direct_capture_title.strip().casefold()
+        fallback_title = "beatmania IIDX INFINITAS".casefold()
         title_matches: list[int] = []
         exe_matches: list[int] = []
 
@@ -101,14 +151,20 @@ class DirectWindowCapture:
 
             title = self._window_text(hwnd)
             exe_name = self._window_process_name(hwnd)
-            if target_exe and exe_name.casefold() != target_exe:
-                return True
-
             hwnd_int = int(hwnd)
-            if target_title and target_title in title.casefold():
+            title_cf = title.casefold()
+            title_matches_target = bool(
+                (target_title and target_title in title_cf)
+                or fallback_title in title_cf
+            )
+            exe_matches_target = bool(target_exe and exe_name.casefold() == target_exe)
+
+            if title_matches_target:
                 title_matches.append(hwnd_int)
                 return False
-            exe_matches.append(hwnd_int)
+
+            if exe_matches_target:
+                exe_matches.append(hwnd_int)
             return True
 
         user32.EnumWindows(enum_windows_proc(callback), 0)
@@ -189,6 +245,11 @@ class DirectWindowCapture:
     def _grab_client_area(self, hwnd: int, x: int, y: int, width: int, height: int) -> Image.Image | None:
         bbox = self._client_screen_bbox(hwnd)
         if bbox is not None:
+            image = self._grab_with_gdi(bbox)
+            if image is not None:
+                return image
+
+        if bbox is not None:
             try:
                 all_screens = self._should_grab_all_screens(bbox)
                 return ImageGrab.grab(bbox=bbox, all_screens=all_screens).convert("RGB")
@@ -203,6 +264,55 @@ class DirectWindowCapture:
         if pixmap.isNull():
             return None
         return self._qimage_to_pil(pixmap.toImage())
+
+    def _grab_with_gdi(self, bbox: tuple[int, int, int, int]) -> Image.Image | None:
+        left, top, right, bottom = bbox
+        width = right - left
+        height = bottom - top
+        if width <= 0 or height <= 0:
+            return None
+
+        gdi32 = ctypes.windll.gdi32
+        screen_dc = gdi32.CreateDCW("DISPLAY", None, None, None)
+        if not screen_dc:
+            return None
+
+        memory_dc = None
+        bitmap = None
+        try:
+            memory_dc = gdi32.CreateCompatibleDC(screen_dc)
+            bitmap = gdi32.CreateCompatibleBitmap(screen_dc, width, height)
+            if not memory_dc or not bitmap:
+                return None
+
+            gdi32.SelectObject(memory_dc, bitmap)
+            if not gdi32.BitBlt(memory_dc, 0, 0, width, height, screen_dc, left, top, _SRCCOPY):
+                return None
+
+            bitmap_info = _BITMAPINFO()
+            bitmap_info.bmiHeader.biSize = ctypes.sizeof(_BITMAPINFOHEADER)
+            bitmap_info.bmiHeader.biWidth = width
+            bitmap_info.bmiHeader.biHeight = height
+            bitmap_info.bmiHeader.biPlanes = 1
+            bitmap_info.bmiHeader.biBitCount = 24
+            bitmap_info.bmiHeader.biCompression = 0
+            bitmap_info.bmiHeader.biSizeImage = 0
+
+            stride = ((width * 3 + 3) // 4) * 4
+            buffer = ctypes.create_string_buffer(stride * height)
+            if not gdi32.GetDIBits(memory_dc, bitmap, 0, height, buffer, ctypes.byref(bitmap_info), _DIB_RGB_COLORS):
+                return None
+
+            return Image.frombytes("RGB", (width, height), buffer, "raw", "BGR", stride, -1).copy()
+        except Exception as e:
+            self._log_error("GDIで直接キャプチャできませんでした: %s", e)
+            return None
+        finally:
+            if bitmap:
+                gdi32.DeleteObject(bitmap)
+            if memory_dc:
+                gdi32.DeleteDC(memory_dc)
+            gdi32.DeleteDC(screen_dc)
 
     def _should_grab_all_screens(self, bbox: tuple[int, int, int, int]) -> bool:
         if bool(getattr(self.config, "direct_capture_all_monitors", False)):
@@ -223,6 +333,7 @@ class DirectWindowCapture:
 
     def _primary_monitor_rect(self) -> tuple[int, int, int, int] | None:
         user32 = ctypes.windll.user32
+        user32.EnumDisplayMonitors.argtypes = None
         result: list[tuple[int, int, int, int]] = []
         enum_monitor_proc = ctypes.WINFUNCTYPE(
             wintypes.BOOL,
