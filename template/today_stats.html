@@ -642,6 +642,13 @@
     // --- WebSocket ---
     var ws = null;
     var reconnectInterval = null;
+    var snapshotRequestInterval = null;
+
+    function requestSnapshot() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'request_snapshot' }));
+        }
+    }
 
     function connectWebSocket() {
         var port = getWebSocketPort();
@@ -652,12 +659,21 @@
                 clearInterval(reconnectInterval);
                 reconnectInterval = null;
             }
+            requestSnapshot();
+            if (snapshotRequestInterval) {
+                clearInterval(snapshotRequestInterval);
+            }
+            snapshotRequestInterval = setInterval(requestSnapshot, 1000);
         };
 
         ws.onmessage = function(event) {
             try {
                 var msg = JSON.parse(event.data);
                 if (msg.type === 'today_stats') {
+                    if (snapshotRequestInterval) {
+                        clearInterval(snapshotRequestInterval);
+                        snapshotRequestInterval = null;
+                    }
                     renderAll(msg.data);
                 }
             } catch (e) {
@@ -675,6 +691,9 @@
     }
 
     window.addEventListener('beforeunload', function() {
+        if (snapshotRequestInterval) {
+            clearInterval(snapshotRequestInterval);
+        }
         if (ws) ws.close();
     });
 

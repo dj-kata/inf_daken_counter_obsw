@@ -45,8 +45,11 @@ class DataWebSocketServer:
         """クライアントを登録し、最新データを送信"""
         self.clients.add(websocket)
         logger.info(f"クライアント接続: {websocket.remote_address}, 総接続数: {len(self.clients)}")
-        
-        # 接続時に最新データを送信
+
+        await self.send_latest_data(websocket)
+
+    async def send_latest_data(self, websocket):
+        """指定クライアントへ最新データをまとめて送信"""
         if self.graph_data:
             await websocket.send(json.dumps({
                 'type': 'graph',
@@ -54,7 +57,7 @@ class DataWebSocketServer:
             }))
         if self.option_data:
             await websocket.send(json.dumps({
-                'type': 'graph',
+                'type': 'option',
                 'data': self.option_data
             }))
         if self.today_updates_data:
@@ -86,8 +89,12 @@ class DataWebSocketServer:
         try:
             await self.register_client(websocket)
             async for message in websocket:
-                # クライアントからのメッセージ処理（必要に応じて）
-                pass
+                try:
+                    data = json.loads(message)
+                except Exception:
+                    continue
+                if data.get('type') == 'request_snapshot':
+                    await self.send_latest_data(websocket)
         except websockets.exceptions.ConnectionClosed:
             pass
         except asyncio.CancelledError:
