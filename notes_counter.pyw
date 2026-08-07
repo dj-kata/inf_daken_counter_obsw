@@ -1065,7 +1065,7 @@ class MainWindow(MainWindowUI):
         # ランプ更新を集計
         for r in best_lamp_updates.values():
             songinfo = self.result_database.song_database.search(chart_id=r.chart_id)
-            lv = songinfo.level if songinfo else 0
+            lv = self._get_tweet_level_key(songinfo)
             if lv not in updates_by_level:
                 updates_by_level[lv] = {}
             lamp_name = r.lamp.name.upper()
@@ -1086,7 +1086,7 @@ class MainWindow(MainWindowUI):
                 rank_name = 'AA'
             if rank_name:
                 songinfo = self.result_database.song_database.search(chart_id=r.chart_id)
-                lv = songinfo.level if songinfo else 0
+                lv = self._get_tweet_level_key(songinfo)
                 if lv not in updates_by_level:
                     updates_by_level[lv] = {}
                 updates_by_level[lv][rank_name] = updates_by_level[lv].get(rank_name, 0) + 1
@@ -1109,10 +1109,33 @@ class MainWindow(MainWindowUI):
                 if key not in display_order:
                     parts.append(f"{key}+{items[key]}")
             if parts:
-                lv_str = f"☆{lv}" if lv else "☆?"
+                lv_str = self._format_tweet_level_key(lv)
                 lines.append(f"{lv_str} {', '.join(parts)}")
 
         return lines
+
+    def _get_tweet_level_key(self, songinfo):
+        """ツイート集計用のレベルキーを返す。必要なら片手難易度帯を含める。"""
+        level = int(songinfo.level) if songinfo and getattr(songinfo, 'level', None) else 0
+        use_katate = (
+            self.config.enable_katate_difficulty_display
+            and self.config.enable_katate_tweet_grouping
+            and level in (11, 12)
+        )
+        if use_katate:
+            band = getattr(songinfo, f'katate_{level}', None)
+            if band:
+                return (level, int(band))
+        return (level, 0)
+
+    def _format_tweet_level_key(self, level_key):
+        """ツイート集計用のレベルキーを表示文字列へ変換する。"""
+        level, band = level_key
+        if not level:
+            return "☆?"
+        if band:
+            return f"☆{level}-{band}"
+        return f"☆{level}"
 
     def write_bpi_csv(self):
         '''BPI Manager用csvの出力'''

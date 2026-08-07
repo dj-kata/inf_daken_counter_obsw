@@ -110,6 +110,7 @@ class UIText:
         """難易度表タブ"""
         katate_group = '片手難易度表'
         enable_katate_difficulty_display = '片手難易度を表示する'
+        enable_katate_tweet_grouping = 'ツイートのレベル別集計を片手難易度ごとに分ける'
     
     class data_import:
         """データ登録タブ"""

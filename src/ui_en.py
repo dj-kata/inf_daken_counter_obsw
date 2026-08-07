@@ -110,6 +110,7 @@ class UIText:
         """Difficulty table tab"""
         katate_group = 'One-handed Difficulty Table'
         enable_katate_difficulty_display = 'Show one-handed difficulty'
+        enable_katate_tweet_grouping = 'Group tweet level summary by one-handed difficulty'
     
     class data_import:
         """Data import tab"""

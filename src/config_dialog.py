@@ -308,6 +308,11 @@ class ConfigDialog(QDialog):
         )
         katate_layout.addWidget(self.enable_katate_difficulty_display_check)
 
+        self.enable_katate_tweet_grouping_check = QCheckBox(
+            self.ui.difficulty_table.enable_katate_tweet_grouping
+        )
+        katate_layout.addWidget(self.enable_katate_tweet_grouping_check)
+
         layout.addWidget(katate_group)
         layout.addStretch()
         return widget
@@ -802,6 +807,10 @@ class ConfigDialog(QDialog):
             self.enable_katate_difficulty_display_check.setChecked(
                 self.config.enable_katate_difficulty_display
             )
+        if hasattr(self.config, 'enable_katate_tweet_grouping'):
+            self.enable_katate_tweet_grouping_check.setChecked(
+                self.config.enable_katate_tweet_grouping
+            )
 
         # ライバル設定
         if hasattr(self, 'rival_list_table'):
@@ -859,6 +868,7 @@ class ConfigDialog(QDialog):
         self.config.write_statistics = self.write_statistics_check.isChecked()
         self.config.include_legacy_v2_logs = self.include_legacy_v2_logs_check.isChecked()
         self.config.enable_katate_difficulty_display = self.enable_katate_difficulty_display_check.isChecked()
+        self.config.enable_katate_tweet_grouping = self.enable_katate_tweet_grouping_check.isChecked()
         
         # ライバル設定
         if hasattr(self, 'rival_list_table'):

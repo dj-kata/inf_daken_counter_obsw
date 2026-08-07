@@ -233,27 +233,33 @@ def set_sp12unofficial(titles:list, sdb:SongDatabase, conv_unof_infn:dict):
             diff = difficulty.another
         elif tmp_d == 'LEGGENDARIA':
             diff = difficulty.leggendaria
-        if (title, play_style.sp, diff) in sp12.keys(): # 地力表側との照合
+
+        existing = sdb.search(title=title, play_style=play_style.sp, difficulty=diff)
+        candidate_titles = []
+        if existing and existing.sp12_title:
+            candidate_titles.append(existing.sp12_title)
+        candidate_titles.append(title)
+        if (title, play_style.sp, diff) in conv_unof_infn:
+            candidate_titles.append(conv_unof_infn[(title, play_style.sp, diff)])
+        candidate_titles = list(dict.fromkeys(candidate_titles))
+
+        matched_title = next(
+            (
+                candidate_title for candidate_title in candidate_titles
+                if (candidate_title, play_style.sp, diff) in sp12
+            ),
+            None,
+        )
+
+        if matched_title is not None: # 地力表側との照合
             new = OneSongInfo(
                 title = title,
                 play_style = play_style.sp,
                 difficulty=diff,
                 level=12,
-                sp12_clear = sp12[(title,play_style.sp,diff)]['clear'],
-                sp12_hard = sp12[(title,play_style.sp,diff)]['hard'],
-                sp12_title = title,
-            )
-            add_preserving_existing(sdb, new)
-        elif (title, play_style.sp, diff) in conv_unof_infn.keys():
-            new_title = conv_unof_infn[(title, play_style.sp, diff)]
-            new = OneSongInfo(
-                title = title,
-                play_style = play_style.sp,
-                difficulty=diff,
-                level=12,
-                sp12_clear = sp12[(new_title,play_style.sp,diff)]['clear'],
-                sp12_hard = sp12[(new_title,play_style.sp,diff)]['hard'],
-                sp12_title = title,
+                sp12_clear = sp12[(matched_title,play_style.sp,diff)]['clear'],
+                sp12_hard = sp12[(matched_title,play_style.sp,diff)]['hard'],
+                sp12_title = matched_title,
             )
             add_preserving_existing(sdb, new)
         else:
@@ -359,6 +365,9 @@ def preserve_songinfo(existing:OneSongInfo, new:OneSongInfo):
         'rader_soflan',
         'rader_charge',
         'rader_chord',
+        'sp12_hard',
+        'sp12_clear',
+        'sp12_title',
         'sp11_hard',
         'sp11_clear',
         'cpi_easy',

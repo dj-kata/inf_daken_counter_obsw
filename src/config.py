@@ -71,6 +71,7 @@ class Config:
         self.write_statistics = False  # 統計情報を書き込むか
         self.include_legacy_v2_logs = False  # v2以前のログを集計対象にするか
         self.enable_katate_difficulty_display = False  # 片手難易度をレベル表示に含めるか
+        self.enable_katate_tweet_grouping = False  # ツイート集計を片手難易度ごとに分けるか
 
         # ライバルスコア設定
         self.rivals = []  # [{"name": "...", "url": "..."}]
@@ -151,6 +152,7 @@ class Config:
                     self.write_statistics = config_data.get('write_statistics', False)
                     self.include_legacy_v2_logs = config_data.get('include_legacy_v2_logs', False)
                     self.enable_katate_difficulty_display = config_data.get('enable_katate_difficulty_display', False)
+                    self.enable_katate_tweet_grouping = config_data.get('enable_katate_tweet_grouping', False)
 
                     # ライバルスコア設定
                     self.rivals = config_data.get('rivals', [])
@@ -189,6 +191,7 @@ class Config:
             "write_statistics": self.write_statistics,
             "include_legacy_v2_logs": self.include_legacy_v2_logs,
             "enable_katate_difficulty_display": self.enable_katate_difficulty_display,
+            "enable_katate_tweet_grouping": self.enable_katate_tweet_grouping,
             "language": self.language,
             "score_viewer_style": self.score_viewer_style,
             "score_viewer_levels": self.score_viewer_levels,
