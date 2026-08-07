@@ -125,6 +125,7 @@ class MusicSelectScoreImportDialog(QDialog):
 class MainWindow(MainWindowUI):
     """メインウィンドウクラス - 制御ロジックを担当"""
     songinfo_update_finished = Signal(bool, str)
+    save_image_requested = Signal()
     manual_music_select_import_requested = Signal()
     bpim2_fetch_finished = Signal(object, object)
     
@@ -132,6 +133,7 @@ class MainWindow(MainWindowUI):
         # 設定とデータベースの初期化
         self.config = Config()
         super().__init__(self.config)
+        self.save_image_requested.connect(self.save_image)
         self.manual_music_select_import_requested.connect(self.manual_music_select_import)
         self.bpim2_fetch_finished.connect(self.on_bpim2_fetch_finished)
         self.song_database = SongDatabase()
@@ -277,6 +279,9 @@ class MainWindow(MainWindowUI):
     
     def check_obs_configuration(self):
         """OBS設定をチェックし、問題があれば警告ダイアログを表示"""
+        if not self.obs_manager.uses_obs_websocket():
+            return
+
         status = self.obs_manager.get_detailed_status()
         
         warnings = []
@@ -288,7 +293,7 @@ class MainWindow(MainWindowUI):
             warnings.append("• OBS WebSocketに接続できていません")
         
         # 監視対象ソース設定チェック
-        if not status['is_source_configured']:
+        if not self.obs_manager.is_direct_capture() and not status['is_source_configured']:
             warnings.append("• 監視対象ソースが設定されていません")
         
         # 警告がある場合はダイアログを表示
@@ -404,7 +409,7 @@ class MainWindow(MainWindowUI):
         self.show()
 
         # OBS接続状態の再評価
-        if not self.obs_manager.is_connected:
+        if not self.obs_manager.uses_obs_websocket() or not self.obs_manager.is_connected:
             self.obs_manager.connect()
     
     def show_about(self):
@@ -419,11 +424,19 @@ class MainWindow(MainWindowUI):
         ゲーム画面のキャプチャ画像を保存する。リザルト画面なら曲名などをファイル名に入れる。
         """
         try:
+            if getattr(self.screen_reader.screen, 'original', None) is None:
+                self.statusBar().showMessage("保存できるゲーム画面がありません", 3000)
+                return False
+
             date = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
             if self.screen_reader.is_result():
                 detailed_result = detailed_result if detailed_result else self.screen_reader.read_result_screen()
+                if not detailed_result:
+                    self.statusBar().showMessage("リザルト画面を読み取れませんでした", 3000)
+                    return False
                 # TODO ここで最後に追加したresultを使うほうがよい、自己べ情報が上書きされるため
-                detailed_result.result = self.result_database.results[-1]
+                if self.result_database.results:
+                    detailed_result.result = self.result_database.results[-1]
                 result = detailed_result.result
                 if skip_no_update and (self.config.autosave_image_mode == config_autosave_image.only_updates): # 更新している場合のみ保存
                     if not result.is_updated():
@@ -508,9 +521,12 @@ class MainWindow(MainWindowUI):
         # logger.info(f"OBS connection changed: connected={is_connected}, message={message}")
 
         # UIを更新（スレッドセーフに）
-        self.obs_status_label.setText(message)
+        status_message, is_ready = self.obs_manager.get_status()
+        self.obs_status_label.setText(status_message)
 
-        if is_connected:
+        if '<span' in status_message:
+            self.obs_status_label.setStyleSheet("font-weight: bold;")
+        elif is_ready:
             # 接続成功時
             self.obs_status_label.setStyleSheet("color: green; font-weight: bold;")
             logger.info("OBS接続が確立されました")
@@ -529,30 +545,32 @@ class MainWindow(MainWindowUI):
     def main_loop(self):
         """メインループ - 100ms毎に呼ばれる"""
         try:
-            # OBS連携が有効な場合のみスクリーンショット取得
-            if self.obs_manager.is_connected and self.config.monitor_source_name != "":
-                self.obs_manager.screenshot()
-                
-                if self.obs_manager.screen is not None:
-                    self.screen_reader.update_screen(self.obs_manager.screen)
-                    
-                    # 現在のゲーム画面状態を判定
-                    new_mode = self.detect_current_mode()
-                    
-                    # モードが変わった場合のイベント処理
-                    if new_mode != self.current_mode:
-                        self.on_mode_changed(self.current_mode, new_mode)
-                        self.current_mode = new_mode
-                    
-                    # 各モードでの処理
-                    if self.current_mode == detect_mode.select:
-                        self.process_select_mode()
-                    elif self.current_mode == detect_mode.play:
-                        self.process_play_mode()
-                    elif self.current_mode == detect_mode.result:
-                        self.process_result_mode()
-                    elif self.current_mode == detect_mode.option:
-                        self.process_option_mode()
+            if not self.obs_manager.is_capture_ready():
+                return
+
+            self.obs_manager.screenshot()
+            if self.obs_manager.screen is None:
+                return
+
+            self.screen_reader.update_screen(self.obs_manager.screen)
+
+            # 現在のゲーム画面状態を判定
+            new_mode = self.detect_current_mode()
+
+            # モードが変わった場合のイベント処理
+            if new_mode != self.current_mode:
+                self.on_mode_changed(self.current_mode, new_mode)
+                self.current_mode = new_mode
+
+            # 各モードでの処理
+            if self.current_mode == detect_mode.select:
+                self.process_select_mode()
+            elif self.current_mode == detect_mode.play:
+                self.process_play_mode()
+            elif self.current_mode == detect_mode.result:
+                self.process_result_mode()
+            elif self.current_mode == detect_mode.option:
+                self.process_option_mode()
         
         except Exception as e:
             logger.error(f"メインループエラー: {traceback.format_exc()}")

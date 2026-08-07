@@ -11,6 +11,7 @@ import glob
 import gzip
 import urllib.request, json, requests
 from bs4 import BeautifulSoup
+import update_katate_difficulty
 
 from src.screen_reader import ScreenReader
 from src.logger import get_logger
@@ -599,3 +600,5 @@ for e in ereter_not_found:
     print(f"  {e}")
 
 sdb.save()
+print("updating katate difficulty...")
+update_katate_difficulty.main([])

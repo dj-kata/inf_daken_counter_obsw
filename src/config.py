@@ -14,6 +14,14 @@ class Config:
         self.websocket_host = "localhost"
         self.websocket_port = 4444
         self.websocket_password = ""
+        self.capture_method = "direct_window"
+        """'direct_window' = INFINITASウィンドウを直接取得 / 'obs_websocket' = OBS WebSocket経由"""
+        self.direct_capture_exe = "bm2dx.exe"
+        """直接取得対象のプロセス名"""
+        self.direct_capture_title = "beatmania IIDX INFINITAS"
+        """直接取得対象のウィンドウタイトル。exe一致時のフォールバックも行う。"""
+        self.direct_capture_all_monitors = False
+        """直接取得時に常に全モニターを対象にするか。Falseの場合は対象ウィンドウ位置から自動判定する。"""
         self.autoload_offset = 4
         self.main_window_geometry = None
 
@@ -81,6 +89,10 @@ class Config:
                     self.websocket_host = config_data.get("websocket_host", "localhost")
                     self.websocket_port = config_data.get("websocket_port", 4444)
                     self.websocket_password = config_data.get("websocket_password", "")
+                    self.capture_method = self._load_capture_method(config_data)
+                    self.direct_capture_exe = config_data.get("direct_capture_exe", "bm2dx.exe")
+                    self.direct_capture_title = config_data.get("direct_capture_title", "beatmania IIDX INFINITAS")
+                    self.direct_capture_all_monitors = config_data.get("direct_capture_all_monitors", False)
                     self.keep_on_top = config_data.get("keep_on_top", False)
                     self.enable_autotweet = config_data.get("enable_autotweet", False)
                     self.enable_judge = config_data.get("enable_judge", True)
@@ -153,6 +165,10 @@ class Config:
             "websocket_host": self.websocket_host,
             "websocket_port": self.websocket_port,
             "websocket_password": self.websocket_password,
+            "capture_method": self.capture_method,
+            "direct_capture_exe": self.direct_capture_exe,
+            "direct_capture_title": self.direct_capture_title,
+            "direct_capture_all_monitors": self.direct_capture_all_monitors,
             "keep_on_top": self.keep_on_top,
             "enable_autotweet": self.enable_autotweet,
             "enable_judge": self.enable_judge,
@@ -187,6 +203,23 @@ class Config:
         except Exception as e:
             logger.error(traceback.format_exc())
             print(f"設定ファイル保存エラー: {e}")
+
+    def _load_capture_method(self, config_data: dict) -> str:
+        """旧バージョン設定はOBS取得、新規設定は直接取得に寄せる。"""
+        method = config_data.get("capture_method")
+        if method in ("direct_window", "obs_websocket"):
+            return method
+
+        has_websocket_settings = any(
+            key in config_data
+            for key in ("websocket_host", "websocket_port", "websocket_password")
+        )
+        has_obs_capture_settings = bool(str(config_data.get("monitor_source_name", "")).strip())
+        has_obs_control_settings = bool(config_data.get("obs_control_settings", []))
+        has_obs_scene_collection = bool(str(config_data.get("obs_scene_collection", "")).strip())
+        if has_websocket_settings or has_obs_capture_settings or has_obs_control_settings or has_obs_scene_collection:
+            return "obs_websocket"
+        return "direct_window"
     
     def save_window_position(self, x, y, width, height):
         """ウィンドウ位置を保存"""

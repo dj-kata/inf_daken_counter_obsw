@@ -65,6 +65,11 @@ class UIText:
     
     class feature:
         """機能設定タブ"""
+        game_capture_group = 'ゲーム画面取得'
+        capture_method_direct = '直接取得'
+        capture_method_obs = 'OBS WebSocket経由'
+        direct_capture_all_monitors = '自動判定せずに常に全モニターを対象にする'
+        direct_capture_all_monitors_tip = 'OFFの場合は、対象ウィンドウの位置から必要なときだけ自動で全モニターを対象にします。'
         tweet_group = 'ツイート機能'
         enable_autotweet = '終了時の自動ツイートを有効にする'
         enable_judge = '判定部分を含める'
@@ -192,7 +197,7 @@ class UIText:
 
     class obs:
         '''OBS関連のメッセージ'''
-        connection_state = 'OBS接続状態'
+        connection_state = 'ゲーム画面取得状態'
         status_connected = '接続中'
         status_connection_failed = '接続失敗'
         status_disconnected = '切断しました'

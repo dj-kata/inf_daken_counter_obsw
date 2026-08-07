@@ -63,7 +63,7 @@ class MainWindowUI(QMainWindow):
         main_layout = QVBoxLayout()
         central_widget.setLayout(main_layout)
         
-        # OBS接続状態グループ
+        # ゲーム画面取得状態グループ
         obs_group = QGroupBox(self.ui.obs.connection_state)
         obs_layout = QHBoxLayout()
         self.obs_status_label = QLabel(self.ui.obs.not_connected)
@@ -220,7 +220,10 @@ class MainWindowUI(QMainWindow):
         if KEYBOARD_AVAILABLE:
             try:
                 # F6キーをグローバルホットキーとして登録
-                keyboard.add_hotkey('f6', self.save_image, suppress=False)
+                if hasattr(self, 'save_image_requested'):
+                    keyboard.add_hotkey('f6', self.save_image_requested.emit, suppress=False)
+                else:
+                    keyboard.add_hotkey('f6', self.save_image, suppress=False)
                 logger.info("グローバルホットキー (F6) を登録しました")
                 if hasattr(self, 'manual_music_select_import_requested'):
                     keyboard.add_hotkey('f7', self.manual_music_select_import_requested.emit, suppress=False)
@@ -246,11 +249,13 @@ class MainWindowUI(QMainWindow):
     
     def update_display(self):
         """表示更新"""
-        # OBS接続状態
+        # ゲーム画面取得状態
         try:
             status_msg, is_connected = self.obs_manager.get_status()
             self.obs_status_label.setText(status_msg)
-            if is_connected:
+            if '<span' in status_msg:
+                self.obs_status_label.setStyleSheet("font-weight: bold;")
+            elif is_connected:
                 self.obs_status_label.setStyleSheet("color: green; font-weight: bold;")
             else:
                 self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")

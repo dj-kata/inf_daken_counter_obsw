@@ -214,6 +214,33 @@ class ConfigDialog(QDialog):
         widget = QWidget()
         layout = QVBoxLayout()
         widget.setLayout(layout)
+
+        # ゲーム画面取得グループ
+        game_capture_group = QGroupBox(self.ui.feature.game_capture_group)
+        game_capture_layout = QVBoxLayout()
+        game_capture_group.setLayout(game_capture_layout)
+
+        self.capture_method_group = QButtonGroup()
+        self.capture_method_direct_radio = QRadioButton(self.ui.feature.capture_method_direct)
+        self.capture_method_obs_radio = QRadioButton(self.ui.feature.capture_method_obs)
+        self.capture_method_group.addButton(self.capture_method_direct_radio, 0)
+        self.capture_method_group.addButton(self.capture_method_obs_radio, 1)
+
+        capture_method_layout = QHBoxLayout()
+        capture_method_layout.addWidget(self.capture_method_direct_radio)
+        capture_method_layout.addWidget(self.capture_method_obs_radio)
+        capture_method_layout.addStretch()
+        game_capture_layout.addLayout(capture_method_layout)
+
+        self.direct_capture_all_monitors_check = QCheckBox(self.ui.feature.direct_capture_all_monitors)
+        self.direct_capture_all_monitors_check.setToolTip(self.ui.feature.direct_capture_all_monitors_tip)
+        game_capture_layout.addWidget(self.direct_capture_all_monitors_check)
+        self.capture_method_group.idClicked.connect(self._update_direct_capture_option_enabled)
+
+        self.enable_music_select_score_import_check = QCheckBox(self.ui.feature.enable_music_select_score_import)
+        game_capture_layout.addWidget(self.enable_music_select_score_import_check)
+
+        layout.addWidget(game_capture_group)
         
         # ツイート機能グループ
         tweet_group = QGroupBox(self.ui.feature.tweet_group)
@@ -228,9 +255,6 @@ class ConfigDialog(QDialog):
         
         self.enable_folder_updates_check = QCheckBox(self.ui.feature.enable_folder_updates)
         tweet_layout.addWidget(self.enable_folder_updates_check)
-
-        self.enable_music_select_score_import_check = QCheckBox(self.ui.feature.enable_music_select_score_import)
-        tweet_layout.addWidget(self.enable_music_select_score_import_check)
         
         layout.addWidget(tweet_group)
         
@@ -267,6 +291,10 @@ class ConfigDialog(QDialog):
         layout.addStretch()
         
         return widget
+
+    def _update_direct_capture_option_enabled(self, *_args):
+        """直接取得向けの詳細設定を、直接取得選択時だけ操作可能にする。"""
+        self.direct_capture_all_monitors_check.setEnabled(self.capture_method_group.checkedId() == 0)
 
     def on_browse_clicked(self):
         """フォルダ参照ボタン押下時の処理"""
@@ -711,6 +739,14 @@ class ConfigDialog(QDialog):
         self.enable_judge_check.setChecked(self.config.enable_judge)
         self.enable_folder_updates_check.setChecked(self.config.enable_folder_updates)
         self.enable_music_select_score_import_check.setChecked(self.config.enable_music_select_score_import)
+        if getattr(self.config, 'capture_method', 'direct_window') == 'obs_websocket':
+            self.capture_method_obs_radio.setChecked(True)
+        else:
+            self.capture_method_direct_radio.setChecked(True)
+        self.direct_capture_all_monitors_check.setChecked(
+            bool(getattr(self.config, 'direct_capture_all_monitors', False))
+        )
+        self._update_direct_capture_option_enabled()
         self.autoload_offset_spin.setValue(self.config.autoload_offset)
         if hasattr(self, 'websocket_data_port') and hasattr(self.config, 'websocket_data_port'):
             self.websocket_data_port.setText(str(self.config.websocket_data_port))
@@ -766,6 +802,12 @@ class ConfigDialog(QDialog):
         self.config.enable_judge = self.enable_judge_check.isChecked()
         self.config.enable_folder_updates = self.enable_folder_updates_check.isChecked()
         self.config.enable_music_select_score_import = self.enable_music_select_score_import_check.isChecked()
+        self.config.capture_method = (
+            'direct_window'
+            if self.capture_method_group.checkedId() == 0
+            else 'obs_websocket'
+        )
+        self.config.direct_capture_all_monitors = self.direct_capture_all_monitors_check.isChecked()
         self.config.autoload_offset = self.autoload_offset_spin.value()
         # WebSocketデータポート設定
         try:

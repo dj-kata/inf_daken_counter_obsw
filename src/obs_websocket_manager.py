@@ -9,6 +9,7 @@ import logging
 from src.config import Config
 from src.logger import get_logger
 from src.funcs import load_ui_text
+from src.direct_window_capture import DirectWindowCapture
 logger = get_logger(__name__)
 
 # obsws_pythonライブラリの接続エラートレースバックを抑制
@@ -73,6 +74,7 @@ class OBSWebSocketManager(QObject):
         self.picw = 1920
         self.pich = 1080
         self.screen = None
+        self.direct_capture: Optional[DirectWindowCapture] = None
 
         # 起動時シーンコレクション切り替えフラグ（disconnect後にリセット）
         self._scene_collection_applied = False
@@ -81,10 +83,49 @@ class OBSWebSocketManager(QObject):
         """設定をセット"""
         self.config = config
         self.ui = load_ui_text(config)
+        if self.direct_capture is None:
+            self.direct_capture = DirectWindowCapture(config)
+        else:
+            self.direct_capture.set_config(config)
         logger.info(f"OBS WebSocket config set: {config.websocket_host}:{config.websocket_port}")
+
+    def is_direct_capture(self) -> bool:
+        return bool(self.config and getattr(self.config, 'capture_method', 'direct_window') == 'direct_window')
+
+    def is_obs_control_enabled(self) -> bool:
+        if not self.config:
+            return False
+        return bool(
+            str(getattr(self.config, 'websocket_password', '')).strip()
+            and getattr(self.config, 'obs_control_settings', [])
+        )
+
+    def uses_obs_websocket(self) -> bool:
+        """OBS WebSocket接続が必要な設定か。"""
+        return bool(self.config and (not self.is_direct_capture() or self.is_obs_control_enabled()))
+
+    def is_capture_ready(self) -> bool:
+        """メインループがキャプチャを試行してよい状態か。"""
+        if not self.config:
+            return False
+        if self.is_direct_capture():
+            return True
+        return self.is_connected and self.is_monitor_source_configured()
     
     def connect(self):
         """OBSに接続"""
+        if not self.uses_obs_websocket():
+            self.stop_monitor()
+            if self.client:
+                try:
+                    self.client.disconnect()
+                except:
+                    pass
+                self.client = None
+            self.is_connected = False
+            self._emit_status("直接取得モード", False)
+            return False
+
         if not OBSWS_AVAILABLE:
             self._emit_status("obsws_python がインストールされていません", False)
             return False
@@ -290,6 +331,8 @@ class OBSWebSocketManager(QObject):
         """監視対象ソースが設定されているかチェック"""
         if not self.config:
             return False
+        if self.is_direct_capture():
+            return True
         return bool(self.config.monitor_source_name and self.config.monitor_source_name.strip())
     
     def get_status(self) -> tuple[str, bool]:
@@ -300,16 +343,32 @@ class OBSWebSocketManager(QObject):
             tuple[str, bool]: (ステータスメッセージ, 正常状態かどうか)
                 正常状態 = OBS接続済み かつ 監視対象ソース設定済み
         """
-        if not OBSWS_AVAILABLE:
-            return "obsws_python がインストールされていません", False
-        elif not self.config:
+        if not self.config:
             return self.ui.obs.not_configured, False
+        elif self.is_direct_capture() and not self.is_obs_control_enabled():
+            error = self.direct_capture.last_error if self.direct_capture else ""
+            if error:
+                return f'直接取得: <span style="color:#d93025;">{error}</span> / OBS制御: -', False
+            return f'{self._direct_capture_status_html()} / OBS制御: -', True
+        elif self.is_direct_capture() and self.is_obs_control_enabled():
+            error = self.direct_capture.last_error if self.direct_capture else ""
+            direct_status = self._direct_capture_status_html()
+            if error:
+                direct_status = f'直接取得: <span style="color:#d93025;">{error}</span>'
+            if not self.is_connected:
+                return f'{direct_status} / OBS制御: <span style="color:#d93025;">未接続</span>', False
+            return f'{direct_status} / OBS制御: <span style="color:#188038;">接続中</span> ({self.config.websocket_host}:{self.config.websocket_port})', True
+        elif not OBSWS_AVAILABLE:
+            return "obsws_python がインストールされていません", False
         elif not self.is_connected:
-            return self.ui.obs.not_connected, False
+            return f"OBS WebSocket: {self.ui.obs.not_connected}", False
         elif not self.is_monitor_source_configured():
-            return self.ui.obs.no_source, False
+            return f"OBS WebSocket: {self.ui.obs.no_source}", False
         else:
-            return f"{self.ui.obs.connected} ({self.config.websocket_host}:{self.config.websocket_port})", True
+            return f"OBS WebSocket: {self.ui.obs.connected} ({self.config.websocket_host}:{self.config.websocket_port})", True
+
+    def _direct_capture_status_html(self) -> str:
+        return '直接取得: <span style="color:#188038;">OK</span>'
     
     def get_detailed_status(self) -> Dict[str, Any]:
         """
@@ -407,8 +466,18 @@ class OBSWebSocketManager(QObject):
         return True
     
     def screenshot(self):
-        """OBSソースのキャプチャをself.screenに格納"""
+        """設定された方式のキャプチャをself.screenに格納"""
         import os
+
+        if self.is_direct_capture():
+            from src.infnotebook_compat import pil_image_to_screen
+
+            if self.direct_capture is None:
+                self.direct_capture = DirectWindowCapture(self.config)
+            image = self.direct_capture.read_frame()
+            self.screen = pil_image_to_screen(image) if image is not None else None
+            return
+
         from src.infnotebook_compat import open_screenimage
         
         os.makedirs('out', exist_ok=True)

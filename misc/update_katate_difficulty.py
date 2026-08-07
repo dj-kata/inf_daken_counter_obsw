@@ -60,7 +60,7 @@ SUFFIX_DIFFICULTY = {
 }
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="片手難易度表を取得してsonginfo.infdcのkatate_11/katate_12を更新する"
     )
@@ -77,7 +77,7 @@ def parse_args():
         action="store_true",
         help="songinfo.infdcに見つからなかった譜面を表示する",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def read_csv_rows(args):
@@ -311,8 +311,8 @@ def print_changes(label, changes, limit=40):
         print(f"  ... and {len(changes) - limit} more")
 
 
-def main():
-    args = parse_args()
+def main(argv=None):
+    args = parse_args(argv)
     rows = read_csv_rows(args)
     katate, conflicts = parse_katate_rows(rows)
 

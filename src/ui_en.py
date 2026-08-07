@@ -65,6 +65,11 @@ class UIText:
     
     class feature:
         """Feature settings tab"""
+        game_capture_group = 'Game Screen Capture'
+        capture_method_direct = 'Direct capture'
+        capture_method_obs = 'via OBS WebSocket'
+        direct_capture_all_monitors = 'Always capture all monitors without auto-detection'
+        direct_capture_all_monitors_tip = 'When off, all monitors are used automatically only if the target window needs them.'
         tweet_group = 'Tweet Function'
         enable_autotweet = 'Enable auto-tweet on exit'
         enable_judge = 'Include judge data'
@@ -192,7 +197,7 @@ class UIText:
 
     class obs:
         '''OBS関連のメッセージ'''
-        connection_state = 'OBS Status'
+        connection_state = 'Game Capture Status'
         status_connected = 'Connected'
         status_connection_failed = 'Connection failed'
         status_disconnected = 'Disconnected'
