@@ -62,6 +62,7 @@ class UIText:
         image_save = '画像保存'
         data_import = 'データ登録'
         rival = 'ライバル'
+        difficulty_table = '難易度表'
     
     class feature:
         """機能設定タブ"""
@@ -104,6 +105,11 @@ class UIText:
         
         other_group = 'その他'
         write_statistics = '統計情報を書き込む'
+
+    class difficulty_table:
+        """難易度表タブ"""
+        katate_group = '片手難易度表'
+        enable_katate_difficulty_display = '片手難易度を表示する'
     
     class data_import:
         """データ登録タブ"""

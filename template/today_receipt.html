@@ -109,6 +109,26 @@
                 width: 86px;
             }
 
+            .katate-band {
+                margin-left: 2px;
+            }
+            .katate-band-1 { color: #ffffff; }
+            .katate-band-2,
+            .katate-band-3 { color: #99ff66; }
+            .katate-band-4,
+            .katate-band-5 { color: #66aaff; }
+            .katate-band-6,
+            .katate-band-7 { color: #ff6666; }
+            .katate-band-8,
+            .katate-band-9 { color: #ffeb3b; }
+            .katate-band-10 {
+                color: #050505;
+                background: rgba(255, 255, 255, 0.92);
+                border-radius: 4px;
+                padding: 0 4px;
+                text-shadow: none;
+            }
+
             .achievement-table td.col-lamp-level {
                 line-height: 1.05;
                 text-overflow: clip;
@@ -350,15 +370,27 @@
             return String(a.title || '').localeCompare(String(b.title || ''), 'ja');
         }
 
+        function getKatateBandHtml(band) {
+            var value = Number(band) || 0;
+            var marks = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+            if (value < 1 || value > 10) return '';
+            return '<span class="katate-band katate-band-' + value + '">' + marks[value] + '</span>';
+        }
+
         function formatLevel(item) {
             var lv = item.lv || '';
-            return lv ? '☆' + escapeHtml(lv) : '';
+            if (!lv) return '';
+            var html = '☆' + escapeHtml(lv);
+            if (item.enable_katate_difficulty_display && item.katate_band) {
+                html += '-' + getKatateBandHtml(item.katate_band);
+            }
+            return html;
         }
 
         function formatLampLevel(item) {
             var sp12Clear = item.sp_12clear || '';
             var sp12Hard = item.sp_12hard || '';
-            if (sp12Clear || sp12Hard) {
+            if (!(item.enable_katate_difficulty_display && item.katate_band) && (sp12Clear || sp12Hard)) {
                 return '<span class="sp12-clear">' + escapeHtml(sp12Clear || '?') + '</span>' +
                     '<span class="sp12-slash">/</span>' +
                     '<span class="sp12-hard">' + escapeHtml(sp12Hard || '?') + '</span>';

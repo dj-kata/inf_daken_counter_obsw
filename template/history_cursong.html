@@ -81,6 +81,26 @@
                             2px -2px 0 #000,
                             -2px -2px 0 #000;
             }
+
+            .katate-band {
+                margin-left: 4px;
+            }
+            .katate-band-1 { color: #ffffff; }
+            .katate-band-2,
+            .katate-band-3 { color: #99ff66; }
+            .katate-band-4,
+            .katate-band-5 { color: #66aaff; }
+            .katate-band-6,
+            .katate-band-7 { color: #ff6666; }
+            .katate-band-8,
+            .katate-band-9 { color: #ffeb3b; }
+            .katate-band-10 {
+                color: #050505;
+                background: rgba(255, 255, 255, 0.92);
+                border-radius: 4px;
+                padding: 0 4px;
+                text-shadow: none;
+            }
             
             .title-difficulty {
                 margin-left: 15px;
@@ -544,6 +564,21 @@
         
         return '';
     }
+
+    function getKatateBandHtml(band) {
+        var value = Number(band) || 0;
+        var marks = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+        if (value < 1 || value > 10) return '';
+        return '<span class="katate-band katate-band-' + value + '">' + marks[value] + '</span>';
+    }
+
+    function formatLevelWithKatate(lv, band, enabled) {
+        var level = '<span class="title-level">☆' + lv;
+        if (enabled && band) {
+            level += '-' + getKatateBandHtml(band);
+        }
+        return level + '</span>';
+    }
     
     function updateHistory(data) {
         if (!data) return;
@@ -564,6 +599,8 @@
         var dp_ereter_easy = data.dp_ereter_easy || '';
         var dp_ereter_hard = data.dp_ereter_hard || '';
         var dp_ereter_exh = data.dp_ereter_exh || '';
+        var katate_band = data.katate_band || '';
+        var enable_katate = Boolean(data.enable_katate_difficulty_display);
         var battle = data.battle || 0;
         var best_score_opt = data.best_score_opt || "";
 
@@ -579,7 +616,7 @@
             music = "<span class='playspeed-low'>["+playspeed+"X]</span> " + music;
         }
         document.querySelector('.title-name').innerHTML = music;
-        var level_str = '<span class="title-level">☆' + lv + '</span>'
+        var level_str = formatLevelWithKatate(lv, katate_band, enable_katate)
         if (dp_unofficial_lv != ""){
             level_str += ' <span class="dp-unofficial">(' + dp_unofficial_lv + ')</span>'
         }

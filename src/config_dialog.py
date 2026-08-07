@@ -196,6 +196,7 @@ class ConfigDialog(QDialog):
         
         # 各タブを作成(OBS WebSocketタブを削除)
         tab_widget.addTab(self.create_feature_tab(), self.ui.tab.feature)
+        tab_widget.addTab(self.create_difficulty_table_tab(), self.ui.tab.difficulty_table)
         # tab_widget.addTab(self.create_music_pack_tab(), self.ui.tab.music_pack)
         tab_widget.addTab(self.create_image_save_tab(), self.ui.tab.image_save)
         tab_widget.addTab(self.create_data_import_tab(), self.ui.tab.data_import)  # 追加
@@ -290,6 +291,25 @@ class ConfigDialog(QDialog):
         layout.addWidget(other_group)
         layout.addStretch()
         
+        return widget
+
+    def create_difficulty_table_tab(self):
+        """難易度表設定タブ"""
+        widget = QWidget()
+        layout = QVBoxLayout()
+        widget.setLayout(layout)
+
+        katate_group = QGroupBox(self.ui.difficulty_table.katate_group)
+        katate_layout = QVBoxLayout()
+        katate_group.setLayout(katate_layout)
+
+        self.enable_katate_difficulty_display_check = QCheckBox(
+            self.ui.difficulty_table.enable_katate_difficulty_display
+        )
+        katate_layout.addWidget(self.enable_katate_difficulty_display_check)
+
+        layout.addWidget(katate_group)
+        layout.addStretch()
         return widget
 
     def _update_direct_capture_option_enabled(self, *_args):
@@ -778,6 +798,11 @@ class ConfigDialog(QDialog):
         if hasattr(self.config, 'include_legacy_v2_logs'):
             self.include_legacy_v2_logs_check.setChecked(self.config.include_legacy_v2_logs)
 
+        if hasattr(self.config, 'enable_katate_difficulty_display'):
+            self.enable_katate_difficulty_display_check.setChecked(
+                self.config.enable_katate_difficulty_display
+            )
+
         # ライバル設定
         if hasattr(self, 'rival_list_table'):
             from PySide6.QtWidgets import QTableWidgetItem
@@ -833,6 +858,7 @@ class ConfigDialog(QDialog):
         self.config.modify_rivalarea_mode = config_modify_rivalarea(self.rivalarea_button_group.checkedId())
         self.config.write_statistics = self.write_statistics_check.isChecked()
         self.config.include_legacy_v2_logs = self.include_legacy_v2_logs_check.isChecked()
+        self.config.enable_katate_difficulty_display = self.enable_katate_difficulty_display_check.isChecked()
         
         # ライバル設定
         if hasattr(self, 'rival_list_table'):

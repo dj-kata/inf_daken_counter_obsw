@@ -31,6 +31,18 @@ def _to_int_or_none(value):
         return None
 
 
+def _get_katate_band(songinfo):
+    """譜面レベルに対応する片手難易度帯を返す。"""
+    if not songinfo:
+        return None
+    level = _to_int_or_none(getattr(songinfo, "level", None))
+    if level == 12:
+        return getattr(songinfo, "katate_12", None)
+    if level == 11:
+        return getattr(songinfo, "katate_11", None)
+    return None
+
+
 def _ws_broadcast(ws_method_name: str):
     """WebSocket配信用デコレータ。ws_serverがNoneなら何もしない。"""
 
@@ -67,6 +79,8 @@ def _extract_songinfo_fields(songinfo) -> dict:
     ]:
         val = getattr(songinfo, attr, None)
         fields[key] = str(val) if val else ""
+    katate_band = _get_katate_band(songinfo)
+    fields["katate_band"] = str(katate_band) if katate_band else ""
     return fields
 
 
@@ -713,6 +727,9 @@ class ResultDatabase:
 
             item = {
                 "lv": str(songinfo.level) if hasattr(songinfo, "level") else "",
+                "enable_katate_difficulty_display": bool(
+                    self.config and getattr(self.config, "enable_katate_difficulty_display", False)
+                ),
                 "title": r.title,
                 "difficulty": get_chart_name(r.play_style, r.difficulty),
                 "notes": r.notes,
@@ -748,7 +765,12 @@ class ResultDatabase:
 
             items.append(item)
 
-        return {"items": items}
+        return {
+            "enable_katate_difficulty_display": bool(
+                self.config and getattr(self.config, "enable_katate_difficulty_display", False)
+            ),
+            "items": items,
+        }
 
     def get_today_stats_data(self, start_time: int) -> dict:
         """today_stats.html用の統計データを生成"""
@@ -994,6 +1016,9 @@ class ResultDatabase:
 
         data = {
             "lv": str(songinfo.level) if hasattr(songinfo, "level") else "",
+            "enable_katate_difficulty_display": bool(
+                self.config and getattr(self.config, "enable_katate_difficulty_display", False)
+            ),
             "music": title,
             "difficulty": get_chart_name(style, difficulty, battle=battle),
             "playspeed": playspeed if playspeed else 1.0,

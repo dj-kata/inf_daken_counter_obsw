@@ -62,6 +62,7 @@ class UIText:
         image_save = 'Image Saving'
         data_import = 'Data Import'
         rival = 'Rival'
+        difficulty_table = 'Difficulty Tables'
     
     class feature:
         """Feature settings tab"""
@@ -104,6 +105,11 @@ class UIText:
         
         other_group = 'Others'
         write_statistics = 'Write statistics'
+
+    class difficulty_table:
+        """Difficulty table tab"""
+        katate_group = 'One-handed Difficulty Table'
+        enable_katate_difficulty_display = 'Show one-handed difficulty'
     
     class data_import:
         """Data import tab"""

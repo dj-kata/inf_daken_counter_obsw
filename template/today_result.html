@@ -91,6 +91,26 @@
                 color: #ffeb3b;
                 text-shadow: 2px 2px 0 #000;
             }
+
+            .katate-band {
+                margin-left: 3px;
+            }
+            .katate-band-1 { color: #ffffff; }
+            .katate-band-2,
+            .katate-band-3 { color: #99ff66; }
+            .katate-band-4,
+            .katate-band-5 { color: #66aaff; }
+            .katate-band-6,
+            .katate-band-7 { color: #ff6666; }
+            .katate-band-8,
+            .katate-band-9 { color: #ffeb3b; }
+            .katate-band-10 {
+                color: #050505;
+                background: rgba(255, 255, 255, 0.92);
+                border-radius: 4px;
+                padding: 0 4px;
+                text-shadow: none;
+            }
             
             /* ランプ列 */
             .results-table td.col-lamp {
@@ -354,6 +374,22 @@
                 .replace(/'/g, '&#39;');
         }
 
+        function getKatateBandHtml(band) {
+            var value = Number(band) || 0;
+            var marks = ['', '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+            if (value < 1 || value > 10) return '';
+            return '<span class="katate-band katate-band-' + value + '">' + marks[value] + '</span>';
+        }
+
+        function formatLevelWithKatate(lv, band, enabled) {
+            if (!lv) return '';
+            var html = '☆' + escapeHtml(lv);
+            if (enabled && band) {
+                html += '-' + getKatateBandHtml(band);
+            }
+            return html;
+        }
+
         function getNumericFlag(params, key, fallbackValue) {
             if (!params.has(key)) return fallbackValue;
             var parsed = Number(params.get(key));
@@ -577,6 +613,9 @@
                 var sp_12clear = item.sp_12clear || '';
                 var playspeed = Number(item.playspeed) || 1.0;
                 var dp_unofficial_lv = item.dp_unofficial_lv || "";
+                var katate_band = item.katate_band || '';
+                var enable_katate = Boolean(item.enable_katate_difficulty_display || data.enable_katate_difficulty_display);
+                var has_katate_display = enable_katate && Boolean(katate_band);
                 var score_delta = score - pre_score;
                 var bp_delta = bp - pre_bp;
                 var has_score_update = score > pre_score;
@@ -662,8 +701,8 @@
                 var diff_color = getDifficultyColor(difficulty);
                 
                 // レベル表示（SP☆12地力表対応）
-                var level_display = '☆' + lv;
-                if (sp_12clear || sp_12hard) {
+                var level_display = formatLevelWithKatate(lv, katate_band, enable_katate);
+                if (!has_katate_display && (sp_12clear || sp_12hard)) {
                     var clear_text = sp_12clear || '?';
                     var hard_text = sp_12hard || '?';
                     
@@ -671,7 +710,7 @@
                                    '<span class="sp12-slash">/</span>' +
                                    '<span class="sp12-hard">' + hard_text + '</span>';
                 }
-                if (battle == 0 && dp_unofficial_lv != ""){
+                if (!has_katate_display && battle == 0 && dp_unofficial_lv != ""){
                     level_display = dp_unofficial_lv;
                 }
                 
