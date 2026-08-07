@@ -260,6 +260,48 @@
                 color: #ff4444;
                 text-shadow: 0 0 5px rgba(255, 68, 68, 0.5);
             }
+
+            .ereter-diff-item {
+                position: relative;
+                border-radius: 10px;
+                padding: 6px 8px;
+                border: 2px solid rgba(255, 220, 120, 0.45);
+                background: linear-gradient(135deg, rgba(255, 220, 120, 0.16), rgba(20, 20, 40, 0.65));
+                box-shadow: 0 0 14px rgba(255, 220, 120, 0.22);
+            }
+
+            .ereter-diff-ec {
+                border-color: rgba(150, 255, 110, 0.48);
+                background: linear-gradient(135deg, rgba(150, 255, 110, 0.18), rgba(20, 20, 40, 0.65));
+                box-shadow: 0 0 14px rgba(150, 255, 110, 0.22);
+            }
+
+            .ereter-diff-hc {
+                border-color: rgba(255, 80, 105, 0.52);
+                background: linear-gradient(135deg, rgba(255, 80, 105, 0.18), rgba(20, 20, 40, 0.65));
+                box-shadow: 0 0 14px rgba(255, 80, 105, 0.22);
+            }
+
+            .ereter-diff-exh {
+                border-color: rgba(255, 235, 70, 0.52);
+                background: linear-gradient(135deg, rgba(255, 235, 70, 0.18), rgba(20, 20, 40, 0.65));
+                box-shadow: 0 0 14px rgba(255, 235, 70, 0.22);
+            }
+
+            .ereter-diff-item.achieved {
+                filter: brightness(1.18);
+            }
+
+            .ereter-check {
+                position: absolute;
+                right: 8px;
+                top: -4px;
+                color: #ff3030;
+                font-size: 30px;
+                line-height: 1;
+                text-shadow: 0 0 8px rgba(255, 48, 48, 0.8),
+                            2px 2px 0 #000;
+            }
             
             /* リザルトカード */
             .result-card {
@@ -566,6 +608,8 @@
         var bpi_ave = data.bpi_ave || '';
         var bpi_top = data.bpi_top || '';
         var bpi_near_averages = data.bpi_near_averages || [];
+        var isDpChart = String(difficulty).toUpperCase().indexOf('DP') === 0;
+        var hasEreterData = isDpChart && (dp_ereter_easy || dp_ereter_hard || dp_ereter_exh);
         
         // BEST SCORE表示
         var score_html = '';
@@ -601,25 +645,12 @@
             return names[lampVal] || '';
         }
 
-        // dp_ereter値の取得(best_lampに応じて)
-        function getEreterValue(lampVal, easy, hard, exh) {
-            if (!easy && !hard && !exh) return '';
-            if (lampVal == 3 || lampVal == 4) return easy;   // easy/clear → dp_ereter_easy
-            if (lampVal == 5) return hard;                     // hard → dp_ereter_hard
-            if (lampVal == 6 || lampVal == 7) return exh;      // exh/fc → dp_ereter_exh
-            return '';  // failed/ac以下は非表示
-        }
-
         // ベストランプをBPラベル行の右側に表示
         var bp_h2 = document.querySelector('.bp-card-header');
         var lamp_area_html = '';
         if (best_lamp > 0) {
             lamp_area_html += '<span class="best-lamp-area">';
             lamp_area_html += getLampBoxHtml(best_lamp, 22);
-            var ereter_val = getEreterValue(best_lamp, dp_ereter_easy, dp_ereter_hard, dp_ereter_exh);
-            if (ereter_val) {
-                lamp_area_html += '<span class="ereter-value">' + ereter_val + '</span>';
-            }
             lamp_area_html += '</span>';
         }
         bp_h2.innerHTML = '💔 BP' + lamp_area_html;
@@ -651,8 +682,30 @@
         var hasBpiData = best_bpi && best_bpi !== '' && (isBpim2 || hasLegacyBpiData);
         
         var bpiCard = document.querySelector('.bpi-card');
-        if (hasBpiData) {
+        if (hasEreterData) {
             bpiCard.classList.add('visible');
+            document.querySelector('.bpi-card h2').textContent = '📈 ereter.net';
+
+            var ereterItems = [
+                {label: 'EC diff', value: dp_ereter_easy, achieved: best_lamp >= 3, cls: 'ereter-diff-ec'},
+                {label: 'HC diff', value: dp_ereter_hard, achieved: best_lamp >= 5, cls: 'ereter-diff-hc'},
+                {label: 'EXH diff', value: dp_ereter_exh, achieved: best_lamp >= 6, cls: 'ereter-diff-exh'}
+            ];
+            var ereter_html = '';
+            ereterItems.forEach(function(item) {
+                if (!item.value) return;
+                ereter_html += '<div class="bpi-item ereter-diff-item ' + item.cls + (item.achieved ? ' achieved' : '') + '">';
+                if (item.achieved) {
+                    ereter_html += '<div class="ereter-check">✓</div>';
+                }
+                ereter_html += '<div class="bpi-item-label">' + item.label + '</div>';
+                ereter_html += '<div class="bpi-item-value">' + item.value + '</div>';
+                ereter_html += '</div>';
+            });
+            document.querySelector('.bpi-info').innerHTML = ereter_html;
+        } else if (hasBpiData) {
+            bpiCard.classList.add('visible');
+            document.querySelector('.bpi-card h2').textContent = '📈 BPI INFO';
             
             var bpi_ave_num = Number(bpi_ave);
             var bpi_top_num = Number(bpi_top);
@@ -704,6 +757,7 @@
             document.querySelector('.bpi-info').innerHTML = bpi_html;
         } else {
             bpiCard.classList.remove('visible');
+            document.querySelector('.bpi-card h2').textContent = '📈 BPI INFO';
         }
         
         // プレイ履歴
