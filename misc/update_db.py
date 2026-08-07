@@ -11,7 +11,10 @@ import glob
 import gzip
 import urllib.request, json, requests
 from bs4 import BeautifulSoup
-import update_katate_difficulty
+try:
+    from . import update_katate_difficulty
+except ImportError:
+    import update_katate_difficulty
 
 from src.screen_reader import ScreenReader
 from src.logger import get_logger
@@ -67,6 +70,11 @@ def parse_args():
         action='store_true',
         help='embed cached legacy BPI Manager v1 definitions for local fallback',
     )
+    parser.add_argument(
+        '--skip-katate',
+        action='store_true',
+        help='skip updating katate difficulty after songinfo generation',
+    )
     return parser.parse_args()
 
 
@@ -92,17 +100,20 @@ def get_ereter_dp(download=False):
         try:
             url = 'https://ereter.net/iidxsongs/analytics/perlevel/'
             headers = {"User-Agent": "Mozilla/5.0"}
-            res = requests.get(url, headers=headers)
+            res = requests.get(url, headers=headers, timeout=30)
+            res.raise_for_status()
             res.encoding = res.apparent_encoding
             soup = BeautifulSoup(res.text, features='html.parser')
             table = soup.find('table')
-            rows = table.find('tbody').find_all('tr')
+            if table is None:
+                raise ValueError('ereter table not found')
+            rows = table.find_all('tr')
             ret = {}
             for row in rows:
                 cols = row.find_all('td')
                 if len(cols) < 5:
                     continue
-                title_text = cols[1].get_text(strip=True)
+                title_text = cols[1].get_text(' ', strip=True)
                 # "Kailua (ANOTHER)" -> title="Kailua", diff="ANOTHER"
                 # 末尾の (DIFFICULTY) を分離
                 paren_idx = title_text.rfind('(')
@@ -113,13 +124,10 @@ def get_ereter_dp(download=False):
                 diff = convert_difficulty(diff_str)
                 if diff is None:
                     continue
-                ec_text = cols[2].get_text(strip=True).replace('★', '')
-                hc_text = cols[3].get_text(strip=True).replace('★', '')
-                exh_text = cols[4].get_text(strip=True).replace('★', '')
                 try:
-                    ec = float(ec_text)
-                    hc = float(hc_text)
-                    exh = float(exh_text)
+                    ec = parse_ereter_diff(cols[2])
+                    hc = parse_ereter_diff(cols[3])
+                    exh = parse_ereter_diff(cols[4])
                 except ValueError:
                     continue
                 ret[(title, play_style.dp, diff)] = {'easy': ec, 'hard': hc, 'exh': exh}
@@ -129,6 +137,13 @@ def get_ereter_dp(download=False):
         except Exception as e:
             print(f"ereter DP download failed; using cached data if available: {e}")
     return load_pickle_or_empty(pkl_path, 'ereter DP data')
+
+def parse_ereter_diff(cell):
+    """ereterの★表記から数値だけを取り出す。sort-valueがあればそれを優先する。"""
+    value = cell.get('sort-value')
+    if value is None:
+        value = cell.get_text(strip=True).replace('★', '').strip()
+    return round(float(value), 1)
 
 def get_bpim_data(download=False):
     """BPI Managerの旧ローカル定義データを読み込む
@@ -583,16 +598,13 @@ conv_ereter = {
 ereter_not_found = []
 for k in ereter:
     title, style, diff = k
-    chart_id = calc_chart_id(title, style, diff)
-    if sdb.search(chart_id=chart_id):
-        sdb.songs[chart_id].dp_ereter_easy = ereter[k]['easy']
-        sdb.songs[chart_id].dp_ereter_hard = ereter[k]['hard']
-        sdb.songs[chart_id].dp_ereter_exh = ereter[k]['exh']
-    elif title in conv_ereter and sdb.search(chart_id=calc_chart_id(conv_ereter[title], style, diff)):
-        chart_id = calc_chart_id(conv_ereter[title], style, diff)
-        sdb.songs[chart_id].dp_ereter_easy = ereter[k]['easy']
-        sdb.songs[chart_id].dp_ereter_hard = ereter[k]['hard']
-        sdb.songs[chart_id].dp_ereter_exh = ereter[k]['exh']
+    song = sdb.search(title=title, play_style=style, difficulty=diff)
+    if song is None and title in conv_ereter:
+        song = sdb.search(title=conv_ereter[title], play_style=style, difficulty=diff)
+    if song:
+        song.dp_ereter_easy = ereter[k]['easy']
+        song.dp_ereter_hard = ereter[k]['hard']
+        song.dp_ereter_exh = ereter[k]['exh']
     else:
         ereter_not_found.append(k)
 print(f"ereter not found: {len(ereter_not_found)}")
@@ -600,5 +612,8 @@ for e in ereter_not_found:
     print(f"  {e}")
 
 sdb.save()
-print("updating katate difficulty...")
-update_katate_difficulty.main([])
+if getattr(args, 'skip_katate', False):
+    print("skipping katate difficulty update")
+else:
+    print("updating katate difficulty...")
+    update_katate_difficulty.main([])

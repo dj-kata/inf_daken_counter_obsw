@@ -24,3 +24,4 @@ qt.conf
 hoge*
 inf_score.csv
 playlog.infdc
+results/*

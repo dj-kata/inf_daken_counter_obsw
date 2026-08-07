@@ -82,6 +82,7 @@ def parse_args(argv=None):
 
 def read_csv_rows(args):
     if args.input_csv:
+        print(f"reading katate CSV: {args.input_csv}")
         with args.input_csv.open(encoding="utf-8-sig", newline="") as f:
             return list(csv.reader(f))
 
@@ -92,17 +93,21 @@ def read_csv_rows(args):
     errors = []
     for url in urls:
         try:
+            print(f"downloading katate CSV: {url}")
             return csv_rows_from_text(download_text_with_urllib(url))
         except Exception as e:
             errors.append(f"{url}: {type(e).__name__}: {e}")
+            print(f"katate CSV download failed with urllib: {type(e).__name__}: {e}")
 
     curl_path = shutil.which("curl")
     if curl_path:
         for url in urls:
             try:
+                print(f"downloading katate CSV with curl: {url}")
                 return csv_rows_from_text(download_text_with_curl(curl_path, url))
             except Exception as e:
                 errors.append(f"curl {url}: {type(e).__name__}: {e}")
+                print(f"katate CSV download failed with curl: {type(e).__name__}: {e}")
 
     raise RuntimeError("CSV download failed:\n  " + "\n  ".join(errors))
 
@@ -127,9 +132,10 @@ def download_text_with_urllib(url):
 
 def download_text_with_curl(curl_path, url):
     result = subprocess.run(
-        [curl_path, "-L", "--fail", "--silent", "--show-error", url],
+        [curl_path, "-L", "--fail", "--silent", "--show-error", "--max-time", "30", url],
         check=True,
         capture_output=True,
+        timeout=40,
     )
     return result.stdout.decode("utf-8-sig")
 
@@ -313,7 +319,9 @@ def print_changes(label, changes, limit=40):
 
 def main(argv=None):
     args = parse_args(argv)
+    print("starting katate difficulty update")
     rows = read_csv_rows(args)
+    print(f"katate CSV rows: {len(rows)}")
     katate, conflicts = parse_katate_rows(rows)
 
     sdb = load_song_database_without_autosave()
