@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QSplitter, QTableWidget, QTableWidgetItem, QHeaderView,
     QLabel, QLineEdit, QPushButton, QGroupBox, QGridLayout,
-    QComboBox, QRadioButton, QButtonGroup, QScrollArea,
+    QComboBox, QRadioButton, QButtonGroup, QCheckBox, QScrollArea,
     QDialog, QFormLayout, QDoubleSpinBox, QSpinBox,
     QAbstractItemView,
 )
@@ -739,11 +739,31 @@ class FilterPanel(QGroupBox):
         self.le_search.setPlaceholderText('曲名で検索...')
         layout.addWidget(self.le_search)
 
+        # 未設定項目
+        missing_box = QGroupBox('未設定フィルタ')
+        missing_layout = QVBoxLayout(missing_box)
+        self.cb_missing_sp_unofficial = QCheckBox('非公式難易度')
+        self.cb_missing_katate = QCheckBox('片手難易度')
+        self.cb_missing_dp_unofficial = QCheckBox('DP非公式難易度')
+        self.cb_missing_ereter = QCheckBox('ereter.net難易度')
+        for cb in (
+            self.cb_missing_sp_unofficial,
+            self.cb_missing_katate,
+            self.cb_missing_dp_unofficial,
+            self.cb_missing_ereter,
+        ):
+            missing_layout.addWidget(cb)
+        layout.addWidget(missing_box)
+
         layout.addStretch()
 
         self._ps_group.buttonClicked.connect(self.filter_changed)
         self.cb_level.currentIndexChanged.connect(self.filter_changed)
         self.le_search.textChanged.connect(self.filter_changed)
+        self.cb_missing_sp_unofficial.stateChanged.connect(self.filter_changed)
+        self.cb_missing_katate.stateChanged.connect(self.filter_changed)
+        self.cb_missing_dp_unofficial.stateChanged.connect(self.filter_changed)
+        self.cb_missing_ereter.stateChanged.connect(self.filter_changed)
 
     def ps_filter(self) -> Optional[play_style]:
         id_ = self._ps_group.checkedId()
@@ -759,6 +779,14 @@ class FilterPanel(QGroupBox):
 
     def search_text(self) -> str:
         return self.le_search.text().strip()
+
+    def missing_filters(self) -> dict[str, bool]:
+        return {
+            'sp_unofficial': self.cb_missing_sp_unofficial.isChecked(),
+            'katate': self.cb_missing_katate.isChecked(),
+            'dp_unofficial': self.cb_missing_dp_unofficial.isChecked(),
+            'ereter': self.cb_missing_ereter.isChecked(),
+        }
 
 
 # =========================================================
@@ -842,6 +870,7 @@ class MainWindow(QMainWindow):
         ps_f  = self.filter_panel.ps_filter()
         lv_f  = self.filter_panel.level_filter()
         srch  = self.filter_panel.search_text().lower()
+        missing_filters = self.filter_panel.missing_filters()
 
         # 現在の選択を保持
         selected_title = self._selected_title()
@@ -851,14 +880,15 @@ class MainWindow(QMainWindow):
         for title, data in self.title_data.items():
             if srch and srch not in title.lower():
                 continue
-            if ps_f is not None or lv_f is not None:
-                ok = any(
-                    (ps_f is None or ps == ps_f)
-                    and (lv_f is None or (c.level is not None and c.level == lv_f))
-                    for (ps, _), c in data['charts'].items()
-                )
-                if not ok:
-                    continue
+            charts = [
+                c for (ps, _), c in data['charts'].items()
+                if (ps_f is None or ps == ps_f)
+                and (lv_f is None or (c.level is not None and c.level == lv_f))
+            ]
+            if not charts:
+                continue
+            if not self._matches_missing_filters(charts, missing_filters):
+                continue
             filtered.append(title)
 
         filtered.sort()
@@ -882,6 +912,62 @@ class MainWindow(QMainWindow):
                 if item and item.text() == selected_title:
                     self.table.selectRow(row)
                     break
+
+    @staticmethod
+    def _matches_missing_filters(charts: list[OneSongInfo], missing_filters: dict[str, bool]) -> bool:
+        if not any(missing_filters.values()):
+            return True
+
+        checks = (
+            ('sp_unofficial', MainWindow._is_sp_unofficial_missing),
+            ('katate', MainWindow._is_katate_missing),
+            ('dp_unofficial', MainWindow._is_dp_unofficial_missing),
+            ('ereter', MainWindow._is_ereter_missing),
+        )
+        return any(
+            enabled and any(check(chart) for chart in charts)
+            for name, check in checks
+            for enabled in (missing_filters[name],)
+        )
+
+    @staticmethod
+    def _is_sp_unofficial_missing(chart: OneSongInfo) -> bool:
+        if chart.play_style != play_style.sp:
+            return False
+        if chart.level == 12:
+            return (
+                chart.sp12_hard is None
+                or chart.sp12_clear is None
+                or not chart.sp12_title
+            )
+        if chart.level == 11:
+            return chart.sp11_hard is None or chart.sp11_clear is None
+        return False
+
+    @staticmethod
+    def _is_katate_missing(chart: OneSongInfo) -> bool:
+        if chart.play_style != play_style.sp:
+            return False
+        if chart.level == 12:
+            return chart.katate_12 is None
+        if chart.level == 11:
+            return chart.katate_11 is None
+        return False
+
+    @staticmethod
+    def _is_dp_unofficial_missing(chart: OneSongInfo) -> bool:
+        return chart.play_style == play_style.dp and chart.dp_unofficial is None
+
+    @staticmethod
+    def _is_ereter_missing(chart: OneSongInfo) -> bool:
+        return (
+            chart.play_style == play_style.dp
+            and (
+                chart.dp_ereter_easy is None
+                or chart.dp_ereter_hard is None
+                or chart.dp_ereter_exh is None
+            )
+        )
 
     # =========================================================
     #  選択変更ハンドラ
