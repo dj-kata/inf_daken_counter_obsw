@@ -483,8 +483,11 @@ class MainWindow(MainWindowUI):
                         bpi=bpi_detail.value,
                         bpi_label=bpi_detail.label,
                         bpi_arena_average_text=bpi_detail.arena_average_text,
+                        bpi_arena_averages=bpi_detail.arena_averages,
                         sp12_clear=sp12_clear,
                         sp12_hard=sp12_hard,
+                        songinfo=detailed_result.songinfo,
+                        enable_katate_difficulty_display=self.config.enable_katate_difficulty_display,
                     )
                 if self.config.modify_rivalarea_mode == config_modify_rivalarea.mosaic: # モザイク処理する場合
                     screen = mosaic_rival_area(screen, detailed_result.result_side)

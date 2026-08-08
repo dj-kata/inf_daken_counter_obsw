@@ -31,9 +31,11 @@ class ResultStatsWriter:
             font_dir: フォントファイルを保存するディレクトリ（未使用）
         """
         # フォント読み込み
-        self.title_font = self._load_font(size=55, bold=True)
-        self.main_font = self._load_font(size=44)
-        self.sub_font = self._load_font(size=36)
+        self.title_font = self._load_font(size=46, bold=True)
+        self.main_font = self._load_font(size=34, bold=True)
+        self.sub_font = self._load_font(size=28)
+        self.label_font = self._load_font(size=21, bold=True)
+        self.small_font = self._load_font(size=22)
     
     def _load_font(self, size=28, bold=False):
         """システムフォントを読み込む"""
@@ -67,11 +69,14 @@ class ResultStatsWriter:
         bpi=None,
         bpi_label='BPI',
         bpi_arena_average_text=None,
+        bpi_arena_averages=None,
         sp12_clear:clear_lamp=None,
         sp12_hard:clear_lamp=None,
+        songinfo=None,
+        enable_katate_difficulty_display=False,
         position=(600, 405),  # (x, y) 座標で指定
         box_width=790,     # ボックス幅（Noneで画像幅）
-        box_height=400,
+        box_height=430,
         box_alpha=230       # 背景の透明度 (0-255)
     ):
         """
@@ -105,73 +110,77 @@ class ResultStatsWriter:
         if box_width is None:
             box_width = img.width - x * 2
         
-        line_height = self.main_font.size + 15
-        
+        padding_x = 28
+        content_x = x
+        content_w = box_width - padding_x * 2
+        panel_left = x - padding_x
+        panel_top = y - 12
+        panel_right = panel_left + box_width
+        panel_bottom = y + box_height
+
         # 背景ボックスを描画（半透明、透明度を指定可能）
         self._draw_rounded_rectangle(
             draw, 
-            (x - 40, y - 10, x - 40 + box_width, y + box_height),
-            radius=5,
-            fill=(0, 0, 0, box_alpha)  # 透明度を引数で指定
+            (panel_left, panel_top, panel_right, panel_bottom),
+            radius=8,
+            fill=(0, 0, 0, box_alpha)
         )
-        
-        # 1行目: 曲名と難易度（難易度部分は必ず表示）
-        y+=20
-        difficulty_part = f" ({play_style}{difficulty})"
-        text = self._truncate_title_with_difficulty(draw, title, '', self.title_font, box_width - 30)
-        self._draw_text_with_glow(draw, (x, y), text, self.title_font, 
-                                   fill=(255, 255, 255), glow_color=(70, 70, 70))
-        y += self.title_font.size+40
-        
-        # Lv, その他難易度
-        text = f"{get_chart_name(play_style,difficulty)} "
-        text = self._truncate_text(draw, text, self.sub_font, box_width - 30)
-        diff_fill, diff_glow = _DIFFICULTY_COLORS.get(difficulty, ((255, 255, 255), (50, 50, 50)))
-        self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
-                                   fill=diff_fill, glow_color=diff_glow)
-        text = f"Lv{level} "
-        text = self._truncate_text(draw, text, self.main_font, box_width - 30)
-        self._draw_text_with_glow(draw, (x+100, y), text, self.sub_font,
-                                   fill=(100, 255, 250), glow_color=(0, 150, 150))
-        if sp12_clear and sp12_hard:
-            text = f" ({sp12_clear}/{sp12_hard})"
-            text = self._truncate_text(draw, text, self.sub_font, box_width - 30)
-            self._draw_text_with_glow(draw, (x+200, y), text, self.sub_font,
-                                       fill=(250, 255, 255), glow_color=(50, 50, 50))
-        y += self.sub_font.size + 30
 
-        # クリアランプ
+        # ゲーム画面側の直線的なUIに寄せた細いアクセント。
+        draw.rectangle((panel_left + 8, panel_top + 8, panel_right - 8, panel_top + 11), fill=(60, 220, 255, 180))
+        draw.rectangle((panel_left + 8, panel_bottom - 11, panel_right - 8, panel_bottom - 8), fill=(255, 235, 80, 150))
+
+        y += 18
+        title_text = self._truncate_text(draw, title, self.title_font, content_w)
+        self._draw_text_with_glow(draw, (content_x, y), title_text, self.title_font,
+                                  fill=(255, 255, 255), glow_color=(30, 30, 30))
+        y += 58
+
+        chart_text = get_chart_name(play_style, difficulty)
+        level_text = self._format_level_text(level, play_style, songinfo, enable_katate_difficulty_display)
+        diff_fill, diff_glow = _DIFFICULTY_COLORS.get(difficulty, ((255, 255, 255), (50, 50, 50)))
+        self._draw_text_with_glow(draw, (content_x, y), chart_text, self.sub_font,
+                                  fill=diff_fill, glow_color=diff_glow)
+        self._draw_text_with_glow(draw, (content_x + 92, y), level_text, self.sub_font,
+                                  fill=(120, 245, 255), glow_color=(0, 100, 120))
+
+        extra_level_text = self._format_extra_level_text(play_style, songinfo, sp12_clear, sp12_hard)
+        if extra_level_text:
+            extra = self._truncate_text(draw, extra_level_text, self.small_font, content_w - 215)
+            self._draw_text_with_glow(draw, (content_x + 215, y + 4), extra, self.small_font,
+                                      fill=(235, 245, 255), glow_color=(35, 35, 45))
+        y += 45
+
         if lamp in _LAMP_DISPLAY:
             lamp_text, lamp_fill, lamp_glow = _LAMP_DISPLAY[lamp]
             if lamp_text is None:
                 lamp_text = lamp.name.upper()
-            lamp_text = self._truncate_text(draw, lamp_text, self.main_font, box_width - 30)
-            self._draw_text_with_glow(draw, (x, y), lamp_text, self.main_font,
-                                       fill=lamp_fill, glow_color=lamp_glow)
-        y += line_height
+            lamp_text = self._truncate_text(draw, lamp_text, self.main_font, content_w)
+            self._draw_text_with_glow(draw, (content_x, y), lamp_text, self.main_font,
+                                      fill=lamp_fill, glow_color=lamp_glow)
+        y += 48
 
-        # スコア,BP
-        text = f"ex: {ex_score}/{max_score}, bp: {bp}/{max_notes}"
-        text = self._truncate_text(draw, text, self.main_font, box_width - 30)
-        self._draw_text_with_glow(draw, (x, y), text, self.main_font,
-                                   fill=(100, 255, 100), glow_color=(0, 80, 0))
-        y += line_height
-        
-        # 4行目: レート、BPI、レベル（明るい黄色）
         rate = ex_score / max_score*100
-        parts = [f"rate: {rate:.2f}%"]
-        if bpi is not None:
-            parts.append(f"{bpi_label}: {bpi:.2f}")
-        
-        text = ", ".join(parts)
-        text = self._truncate_text(draw, text, self.main_font, box_width - 30)
-        self._draw_text_with_glow(draw, (x, y), text, self.main_font,
-                                   fill=(255, 255, 100), glow_color=(80, 80, 0))
-        if bpi_arena_average_text:
-            y += line_height
-            text = self._truncate_text(draw, bpi_arena_average_text, self.sub_font, box_width - 30)
-            self._draw_text_with_glow(draw, (x, y), text, self.sub_font,
-                                       fill=(255, 255, 100), glow_color=(80, 80, 0))
+        col_gap = 28
+        col_w = (content_w - col_gap) // 2
+        row_h = 50
+        self._draw_metric(draw, content_x, y, col_w, "SCORE", f"{ex_score} / {max_score}", (115, 255, 135))
+        self._draw_metric(draw, content_x + col_w + col_gap, y, col_w, "BP", f"{bp} / {max_notes}", (115, 255, 135))
+        y += row_h
+
+        bpi_text = f"{bpi:.2f}" if bpi is not None else "--"
+        self._draw_metric(draw, content_x, y, col_w, "RATE", f"{rate:.2f}%", (255, 245, 90))
+        self._draw_metric(draw, content_x + col_w + col_gap, y, col_w, bpi_label, bpi_text, (255, 245, 90))
+        y += row_h + 3
+
+        arena_text = self._format_arena_average_text(bpi_arena_averages, bpi_arena_average_text)
+        if arena_text:
+            self._draw_metric(draw, content_x, y, content_w, "ARENA AVG", arena_text, (255, 245, 90), compact=True)
+            y += 40
+
+        ereter_items = self._format_ereter_items(play_style, songinfo, lamp)
+        if ereter_items:
+            self._draw_ereter_items(draw, content_x, y, content_w, ereter_items)
         
         # オーバーレイを合成
         img = Image.alpha_composite(img, overlay)
@@ -181,6 +190,83 @@ class ResultStatsWriter:
             img = img.convert('RGB')
         
         return img
+
+    def _format_level_text(self, level, play_style_value, songinfo, enable_katate):
+        level_text = f"☆{level}"
+        if not (enable_katate and play_style_value == play_style.sp and songinfo):
+            return level_text
+        try:
+            lv = int(getattr(songinfo, "level", level) or level)
+        except (TypeError, ValueError):
+            lv = None
+        band = None
+        if lv == 12:
+            band = getattr(songinfo, "katate_12", None)
+        elif lv == 11:
+            band = getattr(songinfo, "katate_11", None)
+        mark = self._katate_mark(band)
+        return f"☆{level}-{mark}" if mark else level_text
+
+    def _katate_mark(self, band):
+        marks = ["", "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"]
+        try:
+            value = int(band)
+        except (TypeError, ValueError):
+            return ""
+        return marks[value] if 1 <= value < len(marks) else ""
+
+    def _format_extra_level_text(self, play_style_value, songinfo, sp12_clear, sp12_hard):
+        if play_style_value == play_style.dp and songinfo:
+            dp_unofficial = getattr(songinfo, "dp_unofficial", None)
+            if dp_unofficial:
+                return f"({dp_unofficial})"
+        if sp12_clear or sp12_hard:
+            return f"({sp12_clear or '?'}/{sp12_hard or '?'})"
+        if songinfo:
+            sp11_clear = getattr(songinfo, "sp11_clear", None)
+            sp11_hard = getattr(songinfo, "sp11_hard", None)
+            if sp11_clear or sp11_hard:
+                return f"({sp11_clear or '?'}/{sp11_hard or '?'})"
+        return ""
+
+    def _format_arena_average_text(self, averages, fallback_text):
+        if averages:
+            return "   ".join(f"{avg.rank} {avg.avg_ex_score}" for avg in averages)
+        if fallback_text:
+            return fallback_text.replace(" avg ", " ")
+        return ""
+
+    def _format_ereter_items(self, play_style_value, songinfo, lamp):
+        if play_style_value != play_style.dp or not songinfo:
+            return []
+        items = [
+            ("EC", getattr(songinfo, "dp_ereter_easy", None), clear_lamp.easy),
+            ("HC", getattr(songinfo, "dp_ereter_hard", None), clear_lamp.hard),
+            ("EXH", getattr(songinfo, "dp_ereter_exh", None), clear_lamp.exh),
+        ]
+        return [(label, str(value), lamp.value >= target.value) for label, value, target in items if value]
+
+    def _draw_metric(self, draw, x, y, width, label, value, value_fill, compact=False):
+        label_bbox = draw.textbbox((0, 0), label, font=self.label_font)
+        measured_label_w = label_bbox[2] - label_bbox[0]
+        label_w = max(122 if compact else 92, measured_label_w + 18)
+        draw.text((x, y + 6), label, font=self.label_font, fill=(170, 190, 205))
+        value_x = x + label_w
+        value_text = self._truncate_text(draw, value, self.main_font if not compact else self.sub_font, width - label_w)
+        self._draw_text_with_glow(draw, (value_x, y), value_text, self.main_font if not compact else self.sub_font,
+                                  fill=value_fill, glow_color=(25, 45, 25))
+
+    def _draw_ereter_items(self, draw, x, y, width, items):
+        draw.text((x, y + 8), "ERETER", font=self.label_font, fill=(170, 190, 205))
+        item_w = (width - 118) // max(1, len(items))
+        item_x = x + 118
+        for label, value, achieved in items:
+            fill = (115, 255, 155) if achieved else (190, 200, 210)
+            prefix = "✓ " if achieved else "- "
+            text = self._truncate_text(draw, f"{prefix}{label} {value}", self.small_font, item_w - 4)
+            self._draw_text_with_glow(draw, (item_x, y + 4), text, self.small_font,
+                                      fill=fill, glow_color=(20, 45, 25) if achieved else (35, 35, 45))
+            item_x += item_w
 
     def _truncate_title_with_difficulty(self, draw, title, difficulty_part, font, max_width):
         """

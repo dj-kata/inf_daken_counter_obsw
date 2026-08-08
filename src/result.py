@@ -512,7 +512,11 @@ class DetailedResult():
 
         saved_bpim2 = getattr(self.result, 'bpim2', None)
         if saved_bpim2 is not None:
-            self._bpi_detail = BpiDetail(value=saved_bpim2, source='bpim2')
+            self._bpi_detail = BpiDetail(
+                value=saved_bpim2,
+                source='bpim2',
+                arena_averages=getattr(self.result, 'bpim2_arena_averages', None),
+            )
             return self._bpi_detail
 
         bpim2 = self._get_bpim2_bpi_detail()
@@ -528,14 +532,22 @@ class DetailedResult():
         """BPIM2のBPI詳細を返す。force_fetch=Trueなら保存済み値があっても現在曲1件だけ再取得する。"""
         saved_bpim2 = getattr(self.result, 'bpim2', None)
         if saved_bpim2 is not None and not force_fetch:
-            return BpiDetail(value=saved_bpim2, source='bpim2')
+            return BpiDetail(
+                value=saved_bpim2,
+                source='bpim2',
+                arena_averages=getattr(self.result, 'bpim2_arena_averages', None),
+            )
 
         bpim2 = self._get_bpim2_bpi_detail()
         if bpim2 and bpim2.value is not None:
             self.result.bpim2 = bpim2.value
             return bpim2
         if saved_bpim2 is not None:
-            return BpiDetail(value=saved_bpim2, source='bpim2')
+            return BpiDetail(
+                value=saved_bpim2,
+                source='bpim2',
+                arena_averages=getattr(self.result, 'bpim2_arena_averages', None),
+            )
         return None
 
     def _get_bpim2_bpi_detail(self) -> Optional[BpiDetail]:
