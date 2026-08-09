@@ -166,7 +166,7 @@ class ResultStatsWriter:
             lamp_text = self._truncate_text(draw, lamp_text, self.main_font, content_w)
             self._draw_text_with_glow(draw, (content_x, y), lamp_text, self.main_font,
                                       fill=lamp_fill, glow_color=lamp_glow)
-        y += 48
+        y += 58
 
         rate = ex_score / max_score*100
         col_gap = 28
