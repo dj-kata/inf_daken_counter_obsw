@@ -14,6 +14,7 @@
                 --show-best-delta: 1;
                 --bpi-min: -15;
                 --filter-mode: all;
+                --max-rows: 27;
             }
             
             * {
@@ -586,12 +587,17 @@
             var show_best_delta = getNumericFlagWithCss(urlParams, 'show_best_delta', '--show-best-delta', 0);
             var filter_mode = getStringFlagWithCss(urlParams, 'filter_mode', '--filter-mode', 'all');
             var bpi_min_raw = getStringFlagWithCss(urlParams, 'bpi_min', '--bpi-min', '-15');
+            var max_rows = getNumericFlagWithCss(urlParams, 'max_rows', '--max-rows', 27);
             var bpi_min = bpi_min_raw === '' ? null : Number(bpi_min_raw);
             if (!Number.isFinite(bpi_min)) {
                 bpi_min = null;
             }
+            if (!Number.isFinite(max_rows) || max_rows < 1) {
+                max_rows = 27;
+            }
             
-            data.items.forEach(function(item, index) {
+            var rendered_rows = 0;
+            data.items.some(function(item) {
                 var lv = item.lv || '';
                 var lamp = Number(item.lamp) || 0;
                 var difficulty = item.difficulty || '';
@@ -639,6 +645,10 @@
 
                 if (filter_mode === 'updates_or_bpi' && !has_update && !bpi_over_min) {
                     return;
+                }
+
+                if (rendered_rows >= max_rows) {
+                    return true;
                 }
 
                 // ランク判定
@@ -775,10 +785,9 @@
                 out += '<td class="col-option">' + renderOptionText(opt) + '</td>';
                 
                 out += '</tr>';
-                
-                if (index == 26) {
-                    return false;
-                }
+
+                rendered_rows += 1;
+                return false;
             });
             
             document.getElementById('results-tbody').innerHTML = out;
