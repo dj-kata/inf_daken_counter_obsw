@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="ja">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -68,8 +69,31 @@
         }
 
         .bottom-half {
-            flex: 1;
             min-width: 0;
+        }
+
+        .today-result-frame {
+            flex: 10;
+        }
+
+        .graph-frame {
+            flex: 8;
+        }
+
+        .stack-frame {
+            display: flex;
+            flex-direction: column;
+            gap: var(--gap);
+            height: 100%;
+            min-height: 0;
+        }
+
+        .rival-frame {
+            flex: 7;
+        }
+
+        .graph-stats-frame {
+            flex: 5;
         }
 
         .panel {
@@ -117,26 +141,36 @@
         }
     </style>
 </head>
+
 <body>
     <main class="layout">
         <section class="left-frame">
-            <div class="panel top-frame scaled-frame" data-scale-mode="contain" data-source-width="1650" data-source-height="430">
-                <iframe src="./history_cursong.html" scrolling="no" title="history_cursong"></iframe>
+            <div class="panel top-frame scaled-frame" data-scale-mode="fit-width" data-source-width="1650">
+                <iframe src="./history_cursong.html?max_rows=999&scroll=1" scrolling="auto"
+                    title="history_cursong"></iframe>
             </div>
 
             <div class="bottom-frame">
-                <div class="panel bottom-half scaled-frame" data-scale-mode="fit-width" data-source-width="1700">
-                    <iframe src="./today_result.html?max_rows=999" scrolling="no" title="today_result"></iframe>
+                <div class="panel bottom-half today-result-frame scaled-frame" data-scale-mode="fit-width"
+                    data-source-width="1700">
+                    <iframe src="./today_result.html?max_rows=999" scrolling="auto" title="today_result"></iframe>
                 </div>
 
-                <div class="panel bottom-half scaled-frame" data-scale-mode="contain" data-source-width="500" data-source-height="230">
-                    <iframe src="./graph.html" scrolling="no" title="graph"></iframe>
+                <div class="bottom-half graph-frame stack-frame">
+                    <div class="panel rival-frame scaled-frame" data-scale-mode="fit-width" data-source-width="1000">
+                        <iframe src="./rival.html?scroll=1" scrolling="auto" title="rival"></iframe>
+                    </div>
+
+                    <div class="panel graph-stats-frame scaled-frame" data-scale-mode="contain"
+                        data-source-width="500" data-source-height="230">
+                        <iframe src="./graph.html" scrolling="no" title="graph"></iframe>
+                    </div>
                 </div>
             </div>
         </section>
 
         <aside class="panel right-frame scaled-frame" data-scale-mode="fit-width" data-source-width="1500">
-            <iframe src="./today_receipt.html" scrolling="no" title="today_receipt"></iframe>
+            <iframe src="./today_receipt.html" scrolling="auto" title="today_receipt"></iframe>
         </aside>
     </main>
 
@@ -178,9 +212,10 @@
 
         window.addEventListener('load', scaleAllFrames);
         window.addEventListener('resize', scaleAllFrames);
-        document.querySelectorAll('.scaled-frame iframe').forEach(function(iframe) {
+        document.querySelectorAll('.scaled-frame iframe').forEach(function (iframe) {
             iframe.addEventListener('load', scaleAllFrames);
         });
     </script>
 </body>
+
 </html>

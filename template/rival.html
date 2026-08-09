@@ -10,6 +10,7 @@
         <style>
             :root {
                 --enable-header: 0;
+                --rival-overflow: hidden;
             }
 
             * {
@@ -20,7 +21,8 @@
                 background: linear-gradient(135deg, #0a0a1f 0%, #1a1a3e 50%, #0a0a1f 100%);
                 margin: 0;
                 padding: 10px;
-                overflow: hidden;
+                overflow-x: hidden;
+                overflow-y: var(--rival-overflow, hidden);
                 font-family: "RocknRoll One", sans-serif;
                 color: #fff;
             }
@@ -276,6 +278,13 @@
     let ws = null;
     let reconnectInterval = null;
 
+    function applyUrlDisplaySettings() {
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('scroll') === '1') {
+            document.documentElement.style.setProperty('--rival-overflow', 'auto');
+        }
+    }
+
     function connectWebSocket() {
         const WEBSOCKET_PORT = getWebSocketPort();
         ws = new WebSocket(`ws://localhost:${WEBSOCKET_PORT}`);
@@ -419,6 +428,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', function() {
+        applyUrlDisplaySettings();
         // ヘッダーの初期表示制御
         document.querySelector('.title-card').style.display =
             isHeaderEnabled() ? 'block' : 'none';

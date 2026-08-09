@@ -883,21 +883,26 @@ class ScoreViewer(QMainWindow):
         self.table.setItem(row, 6, item)
 
         # ベストスコア (column 7)
-        item = QTableWidgetItem(str(score.best_score))
+        item = SortableItem(str(score.best_score))
+        item.setData(Qt.UserRole, score.best_score)
         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.table.setItem(row, 7, item)
 
         # スコアレート (column 8)
+        rate_value = score.score_rate * 100
         rate_str = f"{score.score_rate * 100:.2f}%" if score.score_rate > 0 else ""
         if score.notes:
-            rate_str = f"{score.best_score *50 / score.notes:.2f}"
-        item = QTableWidgetItem(rate_str)
+            rate_value = score.best_score * 50 / score.notes
+            rate_str = f"{rate_value:.2f}"
+        item = SortableItem(rate_str)
+        item.setData(Qt.UserRole, rate_value)
         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.table.setItem(row, 8, item)
 
         # 最小BP (column 9)
         bp_str = str(score.min_bp) if score.min_bp < 99999 else ""
-        item = QTableWidgetItem(bp_str)
+        item = SortableItem(bp_str)
+        item.setData(Qt.UserRole, score.min_bp)
         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.table.setItem(row, 9, item)
 

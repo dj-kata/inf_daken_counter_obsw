@@ -8,6 +8,11 @@
         <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="../out/websocket.css">
         <style>
+            :root {
+                --max-rows: 20;
+                --history-overflow: hidden;
+            }
+
             * {
                 box-sizing: border-box;
             }
@@ -16,7 +21,8 @@
                 background: linear-gradient(135deg, #0a0a1f 0%, #1a1a3e 50%, #0a0a1f 100%);
                 margin: 0;
                 padding: 10px;
-                overflow: hidden;
+                overflow-x: hidden;
+                overflow-y: var(--history-overflow, hidden);
                 font-family: "RocknRoll One", sans-serif;
                 color: #fff;
             }
@@ -510,6 +516,35 @@
     
     let ws = null;
     let reconnectInterval = null;
+
+    function getNumericFlag(params, key, fallbackValue) {
+        if (!params.has(key)) return fallbackValue;
+        var parsed = Number(params.get(key));
+        return Number.isFinite(parsed) ? parsed : fallbackValue;
+    }
+
+    function getCssCustomProperty(name, fallbackValue) {
+        var value = getComputedStyle(document.documentElement).getPropertyValue(name);
+        value = value ? value.trim() : '';
+        return value === '' ? fallbackValue : value;
+    }
+
+    function getNumericFlagWithCss(params, key, cssName, fallbackValue) {
+        if (params.has(key)) {
+            return getNumericFlag(params, key, fallbackValue);
+        }
+        var cssValue = getCssCustomProperty(cssName, '');
+        if (cssValue === '') return fallbackValue;
+        var parsed = Number(cssValue);
+        return Number.isFinite(parsed) ? parsed : fallbackValue;
+    }
+
+    function applyUrlDisplaySettings() {
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('scroll') === '1') {
+            document.documentElement.style.setProperty('--history-overflow', 'auto');
+        }
+    }
     
     function connectWebSocket() {
         const WEBSOCKET_PORT = getWebSocketPort();
@@ -799,8 +834,18 @@
         // プレイ履歴
         var out = '';
         var items = data.items || [];
-        
-        items.forEach(function(item, index) {
+        var urlParams = new URLSearchParams(window.location.search);
+        var max_rows = getNumericFlagWithCss(urlParams, 'max_rows', '--max-rows', 20);
+        if (!Number.isFinite(max_rows) || max_rows < 1) {
+            max_rows = 20;
+        }
+        var rendered_rows = 0;
+
+        items.some(function(item) {
+            if (rendered_rows >= max_rows) {
+                return true;
+            }
+
             var date = item.date || '';
             var lamp = Number(item.lamp) || 0;
             var score = Number(item.score) || 0;
@@ -888,16 +933,16 @@
                 out += '<td>' + opt + '</td>';
                 out += '</tr>';
             }
-            
-            if (index == 19) {
-                return false;
-            }
+
+            rendered_rows += 1;
+            return false;
         });
         
         document.querySelector('#result tbody').innerHTML = out;
     }
     
     window.addEventListener('DOMContentLoaded', function() {
+        applyUrlDisplaySettings();
         connectWebSocket();
     });
     
