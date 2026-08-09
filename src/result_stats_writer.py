@@ -239,10 +239,14 @@ class ResultStatsWriter:
 
     def _format_arena_average_text(self, averages, fallback_text):
         if averages:
-            return "   ".join(f"{avg.rank} {avg.avg_ex_score}" for avg in averages)
+            return "   ".join(f"{avg.rank} {avg.avg_ex_score}" for avg in self._sort_arena_averages_for_display(averages))
         if fallback_text:
             return fallback_text.replace(" avg ", " ")
         return ""
+
+    def _sort_arena_averages_for_display(self, averages):
+        rank_order = {'A1': 1, 'A2': 2, 'A3': 3, 'A4': 4, 'A5': 5}
+        return sorted(averages, key=lambda avg: rank_order.get(str(avg.rank), 99), reverse=True)
 
     def _format_ereter_items(self, play_style_value, songinfo, lamp):
         if play_style_value != play_style.dp or not songinfo:
@@ -279,7 +283,7 @@ class ResultStatsWriter:
             return
 
         cursor_x = value_x
-        for index, avg in enumerate(averages):
+        for index, avg in enumerate(self._sort_arena_averages_for_display(averages)):
             if index:
                 cursor_x += 20
             rank = str(avg.rank)

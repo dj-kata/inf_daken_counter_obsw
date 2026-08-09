@@ -4,6 +4,7 @@ Usage:
     python misc/preview_result_stats.py input.png
     python misc/preview_result_stats.py input.png --sample dp --output preview_dp.png
     python misc/preview_result_stats.py input.png --no-read-image
+    python misc/preview_result_stats.py input.png --no-fetch-bpim2
 """
 
 from __future__ import annotations
@@ -116,7 +117,7 @@ def build_sample(name: str):
     }
 
 
-def build_from_image(path: Path):
+def build_from_image(path: Path, fetch_bpim2: bool = True):
     reader = ScreenReader()
     reader.update_screen_from_file(str(path))
     detail = reader.read_result_screen()
@@ -129,6 +130,14 @@ def build_from_image(path: Path):
     if not notes:
         return None
     bpi = detail.get_local_bpi()
+    bpi_label = "BPI"
+    bpi_arena_averages = None
+    if fetch_bpim2:
+        bpim2_detail = detail.get_bpim2_bpi_detail(force_fetch=True)
+        if bpim2_detail and bpim2_detail.value is not None:
+            bpi = bpim2_detail.value
+            bpi_label = bpim2_detail.label
+            bpi_arena_averages = bpim2_detail.arena_averages
     return {
         "title": result.title,
         "level": detail.level or getattr(songinfo, "level", None) or 0,
@@ -139,8 +148,8 @@ def build_from_image(path: Path):
         "max_notes": notes,
         "lamp": result.lamp,
         "bpi": bpi,
-        "bpi_label": "BPI",
-        "bpi_arena_averages": None,
+        "bpi_label": bpi_label,
+        "bpi_arena_averages": bpi_arena_averages,
         "songinfo": songinfo,
         "enable_katate_difficulty_display": True,
     }
@@ -152,6 +161,7 @@ def parse_args():
     parser.add_argument("-o", "--output", type=Path, help="Output image path.")
     parser.add_argument("--sample", choices=("sp", "dp"), default="sp")
     parser.add_argument("--no-read-image", action="store_true", help="Use sample data instead of OCR result.")
+    parser.add_argument("--no-fetch-bpim2", action="store_true", help="Do not call the BPIM2 API for preview BPI.")
     parser.add_argument("--title", help="Override title.")
     parser.add_argument("--style", choices=("sp", "dp"), help="Override play style.")
     parser.add_argument("--difficulty", choices=tuple(DIFFICULTIES), help="Override difficulty: b/n/h/a/l.")
@@ -166,7 +176,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    params = None if args.no_read_image else build_from_image(args.input)
+    params = None if args.no_read_image else build_from_image(args.input, fetch_bpim2=not args.no_fetch_bpim2)
     if params is None:
         params = build_sample(args.sample)
         if not args.no_read_image:
