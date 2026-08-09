@@ -22,6 +22,14 @@ _LAMP_DISPLAY = {
     clear_lamp.fc:     ('F-COMBO',   (255, 170, 250), (200, 50, 150)),
 }
 
+_ARENA_RANK_COLORS = {
+    'A1': (255, 213, 79),
+    'A2': (100, 216, 255),
+    'A3': (105, 240, 174),
+    'A4': (255, 183, 77),
+    'A5': (255, 138, 128),
+}
+
 class ResultStatsWriter:
     """リザルト画像に統計情報を埋め込むためのクラス"""
     
@@ -31,7 +39,7 @@ class ResultStatsWriter:
             font_dir: フォントファイルを保存するディレクトリ（未使用）
         """
         # フォント読み込み
-        self.title_font = self._load_font(size=46, bold=True)
+        self.title_font = self._load_font(size=55, bold=True)
         self.main_font = self._load_font(size=34, bold=True)
         self.sub_font = self._load_font(size=28)
         self.label_font = self._load_font(size=21, bold=True)
@@ -134,7 +142,7 @@ class ResultStatsWriter:
         title_text = self._truncate_text(draw, title, self.title_font, content_w)
         self._draw_text_with_glow(draw, (content_x, y), title_text, self.title_font,
                                   fill=(255, 255, 255), glow_color=(30, 30, 30))
-        y += 58
+        y += 76
 
         chart_text = get_chart_name(play_style, difficulty)
         level_text = self._format_level_text(level, play_style, songinfo, enable_katate_difficulty_display)
@@ -175,7 +183,7 @@ class ResultStatsWriter:
 
         arena_text = self._format_arena_average_text(bpi_arena_averages, bpi_arena_average_text)
         if arena_text:
-            self._draw_metric(draw, content_x, y, content_w, "ARENA AVG", arena_text, (255, 245, 90), compact=True)
+            self._draw_arena_average(draw, content_x, y, content_w, bpi_arena_averages, arena_text)
             y += 40
 
         ereter_items = self._format_ereter_items(play_style, songinfo, lamp)
@@ -255,6 +263,39 @@ class ResultStatsWriter:
         value_text = self._truncate_text(draw, value, self.main_font if not compact else self.sub_font, width - label_w)
         self._draw_text_with_glow(draw, (value_x, y), value_text, self.main_font if not compact else self.sub_font,
                                   fill=value_fill, glow_color=(25, 45, 25))
+
+    def _draw_arena_average(self, draw, x, y, width, averages, fallback_text):
+        label = "ARENA AVG"
+        label_bbox = draw.textbbox((0, 0), label, font=self.label_font)
+        label_w = max(122, label_bbox[2] - label_bbox[0] + 18)
+        draw.text((x, y + 6), label, font=self.label_font, fill=(170, 190, 205))
+
+        value_x = x + label_w
+        max_x = x + width
+        if not averages:
+            value_text = self._truncate_text(draw, fallback_text, self.sub_font, max_x - value_x)
+            self._draw_text_with_glow(draw, (value_x, y), value_text, self.sub_font,
+                                      fill=(255, 245, 90), glow_color=(25, 45, 25))
+            return
+
+        cursor_x = value_x
+        for index, avg in enumerate(averages):
+            if index:
+                cursor_x += 20
+            rank = str(avg.rank)
+            score = str(avg.avg_ex_score)
+            rank_fill = _ARENA_RANK_COLORS.get(rank, (255, 245, 90))
+            rank_bbox = draw.textbbox((0, 0), rank, font=self.sub_font)
+            score_bbox = draw.textbbox((0, 0), f" {score}", font=self.sub_font)
+            item_w = (rank_bbox[2] - rank_bbox[0]) + (score_bbox[2] - score_bbox[0])
+            if cursor_x + item_w > max_x:
+                break
+            self._draw_text_with_glow(draw, (cursor_x, y), rank, self.sub_font,
+                                      fill=rank_fill, glow_color=(35, 35, 45))
+            cursor_x += rank_bbox[2] - rank_bbox[0]
+            self._draw_text_with_glow(draw, (cursor_x, y), f" {score}", self.sub_font,
+                                      fill=(255, 245, 90), glow_color=(25, 45, 25))
+            cursor_x += score_bbox[2] - score_bbox[0]
 
     def _draw_ereter_items(self, draw, x, y, width, items):
         draw.text((x, y + 8), "ERETER", font=self.label_font, fill=(170, 190, 205))
