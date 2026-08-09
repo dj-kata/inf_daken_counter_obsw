@@ -3,6 +3,7 @@
 Usage:
     python misc/preview_result_stats.py input.png
     python misc/preview_result_stats.py input.png --sample dp --output preview_dp.png
+    python misc/preview_result_stats.py input.png --no-read-image
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ if str(ROOT) not in sys.path:
 
 from src.classes import clear_lamp, difficulty, play_style
 from src.result import BpiArenaAverage
+from src.screen_reader import ScreenReader
 from src.result_stats_writer import ResultStatsWriter
 
 
@@ -114,11 +116,42 @@ def build_sample(name: str):
     }
 
 
+def build_from_image(path: Path):
+    reader = ScreenReader()
+    reader.update_screen_from_file(str(path))
+    detail = reader.read_result_screen()
+    if not detail:
+        return None
+
+    result = detail.result
+    songinfo = detail.songinfo
+    notes = result.notes or getattr(songinfo, "notes", None)
+    if not notes:
+        return None
+    bpi = detail.get_local_bpi()
+    return {
+        "title": result.title,
+        "level": detail.level or getattr(songinfo, "level", None) or 0,
+        "play_style": result.play_style,
+        "difficulty": result.difficulty,
+        "ex_score": result.score,
+        "bp": result.bp,
+        "max_notes": notes,
+        "lamp": result.lamp,
+        "bpi": bpi,
+        "bpi_label": "BPI",
+        "bpi_arena_averages": None,
+        "songinfo": songinfo,
+        "enable_katate_difficulty_display": True,
+    }
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Preview result statistics overlay.")
     parser.add_argument("input", type=Path, help="Base result image path.")
     parser.add_argument("-o", "--output", type=Path, help="Output image path.")
     parser.add_argument("--sample", choices=("sp", "dp"), default="sp")
+    parser.add_argument("--no-read-image", action="store_true", help="Use sample data instead of OCR result.")
     parser.add_argument("--title", help="Override title.")
     parser.add_argument("--style", choices=("sp", "dp"), help="Override play style.")
     parser.add_argument("--difficulty", choices=tuple(DIFFICULTIES), help="Override difficulty: b/n/h/a/l.")
@@ -133,7 +166,11 @@ def parse_args():
 
 def main():
     args = parse_args()
-    params = build_sample(args.sample)
+    params = None if args.no_read_image else build_from_image(args.input)
+    if params is None:
+        params = build_sample(args.sample)
+        if not args.no_read_image:
+            print("warning: result data could not be read from the image; using sample data")
 
     if args.title:
         params["title"] = args.title
