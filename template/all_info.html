@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IIDX All Info</title>
+    <style>
+        :root {
+            --left-frame-ratio: 11;
+            --right-frame-ratio: 9;
+            --top-frame-ratio: 4;
+            --bottom-frame-ratio: 5;
+            --gap: 6px;
+            --frame-border-color: rgba(170, 170, 255, 0.45);
+            --frame-bg: #050514;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            background: #000;
+            color: #fff;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .layout {
+            display: flex;
+            gap: var(--gap);
+            height: 100vh;
+            padding: var(--gap);
+            width: 100vw;
+        }
+
+        .left-frame,
+        .right-frame {
+            min-width: 0;
+        }
+
+        .left-frame {
+            display: flex;
+            flex: var(--left-frame-ratio);
+            flex-direction: column;
+            gap: var(--gap);
+        }
+
+        .right-frame {
+            flex: var(--right-frame-ratio);
+        }
+
+        .top-frame {
+            flex: var(--top-frame-ratio);
+        }
+
+        .bottom-frame {
+            display: flex;
+            flex: var(--bottom-frame-ratio);
+            gap: var(--gap);
+            min-height: 0;
+        }
+
+        .bottom-half {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .panel {
+            background: var(--frame-bg);
+            border: 1px solid var(--frame-border-color);
+            border-radius: 8px;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .panel iframe {
+            border: 0;
+            display: block;
+        }
+
+        .scaled-frame {
+            height: 100%;
+            position: relative;
+            width: 100%;
+        }
+
+        .scaled-frame iframe {
+            left: 0;
+            position: absolute;
+            top: 0;
+            transform-origin: top left;
+        }
+
+        @media (max-width: 960px) {
+            .layout {
+                flex-direction: column;
+                overflow: auto;
+            }
+
+            body {
+                overflow: auto;
+            }
+
+            .left-frame,
+            .right-frame {
+                flex: none;
+                min-height: 720px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="layout">
+        <section class="left-frame">
+            <div class="panel top-frame scaled-frame" data-scale-mode="contain" data-source-width="1650" data-source-height="430">
+                <iframe src="./history_cursong.html" scrolling="no" title="history_cursong"></iframe>
+            </div>
+
+            <div class="bottom-frame">
+                <div class="panel bottom-half scaled-frame" data-scale-mode="fit-width" data-source-width="1700">
+                    <iframe src="./today_result.html?max_rows=999" scrolling="no" title="today_result"></iframe>
+                </div>
+
+                <div class="panel bottom-half scaled-frame" data-scale-mode="contain" data-source-width="500" data-source-height="230">
+                    <iframe src="./graph.html" scrolling="no" title="graph"></iframe>
+                </div>
+            </div>
+        </section>
+
+        <aside class="panel right-frame scaled-frame" data-scale-mode="fit-width" data-source-width="1500">
+            <iframe src="./today_receipt.html" scrolling="no" title="today_receipt"></iframe>
+        </aside>
+    </main>
+
+    <script>
+        function scaleFrame(panel) {
+            var iframe = panel.querySelector('iframe');
+            var sourceWidth = Number(panel.dataset.sourceWidth);
+            var sourceHeight = Number(panel.dataset.sourceHeight);
+            var mode = panel.dataset.scaleMode || 'contain';
+
+            if (!iframe || !sourceWidth) return;
+
+            var rect = panel.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+
+            var scale;
+            if (mode === 'fit-width') {
+                scale = rect.width / sourceWidth;
+                sourceHeight = rect.height / scale;
+            } else {
+                if (!sourceHeight) return;
+                scale = mode === 'cover'
+                    ? Math.max(rect.width / sourceWidth, rect.height / sourceHeight)
+                    : Math.min(rect.width / sourceWidth, rect.height / sourceHeight);
+            }
+            var scaledWidth = sourceWidth * scale;
+            var scaledHeight = sourceHeight * scale;
+            var offsetX = (rect.width - scaledWidth) / 2;
+            var offsetY = mode === 'fit-width' ? 0 : (rect.height - scaledHeight) / 2;
+
+            iframe.style.width = sourceWidth + 'px';
+            iframe.style.height = sourceHeight + 'px';
+            iframe.style.transform = 'translate(' + offsetX + 'px, ' + offsetY + 'px) scale(' + scale + ')';
+        }
+
+        function scaleAllFrames() {
+            document.querySelectorAll('.scaled-frame').forEach(scaleFrame);
+        }
+
+        window.addEventListener('load', scaleAllFrames);
+        window.addEventListener('resize', scaleAllFrames);
+        document.querySelectorAll('.scaled-frame iframe').forEach(function(iframe) {
+            iframe.addEventListener('load', scaleAllFrames);
+        });
+    </script>
+</body>
+</html>
