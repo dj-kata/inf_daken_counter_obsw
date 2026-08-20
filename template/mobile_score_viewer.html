@@ -17,6 +17,7 @@
       --blue: #79b8ff;
       --red: #ff7676;
       --amber: #ffd166;
+      --bpi: #b58cff;
     }
     * { box-sizing: border-box; }
     body {
@@ -107,6 +108,32 @@
     .folder b { display: block; font-size: 16px; line-height: 1.2; }
     .folder span { display: block; margin-top: 8px; color: var(--muted); font-size: 12px; }
     .toolbar { margin-bottom: 10px; }
+    .mode-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .mode-tabs label {
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .mode-tabs input { accent-color: var(--green); }
+    .mode-tabs label:has(input:checked) {
+      color: var(--text);
+      border-color: color-mix(in srgb, var(--green), var(--line) 45%);
+      background: var(--panel2);
+    }
     .search {
       width: 100%;
       height: 42px;
@@ -130,6 +157,66 @@
       color: inherit;
       text-align: left;
       padding: 10px;
+    }
+    .song-cell.level-cell {
+      grid-template-columns: 12px minmax(0, 1fr) auto;
+      min-height: 42px;
+      gap: 8px;
+      padding: 0 10px 0 0;
+      overflow: hidden;
+    }
+    .level-lamp-bar {
+      align-self: stretch;
+      width: 12px;
+      min-height: 42px;
+      border-right: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+    }
+    .song-cell.level-cell > div {
+      padding: 6px 0;
+    }
+    .level-cell .unofficial-lv {
+      font-size: 12px;
+      line-height: 1.1;
+    }
+    .level-main .title {
+      line-height: 1.15;
+    }
+    .level-main .meta {
+      margin-top: 3px;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+      white-space: nowrap;
+    }
+    .level-info {
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .level-score {
+      min-width: 78px;
+      display: grid;
+      gap: 2px;
+      justify-items: end;
+      align-self: center;
+      padding: 0;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .level-score .rankdiff {
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .level-score .rate {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
     }
     .title { display: flex; gap: 6px; align-items: baseline; min-width: 0; white-space: nowrap; }
     .title-lv, .title-diff { flex: none; color: var(--blue); font-weight: 750; }
@@ -166,6 +253,39 @@
     }
     .score { font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 850; }
     .subscore { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .bpi-chip {
+      display: inline-block;
+      font-size: 15px;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      margin-top: 0;
+      white-space: nowrap;
+    }
+    .row .bpi-chip { display: inline-block; font-size: 15px; margin-top: 0; }
+    .bpi-chip.positive {
+      color: #f4eeff;
+      text-shadow: 0 0 8px rgba(181, 140, 255, 0.72);
+    }
+    .bpi-chip.negative {
+      color: var(--muted);
+      text-shadow: none;
+    }
+    .unofficial-lv {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 2px;
+      flex: none;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .unofficial-easy { color: #bbddff; }
+    .unofficial-hard { color: #ffaaaa; }
+    .unofficial-sep { color: var(--text); opacity: 0.88; }
+    .lv-token {
+      color: var(--blue);
+      font-weight: 850;
+      white-space: nowrap;
+    }
     .empty, .error { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--muted); padding: 22px 14px; text-align: center; }
     .detail-head { margin-bottom: 12px; }
     .detail-title { font-size: 20px; font-weight: 850; line-height: 1.25; overflow-wrap: anywhere; }
@@ -177,14 +297,42 @@
     .metric strong { display: block; margin-top: 3px; font-size: 18px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
     .metric.featured { border-color: color-mix(in srgb, var(--amber), var(--line) 45%); }
     .metric.featured strong { color: var(--amber); font-size: 24px; }
+    .metric.featured.bpi strong { color: var(--bpi); }
     .section { margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); overflow: hidden; }
     .section-title { display: flex; justify-content: space-between; gap: 10px; min-height: 36px; align-items: center; border-bottom: 1px solid var(--line); padding: 0 12px; font-size: 13px; font-weight: 850; text-transform: uppercase; }
     .section-title span { color: var(--muted); font-size: 11px; }
+    details.section > summary.section-title { cursor: pointer; list-style: none; }
+    details.section > summary.section-title::-webkit-details-marker { display: none; }
+    details.section > summary.section-title::after { content: "⌃"; color: var(--muted); font-size: 13px; }
+    details.section:not([open]) > summary.section-title { border-bottom: 0; }
+    details.section:not([open]) > summary.section-title::after { content: "⌄"; }
     .section-body { padding: 0 10px 2px 10px; }
     .row { display: grid; grid-template-columns: 82px minmax(0, 1fr) auto; gap: 8px; align-items: center; border-bottom: 1px solid var(--line); padding: 10px 2px; }
     .row:last-child { border-bottom: 0; }
     .row b { display: block; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .row span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .row .unofficial-lv {
+      display: inline-flex;
+      color: inherit;
+      font-size: inherit;
+      margin-top: 0;
+      white-space: nowrap;
+    }
+    .row .unofficial-lv span {
+      display: inline;
+      font-size: inherit;
+      margin-top: 0;
+      white-space: nowrap;
+    }
+    .row .unofficial-easy,
+    .pill .unofficial-easy,
+    .title .unofficial-easy { color: #bbddff; }
+    .row .unofficial-hard,
+    .pill .unofficial-hard,
+    .title .unofficial-hard { color: #ffaaaa; }
+    .row .unofficial-sep,
+    .pill .unofficial-sep,
+    .title .unofficial-sep { color: var(--text); opacity: 0.88; }
     .row-score { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
     .row[data-chart] { cursor: pointer; }
     .delta { color: var(--green); font-weight: 850; }
@@ -214,7 +362,7 @@
   </div>
 
   <script>
-    const state = { view: "home", stack: [], allItems: [], historyOffset: 0, historyTotal: 0, currentTimer: null };
+    const state = { view: "home", stack: [], allItems: [], listVariant: "", historyOffset: 0, historyTotal: 0, currentTimer: null, receiptTimer: null, dailyMode: "daily" };
     const HISTORY_BASE = "inf-mobile-base";
     const HISTORY_APP = "inf-mobile-view";
     const $ = (id) => document.getElementById(id);
@@ -254,6 +402,8 @@
     function clearCurrentTimer() {
       if (state.currentTimer) clearInterval(state.currentTimer);
       state.currentTimer = null;
+      if (state.receiptTimer) clearInterval(state.receiptTimer);
+      state.receiptTimer = null;
     }
 
     function renderHome(data) {
@@ -272,6 +422,7 @@
 
     function renderList(label, items, options = {}) {
       state.allItems = items;
+      state.listVariant = options.variant || "";
       setTitle(label);
       setStats([["ITEMS", items.length], ["BEST", items.filter((i) => i.score || i.best_score).length], ["NOTES", fmt(options.notes || 0)]]);
       $("content").innerHTML = `<div class="toolbar"><input id="search" class="search" placeholder="Search" autocomplete="off"></div><div id="songList" class="song-list"></div>${options.loadMore ? '<button id="loadMore" class="load-more">MORE</button>' : ''}`;
@@ -296,13 +447,29 @@
     function songCell(item) {
       const score = item.score ?? item.best_score;
       const bp = item.bp ?? item.best_bp;
+      if (state.listVariant === "level") {
+        return `<button class="song-cell level-cell" data-chart="${escapeText(item.chart_id || "")}">
+          ${lampBarHtml(item.lamp)}
+          <div class="level-main">
+            <div class="title"><span class="title-name">${escapeText(item.title)}</span><span class="title-diff">[${escapeText(item.difficulty || "")}]</span></div>
+            <div class="meta">${levelSubInfoHtml(item, score, bp)}</div>
+          </div>
+          <div class="level-score"><div class="rankdiff">${escapeText(item.rankdiff || "-")}</div><div class="rate">${pct(item.score_rate)}</div></div>
+        </button>`;
+      }
       return `<button class="song-cell" data-chart="${escapeText(item.chart_id || "")}">
         <div>
-          <div class="title"><span class="title-lv">Lv${escapeText(item.lv || "")}</span><span class="title-name">${escapeText(item.title)}</span><span class="title-diff">[${escapeText(item.difficulty || "")}]</span></div>
-          <div class="meta">${escapeText(item.date || item.last_played || "")}${item.opt ? " / " + escapeText(item.opt) : ""}</div>
+          <div class="title">${levelHtml(item)}<span class="title-name">${escapeText(item.title)}</span><span class="title-diff">[${escapeText(item.difficulty || "")}]</span></div>
+          <div class="meta">${escapeText(item.date || item.last_played || "")}${item.opt ? " / " + escapeText(item.opt) : ""}${item.bpi ? " / " + bpiHtml(item.bpi) : ""}</div>
         </div>
         <div class="score-block">${lampHtml(item.lamp, item.lamp_text)}<div class="score">${fmt(score)}</div><div class="subscore">BP ${fmt(bp)}</div></div>
       </button>`;
+    }
+    function bpiHtml(value) {
+      if (value == null || value === "") return "-";
+      const numeric = Number(value);
+      const cls = numeric > 0 ? "positive" : "negative";
+      return `<span class="bpi-chip ${cls}">${escapeText(value)}</span>`;
     }
     function lampClass(lamp) {
       const value = Number(lamp) || 0;
@@ -321,15 +488,52 @@
       if (!cls) return `<span class="lamp-name">${escapeText(name)}</span>`;
       return `<span class="lamp-wrap"><span class="lamp-box ${cls}"></span><span class="lamp-name">${escapeText(name)}</span></span>`;
     }
+    function lampBarHtml(lamp) {
+      const cls = lampClass(lamp);
+      return `<span class="level-lamp-bar ${cls}"></span>`;
+    }
 
     function renderPlainList(label, rows, options = {}) {
       setTitle(label);
       setStats(options.stats || [["ITEMS", rows.length], ["NOTES", fmt(options.notes || 0)], ["", ""]]);
-      $("content").innerHTML = `<div class="plain-list">${rows.length ? rows.map(options.row).join("") : '<div class="empty">NO DATA</div>'}</div>`;
+      $("content").innerHTML = `${options.before || ""}<div class="plain-list">${rows.length ? rows.map(options.row).join("") : '<div class="empty">NO DATA</div>'}</div>`;
       document.querySelectorAll("[data-daily]").forEach((button) => button.addEventListener("click", () => openDailyDate(button.dataset.daily, true)));
+      document.querySelectorAll("[data-daily-month]").forEach((button) => button.addEventListener("click", () => openDailyMonth(button.dataset.dailyMonth, true)));
+      document.querySelectorAll("[data-daily-year]").forEach((button) => button.addEventListener("click", () => openDailyYear(button.dataset.dailyYear, true)));
+      document.querySelectorAll("[data-daily-mode]").forEach((input) => input.addEventListener("change", () => {
+        if (input.checked) openDailyRoot(input.value, false);
+      }));
+    }
+
+    function dailyModeControls(mode) {
+      return `<div class="mode-tabs">
+        ${["daily", "monthly", "yearly"].map((value) => `<label><input type="radio" name="dailyMode" data-daily-mode value="${value}" ${mode === value ? "checked" : ""}>${value}</label>`).join("")}
+      </div>`;
+    }
+    function renderDailyFolders(data) {
+      const mode = data.mode || "daily";
+      if (data.folder.id === "daily") state.dailyMode = mode;
+      renderPlainList(data.folder.label, data.items || [], {
+        notes: data.total_notes,
+        before: data.folder.id === "daily" ? dailyModeControls(mode) : "",
+        stats: [["ITEMS", (data.items || []).length], ["NOTES", fmt(data.total_notes || 0)], ["MODE", mode.toUpperCase()]],
+        row: (item) => {
+          if (item.year) {
+            return `<button class="plain-row" data-daily-year="${escapeText(item.year)}"><div><div class="title"><span class="title-name">${escapeText(item.year)}</span></div><div class="meta">${item.month_count} months / ${item.play_count} plays</div></div><div class="score-block"><div class="score">${fmt(item.notes)}</div><div class="subscore">notes</div></div></button>`;
+          }
+          if (item.month) {
+            return `<button class="plain-row" data-daily-month="${escapeText(item.month)}"><div><div class="title"><span class="title-name">${escapeText(item.month)}</span></div><div class="meta">${item.day_count} days / ${item.play_count} plays</div></div><div class="score-block"><div class="score">${fmt(item.notes)}</div><div class="subscore">notes</div></div></button>`;
+          }
+          return `<button class="plain-row" data-daily="${escapeText(item.date)}"><div><div class="title"><span class="title-name">${escapeText(item.date)}</span></div><div class="meta">${item.play_count} plays</div></div><div class="score-block"><div class="score">${fmt(item.notes)}</div><div class="subscore">notes</div></div></button>`;
+        }
+      });
     }
 
     function renderReceipt(data) {
+      const openSections = {};
+      document.querySelectorAll("details[data-section]").forEach((section) => {
+        openSections[section.dataset.section] = section.open;
+      });
       setTitle(data.folder.label);
       const logs = data.items || [];
       const topBpi = data.top_bpi_items || [];
@@ -343,14 +547,14 @@
         <div class="metric"><span>SONGS</span><strong>${fmt(data.song_count)}</strong></div>
         <div class="metric"><span>SCORE RATE</span><strong>${escapeText(data.score_rate || "-")}</strong></div>
         <div class="metric"><span>NOTES</span><strong>${fmt(data.today_notes)}</strong></div>
-        <div class="metric featured"><span>TOP BPI</span><strong>${escapeText(data.top_bpi || "-")}</strong></div>
+        <div class="metric featured bpi"><span>TOP BPI</span><strong>${escapeText(data.top_bpi || "-")}</strong></div>
       </section>`;
       $("content").innerHTML = `${top}
-        ${receiptSection("Play Log", `${logs.length} / ${fmt(data.song_count)} songs`, logs, receiptSongRow)}
-        ${receiptSection("Top BPI", `${topBpi.length} charts`, topBpi, receiptBpiRow)}
-        ${receiptSection("Score Updates", `${scoreUpdates.length} charts`, scoreUpdates, receiptScoreUpdateRow)}
-        ${receiptSection("Lamp Updates", `${lampUpdates.length} charts`, lampUpdates, receiptLampUpdateRow)}
-        ${receiptSection("BP Updates", `${bpUpdates.length} charts`, bpUpdates, receiptBpUpdateRow)}
+        ${receiptSection("play-log", "Play Log", `${logs.length} / ${fmt(data.song_count)} songs`, logs, receiptSongRow, openSections)}
+        ${receiptSection("top-bpi", "Top BPI", `${topBpi.length} charts`, topBpi, receiptBpiRow, openSections)}
+        ${receiptSection("score-updates", "Score Updates", `${scoreUpdates.length} charts`, scoreUpdates, receiptScoreUpdateRow, openSections)}
+        ${receiptSection("lamp-updates", "Lamp Updates", `${lampUpdates.length} charts`, lampUpdates, receiptLampUpdateRow, openSections)}
+        ${receiptSection("bp-updates", "BP Updates", `${bpUpdates.length} charts`, bpUpdates, receiptBpUpdateRow, openSections)}
         ${receiptCurrentBest(current)}
         <section class="section">
           <div class="section-title">Rivals <span>${rivals.length} players</span></div>
@@ -359,24 +563,52 @@
       document.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
     }
 
-    function receiptSection(title, count, rows, rowRenderer) {
-      return `<section class="section">
-        <div class="section-title">${escapeText(title)} <span>${escapeText(count)}</span></div>
+    function receiptSection(id, title, count, rows, rowRenderer, openSections = {}) {
+      const openAttr = openSections[id] === false ? "" : " open";
+      return `<details class="section" data-section="${escapeText(id)}"${openAttr}>
+        <summary class="section-title">${escapeText(title)} <span>${escapeText(count)}</span></summary>
         <div class="section-body">${rows.length ? rows.map(rowRenderer).join("") : '<div class="empty">NO DATA</div>'}</div>
-      </section>`;
+      </details>`;
     }
     function receiptTitle(item) {
-      return `<b>Lv${escapeText(item.lv || "")} ${escapeText(item.title)} [${escapeText(item.difficulty || "")}]</b>`;
+      return `<b>${levelHtml(item)} ${escapeText(item.title)} [${escapeText(item.difficulty || "")}]</b>`;
+    }
+    function levelHtml(item) {
+      const difficulty = String(item.difficulty || "");
+      const isSp12 = String(item.lv || "") === "12" && difficulty.startsWith("SP");
+      const clear = item.sp_12clear || "";
+      const hard = item.sp_12hard || "";
+      if (isSp12 && (clear || hard)) {
+        return `<span class="unofficial-lv"><span class="unofficial-easy">${escapeText(clear || "?")}</span><span class="unofficial-sep">/</span><span class="unofficial-hard">${escapeText(hard || "?")}</span></span>`;
+      }
+      return `<span class="lv-token">Lv${escapeText(item.lv || "")}</span>`;
+    }
+    function levelUnofficialHtml(item) {
+      const difficulty = String(item.difficulty || "");
+      const isSp12 = String(item.lv || "") === "12" && difficulty.startsWith("SP");
+      const clear = item.sp_12clear || "";
+      const hard = item.sp_12hard || "";
+      if (!isSp12 || (!clear && !hard)) return "";
+      return `<span class="unofficial-lv"><span class="unofficial-easy">${escapeText(clear || "?")}</span><span class="unofficial-sep">/</span><span class="unofficial-hard">${escapeText(hard || "?")}</span></span>`;
+    }
+    function levelSubInfoHtml(item, score, bp) {
+      const parts = [];
+      const unofficial = levelUnofficialHtml(item);
+      if (unofficial) parts.push(unofficial);
+      if (item.bpi) parts.push(bpiHtml(item.bpi));
+      parts.push(`<span class="level-info">EX${fmt(score)}</span>`);
+      parts.push(`<span class="level-info">BP${fmt(bp)}</span>`);
+      return parts.join("");
     }
     function receiptSongRow(item) {
-      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}">${lampHtml(item.lamp, item.lamp_text)}<div>${receiptTitle(item)}<span>${escapeText(item.opt || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)} / ${escapeText(item.bpi || "-")}</span></div></div>`;
+      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}">${lampHtml(item.lamp, item.lamp_text)}<div>${receiptTitle(item)}<span>${escapeText(item.opt || "")}${item.rankdiff ? " / " + escapeText(item.rankdiff) : ""}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)} / ${bpiHtml(item.bpi)}</span></div></div>`;
     }
     function receiptBpiRow(item) {
-      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="row-score">${escapeText(item.bpi || "-")}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${escapeText(item.rankdiff || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}</span></div></div>`;
+      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="row-score">${bpiHtml(item.bpi)}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${escapeText(item.rankdiff || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}</span></div></div>`;
     }
     function receiptScoreUpdateRow(item) {
       const delta = (Number(item.score) || 0) - (Number(item.pre_score) || 0);
-      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="delta">+${fmt(delta)}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${escapeText(item.rankdiff || "")}</span></div><div class="row-score">${fmt(item.score)}<span>prev ${fmt(item.pre_score)}</span></div></div>`;
+      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="delta">+${fmt(delta)}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${escapeText(item.rankdiff || "")} / ${bpiHtml(item.bpi)}</span></div><div class="row-score">${fmt(item.score)}<span>prev ${fmt(item.pre_score)}</span></div></div>`;
     }
     function receiptLampUpdateRow(item) {
       return `<div class="row" data-chart="${escapeText(item.chart_id || "")}">${lampHtml(item.lamp, item.lamp_text)}<div>${receiptTitle(item)}<span>from ${escapeText(item.pre_lamp_text || item.pre_lamp || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}</span></div></div>`;
@@ -392,7 +624,7 @@
       return `<section class="section">
         <div class="section-title">Current Best <span>${escapeText(data.difficulty || "")}</span></div>
         <div class="section-body">
-          <div class="row" data-chart="${escapeText(data.chart_id || "")}">${lampHtml(data.best_lamp, data.best_lamp_text)}<div><b>${escapeText(data.music || data.title || "")}</b><span>Lv${escapeText(data.lv || "")} / NOTES ${fmt(data.notes)}</span></div><div class="row-score">${fmt(data.best_score)}<span>BP ${fmt(data.best_bp)} / ${escapeText(data.best_bpi || "-")}</span></div></div>
+          <div class="row" data-chart="${escapeText(data.chart_id || "")}">${lampHtml(data.best_lamp, data.best_lamp_text)}<div><b>${escapeText(data.music || data.title || "")}</b><span>${levelHtml(data)} / NOTES ${fmt(data.notes)}</span></div><div class="row-score">${fmt(data.best_score)}<span>BP ${fmt(data.best_bp)} / ${bpiHtml(data.best_bpi)}</span></div></div>
         </div>
       </section>`;
     }
@@ -406,7 +638,7 @@
         <section class="detail-head">
           <div class="detail-title">${escapeText(data.music || data.title)}</div>
           <div class="pill-row">
-            <span class="pill">Lv${escapeText(data.lv || "")}</span>
+            <span class="pill">${levelHtml(data)}</span>
             <span class="pill">${escapeText(data.difficulty || "")}</span>
             <span class="pill">NOTES ${fmt(data.notes)}</span>
           </div>
@@ -414,7 +646,7 @@
         <section class="metrics">
           <div class="metric"><span>BEST SCORE</span><strong>${fmt(data.best_score)}</strong></div>
           <div class="metric"><span>BEST BP</span><strong>${fmt(data.best_bp)}</strong></div>
-          <div class="metric featured"><span>${escapeText(data.best_bpi_label || "BPI")}</span><strong>${escapeText(data.best_bpi || "-")}</strong></div>
+          <div class="metric featured bpi"><span>${escapeText(data.best_bpi_label || "BPI")}</span><strong>${escapeText(data.best_bpi || "-")}</strong></div>
           <div class="metric"><span>BEST RATE</span><strong>${pct(data.best_score_rate)}</strong></div>
         </section>
         <section class="section">
@@ -458,13 +690,10 @@
         } else if (id === "receipt") {
           state.view = "receipt";
           renderReceipt(await api("/api/folders/receipt"));
+          state.receiptTimer = setInterval(() => refreshReceipt(), 5000);
         } else if (id === "daily") {
           state.view = "daily";
-          const data = await api("/api/folders/daily");
-          renderPlainList(data.folder.label, data.items, {
-            notes: data.total_notes,
-            row: (item) => `<button class="plain-row" data-daily="${escapeText(item.date)}"><div><div class="title"><span class="title-name">${escapeText(item.date)}</span></div><div class="meta">${item.play_count} plays</div></div><div class="score-block"><div class="score">${fmt(item.notes)}</div><div class="subscore">notes</div></div></button>`
-          });
+          await openDailyRoot(state.dailyMode || "daily", false);
         } else {
           const data = await api(`/api/folders/${id}`);
           state.view = id;
@@ -472,7 +701,7 @@
             renderCurrentSong(data);
             state.currentTimer = setInterval(() => refreshCurrent(), 2000);
           } else {
-            renderList(data.folder.label, data.items, { notes: data.notes });
+            renderList(data.folder.label, data.items, { notes: data.notes, variant: id.includes("level/") ? "level" : "" });
           }
         }
         if (shouldPush) pushHistoryState();
@@ -480,13 +709,43 @@
         renderError(e);
       }
     }
+    async function openDailyRoot(mode = "daily", shouldPush = true) {
+      clearCurrentTimer();
+      if (shouldPush) push(state.view);
+      try {
+        const data = await api(`/api/folders/daily?mode=${encodeURIComponent(mode)}`);
+        state.view = "daily";
+        renderDailyFolders(data);
+        if (shouldPush) pushHistoryState();
+      } catch (e) { renderError(e); }
+    }
+    async function openDailyMonth(monthKey, shouldPush) {
+      clearCurrentTimer();
+      if (shouldPush) push(state.view);
+      try {
+        const data = await api(`/api/folders/daily/month/${encodeURIComponent(monthKey)}`);
+        state.view = `daily-month:${monthKey}`;
+        renderDailyFolders(data);
+        if (shouldPush) pushHistoryState();
+      } catch (e) { renderError(e); }
+    }
+    async function openDailyYear(yearKey, shouldPush) {
+      clearCurrentTimer();
+      if (shouldPush) push(state.view);
+      try {
+        const data = await api(`/api/folders/daily/year/${encodeURIComponent(yearKey)}`);
+        state.view = `daily-year:${yearKey}`;
+        renderDailyFolders(data);
+        if (shouldPush) pushHistoryState();
+      } catch (e) { renderError(e); }
+    }
     async function openDailyDate(dateKey, shouldPush) {
       clearCurrentTimer();
       if (shouldPush) push(state.view);
       try {
         const data = await api(`/api/folders/daily/${encodeURIComponent(dateKey)}`);
         state.view = `daily:${dateKey}`;
-        renderList(data.folder.label, data.items, { notes: data.notes });
+        renderList(data.folder.label, data.items, { notes: data.notes, variant: "level" });
         if (shouldPush) pushHistoryState();
       } catch (e) { renderError(e); }
     }
@@ -494,6 +753,12 @@
       try {
         const data = await api("/api/folders/current");
         renderCurrentSong(data);
+      } catch (e) { renderError(e); }
+    }
+    async function refreshReceipt() {
+      if (state.view !== "receipt") return;
+      try {
+        renderReceipt(await api("/api/folders/receipt"));
       } catch (e) { renderError(e); }
     }
     async function loadMoreHistory() {
@@ -525,6 +790,8 @@
     async function openView(view, shouldPush) {
       if (!view || view === "home") await loadHome();
       else if (view.startsWith("chart:")) await openChart(view.slice(6), shouldPush);
+      else if (view.startsWith("daily-month:")) await openDailyMonth(view.slice(12), shouldPush);
+      else if (view.startsWith("daily-year:")) await openDailyYear(view.slice(11), shouldPush);
       else if (view.startsWith("daily:")) await openDailyDate(view.slice(6), shouldPush);
       else await openFolder(view, shouldPush);
     }

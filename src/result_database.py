@@ -702,6 +702,8 @@ class ResultDatabase:
 
             # ノーツ数を埋めておく
             if result.notes:
+                if best.best_score_result:
+                    best.best_score_result.notes = result.notes
                 if best.best_lamp_result:
                     best.best_lamp_result.notes = result.notes
                 if best.min_bp_result:
@@ -1273,9 +1275,26 @@ class ResultDatabase:
         if best_bp >= 99999:
             best_bp = None
         best_score = _to_int_or_none(best.best_score) or 0
-        notes = _to_int_or_none(best.notes) or 0
+        notes = _to_int_or_none(best.notes) or _to_int_or_none(getattr(best.songinfo, "notes", None)) or 0
         score_rate = best_score / (notes * 2) if notes else 0
-        return {
+        bpi = None
+        bpi_label = ""
+        if best.best_score_result:
+            bpim2 = getattr(best.best_score_result, "bpim2", None)
+            if notes and not best.best_score_result.notes:
+                best.best_score_result.notes = notes
+            detail = DetailedResult(best.songinfo, best.best_score_result)
+            if bpim2 is not None:
+                bpi = f"{bpim2:.2f}"
+                bpi_label = "BPIM2"
+            else:
+                if detail.bpi is not None:
+                    bpi = f"{detail.bpi:.2f}"
+                    bpi_label = "BPI"
+            rankdiff = "".join(detail.score_rate_with_rankdiff) if detail.score_rate_with_rankdiff else ""
+        else:
+            rankdiff = ""
+        data = {
             "chart_id": calc_chart_id(best.title, best.style, best.difficulty, battle=best.is_battle),
             "title": best.title,
             "difficulty": best.chart,
@@ -1285,10 +1304,15 @@ class ResultDatabase:
             "lamp": lamp.value if lamp else clear_lamp.noplay.value,
             "lamp_text": self._lamp_text(lamp),
             "score_rate": score_rate,
+            "rankdiff": rankdiff,
+            "bpi": bpi,
+            "bpi_label": bpi_label,
             "notes": notes,
             "last_played": best.last_play_date,
             "opt": best.best_score_option,
         }
+        data.update(_extract_songinfo_fields(best.songinfo))
+        return data
 
     def _serialize_mobile_best_safe(self, best: OneBestData) -> dict | None:
         try:
@@ -1322,7 +1346,11 @@ class ResultDatabase:
             notes = _to_int_or_none(songinfo.notes)
         score = _to_int_or_none(result.score)
         score_rate = score / (notes * 2) if score is not None and notes else detail.score_rate
-        return {
+        if notes and not result.notes:
+            result.notes = notes
+            detail.update_details()
+        rankdiff = "".join(detail.score_rate_with_rankdiff) if detail.score_rate_with_rankdiff else ""
+        data = {
             "chart_id": result.chart_id,
             "title": result.title,
             "difficulty": get_chart_name(result.play_style, result.difficulty, battle=result.option.battle if result.option else False),
@@ -1332,6 +1360,7 @@ class ResultDatabase:
             "lamp": lamp.value,
             "lamp_text": self._lamp_text(lamp),
             "score_rate": score_rate,
+            "rankdiff": rankdiff,
             "bpi": bpi,
             "bpi_label": bpi_label,
             "notes": notes,
@@ -1339,6 +1368,8 @@ class ResultDatabase:
             "opt": str(result.option) if result.option else "",
             "dead": bool(result.dead),
         }
+        data.update(_extract_songinfo_fields(songinfo))
+        return data
 
     def _mobile_result_items(self, results: list[OneResult]) -> list[dict]:
         return [self._serialize_mobile_result(r) for r in results if r.detect_mode == detect_mode.result]
@@ -1391,7 +1422,7 @@ class ResultDatabase:
                 for level in levels
             )
         result_count = sum(1 for r in self.results if r.detect_mode == detect_mode.result)
-        today_notes = self._notes_since(self._today_start_timestamp())
+        today_notes = self._notes_since(self._mobile_receipt_start_timestamp())
         current = self.get_mobile_current_folder_data()
         daily_count = len(self._notes_by_date())
         return {
@@ -1499,14 +1530,14 @@ class ResultDatabase:
             "rival_items": current_detail.get("rival_items", []) if current_detail else [],
         }
 
-    def get_mobile_daily_folders_data(self) -> dict:
+    def _mobile_daily_rows(self) -> list[dict]:
         notes_by_date = self._notes_by_date()
         play_counts = defaultdict(int)
         for result in self.results:
             if result.detect_mode == detect_mode.result:
                 play_counts[self._timestamp_text(result.timestamp, "%Y-%m-%d")] += 1
         dates = sorted(set(notes_by_date.keys()) | set(play_counts.keys()), reverse=True)
-        items = [
+        return [
             {
                 "date": date_key,
                 "notes": notes_by_date.get(date_key, 0),
@@ -1514,9 +1545,86 @@ class ResultDatabase:
             }
             for date_key in dates
         ]
+
+    def get_mobile_daily_folders_data(self, mode: str = "daily") -> dict:
+        mode = (mode or "daily").lower()
+        daily_items = self._mobile_daily_rows()
+        if mode == "monthly":
+            monthly = {}
+            for item in daily_items:
+                key = item["date"][:7]
+                entry = monthly.setdefault(key, {"month": key, "notes": 0, "play_count": 0, "day_count": 0})
+                entry["notes"] += item["notes"]
+                entry["play_count"] += item["play_count"]
+                entry["day_count"] += 1
+            items = [monthly[key] for key in sorted(monthly.keys(), reverse=True)]
+            return {
+                "folder": {"id": "daily", "label": "DAILY LOG"},
+                "mode": "monthly",
+                "total_notes": sum(item["notes"] for item in daily_items),
+                "items": items,
+            }
+        if mode == "yearly":
+            yearly = {}
+            for item in daily_items:
+                key = item["date"][:4]
+                entry = yearly.setdefault(key, {"year": key, "notes": 0, "play_count": 0, "month_count": 0})
+                entry["notes"] += item["notes"]
+                entry["play_count"] += item["play_count"]
+            for entry in yearly.values():
+                entry["month_count"] = len(
+                    {
+                        item["date"][:7]
+                        for item in daily_items
+                        if item["date"].startswith(entry["year"])
+                    }
+                )
+            items = [yearly[key] for key in sorted(yearly.keys(), reverse=True)]
+            return {
+                "folder": {"id": "daily", "label": "DAILY LOG"},
+                "mode": "yearly",
+                "total_notes": sum(item["notes"] for item in daily_items),
+                "items": items,
+            }
+        items = daily_items
         return {
             "folder": {"id": "daily", "label": "DAILY LOG"},
-            "total_notes": sum(notes_by_date.values()),
+            "mode": "daily",
+            "total_notes": sum(item["notes"] for item in daily_items),
+            "items": items,
+        }
+
+    def get_mobile_monthly_daily_folders_data(self, month_key: str) -> dict:
+        items = [
+            item
+            for item in self._mobile_daily_rows()
+            if item["date"].startswith(f"{month_key}-")
+        ]
+        return {
+            "folder": {"id": f"daily/month/{month_key}", "label": month_key},
+            "mode": "daily",
+            "total_notes": sum(item["notes"] for item in items),
+            "items": items,
+        }
+
+    def get_mobile_yearly_month_folders_data(self, year_key: str) -> dict:
+        daily_items = [
+            item
+            for item in self._mobile_daily_rows()
+            if item["date"].startswith(f"{year_key}-")
+        ]
+        monthly = {}
+        for item in daily_items:
+            key = item["date"][:7]
+            entry = monthly.setdefault(key, {"month": key, "notes": 0, "play_count": 0, "day_count": 0})
+            entry["notes"] += item["notes"]
+            entry["play_count"] += item["play_count"]
+            entry["day_count"] += 1
+        items = [monthly[key] for key in sorted(monthly.keys(), reverse=True)]
+        return {
+            "folder": {"id": f"daily/year/{year_key}", "label": year_key},
+            "mode": "monthly",
+            "total_notes": sum(item["notes"] for item in daily_items),
             "items": items,
         }
 

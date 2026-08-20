@@ -145,7 +145,16 @@ class MobileScoreHTTPServer:
                     self._send_json(result_database.get_mobile_receipt_data())
                     return
                 if path == "/api/folders/daily":
-                    self._send_json(result_database.get_mobile_daily_folders_data())
+                    mode = (query.get("mode") or ["daily"])[0]
+                    self._send_json(result_database.get_mobile_daily_folders_data(mode))
+                    return
+                if path.startswith("/api/folders/daily/month/"):
+                    month_key = path.rsplit("/", 1)[-1]
+                    self._send_json(result_database.get_mobile_monthly_daily_folders_data(month_key))
+                    return
+                if path.startswith("/api/folders/daily/year/"):
+                    year_key = path.rsplit("/", 1)[-1]
+                    self._send_json(result_database.get_mobile_yearly_month_folders_data(year_key))
                     return
                 if path.startswith("/api/folders/daily/"):
                     date_key = path.rsplit("/", 1)[-1]
