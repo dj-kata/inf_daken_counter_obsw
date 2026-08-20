@@ -55,6 +55,19 @@ def _get_katate_band(songinfo):
     return None
 
 
+def _mobile_chart_id(title, style, diff, battle: bool = False):
+    chart_id = calc_chart_id(title, style, diff, battle=battle)
+    if chart_id and battle:
+        return f"dbx:{chart_id}"
+    return chart_id
+
+
+def _split_mobile_chart_id(chart_id: str) -> tuple[str, bool | None]:
+    if isinstance(chart_id, str) and chart_id.startswith("dbx:"):
+        return chart_id[4:], True
+    return chart_id, None
+
+
 def _ws_broadcast(ws_method_name: str):
     """WebSocket配信用デコレータ。ws_serverがNoneなら何もしない。"""
 
@@ -794,7 +807,7 @@ class ResultDatabase:
             lamp = r.lamp or clear_lamp.noplay
 
             item = {
-                "chart_id": calc_chart_id(
+                "chart_id": _mobile_chart_id(
                     r.title,
                     r.play_style,
                     r.difficulty,
@@ -1306,7 +1319,7 @@ class ResultDatabase:
         else:
             rankdiff = ""
         data = {
-            "chart_id": calc_chart_id(best.title, best.style, best.difficulty, battle=best.is_battle),
+            "chart_id": _mobile_chart_id(best.title, best.style, best.difficulty, battle=best.is_battle),
             "title": best.title,
             "difficulty": best.chart,
             "lv": best.level,
@@ -1321,6 +1334,8 @@ class ResultDatabase:
             "notes": notes,
             "last_played": best.last_play_date,
             "opt": best.best_score_option,
+            "enable_katate_difficulty_display": self._mobile_katate_enabled(),
+            "battle": bool(best.is_battle),
         }
         data.update(_extract_songinfo_fields(best.songinfo))
         return data
@@ -1362,7 +1377,12 @@ class ResultDatabase:
             detail.update_details()
         rankdiff = "".join(detail.score_rate_with_rankdiff) if detail.score_rate_with_rankdiff else ""
         data = {
-            "chart_id": result.chart_id,
+            "chart_id": _mobile_chart_id(
+                result.title,
+                result.play_style,
+                result.difficulty,
+                battle=result.option.battle if result.option else False,
+            ),
             "title": result.title,
             "difficulty": get_chart_name(result.play_style, result.difficulty, battle=result.option.battle if result.option else False),
             "lv": str(songinfo.level) if songinfo and getattr(songinfo, "level", None) else "",
@@ -1378,6 +1398,7 @@ class ResultDatabase:
             "date": self._timestamp_text(result.timestamp),
             "opt": str(result.option) if result.option else "",
             "dead": bool(result.dead),
+            "enable_katate_difficulty_display": self._mobile_katate_enabled(),
         }
         image_url = self._mobile_result_image_url(result)
         if image_url:
@@ -1387,6 +1408,13 @@ class ResultDatabase:
 
     def _mobile_result_items(self, results: list[OneResult]) -> list[dict]:
         return [self._serialize_mobile_result(r) for r in results if r.detect_mode == detect_mode.result]
+
+    def _mobile_katate_enabled(self) -> bool:
+        return bool(self.config and getattr(self.config, "enable_katate_difficulty_display", False))
+
+    @staticmethod
+    def _mobile_katate_band_for_best(best: OneBestData):
+        return _get_katate_band(getattr(best, "songinfo", None))
 
     def _mobile_result_image_url(self, result: OneResult) -> str:
         image_path = getattr(result, "image_path", None)
@@ -1420,6 +1448,9 @@ class ResultDatabase:
 
     def _mobile_bpi_near_averages_for_chart(self, chart_id: str) -> list[dict]:
         if not chart_id:
+            return []
+        base_chart_id, forced_battle = _split_mobile_chart_id(chart_id)
+        if forced_battle:
             return []
         data = self.get_mobile_chart_detail_data(chart_id)
         if not data:
@@ -1457,7 +1488,9 @@ class ResultDatabase:
                 {
                     _to_int_or_none(best.level)
                     for best in bests.values()
-                    if best.style == style_value and _to_int_or_none(best.level)
+                    if not best.is_battle
+                    and best.style == style_value
+                    and _to_int_or_none(best.level)
                 },
                 reverse=True,
             )
@@ -1468,11 +1501,52 @@ class ResultDatabase:
                     "count": sum(
                         1
                         for b in bests.values()
-                        if b.style == style_value and _to_int_or_none(b.level) == level
+                        if not b.is_battle
+                        and b.style == style_value
+                        and _to_int_or_none(b.level) == level
                     ),
                 }
                 for level in levels
             )
+        dbx_folders = []
+        dbx_levels = sorted(
+            {
+                _to_int_or_none(best.level)
+                for best in bests.values()
+                if best.is_battle and _to_int_or_none(best.level)
+            },
+            reverse=True,
+        )
+        dbx_folders.extend(
+            {
+                "id": f"dbx/level/{level}",
+                "label": f"DBx LEVEL {level}",
+                "count": sum(
+                    1
+                    for b in bests.values()
+                    if b.is_battle and _to_int_or_none(b.level) == level
+                ),
+            }
+            for level in dbx_levels
+        )
+        katate_folders = []
+        if self._mobile_katate_enabled():
+            for level in (12, 11):
+                count = sum(
+                    1
+                    for best in bests.values()
+                    if best.style == play_style.sp
+                    and _to_int_or_none(best.level) == level
+                    and self._mobile_katate_band_for_best(best)
+                )
+                if count:
+                    katate_folders.append(
+                        {
+                            "id": f"katate/{level}",
+                            "label": f"KATATE LEVEL {level}",
+                            "count": count,
+                        }
+                    )
         result_count = sum(1 for r in self.results if r.detect_mode == detect_mode.result)
         today_notes = self._notes_since(self._mobile_receipt_start_timestamp())
         current = self.get_mobile_current_folder_data()
@@ -1482,6 +1556,8 @@ class ResultDatabase:
             "total_results": result_count,
             "today_notes": today_notes,
             "levels": level_folders,
+            "dbx": dbx_folders,
+            "katate": katate_folders,
             "special": [
                 {"id": "history", "label": "PLAY HISTORY", "count": result_count, "count_label": f"{result_count} plays"},
                 {"id": "receipt", "label": "RECEIPT", "count": today_notes, "count_label": f"{today_notes:,} notes"},
@@ -1490,7 +1566,7 @@ class ResultDatabase:
             ],
         }
 
-    def get_mobile_level_folder_data(self, level: int, style_text: str | None = None) -> dict:
+    def get_mobile_level_folder_data(self, level: int, style_text: str | None = None, battle_only: bool = False) -> dict:
         style_value = None
         style_label = ""
         if style_text:
@@ -1500,6 +1576,7 @@ class ResultDatabase:
             best
             for best in self.get_all_best_results().values()
             if _to_int_or_none(best.level) == level
+            and (best.is_battle if battle_only else not best.is_battle)
             and (style_value is None or best.style == style_value)
         ]
         bests.sort(key=lambda b: (-( _to_int_or_none(b.best_score) or 0), b.title, b.chart))
@@ -1508,10 +1585,68 @@ class ResultDatabase:
             for item in (self._serialize_mobile_best_safe(best) for best in bests)
             if item is not None
         ]
-        folder_id = f"style/{style_label}/level/{level}" if style_label else f"level/{level}"
-        label = f"{style_label} LEVEL {level}" if style_label else f"LEVEL {level}"
+        folder_id = f"dbx/level/{level}" if battle_only else f"style/{style_label}/level/{level}" if style_label else f"level/{level}"
+        label = f"DBx LEVEL {level}" if battle_only else f"{style_label} LEVEL {level}" if style_label else f"LEVEL {level}"
         return {
             "folder": {"id": folder_id, "label": label},
+            "items": items,
+            "notes": sum(_to_int_or_none(item.get("notes")) or 0 for item in items),
+        }
+
+    def get_mobile_katate_level_folder_data(self, level: int) -> dict:
+        if not self._mobile_katate_enabled():
+            return {
+                "folder": {"id": f"katate/{level}", "label": f"KATATE LEVEL {level}"},
+                "items": [],
+                "notes": 0,
+            }
+        bests = [
+            best
+            for best in self.get_all_best_results().values()
+            if best.style == play_style.sp
+            and _to_int_or_none(best.level) == level
+            and self._mobile_katate_band_for_best(best)
+        ]
+        by_band: dict[int, list[OneBestData]] = defaultdict(list)
+        for best in bests:
+            band = _to_int_or_none(self._mobile_katate_band_for_best(best))
+            if band is not None:
+                by_band[band].append(best)
+        items = [
+            {
+                "id": f"katate/{level}/band/{band}",
+                "label": f"{level}-{band}",
+                "count": len(by_band[band]),
+                "notes": sum(_to_int_or_none(best.notes) or 0 for best in by_band[band]),
+            }
+            for band in sorted(by_band.keys(), reverse=True)
+        ]
+        return {
+            "folder": {"id": f"katate/{level}", "label": f"KATATE LEVEL {level}"},
+            "items": items,
+            "notes": sum(item["notes"] for item in items),
+            "type": "folder-list",
+        }
+
+    def get_mobile_katate_band_folder_data(self, level: int, band: int) -> dict:
+        if not self._mobile_katate_enabled():
+            items = []
+        else:
+            bests = [
+                best
+                for best in self.get_all_best_results().values()
+                if best.style == play_style.sp
+                and _to_int_or_none(best.level) == level
+                and _to_int_or_none(self._mobile_katate_band_for_best(best)) == band
+            ]
+            bests.sort(key=lambda b: (b.title, b.chart))
+            items = [
+                item
+                for item in (self._serialize_mobile_best_safe(best) for best in bests)
+                if item is not None
+            ]
+        return {
+            "folder": {"id": f"katate/{level}/band/{band}", "label": f"KATATE {level}-{band}"},
             "items": items,
             "notes": sum(_to_int_or_none(item.get("notes")) or 0 for item in items),
         }
@@ -1536,6 +1671,8 @@ class ResultDatabase:
         items = updates_data.get("items", [])
 
         def bpi_value(item):
+            if str(item.get("difficulty") or "").upper().startswith("DP"):
+                return None
             return _to_float_or_none(item.get("bpi"))
 
         def valid_previous_bp(item):
@@ -1837,10 +1974,12 @@ class ResultDatabase:
         title = data.get("music") or data.get("title")
         difficulty_text = data.get("difficulty") or ""
         chart_id = data.get("chart_id")
+        if chart_id and (data.get("battle") or str(difficulty_text).upper().startswith("DB")) and not str(chart_id).startswith("dbx:"):
+            chart_id = f"dbx:{chart_id}"
         if not chart_id:
             for best in self.get_all_best_results().values():
                 if best.title == title and best.chart == difficulty_text:
-                    chart_id = calc_chart_id(best.title, best.style, best.difficulty, battle=best.is_battle)
+                    chart_id = _mobile_chart_id(best.title, best.style, best.difficulty, battle=best.is_battle)
                     break
         try:
             lamp_value = int(data.get("best_lamp", 0) or 0)
@@ -1884,13 +2023,31 @@ class ResultDatabase:
         }
 
     def get_mobile_chart_detail_data(self, chart_id: str) -> dict | None:
+        base_chart_id, forced_battle = _split_mobile_chart_id(chart_id)
         best = None
+        candidates = []
         for candidate in self.get_all_best_results().values():
+            if forced_battle is not None and bool(candidate.is_battle) != bool(forced_battle):
+                continue
             candidate_id = calc_chart_id(candidate.title, candidate.style, candidate.difficulty, battle=candidate.is_battle)
-            if candidate_id == chart_id:
-                best = candidate
-                break
-        results = [detail.result for detail in self.search(chart_id=chart_id) if detail.result.detect_mode == detect_mode.result]
+            if candidate_id == base_chart_id:
+                candidates.append(candidate)
+        if candidates:
+            candidates.sort(key=lambda candidate: bool(candidate.is_battle), reverse=bool(forced_battle))
+            best = candidates[0]
+        if best is not None:
+            results = [
+                detail.result
+                for detail in self.search(
+                    title=best.title,
+                    style=best.style,
+                    difficulty=best.difficulty,
+                    battle=best.is_battle,
+                )
+                if detail.result.detect_mode == detect_mode.result
+            ]
+        else:
+            results = [detail.result for detail in self.search(chart_id=base_chart_id) if detail.result.detect_mode == detect_mode.result]
         if best is None and not results:
             return None
         title = best.title if best else results[0].title

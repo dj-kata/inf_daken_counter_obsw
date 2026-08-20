@@ -132,6 +132,24 @@ class MobileScoreHTTPServer:
                             )
                         )
                         return
+                if path.startswith("/api/folders/dbx/level/"):
+                    level_text = path.rsplit("/", 1)[-1]
+                    self._send_json(result_database.get_mobile_level_folder_data(int(level_text), battle_only=True))
+                    return
+                if path.startswith("/api/folders/katate/"):
+                    parts = path.strip("/").split("/")
+                    if len(parts) == 4 and parts[0] == "api" and parts[1] == "folders" and parts[2] == "katate":
+                        self._send_json(result_database.get_mobile_katate_level_folder_data(int(parts[3])))
+                        return
+                    if (
+                        len(parts) == 6
+                        and parts[0] == "api"
+                        and parts[1] == "folders"
+                        and parts[2] == "katate"
+                        and parts[4] == "band"
+                    ):
+                        self._send_json(result_database.get_mobile_katate_band_folder_data(int(parts[3]), int(parts[5])))
+                        return
                 if path.startswith("/api/folders/level/"):
                     level_text = path.rsplit("/", 1)[-1]
                     self._send_json(result_database.get_mobile_level_folder_data(int(level_text)))

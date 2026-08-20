@@ -244,6 +244,18 @@
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
     }
+    .level-marker {
+      color: var(--blue);
+      font-weight: 900;
+    }
+    .level-marker.katate {
+      color: var(--amber);
+    }
+    .dp-unofficial {
+      color: #c8d4ff;
+      font-weight: 900;
+      white-space: nowrap;
+    }
     .level-score {
       min-width: 78px;
       display: grid;
@@ -260,6 +272,32 @@
       font-weight: 900;
       white-space: nowrap;
     }
+    .rank-diff {
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .rank-diff-tail {
+      color: var(--muted);
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+    .rank-MAX {
+      animation: flashmax 0.4s infinite;
+      font-weight: 950;
+    }
+    @keyframes flashmax {
+      0% { color: #ff2828; }
+      20% { color: #d5ff28; }
+      40% { color: #28ff7e; }
+      60% { color: #2872ff; }
+      80% { color: #d528ff; }
+      100% { color: #ff2828; }
+    }
+    .rank-AAA { color: #ffff28; }
+    .rank-AA { color: #c3c3c3; }
+    .rank-A { color: #2ddf71; }
+    .rank-B, .rank-C, .rank-D, .rank-E, .rank-F { color: #7777ff; }
     .level-score .rate {
       color: var(--muted);
       font-size: 11px;
@@ -346,6 +384,51 @@
     .metric.featured { border-color: color-mix(in srgb, var(--amber), var(--line) 45%); }
     .metric.featured strong { color: var(--amber); font-size: 24px; }
     .metric.featured.bpi strong { color: var(--bpi); }
+    .ereter-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin: -4px 0 12px;
+    }
+    .ereter-box {
+      position: relative;
+      min-width: 0;
+      border: 1px solid rgba(255, 220, 120, 0.45);
+      border-radius: 8px;
+      background: rgba(255, 220, 120, 0.10);
+      padding: 8px 8px 7px;
+      font-variant-numeric: tabular-nums;
+    }
+    .ereter-box.easy { border-color: rgba(150, 255, 110, 0.48); background: rgba(150, 255, 110, 0.12); }
+    .ereter-box.hard { border-color: rgba(255, 80, 105, 0.52); background: rgba(255, 80, 105, 0.12); }
+    .ereter-box.ereter-exh { border-color: rgba(255, 235, 70, 0.52); background: rgba(255, 235, 70, 0.12); }
+    .ereter-box b { display: block; color: var(--muted); font-size: 10px; line-height: 1; text-transform: uppercase; }
+    .ereter-box strong { display: block; margin-top: 4px; color: #ffffaa; font-size: 16px; font-weight: 950; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ereter-mark {
+      position: absolute;
+      top: -7px;
+      right: 5px;
+      font-size: 16px;
+      line-height: 1;
+      font-weight: 950;
+      text-shadow: 0 1px 2px #000;
+    }
+    .ereter-mark.ok { color: #4cff7a; }
+    .ereter-mark.ng { color: #ff5555; }
+    .ereter-mini {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+    }
+    .ereter-mini .ereter-box {
+      min-width: 36px;
+      padding: 3px 5px 2px;
+      border-radius: 6px;
+    }
+    .ereter-mini .ereter-box b { font-size: 8px; }
+    .ereter-mini .ereter-box strong { margin-top: 1px; font-size: 10px; }
+    .ereter-mini .ereter-mark { top: -5px; right: 2px; font-size: 11px; }
     .arena-averages {
       display: grid;
       gap: 6px;
@@ -434,6 +517,30 @@
       font-size: inherit;
       margin-top: 0;
       white-space: nowrap;
+    }
+    .row .dp-unofficial {
+      display: inline;
+      font-size: inherit;
+      margin-top: 0;
+      white-space: nowrap;
+    }
+    .row .lv-token {
+      display: inline;
+      font-size: inherit;
+      margin-top: 0;
+      white-space: nowrap;
+    }
+    .row .ereter-mini {
+      display: inline-flex;
+      margin-top: 4px;
+      vertical-align: middle;
+    }
+    .row .ereter-mini .ereter-box,
+    .row .ereter-mini .ereter-mark,
+    .row .ereter-mini .ereter-box b,
+    .row .ereter-mini .ereter-box strong {
+      display: block;
+      margin-top: 0;
     }
     .row .unofficial-easy,
     .pill .unofficial-easy,
@@ -541,7 +648,9 @@
         return `<button class="folder ${cls}" data-folder="${f.id}"><b>${escapeText(f.label)}</b><span>${escapeText(f.count_label || `${f.count} items`)}</span></button>`;
       }).join("");
       const levels = data.levels.map((f) => `<button class="folder" data-folder="${f.id}"><b>${escapeText(f.label)}</b><span>${f.count} charts</span></button>`).join("");
-      $("content").innerHTML = `<div class="grid folders">${special}${levels}</div>`;
+      const dbx = (data.dbx || []).map((f) => `<button class="folder" data-folder="${f.id}"><b>${escapeText(f.label)}</b><span>${f.count} charts</span></button>`).join("");
+      const katate = (data.katate || []).map((f) => `<button class="folder" data-folder="${f.id}"><b>${escapeText(f.label)}</b><span>${f.count} charts</span></button>`).join("");
+      $("content").innerHTML = `<div class="grid folders">${special}${levels}${dbx}${katate}</div>`;
       document.querySelectorAll("[data-folder]").forEach((button) => button.addEventListener("click", () => openFolder(button.dataset.folder, true)));
     }
 
@@ -611,15 +720,24 @@
       const score = item.score ?? item.best_score;
       const bp = item.bp ?? item.best_bp;
       if (state.listVariant === "level" || state.listVariant === "compact") {
-        return compactSongCell(item, score, bp);
+        return compactSongCell(item, score, bp, {
+          showLevelMarker: state.listVariant === "compact" || isDpChart(item) || Boolean(item.enable_katate_difficulty_display && item.katate_band),
+        });
       }
       return `<button class="song-cell" data-chart="${escapeText(item.chart_id || "")}">
         <div>
           <div class="title">${levelHtml(item)}<span class="title-name">${escapeText(item.title)}</span><span class="title-diff">[${escapeText(item.difficulty || "")}]</span></div>
-          <div class="meta">${escapeText(item.date || item.last_played || "")}${item.opt ? " / " + escapeText(item.opt) : ""}${item.bpi ? " / " + bpiHtml(item.bpi) : ""}</div>
+          <div class="meta">${escapeText(item.date || item.last_played || "")}${item.opt ? " / " + escapeText(item.opt) : ""}${visibleBpiText(item) ? " / " + bpiHtml(visibleBpiText(item)) : ""}</div>
         </div>
         <div class="score-block">${imageOrLampHtml(item)}<div class="score">${fmt(score)}</div><div class="subscore">BP ${fmt(bp)}</div></div>
       </button>`;
+    }
+    function isDpChart(item) {
+      const difficulty = String(item.difficulty || "").toUpperCase();
+      return difficulty.startsWith("DP") || difficulty.startsWith("DB");
+    }
+    function visibleBpiText(item) {
+      return isDpChart(item) ? "" : (item.bpi || item.best_bpi || "");
     }
     function bpiHtml(value) {
       if (value == null || value === "") return "-";
@@ -670,14 +788,14 @@
       if (!item.image_url) return "";
       return `<span class="level-image-link" data-image-url="${escapeText(item.image_url)}">IMG</span>`;
     }
-    function compactSongCell(item, score, bp) {
+    function compactSongCell(item, score, bp, options = {}) {
       return `<button class="song-cell level-cell ${item.image_url ? "has-image" : ""}" data-chart="${escapeText(item.chart_id || "")}">
         ${leftRailHtml(item)}
         <div class="level-main">
           <div class="title"><span class="title-name">${escapeText(item.title)}</span><span class="title-diff">[${escapeText(item.difficulty || "")}]</span></div>
-          <div class="meta">${levelSubInfoHtml(item, score, bp)}</div>
+          <div class="meta">${levelSubInfoHtml(item, score, bp, options)}</div>
         </div>
-        <div class="level-score"><div class="rankdiff">${escapeText(item.rankdiff || "-")}</div><div class="rate">${pct(item.score_rate)}</div></div>
+        <div class="level-score"><div class="rankdiff">${rankDiffHtml(item, "-")}</div><div class="rate">${pct(item.score_rate)}</div></div>
         ${imageRailHtml(item)}
       </button>`;
     }
@@ -689,6 +807,7 @@
       document.querySelectorAll("[data-daily]").forEach((button) => button.addEventListener("click", () => openDailyDate(button.dataset.daily, true)));
       document.querySelectorAll("[data-daily-month]").forEach((button) => button.addEventListener("click", () => openDailyMonth(button.dataset.dailyMonth, true)));
       document.querySelectorAll("[data-daily-year]").forEach((button) => button.addEventListener("click", () => openDailyYear(button.dataset.dailyYear, true)));
+      document.querySelectorAll("[data-folder]").forEach((button) => button.addEventListener("click", () => openFolder(button.dataset.folder, true)));
       document.querySelectorAll("[data-daily-mode]").forEach((input) => input.addEventListener("change", () => {
         if (input.checked) openDailyRoot(input.value, false);
       }));
@@ -718,6 +837,14 @@
       });
     }
 
+    function renderFolderList(data) {
+      renderPlainList(data.folder.label, data.items || [], {
+        notes: data.notes,
+        stats: [["ITEMS", (data.items || []).length], ["NOTES", fmt(data.notes || 0)], ["", ""]],
+        row: (item) => `<button class="plain-row" data-folder="${escapeText(item.id)}"><div><div class="title"><span class="title-name">${escapeText(item.label)}</span></div><div class="meta">${fmt(item.count)} charts</div></div><div class="score-block"><div class="score">${fmt(item.notes)}</div><div class="subscore">notes</div></div></button>`,
+      });
+    }
+
     function renderReceipt(data) {
       const openSections = {};
       document.querySelectorAll("details[data-section]").forEach((section) => {
@@ -732,7 +859,7 @@
       const current = data.current_detail;
       const rivals = data.rival_items || [];
       const tweet = data.tweet || {};
-      setStats([["SONGS", fmt(data.song_count)], ["RATE", data.score_rate || "-"], ["NOTES", fmt(data.today_notes)]]);
+      setStats([]);
       const top = `<section class="metrics">
         <div class="metric"><span>SONGS</span><strong>${fmt(data.song_count)}</strong></div>
         <div class="metric"><span>SCORE RATE</span><strong>${escapeText(data.score_rate || "-")}</strong></div>
@@ -768,8 +895,15 @@
     function receiptTitle(item) {
       return `<b>${levelHtml(item)} ${escapeText(item.title)} [${escapeText(item.difficulty || "")}]</b>`;
     }
+    function dpUnofficialHtml(item) {
+      if (!isDpChart(item) || !item.dp_unofficial_lv) return "";
+      return `<span class="dp-unofficial">${escapeText(item.dp_unofficial_lv)}</span>`;
+    }
     function levelHtml(item) {
       const difficulty = String(item.difficulty || "");
+      if (isDpChart(item)) {
+        return `<span class="lv-token">☆${escapeText(item.lv || "")}</span>${item.dp_unofficial_lv ? ` <span class="dp-unofficial">${escapeText(item.dp_unofficial_lv)}</span>` : ""}`;
+      }
       const isSp12 = String(item.lv || "") === "12" && difficulty.startsWith("SP");
       const clear = item.sp_12clear || "";
       const hard = item.sp_12hard || "";
@@ -786,33 +920,101 @@
       if (!isSp12 || (!clear && !hard)) return "";
       return `<span class="unofficial-lv"><span class="unofficial-easy">${escapeText(clear || "?")}</span><span class="unofficial-sep">/</span><span class="unofficial-hard">${escapeText(hard || "?")}</span></span>`;
     }
-    function levelSubInfoHtml(item, score, bp) {
+    function levelMarkerText(item) {
+      const lv = String(item.lv || "");
+      if (!lv) return "";
+      const band = String(item.katate_band || "");
+      if (item.enable_katate_difficulty_display && band) return `☆${lv}-${band}`;
+      return `☆${lv}`;
+    }
+    function levelMarkerHtml(item) {
+      const text = levelMarkerText(item);
+      if (!text) return "";
+      const cls = item.enable_katate_difficulty_display && item.katate_band ? " katate" : "";
+      return `<span class="level-info level-marker${cls}">${escapeText(text)}</span>`;
+    }
+    function levelSubInfoHtml(item, score, bp, options = {}) {
       const parts = [];
+      const marker = options.showLevelMarker ? levelMarkerHtml(item) : "";
+      if (marker) parts.push(marker);
+      const dpUnofficial = dpUnofficialHtml(item);
+      if (dpUnofficial) parts.push(dpUnofficial);
       const unofficial = levelUnofficialHtml(item);
       if (unofficial) parts.push(unofficial);
-      if (item.bpi) parts.push(bpiHtml(item.bpi));
+      if (visibleBpiText(item)) parts.push(bpiHtml(visibleBpiText(item)));
+      const ereter = ereterHtml(item, { mini: true });
+      if (ereter) parts.push(ereter);
       parts.push(`<span class="level-info">EX${fmt(score)}</span>`);
       parts.push(`<span class="level-info">BP${fmt(bp)}</span>`);
       return parts.join("");
     }
+    function ereterItems(item) {
+      if (!isDpChart(item)) return [];
+      const lamp = Number(item.best_lamp ?? item.lamp) || 0;
+      return [
+        ["easy", "easy", item.dp_ereter_easy, lamp >= 3],
+        ["hard", "hard", item.dp_ereter_hard, lamp >= 5],
+        ["ereter-exh", "exh", item.dp_ereter_exh, lamp >= 6],
+      ].filter((entry) => entry[2]);
+    }
+    function ereterHtml(item, options = {}) {
+      const items = ereterItems(item);
+      if (!items.length) return "";
+      const cls = options.mini ? "ereter-mini" : "ereter-strip";
+      return `<span class="${cls}">${items.map(([kind, label, value, achieved]) => `<span class="ereter-box ${kind}"><span class="ereter-mark ${achieved ? "ok" : "ng"}">${achieved ? "✓" : "×"}</span><b>${escapeText(label)}</b><strong>${escapeText(value)}</strong></span>`).join("")}</span>`;
+    }
+    function rankClassFromItem(item) {
+      const scoreRate = Number(item.score_rate) || Number(item.best_score_rate) || 0;
+      if (scoreRate >= 1) return "MAX";
+      if (scoreRate * 18 >= 16) return "AAA";
+      if (scoreRate * 18 >= 14) return "AA";
+      if (scoreRate * 18 >= 12) return "A";
+      if (scoreRate * 18 >= 10) return "B";
+      if (scoreRate * 18 >= 8) return "C";
+      if (scoreRate * 18 >= 6) return "D";
+      if (scoreRate * 18 >= 4) return "E";
+      return scoreRate > 0 ? "F" : "";
+    }
+    function rankDiffHtml(item, fallback = "") {
+      let rankdiff0 = String(item.rankdiff0 || "");
+      let rankdiff1 = String(item.rankdiff1 || "");
+      const raw = String(item.rankdiff || "");
+      if (!rankdiff0 && !rankdiff1 && raw) {
+        const match = raw.match(/^(MAX|AAA|AA|A|B|C|D|E|F)(.*)$/);
+        if (match) {
+          rankdiff0 = match[1];
+          rankdiff1 = match[2] || "";
+        }
+      }
+      const text = rankdiff0 || rankdiff1 ? rankdiff0 + rankdiff1 : raw;
+      if (!text) return escapeText(fallback);
+      const rank = rankClassFromItem(item);
+      if (!rank) return escapeText(text);
+      if (text === "MAX+0") return `<span class="rank-diff rank-MAX">MAX</span>`;
+      return `<span class="rank-diff rank-${escapeText(rank)}">${escapeText(rankdiff0 || text)}</span><span class="rank-diff-tail">${escapeText(rankdiff0 ? rankdiff1 : "")}</span>`;
+    }
     function receiptSongRow(item) {
       const score = item.score ?? item.best_score;
       const bp = item.bp ?? item.best_bp;
-      return compactSongCell(item, score, bp);
+      return compactSongCell(item, score, bp, { showLevelMarker: true });
     }
     function receiptBpiRow(item) {
-      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="row-score">${bpiHtml(item.bpi)}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${escapeText(item.rankdiff || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}</span></div></div>`;
+      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="row-score">${visibleBpiText(item) ? bpiHtml(visibleBpiText(item)) : ""}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${rankDiffHtml(item)}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}</span></div></div>`;
     }
     function receiptScoreUpdateRow(item) {
       const delta = (Number(item.score) || 0) - (Number(item.pre_score) || 0);
-      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="delta">+${fmt(delta)}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${escapeText(item.rankdiff || "")} / ${bpiHtml(item.bpi)}</span></div><div class="row-score">${fmt(item.score)}<span>prev ${fmt(item.pre_score)}</span></div></div>`;
+      const bpi = visibleBpiText(item);
+      const ereter = ereterHtml(item, { mini: true });
+      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="delta">+${fmt(delta)}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${rankDiffHtml(item)}${bpi ? " / " + bpiHtml(bpi) : ""}${ereter ? " " + ereter : ""}</span></div><div class="row-score">${fmt(item.score)}<span>prev ${fmt(item.pre_score)}</span></div></div>`;
     }
     function receiptLampUpdateRow(item) {
-      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}">${lampHtml(item.lamp, item.lamp_text)}<div>${receiptTitle(item)}<span>from ${escapeText(item.pre_lamp_text || item.pre_lamp || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}</span></div></div>`;
+      const ereter = ereterHtml(item, { mini: true });
+      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}">${lampHtml(item.lamp, item.lamp_text)}<div>${receiptTitle(item)}<span>from ${escapeText(item.pre_lamp_text || item.pre_lamp || "")}${ereter ? " " + ereter : ""}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}</span></div></div>`;
     }
     function receiptBpUpdateRow(item) {
       const delta = (Number(item.pre_bp) || 0) - (Number(item.bp) || 0);
-      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="delta">-${fmt(delta)}</div><div>${receiptTitle(item)}<span>${escapeText(item.opt || "")}</span></div><div class="row-score">BP ${fmt(item.bp)}<span>prev ${fmt(item.pre_bp)}</span></div></div>`;
+      const ereter = ereterHtml(item, { mini: true });
+      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="delta">-${fmt(delta)}</div><div>${receiptTitle(item)}<span>${escapeText(item.opt || "")}${ereter ? " " + ereter : ""}</span></div><div class="row-score">BP ${fmt(item.bp)}<span>prev ${fmt(item.pre_bp)}</span></div></div>`;
     }
     function receiptCurrentBest(data) {
       if (!data) {
@@ -821,8 +1023,8 @@
       return `<section class="section">
         <div class="section-title">Current Best <span>${escapeText(data.difficulty || "")}</span></div>
         <div class="section-body">
-          <div class="row" data-chart="${escapeText(data.chart_id || "")}">${lampHtml(data.best_lamp, data.best_lamp_text)}<div><b>${escapeText(data.music || data.title || "")}</b><span>${levelHtml(data)} / NOTES ${fmt(data.notes)}</span></div><div class="row-score">${fmt(data.best_score)}<span>BP ${fmt(data.best_bp)} / ${bpiHtml(data.best_bpi)}</span></div></div>
-          ${arenaAverageHtml(data, "receipt-arena")}
+          <div class="row" data-chart="${escapeText(data.chart_id || "")}">${lampHtml(data.best_lamp, data.best_lamp_text)}<div><b>${escapeText(data.music || data.title || "")}</b><span>${levelMarkerHtml(data) || levelHtml(data)}${dpUnofficialHtml(data) ? " " + dpUnofficialHtml(data) : ""} / NOTES ${fmt(data.notes)}</span></div><div class="row-score">${fmt(data.best_score)}<span>BP ${fmt(data.best_bp)}${visibleBpiText(data) ? " / " + bpiHtml(visibleBpiText(data)) : ""}</span></div></div>
+          ${isDpChart(data) ? ereterHtml(data) : arenaAverageHtml(data, "receipt-arena")}
         </div>
       </section>`;
     }
@@ -847,12 +1049,15 @@
       setTitle(options.title || data.music || data.title || "DETAIL");
       const logs = data.items || [];
       const rivals = data.rival_items || [];
+      const isDp = isDpChart(data);
+      const bpiMetric = isDp ? "" : `<div class="metric featured bpi"><span>${escapeText(data.best_bpi_label || "BPI")}</span><strong>${escapeText(data.best_bpi || "-")}</strong></div>`;
       setStats([]);
       $("content").innerHTML = `
         <section class="detail-head">
           <div class="detail-title">${escapeText(data.music || data.title)}</div>
           <div class="pill-row">
-            <span class="pill">${levelHtml(data)}</span>
+            <span class="pill">${levelMarkerHtml(data) || "-"}</span>
+            ${dpUnofficialHtml(data) ? `<span class="pill">${dpUnofficialHtml(data)}</span>` : ""}
             <span class="pill">${escapeText(data.difficulty || "")}</span>
             <span class="pill">NOTES ${fmt(data.notes)}</span>
           </div>
@@ -860,17 +1065,17 @@
         <section class="metrics">
           <div class="metric"><span>BEST SCORE</span><strong>${fmt(data.best_score)}</strong></div>
           <div class="metric"><span>BEST BP</span><strong>${fmt(data.best_bp)}</strong></div>
-          <div class="metric featured bpi"><span>${escapeText(data.best_bpi_label || "BPI")}</span><strong>${escapeText(data.best_bpi || "-")}</strong></div>
+          ${bpiMetric}
           <div class="metric"><span>BEST RATE</span><strong>${pct(data.best_score_rate)}</strong></div>
         </section>
-        ${arenaAverageHtml(data)}
+        ${isDp ? ereterHtml(data) : arenaAverageHtml(data)}
         <section class="section">
           <div class="section-title">Rivals <span>${rivals.length} players</span></div>
           <div class="section-body">${rivals.length ? rivals.map(rivalRow).join("") : '<div class="empty">NO DATA</div>'}</div>
         </section>
         <section class="section">
           <div class="section-title">Play Log <span>${logs.length} plays</span></div>
-          <div class="section-body">${logs.length ? logs.map(logRow).join("") : '<div class="empty">NO DATA</div>'}</div>
+          <div class="section-body">${logs.length ? logs.map((item) => logRow(item, data)).join("") : '<div class="empty">NO DATA</div>'}</div>
         </section>`;
       bindImageButtons($("content"));
     }
@@ -887,8 +1092,10 @@
     function rivalRow(item) {
       return `<div class="row">${lampHtml(item.lamp, item.lamp_text)}<div><b>${item.rank}. ${escapeText(item.player)}</b><span>${escapeText(item.option || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}</span></div></div>`;
     }
-    function logRow(item) {
-      return `<div class="row">${imageOrLampHtml(item)}<div><b>${escapeText(item.date)}</b><span>${escapeText(item.opt || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)} / ${escapeText(item.bpi || "-")}</span></div></div>`;
+    function logRow(item, chart = {}) {
+      const merged = { ...chart, ...item, difficulty: item.difficulty || chart.difficulty };
+      const bpi = visibleBpiText(merged);
+      return `<div class="row">${imageOrLampHtml(item)}<div><b>${escapeText(item.date)}</b><span>${escapeText(item.opt || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}${bpi ? " / " + bpiHtml(bpi) : ""}</span></div></div>`;
     }
     function renderError(e) { $("content").innerHTML = `<div class="error">${escapeText(e.message || e)}</div>`; }
 
@@ -916,8 +1123,11 @@
           if (id === "current") {
             renderCurrentSong(data);
             state.currentTimer = setInterval(() => refreshCurrent(), 2000);
+          } else if (data.type === "folder-list") {
+            renderFolderList(data);
           } else {
-            renderList(data.folder.label, data.items, { notes: data.notes, variant: id.includes("level/") ? "level" : "", sortControls: id.includes("level/") });
+            const isLevelList = id.includes("level/") || id.includes("/band/");
+            renderList(data.folder.label, data.items, { notes: data.notes, variant: isLevelList ? "level" : "", sortControls: isLevelList });
           }
         }
         if (shouldPush) pushHistoryState();
