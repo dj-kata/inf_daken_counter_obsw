@@ -1374,6 +1374,14 @@ class ResultDatabase:
     def _mobile_result_items(self, results: list[OneResult]) -> list[dict]:
         return [self._serialize_mobile_result(r) for r in results if r.detect_mode == detect_mode.result]
 
+    def _mobile_bpi_near_averages_for_chart(self, chart_id: str) -> list[dict]:
+        if not chart_id:
+            return []
+        data = self.get_mobile_chart_detail_data(chart_id)
+        if not data:
+            return []
+        return data.get("bpi_near_averages", []) or []
+
     def _notes_by_date(self) -> dict[str, int]:
         totals = defaultdict(int)
         for result in self.results:
@@ -1676,6 +1684,8 @@ class ResultDatabase:
         detail = dict(data)
         detail["chart_id"] = chart_id
         detail["title"] = title
+        if not detail.get("bpi_near_averages") and chart_id:
+            detail["bpi_near_averages"] = self._mobile_bpi_near_averages_for_chart(chart_id)
         for rival in detail.get("rival_items", []):
             try:
                 rival["lamp_text"] = self._lamp_text(clear_lamp(rival.get("lamp", 0)))

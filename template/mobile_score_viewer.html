@@ -325,6 +325,56 @@
     .metric.featured { border-color: color-mix(in srgb, var(--amber), var(--line) 45%); }
     .metric.featured strong { color: var(--amber); font-size: 24px; }
     .metric.featured.bpi strong { color: var(--bpi); }
+    .arena-averages {
+      display: grid;
+      gap: 6px;
+      margin: -4px 0 12px;
+    }
+    .arena-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 7px 9px;
+      font-variant-numeric: tabular-nums;
+    }
+    .arena-rank {
+      min-width: 34px;
+      border-radius: 6px;
+      padding: 2px 6px;
+      color: #0f1115;
+      font-size: 12px;
+      font-weight: 950;
+      text-align: center;
+    }
+    .arena-rank-a1 { background: #ffd54f; }
+    .arena-rank-a2 { background: #64d8ff; }
+    .arena-rank-a3 { background: #69f0ae; }
+    .arena-rank-a4 { background: #ffb74d; }
+    .arena-rank-a5 { background: #ff8a80; }
+    .arena-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .arena-score {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .arena-diff {
+      min-width: 54px;
+      text-align: right;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .arena-diff.positive { color: var(--green); }
+    .arena-diff.negative { color: var(--red); }
+    .receipt-arena { margin: 0 0 8px 0; padding-left: 10px; }
     .section { margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); overflow: hidden; }
     .section-title { display: flex; justify-content: space-between; gap: 10px; min-height: 36px; align-items: center; border-bottom: 1px solid var(--line); padding: 0 12px; font-size: 13px; font-weight: 850; text-transform: uppercase; }
     .section-title span { color: var(--muted); font-size: 11px; }
@@ -689,8 +739,25 @@
         <div class="section-title">Current Best <span>${escapeText(data.difficulty || "")}</span></div>
         <div class="section-body">
           <div class="row" data-chart="${escapeText(data.chart_id || "")}">${lampHtml(data.best_lamp, data.best_lamp_text)}<div><b>${escapeText(data.music || data.title || "")}</b><span>${levelHtml(data)} / NOTES ${fmt(data.notes)}</span></div><div class="row-score">${fmt(data.best_score)}<span>BP ${fmt(data.best_bp)} / ${bpiHtml(data.best_bpi)}</span></div></div>
+          ${arenaAverageHtml(data, "receipt-arena")}
         </div>
       </section>`;
+    }
+
+    function arenaAverageHtml(data, extraClass = "") {
+      const averages = [...(data.bpi_near_averages || [])];
+      if (!averages.length) return "";
+      const rankOrder = { A1: 1, A2: 2, A3: 3, A4: 4, A5: 5 };
+      averages.sort((a, b) => (rankOrder[b.rank] || 99) - (rankOrder[a.rank] || 99));
+      const bestScore = Number(data.best_score ?? data.score);
+      return `<div class="arena-averages ${extraClass}">${averages.map((avg) => {
+        const score = Number(avg.score) || 0;
+        const diff = Number.isFinite(bestScore) ? bestScore - score : null;
+        const diffText = diff == null ? "" : `${diff >= 0 ? "+" : ""}${fmt(diff)}`;
+        const diffClass = diff == null || diff >= 0 ? "positive" : "negative";
+        const rank = String(avg.rank || "").toUpperCase();
+        return `<div class="arena-row"><span class="arena-rank arena-rank-${escapeText(rank.toLowerCase())}">${escapeText(rank)}</span><span class="arena-label">平均</span><span class="arena-score">EX${fmt(score)}</span><span class="arena-diff ${diffClass}">${escapeText(diffText)}</span></div>`;
+      }).join("")}</div>`;
     }
 
     function renderDetail(data, options = {}) {
@@ -713,6 +780,7 @@
           <div class="metric featured bpi"><span>${escapeText(data.best_bpi_label || "BPI")}</span><strong>${escapeText(data.best_bpi || "-")}</strong></div>
           <div class="metric"><span>BEST RATE</span><strong>${pct(data.best_score_rate)}</strong></div>
         </section>
+        ${arenaAverageHtml(data)}
         <section class="section">
           <div class="section-title">Rivals <span>${rivals.length} players</span></div>
           <div class="section-body">${rivals.length ? rivals.map(rivalRow).join("") : '<div class="empty">NO DATA</div>'}</div>
