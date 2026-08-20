@@ -821,6 +821,9 @@ class ResultDatabase:
                 "playspeed": r.playspeed if r.playspeed else 1.0,
                 "score_rate": r.score / r.notes / 2 if r.notes else 0,
             }
+            image_url = self._mobile_result_image_url(r)
+            if image_url:
+                item["image_url"] = image_url
 
             item.update(_extract_songinfo_fields(songinfo))
 

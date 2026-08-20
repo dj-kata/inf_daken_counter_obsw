@@ -192,12 +192,33 @@
       padding: 0 10px 0 0;
       overflow: hidden;
     }
+    .song-cell.level-cell.has-image {
+      grid-template-columns: 12px minmax(0, 1fr) auto 26px;
+      gap: 8px;
+    }
     .level-lamp-bar {
       align-self: stretch;
       width: 12px;
       min-height: 42px;
       border-right: 1px solid rgba(255,255,255,0.12);
       background: rgba(255,255,255,0.04);
+    }
+    .level-image-link {
+      align-self: center;
+      width: 26px;
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-left: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 6px;
+      background: color-mix(in srgb, var(--blue), var(--panel) 78%);
+      color: var(--text);
+      font-size: 10px;
+      font-weight: 950;
+      writing-mode: vertical-rl;
+      letter-spacing: 0;
     }
     .song-cell.level-cell > div {
       padding: 6px 0;
@@ -379,7 +400,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 42px;
+      min-width: 30px;
       min-height: 28px;
       border: 1px solid color-mix(in srgb, var(--blue), var(--line) 40%);
       border-radius: 6px;
@@ -584,26 +605,20 @@
       }
       node.innerHTML = items.map(songCell).join("");
       node.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
+      bindImageButtons(node);
     }
     function songCell(item) {
       const score = item.score ?? item.best_score;
       const bp = item.bp ?? item.best_bp;
-      if (state.listVariant === "level") {
-        return `<button class="song-cell level-cell" data-chart="${escapeText(item.chart_id || "")}">
-          ${lampBarHtml(item.lamp)}
-          <div class="level-main">
-            <div class="title"><span class="title-name">${escapeText(item.title)}</span><span class="title-diff">[${escapeText(item.difficulty || "")}]</span></div>
-            <div class="meta">${levelSubInfoHtml(item, score, bp)}</div>
-          </div>
-          <div class="level-score"><div class="rankdiff">${escapeText(item.rankdiff || "-")}</div><div class="rate">${pct(item.score_rate)}</div></div>
-        </button>`;
+      if (state.listVariant === "level" || state.listVariant === "compact") {
+        return compactSongCell(item, score, bp);
       }
       return `<button class="song-cell" data-chart="${escapeText(item.chart_id || "")}">
         <div>
           <div class="title">${levelHtml(item)}<span class="title-name">${escapeText(item.title)}</span><span class="title-diff">[${escapeText(item.difficulty || "")}]</span></div>
           <div class="meta">${escapeText(item.date || item.last_played || "")}${item.opt ? " / " + escapeText(item.opt) : ""}${item.bpi ? " / " + bpiHtml(item.bpi) : ""}</div>
         </div>
-        <div class="score-block">${lampHtml(item.lamp, item.lamp_text)}<div class="score">${fmt(score)}</div><div class="subscore">BP ${fmt(bp)}</div></div>
+        <div class="score-block">${imageOrLampHtml(item)}<div class="score">${fmt(score)}</div><div class="subscore">BP ${fmt(bp)}</div></div>
       </button>`;
     }
     function bpiHtml(value) {
@@ -629,9 +644,42 @@
       if (!cls) return `<span class="lamp-name">${escapeText(name)}</span>`;
       return `<span class="lamp-wrap"><span class="lamp-box ${cls}"></span><span class="lamp-name">${escapeText(name)}</span></span>`;
     }
+    function imageOrLampHtml(item) {
+      if (item.image_url) {
+        return `<span class="image-link" data-image-url="${escapeText(item.image_url)}">IMG</span>`;
+      }
+      return lampHtml(item.lamp, item.lamp_text);
+    }
+    function bindImageButtons(root = document) {
+      root.querySelectorAll("[data-image-url]").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          event.preventDefault();
+          window.open(button.dataset.imageUrl, "_blank", "noopener");
+        });
+      });
+    }
     function lampBarHtml(lamp) {
       const cls = lampClass(lamp);
       return `<span class="level-lamp-bar ${cls}"></span>`;
+    }
+    function leftRailHtml(item) {
+      return lampBarHtml(item.lamp);
+    }
+    function imageRailHtml(item) {
+      if (!item.image_url) return "";
+      return `<span class="level-image-link" data-image-url="${escapeText(item.image_url)}">IMG</span>`;
+    }
+    function compactSongCell(item, score, bp) {
+      return `<button class="song-cell level-cell ${item.image_url ? "has-image" : ""}" data-chart="${escapeText(item.chart_id || "")}">
+        ${leftRailHtml(item)}
+        <div class="level-main">
+          <div class="title"><span class="title-name">${escapeText(item.title)}</span><span class="title-diff">[${escapeText(item.difficulty || "")}]</span></div>
+          <div class="meta">${levelSubInfoHtml(item, score, bp)}</div>
+        </div>
+        <div class="level-score"><div class="rankdiff">${escapeText(item.rankdiff || "-")}</div><div class="rate">${pct(item.score_rate)}</div></div>
+        ${imageRailHtml(item)}
+      </button>`;
     }
 
     function renderPlainList(label, rows, options = {}) {
@@ -707,6 +755,7 @@
         if (tweet.url) window.open(tweet.url, "_blank", "noopener");
       });
       document.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
+      bindImageButtons($("content"));
     }
 
     function receiptSection(id, title, count, rows, rowRenderer, openSections = {}) {
@@ -747,7 +796,9 @@
       return parts.join("");
     }
     function receiptSongRow(item) {
-      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}">${lampHtml(item.lamp, item.lamp_text)}<div>${receiptTitle(item)}<span>${escapeText(item.opt || "")}${item.rankdiff ? " / " + escapeText(item.rankdiff) : ""}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)} / ${bpiHtml(item.bpi)}</span></div></div>`;
+      const score = item.score ?? item.best_score;
+      const bp = item.bp ?? item.best_bp;
+      return compactSongCell(item, score, bp);
     }
     function receiptBpiRow(item) {
       return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="row-score">${bpiHtml(item.bpi)}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${escapeText(item.rankdiff || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}</span></div></div>`;
@@ -821,6 +872,7 @@
           <div class="section-title">Play Log <span>${logs.length} plays</span></div>
           <div class="section-body">${logs.length ? logs.map(logRow).join("") : '<div class="empty">NO DATA</div>'}</div>
         </section>`;
+      bindImageButtons($("content"));
     }
     function renderCurrentSong(data) {
       state.view = "current";
@@ -836,8 +888,7 @@
       return `<div class="row">${lampHtml(item.lamp, item.lamp_text)}<div><b>${item.rank}. ${escapeText(item.player)}</b><span>${escapeText(item.option || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}</span></div></div>`;
     }
     function logRow(item) {
-      const image = item.image_url ? `<a class="image-link" href="${escapeText(item.image_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">IMG</a>` : lampHtml(item.lamp, item.lamp_text);
-      return `<div class="row">${image}<div><b>${escapeText(item.date)}</b><span>${escapeText(item.opt || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)} / ${escapeText(item.bpi || "-")}</span></div></div>`;
+      return `<div class="row">${imageOrLampHtml(item)}<div><b>${escapeText(item.date)}</b><span>${escapeText(item.opt || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)} / ${escapeText(item.bpi || "-")}</span></div></div>`;
     }
     function renderError(e) { $("content").innerHTML = `<div class="error">${escapeText(e.message || e)}</div>`; }
 
@@ -851,7 +902,7 @@
           state.view = "history";
           state.historyOffset = data.items.length;
           state.historyTotal = data.total;
-          renderList(data.folder.label, data.items, { loadMore: data.items.length < data.total });
+          renderList(data.folder.label, data.items, { loadMore: data.items.length < data.total, variant: "compact" });
         } else if (id === "receipt") {
           state.view = "receipt";
           renderReceipt(await api("/api/folders/receipt"));
