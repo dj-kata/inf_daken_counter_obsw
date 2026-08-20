@@ -1235,8 +1235,17 @@
     }
     function logRow(item, chart = {}) {
       const merged = { ...chart, ...item, difficulty: item.difficulty || chart.difficulty };
-      const bpi = visibleBpiText(merged);
-      return `<div class="row">${imageOrLampHtml(item)}<div><b>${escapeText(item.date)}</b><span>${escapeText(item.opt || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}${bpi ? " / " + bpiHtml(bpi) : ""}</span></div></div>`;
+      const score = merged.score ?? merged.best_score;
+      const bp = merged.bp ?? merged.best_bp;
+      return `<button class="song-cell level-cell ${merged.image_url ? "has-image" : ""}" data-chart="${escapeText(chart.chart_id || "")}">
+        ${leftRailHtml(merged)}
+        <div class="level-main">
+          <div class="title"><span class="title-name">${escapeText(merged.date || "")}</span></div>
+          <div class="meta">${levelSubInfoHtml(merged, score, bp, { showLevelMarker: false })}${merged.opt ? `<span class="level-info">${escapeText(merged.opt)}</span>` : ""}</div>
+        </div>
+        <div class="level-score"><div class="rankdiff">${rankDiffHtml(merged, "-")}</div><div class="rate">${pct(merged.score_rate)}</div></div>
+        ${imageRailHtml(merged)}
+      </button>`;
     }
     function renderError(e) { $("content").innerHTML = `<div class="error">${escapeText(e.message || e)}</div>`; }
 
