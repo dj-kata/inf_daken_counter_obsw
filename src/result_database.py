@@ -1563,6 +1563,7 @@ class ResultDatabase:
                     )
         result_count = sum(1 for r in self.results if r.detect_mode == detect_mode.result)
         saved_image_count = len(self._mobile_saved_image_results())
+        bpi_best_count = len(self._mobile_bpi_best_items())
         today_notes = self._notes_since(self._mobile_receipt_start_timestamp())
         current = self.get_mobile_current_folder_data()
         daily_count = len(self._notes_by_date())
@@ -1579,7 +1580,34 @@ class ResultDatabase:
                 {"id": "receipt", "label": "RECEIPT", "count": today_notes, "count_label": f"{today_notes:,} notes"},
                 {"id": "daily", "label": "DAILY LOG", "count": daily_count, "count_label": f"{daily_count} days"},
                 {"id": "current", "label": "CURRENT SONG", "count": len(current.get("items", [])), "count_label": "live"},
+                {"id": "bpi-best", "label": "BPI BEST", "count": bpi_best_count, "count_label": f"{bpi_best_count} charts"},
             ],
+        }
+
+    def _mobile_bpi_best_items(self) -> list[dict]:
+        items = []
+        for best in self.get_all_best_results().values():
+            if best.style != play_style.sp or best.is_battle:
+                continue
+            item = self._serialize_mobile_best_safe(best)
+            if item is None:
+                continue
+            bpi = _to_float_or_none(item.get("bpi"))
+            if bpi is None:
+                continue
+            item["_bpi_sort"] = bpi
+            items.append(item)
+        items.sort(key=lambda item: (-item["_bpi_sort"], item.get("title", ""), item.get("difficulty", "")))
+        for item in items:
+            item.pop("_bpi_sort", None)
+        return items
+
+    def get_mobile_bpi_best_data(self) -> dict:
+        items = self._mobile_bpi_best_items()
+        return {
+            "folder": {"id": "bpi-best", "label": "BPI BEST"},
+            "items": items,
+            "notes": sum(_to_int_or_none(item.get("notes")) or 0 for item in items),
         }
 
     def _mobile_saved_image_results(self) -> list[tuple[int, OneResult]]:

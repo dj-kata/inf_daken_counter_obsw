@@ -162,6 +162,9 @@ class MobileScoreHTTPServer:
                 if path == "/api/folders/saved-images":
                     self._send_json(result_database.get_mobile_saved_images_data())
                     return
+                if path == "/api/folders/bpi-best":
+                    self._send_json(result_database.get_mobile_bpi_best_data())
+                    return
                 if path == "/api/folders/receipt":
                     self._send_json(result_database.get_mobile_receipt_data())
                     return

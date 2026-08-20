@@ -1252,6 +1252,10 @@
         } else if (id === "saved-images") {
           state.view = "saved-images";
           renderSavedImagesList(await api("/api/folders/saved-images"));
+        } else if (id === "bpi-best") {
+          const data = await api("/api/folders/bpi-best");
+          state.view = "bpi-best";
+          renderList(data.folder.label, data.items, { notes: data.notes, variant: "compact" });
         } else if (id === "receipt") {
           state.view = "receipt";
           renderReceipt(await api("/api/folders/receipt"));
