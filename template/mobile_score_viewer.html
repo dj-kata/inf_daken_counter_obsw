@@ -64,6 +64,8 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
     }
     .stats {
       display: grid;
@@ -1380,6 +1382,12 @@
     $("backBtn").addEventListener("click", () => goUpOneLevel(true));
     $("homeBtn").addEventListener("click", () => loadHome());
     $("refreshBtn").addEventListener("click", () => openView(state.view, false));
+    $("viewTitle").addEventListener("click", () => {
+      $("content").scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      document.documentElement.scrollTo?.({ top: 0, behavior: "smooth" });
+      document.body.scrollTo?.({ top: 0, behavior: "smooth" });
+    });
     window.addEventListener("popstate", (event) => {
       if (event.state && event.state.kind === HISTORY_APP) {
         state.stack = Array.isArray(event.state.stack) ? [...event.state.stack] : [];

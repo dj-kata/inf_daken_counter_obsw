@@ -1564,7 +1564,8 @@ class ResultDatabase:
         result_count = sum(1 for r in self.results if r.detect_mode == detect_mode.result)
         saved_image_count = len(self._mobile_saved_image_results())
         bpi_best_count = len(self._mobile_bpi_best_items())
-        today_notes = self._notes_since(self._mobile_receipt_start_timestamp())
+        receipt_start = self._mobile_receipt_start_timestamp()
+        today_notes = _to_int_or_none(self.get_graph_data(receipt_start).get("today_notes")) or 0
         current = self.get_mobile_current_folder_data()
         daily_count = len(self._notes_by_date())
         return {
