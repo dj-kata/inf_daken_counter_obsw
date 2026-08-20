@@ -15,6 +15,7 @@ import bz2, pickle
 import traceback
 import functools
 import csv
+import urllib.parse
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List
@@ -1540,7 +1541,144 @@ class ResultDatabase:
             "bp_updates": bp_updates,
             "current_detail": current_detail,
             "rival_items": current_detail.get("rival_items", []) if current_detail else [],
+            "tweet": self.get_mobile_tweet_data(start, graph_data),
         }
+
+    def get_mobile_tweet_data(self, start_time: int, graph_data: dict | None = None) -> dict:
+        graph_data = graph_data or self.get_graph_data(start_time)
+        judge = graph_data.get("today_judge", {}) if graph_data else {}
+        msg = (
+            f"plays:{graph_data.get('playcount', 0)}, "
+            f"notes:{_to_int_or_none(graph_data.get('today_notes')) or 0:,}, "
+            f"{graph_data.get('today_score_rate', '0.00%')}\n"
+        )
+        if self.config and getattr(self.config, "enable_judge", False):
+            msg += (
+                f"(PG:{_to_int_or_none(judge.get('pg')) or 0:,}, "
+                f"GR:{_to_int_or_none(judge.get('gr')) or 0:,}, "
+                f"GD:{_to_int_or_none(judge.get('gd')) or 0:,}, "
+                f"BD:{_to_int_or_none(judge.get('bd')) or 0:,}, "
+                f"PR:{_to_int_or_none(judge.get('pr')) or 0:,}, "
+                f"CB:{_to_int_or_none(judge.get('cb')) or 0:,})\n"
+            )
+        uptime = datetime.datetime.now() - datetime.datetime.fromtimestamp(start_time)
+        msg += f"uptime: {str(uptime).split('.')[0]}\n"
+        if self.config and getattr(self.config, "enable_folder_updates", False):
+            msg += self._collect_mobile_tweet_updates(start_time)
+        start_date = datetime.datetime.fromtimestamp(start_time)
+        msg += f"({start_date.year}/{start_date.month:02d}: {self.get_monthly_notes():,})\n"
+        msg += "#INFINITAS_daken_counter\n"
+        return {
+            "text": msg,
+            "url": f"https://twitter.com/intent/tweet?text={urllib.parse.quote(msg)}",
+        }
+
+    def _collect_mobile_tweet_updates(self, start_time: int) -> str:
+        today_results = []
+        for result in reversed(self.results):
+            if result.detect_mode == detect_mode.result:
+                if result.timestamp >= start_time:
+                    today_results.append(result)
+                else:
+                    break
+        if not today_results:
+            return ""
+
+        sp_results = [r for r in today_results if r.play_style == play_style.sp]
+        dp_results = [r for r in today_results if r.play_style == play_style.dp]
+        has_sp = len(sp_results) > 0
+        has_dp = len(dp_results) > 0
+        both = has_sp and has_dp
+
+        lines = []
+        if has_sp:
+            if both:
+                lines.append("(SP)")
+            lines.extend(self._collect_mobile_tweet_updates_for_style(sp_results))
+        if has_dp:
+            if both:
+                lines.append("(DP)")
+            lines.extend(self._collect_mobile_tweet_updates_for_style(dp_results))
+        return "\n".join(lines) + "\n" if lines else ""
+
+    def _collect_mobile_tweet_updates_for_style(self, results: list[OneResult]) -> list[str]:
+        best_lamp_updates = {}
+        for result in results:
+            if result.pre_lamp and result.lamp and result.lamp.value > result.pre_lamp.value:
+                if (
+                    result.chart_id not in best_lamp_updates
+                    or result.lamp.value > best_lamp_updates[result.chart_id].lamp.value
+                ):
+                    best_lamp_updates[result.chart_id] = result
+
+        best_scores = {}
+        for result in results:
+            notes = _to_int_or_none(result.notes)
+            if not notes:
+                songinfo = self.song_database.search(chart_id=result.chart_id)
+                notes = _to_int_or_none(getattr(songinfo, "notes", None))
+            if notes and result.score:
+                if result.chart_id not in best_scores or result.score > best_scores[result.chart_id].score:
+                    best_scores[result.chart_id] = result
+
+        updates_by_level = {}
+        for result in best_lamp_updates.values():
+            songinfo = self.song_database.search(chart_id=result.chart_id)
+            lv = self._get_mobile_tweet_level_key(songinfo)
+            updates_by_level.setdefault(lv, {})
+            lamp_name = result.lamp.name.upper()
+            updates_by_level[lv][lamp_name] = updates_by_level[lv].get(lamp_name, 0) + 1
+
+        for result in best_scores.values():
+            songinfo = self.song_database.search(chart_id=result.chart_id)
+            notes = _to_int_or_none(result.notes) or _to_int_or_none(getattr(songinfo, "notes", None))
+            if not notes or not result.score:
+                continue
+            rate = result.score / (notes * 2)
+            pre_rate = result.pre_score / (notes * 2) if result.pre_score else 0
+            rank_name = None
+            if rate > 17 / 18 and pre_rate <= 17 / 18:
+                rank_name = "MAX-"
+            elif rate > 16 / 18 and pre_rate <= 16 / 18:
+                rank_name = "AAA"
+            elif rate > 14 / 18 and pre_rate <= 14 / 18:
+                rank_name = "AA"
+            if rank_name:
+                lv = self._get_mobile_tweet_level_key(songinfo)
+                updates_by_level.setdefault(lv, {})
+                updates_by_level[lv][rank_name] = updates_by_level[lv].get(rank_name, 0) + 1
+
+        display_order = ["EASY", "CLEAR", "HARD", "EXH", "FC", "AA", "AAA", "MAX-"]
+        lines = []
+        for lv in sorted(updates_by_level.keys()):
+            items = updates_by_level[lv]
+            parts = [f"{key}+{items[key]}" for key in display_order if key in items]
+            parts.extend(f"{key}+{items[key]}" for key in sorted(items.keys()) if key not in display_order)
+            if parts:
+                lines.append(f"{self._format_mobile_tweet_level_key(lv)} {', '.join(parts)}")
+        return lines
+
+    def _get_mobile_tweet_level_key(self, songinfo):
+        level = int(songinfo.level) if songinfo and getattr(songinfo, "level", None) else 0
+        use_katate = (
+            self.config
+            and getattr(self.config, "enable_katate_difficulty_display", False)
+            and getattr(self.config, "enable_katate_tweet_grouping", False)
+            and level in (11, 12)
+        )
+        if use_katate:
+            band = getattr(songinfo, f"katate_{level}", None)
+            if band:
+                return (level, int(band))
+        return (level, 0)
+
+    def _format_mobile_tweet_level_key(self, level_key):
+        level, band = level_key
+        if not level:
+            return "☆?"
+        if band:
+            return f"☆{level}-{band}"
+        return f"☆{level}"
 
     def _mobile_daily_rows(self) -> list[dict]:
         notes_by_date = self._notes_by_date()

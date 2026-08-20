@@ -789,8 +789,30 @@
             bpi_html += '</div>';
 
             if (hasBpim2Data) {
-                var display_averages = bpi_near_averages.slice(0, 2).sort(function(a, b) {
-                    var rankOrder = {'A1': 1, 'A2': 2, 'A3': 3, 'A4': 4, 'A5': 5};
+                var rankOrder = {'A1': 1, 'A2': 2, 'A3': 3, 'A4': 4, 'A5': 5};
+                function selectNearestAverages(averages, score) {
+                    var sorted = averages.slice().sort(function(a, b) {
+                        return (rankOrder[a.rank] || 99) - (rankOrder[b.rank] || 99);
+                    });
+                    if (sorted.length <= 2) return sorted;
+                    var topScore = Number(sorted[0].score) || 0;
+                    var bottomScore = Number(sorted[sorted.length - 1].score) || 0;
+                    if (score >= topScore) return sorted.slice(0, 2);
+                    if (score <= bottomScore) return [sorted[sorted.length - 1], sorted[sorted.length - 2]];
+                    for (var i = 0; i < sorted.length - 1; i++) {
+                        var high = sorted[i];
+                        var low = sorted[i + 1];
+                        var highScore = Number(high.score) || 0;
+                        var lowScore = Number(low.score) || 0;
+                        if (highScore >= score && score >= lowScore) return [high, low];
+                    }
+                    return sorted
+                        .sort(function(a, b) {
+                            return Math.abs((Number(a.score) || 0) - score) - Math.abs((Number(b.score) || 0) - score);
+                        })
+                        .slice(0, 2);
+                }
+                var display_averages = selectNearestAverages(bpi_near_averages, best_score).sort(function(a, b) {
                     return (rankOrder[b.rank] || 99) - (rankOrder[a.rank] || 99);
                 });
                 display_averages.forEach(function(avg) {

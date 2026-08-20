@@ -415,6 +415,20 @@
     .delta { color: var(--green); font-weight: 850; }
     .bad-delta { color: var(--red); font-weight: 850; }
     .load-more { width: 100%; height: 44px; margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); color: var(--text); }
+    .tweet-btn {
+      width: 100%;
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid color-mix(in srgb, var(--blue), var(--line) 35%);
+      border-radius: 8px;
+      background: #1b2530;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 850;
+      margin: 0 0 12px;
+    }
     @media (min-width: 720px) {
       main { max-width: 920px; width: 100%; margin: 0 auto; }
       .folders { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -656,6 +670,7 @@
       const bpUpdates = data.bp_updates || [];
       const current = data.current_detail;
       const rivals = data.rival_items || [];
+      const tweet = data.tweet || {};
       setStats([["SONGS", fmt(data.song_count)], ["RATE", data.score_rate || "-"], ["NOTES", fmt(data.today_notes)]]);
       const top = `<section class="metrics">
         <div class="metric"><span>SONGS</span><strong>${fmt(data.song_count)}</strong></div>
@@ -664,6 +679,7 @@
         <div class="metric featured bpi"><span>TOP BPI</span><strong>${escapeText(data.top_bpi || "-")}</strong></div>
       </section>`;
       $("content").innerHTML = `${top}
+        <button id="tweetBtn" class="tweet-btn" type="button">Tweet</button>
         ${receiptSection("play-log", "Play Log", `${logs.length} / ${fmt(data.song_count)} songs`, logs, receiptSongRow, openSections)}
         ${receiptSection("top-bpi", "Top BPI", `${topBpi.length} charts`, topBpi, receiptBpiRow, openSections)}
         ${receiptSection("score-updates", "Score Updates", `${scoreUpdates.length} charts`, scoreUpdates, receiptScoreUpdateRow, openSections)}
@@ -674,6 +690,9 @@
           <div class="section-title">Rivals <span>${rivals.length} players</span></div>
           <div class="section-body">${rivals.length ? rivals.map(rivalRow).join("") : '<div class="empty">NO DATA</div>'}</div>
         </section>`;
+      $("tweetBtn")?.addEventListener("click", () => {
+        if (tweet.url) window.open(tweet.url, "_blank", "noopener");
+      });
       document.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
     }
 
