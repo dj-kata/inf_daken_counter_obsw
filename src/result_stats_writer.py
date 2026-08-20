@@ -183,8 +183,8 @@ class ResultStatsWriter:
 
         arena_text = self._format_arena_average_text(bpi_arena_averages, bpi_arena_average_text)
         if arena_text:
-            self._draw_arena_average(draw, content_x, y, content_w, bpi_arena_averages, arena_text)
-            y += 40
+            self._draw_arena_average(draw, content_x, y, content_w, bpi_arena_averages, arena_text, ex_score)
+            y += 58
 
         ereter_items = self._format_ereter_items(play_style, songinfo, lamp)
         if ereter_items:
@@ -239,14 +239,15 @@ class ResultStatsWriter:
 
     def _format_arena_average_text(self, averages, fallback_text):
         if averages:
-            return "   ".join(f"{avg.rank} {avg.avg_ex_score}" for avg in self._sort_arena_averages_for_display(averages))
+            return "   ".join(f"{rank} {score}" for rank, score in self._arena_averages_for_display(averages))
         if fallback_text:
             return fallback_text.replace(" avg ", " ")
         return ""
 
-    def _sort_arena_averages_for_display(self, averages):
-        rank_order = {'A1': 1, 'A2': 2, 'A3': 3, 'A4': 4, 'A5': 5}
-        return sorted(averages, key=lambda avg: rank_order.get(str(avg.rank), 99), reverse=True)
+    def _arena_averages_for_display(self, averages):
+        ranks = ['A5', 'A4', 'A3', 'A2', 'A1']
+        score_by_rank = {str(avg.rank): str(avg.avg_ex_score) for avg in averages}
+        return [(rank, score_by_rank.get(rank, "--")) for rank in ranks]
 
     def _format_ereter_items(self, play_style_value, songinfo, lamp):
         if play_style_value != play_style.dp or not songinfo:
@@ -268,13 +269,8 @@ class ResultStatsWriter:
         self._draw_text_with_glow(draw, (value_x, y), value_text, self.main_font if not compact else self.sub_font,
                                   fill=value_fill, glow_color=(25, 45, 25))
 
-    def _draw_arena_average(self, draw, x, y, width, averages, fallback_text):
-        label = "ARENA AVG"
-        label_bbox = draw.textbbox((0, 0), label, font=self.label_font)
-        label_w = max(122, label_bbox[2] - label_bbox[0] + 18)
-        draw.text((x, y + 6), label, font=self.label_font, fill=(170, 190, 205))
-
-        value_x = x + label_w
+    def _draw_arena_average(self, draw, x, y, width, averages, fallback_text, ex_score):
+        value_x = x
         max_x = x + width
         if not averages:
             value_text = self._truncate_text(draw, fallback_text, self.sub_font, max_x - value_x)
@@ -283,23 +279,47 @@ class ResultStatsWriter:
             return
 
         cursor_x = value_x
-        for index, avg in enumerate(self._sort_arena_averages_for_display(averages)):
+        display_averages = self._arena_averages_for_display(averages)
+        gap = self._arena_average_gap(draw, display_averages, self.sub_font, width)
+        for index, (rank, score) in enumerate(display_averages):
             if index:
-                cursor_x += 20
-            rank = str(avg.rank)
-            score = str(avg.avg_ex_score)
+                cursor_x += gap
             rank_fill = _ARENA_RANK_COLORS.get(rank, (255, 245, 90))
             rank_bbox = draw.textbbox((0, 0), rank, font=self.sub_font)
             score_bbox = draw.textbbox((0, 0), f" {score}", font=self.sub_font)
-            item_w = (rank_bbox[2] - rank_bbox[0]) + (score_bbox[2] - score_bbox[0])
-            if cursor_x + item_w > max_x:
-                break
             self._draw_text_with_glow(draw, (cursor_x, y), rank, self.sub_font,
                                       fill=rank_fill, glow_color=(35, 35, 45))
             cursor_x += rank_bbox[2] - rank_bbox[0]
             self._draw_text_with_glow(draw, (cursor_x, y), f" {score}", self.sub_font,
                                       fill=(255, 245, 90), glow_color=(25, 45, 25))
             cursor_x += score_bbox[2] - score_bbox[0]
+            diff_text, diff_fill = self._arena_average_diff(score, ex_score)
+            diff_bbox = draw.textbbox((0, 0), diff_text, font=self.small_font)
+            diff_w = diff_bbox[2] - diff_bbox[0]
+            diff_x = cursor_x - diff_w
+            self._draw_text_with_glow(draw, (diff_x, y + 28), diff_text, self.small_font,
+                                      fill=diff_fill, glow_color=(35, 35, 45))
+
+    def _arena_average_diff(self, average_score, ex_score):
+        try:
+            diff = int(ex_score) - int(average_score)
+        except (TypeError, ValueError):
+            return "--", (170, 190, 205)
+        if diff > 0:
+            return f"+{diff}", (115, 255, 155)
+        if diff < 0:
+            return str(diff), (255, 120, 120)
+        return "±0", (255, 245, 90)
+
+    def _arena_average_gap(self, draw, averages, font, width):
+        if len(averages) <= 1:
+            return 0
+        total_item_w = 0
+        for rank, score in averages:
+            rank_bbox = draw.textbbox((0, 0), rank, font=font)
+            score_bbox = draw.textbbox((0, 0), f" {score}", font=font)
+            total_item_w += (rank_bbox[2] - rank_bbox[0]) + (score_bbox[2] - score_bbox[0])
+        return max(8, min(20, (width - total_item_w) // (len(averages) - 1)))
 
     def _draw_ereter_items(self, draw, x, y, width, items):
         draw.text((x, y + 8), "ERETER", font=self.label_font, fill=(170, 190, 205))
