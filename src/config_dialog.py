@@ -284,6 +284,18 @@ class ConfigDialog(QDialog):
         self.websocket_data_port.setValidator(validator)
         other_layout.addRow(self.ui.feature.websocket_port, self.websocket_data_port)
 
+        self.mobile_score_server_enabled_check = QCheckBox(
+            self.ui.feature.mobile_score_server_enabled
+        )
+        other_layout.addRow(self.mobile_score_server_enabled_check)
+
+        self.mobile_score_server_port_edit = QLineEdit()
+        self.mobile_score_server_port_edit.setValidator(validator)
+        other_layout.addRow(
+            self.ui.feature.mobile_score_server_port,
+            self.mobile_score_server_port_edit,
+        )
+
         # 最前面表示 
         self.keep_on_top_check = QCheckBox(self.ui.feature.keep_on_top)
         other_layout.addRow(self.keep_on_top_check)
@@ -775,6 +787,14 @@ class ConfigDialog(QDialog):
         self.autoload_offset_spin.setValue(self.config.autoload_offset)
         if hasattr(self, 'websocket_data_port') and hasattr(self.config, 'websocket_data_port'):
             self.websocket_data_port.setText(str(self.config.websocket_data_port))
+        if hasattr(self, 'mobile_score_server_enabled_check'):
+            self.mobile_score_server_enabled_check.setChecked(
+                bool(getattr(self.config, 'mobile_score_server_enabled', False))
+            )
+        if hasattr(self, 'mobile_score_server_port_edit'):
+            self.mobile_score_server_port_edit.setText(
+                str(getattr(self.config, 'mobile_score_server_port', 8787))
+            )
         
         # 画像保存先 (Configクラスに image_save_path プロパティがある前提)
         if hasattr(self.config, 'image_save_path'):
@@ -852,6 +872,15 @@ class ConfigDialog(QDialog):
                 logger.warning(f"無効なポート番号: {port}. デフォルト値を使用します")
         except ValueError:
             logger.warning("ポート番号の変換に失敗しました。デフォルト値を使用します")
+        self.config.mobile_score_server_enabled = self.mobile_score_server_enabled_check.isChecked()
+        try:
+            mobile_port = int(self.mobile_score_server_port_edit.text())
+            if 1000 <= mobile_port <= 65535:
+                self.config.mobile_score_server_port = mobile_port
+            else:
+                logger.warning(f"無効なスマホ用HTTPポート番号: {mobile_port}. デフォルト値を使用します")
+        except ValueError:
+            logger.warning("スマホ用HTTPポート番号の変換に失敗しました。デフォルト値を使用します")
         
         # 画像保存先
         self.config.image_save_path = self.image_save_path_edit.text()

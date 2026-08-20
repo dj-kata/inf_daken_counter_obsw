@@ -397,7 +397,10 @@ class MainWindow(MainWindowUI):
         """全てのクラスに設定を反映"""
         self.config.load_config()  # 最新の設定を読み込み
         self.obs_manager.set_config(self.config)
+        self.result_database.config = self.config
         self.result_database.song_database.load()  # 必要に応じて再読み込み
+        if hasattr(self.result_database, "restart_mobile_http_server"):
+            self.result_database.restart_mobile_http_server()
 
         self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
         self.result_database.broadcast_graph_data(self.start_time_with_offset)

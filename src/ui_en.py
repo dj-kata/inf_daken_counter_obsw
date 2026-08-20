@@ -81,6 +81,8 @@ class UIText:
         image_save_path = 'Image save path:'
         autoload_offset = 'Auto-load offset:'
         websocket_port = 'Data display port:'
+        mobile_score_server_enabled = 'Start mobile score viewer server'
+        mobile_score_server_port = 'Mobile HTTP port:'
         keep_on_top = 'Always on Top'
     
     class music_pack:

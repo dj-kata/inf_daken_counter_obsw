@@ -53,6 +53,11 @@ class Config:
         
         # WebSocketデータ配信ポート
         self.websocket_data_port = 8767
+
+        # スマホ向けHTTPスコア閲覧サーバ
+        self.mobile_score_server_enabled = False
+        self.mobile_score_server_host = "0.0.0.0"
+        self.mobile_score_server_port = 8787
         
         # スコアビューワ設定
         self.score_viewer_style = 'SP'  # 'SP', 'DP', 'Battle'
@@ -120,6 +125,9 @@ class Config:
                     
                     # WebSocketポート設定
                     self.websocket_data_port = config_data.get('websocket_data_port', 8767)
+                    self.mobile_score_server_enabled = config_data.get('mobile_score_server_enabled', False)
+                    self.mobile_score_server_host = config_data.get('mobile_score_server_host', '0.0.0.0')
+                    self.mobile_score_server_port = config_data.get('mobile_score_server_port', 8787)
 
                     # 言語設定
                     self.language = config_data.get('language', 'ja')
@@ -185,6 +193,9 @@ class Config:
             "obs_scene_collection": self.obs_scene_collection,
             "image_save_path": self.image_save_path,
             "websocket_data_port": self.websocket_data_port,
+            "mobile_score_server_enabled": self.mobile_score_server_enabled,
+            "mobile_score_server_host": self.mobile_score_server_host,
+            "mobile_score_server_port": self.mobile_score_server_port,
             "target_music_packs": self.target_music_packs,
             "autosave_image_mode": self.autosave_image_mode.value,
             "modify_rivalarea_mode": self.modify_rivalarea_mode.value,

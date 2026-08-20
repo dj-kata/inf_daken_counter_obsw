@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>INFINITAS Scores</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101214;
+      --panel: #181d22;
+      --panel2: #222830;
+      --text: #f4f6f8;
+      --muted: #9ca7af;
+      --line: #323943;
+      --green: #55d68b;
+      --blue: #79b8ff;
+      --red: #ff7676;
+      --amber: #ffd166;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+    button, input { font: inherit; }
+    .app { min-height: 100dvh; display: grid; grid-template-rows: auto auto minmax(0, 1fr); }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(16, 18, 20, 0.95);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(14px);
+      padding: max(12px, env(safe-area-inset-top)) 14px 12px;
+    }
+    .top {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr) 42px;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-left { display: flex; gap: 8px; }
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 22px;
+    }
+    .icon-btn:disabled { opacity: 0.35; }
+    h1 {
+      margin: 0;
+      min-width: 0;
+      font-size: 18px;
+      line-height: 1.2;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #13171b;
+    }
+    .stat {
+      min-width: 0;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+    .stat span { display: block; color: var(--muted); font-size: 11px; }
+    .stat strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 16px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    main { min-height: 0; overflow-y: auto; padding: 12px 12px max(24px, env(safe-area-inset-bottom)); }
+    .grid { display: grid; gap: 8px; }
+    .folders { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .folder {
+      min-height: 78px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 12px;
+      text-align: left;
+    }
+    .folder.primary { border-color: color-mix(in srgb, var(--green), var(--line) 52%); }
+    .folder.history { border-color: color-mix(in srgb, var(--red), var(--line) 58%); }
+    .folder.current { border-color: color-mix(in srgb, var(--amber), var(--line) 52%); }
+    .folder b { display: block; font-size: 16px; line-height: 1.2; }
+    .folder span { display: block; margin-top: 8px; color: var(--muted); font-size: 12px; }
+    .toolbar { margin-bottom: 10px; }
+    .search {
+      width: 100%;
+      height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 0 12px;
+    }
+    .song-list, .plain-list { display: grid; gap: 8px; }
+    .song-cell, .plain-row {
+      width: 100%;
+      min-height: 74px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: inherit;
+      text-align: left;
+      padding: 10px;
+    }
+    .title { display: flex; gap: 6px; align-items: baseline; min-width: 0; white-space: nowrap; }
+    .title-lv, .title-diff { flex: none; color: var(--blue); font-weight: 750; }
+    .title-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 800; }
+    .meta { margin-top: 5px; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .score-block { text-align: right; min-width: 92px; display: grid; gap: 3px; justify-items: end; }
+    .lamp-wrap { display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; }
+    .lamp-box { display: inline-block; width: 24px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.18); }
+    .lamp-name { color: var(--muted); font-size: 10px; font-weight: 800; line-height: 1; white-space: nowrap; }
+    .fc { animation: flashfc 0.2s infinite; }
+    @keyframes flashfc {
+      0% { background-color: #ff2828; }
+      20% { background-color: #d5ff28; }
+      40% { background-color: #28ff7e; }
+      60% { background-color: #2872ff; }
+      80% { background-color: #d528ff; }
+      100% { background-color: #ff2828; }
+    }
+    .failed { animation: flashfailed 0.08s infinite; }
+    @keyframes flashfailed {
+      0% { background-color: #ff2828; }
+      50% { background-color: #282828; }
+      100% { background-color: #ff2828; }
+    }
+    .ac { background-color: #ff66ff; }
+    .ec { background-color: #22ff22; }
+    .nc { background-color: #22ccff; }
+    .hc { background-color: #ffffff; }
+    .exh { animation: flashexh 0.08s infinite; }
+    @keyframes flashexh {
+      0% { background-color: #ff2828; }
+      50% { background-color: #ffff28; }
+      100% { background-color: #ff2828; }
+    }
+    .score { font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 850; }
+    .subscore { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .empty, .error { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--muted); padding: 22px 14px; text-align: center; }
+    .detail-head { margin-bottom: 12px; }
+    .detail-title { font-size: 20px; font-weight: 850; line-height: 1.25; overflow-wrap: anywhere; }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .pill { min-height: 24px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel2); padding: 4px 8px; font-size: 12px; }
+    .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .metric { min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 10px; }
+    .metric span { display: block; color: var(--muted); font-size: 11px; }
+    .metric strong { display: block; margin-top: 3px; font-size: 18px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .metric.featured { border-color: color-mix(in srgb, var(--amber), var(--line) 45%); }
+    .metric.featured strong { color: var(--amber); font-size: 24px; }
+    .section { margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); overflow: hidden; }
+    .section-title { display: flex; justify-content: space-between; gap: 10px; min-height: 36px; align-items: center; border-bottom: 1px solid var(--line); padding: 0 12px; font-size: 13px; font-weight: 850; text-transform: uppercase; }
+    .section-title span { color: var(--muted); font-size: 11px; }
+    .section-body { padding: 0 10px 2px 10px; }
+    .row { display: grid; grid-template-columns: 82px minmax(0, 1fr) auto; gap: 8px; align-items: center; border-bottom: 1px solid var(--line); padding: 10px 2px; }
+    .row:last-child { border-bottom: 0; }
+    .row b { display: block; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .row-score { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .load-more { width: 100%; height: 44px; margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); color: var(--text); }
+    @media (min-width: 720px) {
+      main { max-width: 920px; width: 100%; margin: 0 auto; }
+      .folders { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .song-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="top">
+        <div class="nav-left">
+          <button id="homeBtn" class="icon-btn" aria-label="ホーム">&#8962;</button>
+          <button id="backBtn" class="icon-btn" aria-label="戻る" disabled>&lsaquo;</button>
+        </div>
+        <h1 id="viewTitle">INFINITAS</h1>
+        <button id="refreshBtn" class="icon-btn" aria-label="更新">&#8635;</button>
+      </div>
+    </header>
+    <section id="stats" class="stats"></section>
+    <main id="content"></main>
+  </div>
+
+  <script>
+    const state = { view: "home", stack: [], allItems: [], historyOffset: 0, historyTotal: 0, currentTimer: null };
+    const HISTORY_BASE = "inf-mobile-base";
+    const HISTORY_APP = "inf-mobile-view";
+    const $ = (id) => document.getElementById(id);
+    const fmt = (v) => v == null || v === "" ? "-" : Number(v).toLocaleString("ja-JP");
+    const pct = (v) => v == null ? "-" : `${(Number(v) * 100).toFixed(2)}%`;
+
+    async function api(path) {
+      const res = await fetch(path, { cache: "no-store" });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return await res.json();
+    }
+    function escapeText(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+    }
+    function setTitle(text) {
+      $("viewTitle").textContent = text;
+      $("backBtn").disabled = state.stack.length === 0;
+      $("homeBtn").disabled = state.view === "home";
+    }
+    function setStats(items) {
+      if (!items || items.length === 0) {
+        $("stats").hidden = true;
+        $("stats").innerHTML = "";
+        return;
+      }
+      $("stats").hidden = false;
+      $("stats").innerHTML = items.map(([label, value]) => `<div class="stat"><span>${escapeText(label)}</span><strong>${escapeText(value)}</strong></div>`).join("");
+    }
+    function push(view) { state.stack.push(view); }
+    function currentHistoryState() { return { kind: HISTORY_APP, view: state.view, stack: [...state.stack] }; }
+    function pushHistoryState() { window.history.pushState(currentHistoryState(), "", window.location.href); }
+    function replaceHistoryState() { window.history.replaceState(currentHistoryState(), "", window.location.href); }
+    function initBrowserBackControl() {
+      window.history.replaceState({ kind: HISTORY_BASE }, "", window.location.href);
+      window.history.pushState(currentHistoryState(), "", window.location.href);
+    }
+    function clearCurrentTimer() {
+      if (state.currentTimer) clearInterval(state.currentTimer);
+      state.currentTimer = null;
+    }
+
+    function renderHome(data) {
+      clearCurrentTimer();
+      state.view = "home";
+      setTitle("INFINITAS");
+      setStats([["BEST", data.total_best_charts], ["PLAYS", data.total_results], ["NOTES", fmt(data.today_notes)]]);
+      const special = data.special.map((f) => {
+        const cls = f.id === "current" ? "current" : (f.id === "history" || f.id === "receipt" || f.id === "daily" ? "history" : "primary");
+        return `<button class="folder ${cls}" data-folder="${f.id}"><b>${escapeText(f.label)}</b><span>${escapeText(f.count_label || `${f.count} items`)}</span></button>`;
+      }).join("");
+      const levels = data.levels.map((f) => `<button class="folder" data-folder="${f.id}"><b>${escapeText(f.label)}</b><span>${f.count} charts</span></button>`).join("");
+      $("content").innerHTML = `<div class="grid folders">${special}${levels}</div>`;
+      document.querySelectorAll("[data-folder]").forEach((button) => button.addEventListener("click", () => openFolder(button.dataset.folder, true)));
+    }
+
+    function renderList(label, items, options = {}) {
+      state.allItems = items;
+      setTitle(label);
+      setStats([["ITEMS", items.length], ["BEST", items.filter((i) => i.score || i.best_score).length], ["NOTES", fmt(options.notes || 0)]]);
+      $("content").innerHTML = `<div class="toolbar"><input id="search" class="search" placeholder="Search" autocomplete="off"></div><div id="songList" class="song-list"></div>${options.loadMore ? '<button id="loadMore" class="load-more">MORE</button>' : ''}`;
+      $("search").addEventListener("input", applyFilter);
+      if (options.loadMore) $("loadMore").addEventListener("click", loadMoreHistory);
+      drawSongList(items);
+    }
+    function applyFilter() {
+      const q = $("search").value.trim().toLowerCase();
+      const items = q ? state.allItems.filter((item) => String(item.title || "").toLowerCase().includes(q)) : state.allItems;
+      drawSongList(items);
+    }
+    function drawSongList(items) {
+      const node = $("songList");
+      if (!items.length) {
+        node.innerHTML = `<div class="empty">NO DATA</div>`;
+        return;
+      }
+      node.innerHTML = items.map(songCell).join("");
+      node.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
+    }
+    function songCell(item) {
+      const score = item.score ?? item.best_score;
+      const bp = item.bp ?? item.best_bp;
+      return `<button class="song-cell" data-chart="${escapeText(item.chart_id || "")}">
+        <div>
+          <div class="title"><span class="title-lv">Lv${escapeText(item.lv || "")}</span><span class="title-name">${escapeText(item.title)}</span><span class="title-diff">[${escapeText(item.difficulty || "")}]</span></div>
+          <div class="meta">${escapeText(item.date || item.last_played || "")}${item.opt ? " / " + escapeText(item.opt) : ""}</div>
+        </div>
+        <div class="score-block">${lampHtml(item.lamp, item.lamp_text)}<div class="score">${fmt(score)}</div><div class="subscore">BP ${fmt(bp)}</div></div>
+      </button>`;
+    }
+    function lampClass(lamp) {
+      const value = Number(lamp) || 0;
+      if (value === 1) return "failed";
+      if (value === 2) return "ac";
+      if (value === 3) return "ec";
+      if (value === 4) return "nc";
+      if (value === 5) return "hc";
+      if (value === 6) return "exh";
+      if (value === 7) return "fc";
+      return "";
+    }
+    function lampHtml(lamp, text) {
+      const cls = lampClass(lamp);
+      const name = text || "";
+      if (!cls) return `<span class="lamp-name">${escapeText(name)}</span>`;
+      return `<span class="lamp-wrap"><span class="lamp-box ${cls}"></span><span class="lamp-name">${escapeText(name)}</span></span>`;
+    }
+
+    function renderPlainList(label, rows, options = {}) {
+      setTitle(label);
+      setStats(options.stats || [["ITEMS", rows.length], ["NOTES", fmt(options.notes || 0)], ["", ""]]);
+      $("content").innerHTML = `<div class="plain-list">${rows.length ? rows.map(options.row).join("") : '<div class="empty">NO DATA</div>'}</div>`;
+      document.querySelectorAll("[data-daily]").forEach((button) => button.addEventListener("click", () => openDailyDate(button.dataset.daily, true)));
+    }
+
+    function renderReceipt(data) {
+      setTitle(data.folder.label);
+      setStats([["NOTES", fmt(data.today_notes)], ["TOP BPI", data.top_bpi || "-"], ["PLAYS", data.items.length]]);
+      const top = `<section class="metrics">
+        <div class="metric"><span>TODAY NOTES</span><strong>${fmt(data.today_notes)}</strong></div>
+        <div class="metric"><span>TOP BPI</span><strong>${escapeText(data.top_bpi || "-")}</strong></div>
+        <div class="metric"><span>PLAY COUNT</span><strong>${data.items.length}</strong></div>
+        <div class="metric"><span>SCORE RATE</span><strong>${escapeText(data.score_rate || "-")}</strong></div>
+      </section>`;
+      $("content").innerHTML = `${top}<div class="song-list">${data.items.length ? data.items.map(songCell).join("") : '<div class="empty">NO DATA</div>'}</div>`;
+      document.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
+    }
+
+    function renderDetail(data, options = {}) {
+      setTitle(options.title || data.music || data.title || "DETAIL");
+      const logs = data.items || [];
+      const rivals = data.rival_items || [];
+      setStats([]);
+      $("content").innerHTML = `
+        <section class="detail-head">
+          <div class="detail-title">${escapeText(data.music || data.title)}</div>
+          <div class="pill-row">
+            <span class="pill">Lv${escapeText(data.lv || "")}</span>
+            <span class="pill">${escapeText(data.difficulty || "")}</span>
+            <span class="pill">NOTES ${fmt(data.notes)}</span>
+          </div>
+        </section>
+        <section class="metrics">
+          <div class="metric"><span>BEST SCORE</span><strong>${fmt(data.best_score)}</strong></div>
+          <div class="metric"><span>BEST BP</span><strong>${fmt(data.best_bp)}</strong></div>
+          <div class="metric featured"><span>${escapeText(data.best_bpi_label || "BPI")}</span><strong>${escapeText(data.best_bpi || "-")}</strong></div>
+          <div class="metric"><span>BEST RATE</span><strong>${pct(data.best_score_rate)}</strong></div>
+        </section>
+        <section class="section">
+          <div class="section-title">Rivals <span>${rivals.length} players</span></div>
+          <div class="section-body">${rivals.length ? rivals.map(rivalRow).join("") : '<div class="empty">NO DATA</div>'}</div>
+        </section>
+        <section class="section">
+          <div class="section-title">Play Log <span>${logs.length} plays</span></div>
+          <div class="section-body">${logs.length ? logs.map(logRow).join("") : '<div class="empty">NO DATA</div>'}</div>
+        </section>`;
+    }
+    function renderCurrentSong(data) {
+      state.view = "current";
+      setTitle("CURRENT SONG");
+      if (!data.detail) {
+        setStats([]);
+        $("content").innerHTML = `<div class="empty">NO CURRENT SONG</div>`;
+        return;
+      }
+      renderDetail(data.detail, { title: "CURRENT SONG" });
+    }
+    function rivalRow(item) {
+      return `<div class="row">${lampHtml(item.lamp, item.lamp_text)}<div><b>${item.rank}. ${escapeText(item.player)}</b><span>${escapeText(item.option || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}</span></div></div>`;
+    }
+    function logRow(item) {
+      return `<div class="row">${lampHtml(item.lamp, item.lamp_text)}<div><b>${escapeText(item.date)}</b><span>${escapeText(item.opt || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)} / ${escapeText(item.bpi || "-")}</span></div></div>`;
+    }
+    function renderError(e) { $("content").innerHTML = `<div class="error">${escapeText(e.message || e)}</div>`; }
+
+    async function openFolder(id, shouldPush) {
+      clearCurrentTimer();
+      if (shouldPush) push(state.view);
+      try {
+        if (id === "history") {
+          state.historyOffset = 0;
+          const data = await api("/api/folders/history?limit=200&offset=0");
+          state.view = "history";
+          state.historyOffset = data.items.length;
+          state.historyTotal = data.total;
+          renderList(data.folder.label, data.items, { loadMore: data.items.length < data.total });
+        } else if (id === "receipt") {
+          state.view = "receipt";
+          renderReceipt(await api("/api/folders/receipt"));
+        } else if (id === "daily") {
+          state.view = "daily";
+          const data = await api("/api/folders/daily");
+          renderPlainList(data.folder.label, data.items, {
+            notes: data.total_notes,
+            row: (item) => `<button class="plain-row" data-daily="${escapeText(item.date)}"><div><div class="title"><span class="title-name">${escapeText(item.date)}</span></div><div class="meta">${item.play_count} plays</div></div><div class="score-block"><div class="score">${fmt(item.notes)}</div><div class="subscore">notes</div></div></button>`
+          });
+        } else {
+          const data = await api(`/api/folders/${id}`);
+          state.view = id;
+          if (id === "current") {
+            renderCurrentSong(data);
+            state.currentTimer = setInterval(() => refreshCurrent(), 2000);
+          } else {
+            renderList(data.folder.label, data.items, { notes: data.notes });
+          }
+        }
+        if (shouldPush) pushHistoryState();
+      } catch (e) {
+        renderError(e);
+      }
+    }
+    async function openDailyDate(dateKey, shouldPush) {
+      clearCurrentTimer();
+      if (shouldPush) push(state.view);
+      try {
+        const data = await api(`/api/folders/daily/${encodeURIComponent(dateKey)}`);
+        state.view = `daily:${dateKey}`;
+        renderList(data.folder.label, data.items, { notes: data.notes });
+        if (shouldPush) pushHistoryState();
+      } catch (e) { renderError(e); }
+    }
+    async function refreshCurrent() {
+      try {
+        const data = await api("/api/folders/current");
+        renderCurrentSong(data);
+      } catch (e) { renderError(e); }
+    }
+    async function loadMoreHistory() {
+      const data = await api(`/api/folders/history?limit=200&offset=${state.historyOffset}`);
+      state.historyOffset += data.items.length;
+      state.allItems = state.allItems.concat(data.items);
+      applyFilter();
+      if (state.historyOffset >= state.historyTotal) $("loadMore")?.remove();
+    }
+    async function openChart(chartId, shouldPush) {
+      if (!chartId) return;
+      clearCurrentTimer();
+      if (shouldPush) push(state.view);
+      try {
+        state.view = `chart:${chartId}`;
+        renderDetail(await api(`/api/charts/${encodeURIComponent(chartId)}`));
+        if (shouldPush) pushHistoryState();
+      } catch (e) { renderError(e); }
+    }
+    async function loadHome() {
+      clearCurrentTimer();
+      state.view = "home";
+      state.stack = [];
+      try {
+        renderHome(await api("/api/folders"));
+        replaceHistoryState();
+      } catch (e) { renderError(e); }
+    }
+    async function openView(view, shouldPush) {
+      if (!view || view === "home") await loadHome();
+      else if (view.startsWith("chart:")) await openChart(view.slice(6), shouldPush);
+      else if (view.startsWith("daily:")) await openDailyDate(view.slice(6), shouldPush);
+      else await openFolder(view, shouldPush);
+    }
+    async function goUpOneLevel(rewriteHistory = true) {
+      const previous = state.stack.pop();
+      if (!previous) {
+        if (confirm("終了しますか？")) window.history.back();
+        return;
+      }
+      await openView(previous, false);
+      if (rewriteHistory) replaceHistoryState();
+    }
+
+    $("backBtn").addEventListener("click", () => goUpOneLevel(true));
+    $("homeBtn").addEventListener("click", () => loadHome());
+    $("refreshBtn").addEventListener("click", () => openView(state.view, false));
+    window.addEventListener("popstate", (event) => {
+      if (event.state && event.state.kind === HISTORY_APP) {
+        state.stack = Array.isArray(event.state.stack) ? [...event.state.stack] : [];
+        openView(event.state.view, false);
+        return;
+      }
+      if (state.stack.length > 0) {
+        goUpOneLevel(false).then(() => pushHistoryState());
+        return;
+      }
+      if (!event.state || event.state.kind === HISTORY_BASE) {
+        if (confirm("終了しますか？")) window.history.back();
+        else window.history.pushState(currentHistoryState(), "", window.location.href);
+      }
+    });
+
+    initBrowserBackControl();
+    loadHome();
+  </script>
+</body>
+</html>

@@ -81,6 +81,8 @@ class UIText:
         image_save_path = '画像保存先:'
         autoload_offset = '自動読み込みオフセット:'
         websocket_port = 'データ表示用port:'
+        mobile_score_server_enabled = 'スマホ用スコア閲覧サーバを起動する'
+        mobile_score_server_port = 'スマホ用HTTP port:'
         keep_on_top = '常に最前面表示する'
     
     class music_pack:

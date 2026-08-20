@@ -19,6 +19,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List
 import copy
+import threading
 
 
 def _to_int_or_none(value):
@@ -27,6 +28,16 @@ def _to_int_or_none(value):
         return None
     try:
         return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_float_or_none(value):
+    """文字列/数値のどちらで来てもfloatへ寄せる。変換不能ならNone。"""
+    if value is None:
+        return None
+    try:
+        return float(value)
     except (TypeError, ValueError):
         return None
 
@@ -99,10 +110,14 @@ class ResultDatabase:
         self.ws_loop = None
         self.ws_thread = None
         self.rival_manager = None
+        self.mobile_http_server = None
+        self._mobile_http_server_signature = None
+        self._mobile_api_lock = threading.RLock()
 
         # configが渡された場合のみWebSocketサーバーを起動
         if config is not None:
             self._init_websocket_server()
+            self._init_mobile_http_server()
             # WebSocket設定をCSSファイルに書き込み
             self._write_websocket_config()
 
@@ -151,6 +166,50 @@ class ResultDatabase:
 
         logger.info(f"WebSocketサーバー起動: ポート {self.config.websocket_data_port}")
 
+    def _init_mobile_http_server(self):
+        """スマホ向けHTTPサーバーを初期化。"""
+        signature = self._mobile_config_signature()
+        self._mobile_http_server_signature = signature
+        if not signature[0]:
+            return
+        from .mobile_http_server import MobileScoreHTTPServer
+
+        _, host, port = signature
+        self.mobile_http_server = MobileScoreHTTPServer(self, host=host, port=port)
+        self.mobile_http_server.start()
+
+    def _mobile_config_signature(self):
+        """モバイルHTTPサーバーの再起動要否判定に使う設定値。"""
+        if not self.config:
+            return (False, "0.0.0.0", 8787)
+        enabled = bool(getattr(self.config, "mobile_score_server_enabled", False))
+        host = getattr(self.config, "mobile_score_server_host", "0.0.0.0") or "0.0.0.0"
+        port = _to_int_or_none(getattr(self.config, "mobile_score_server_port", 8787))
+        if port is None:
+            port = 8787
+        return (enabled, host, port)
+
+    def restart_mobile_http_server(self, force: bool = False):
+        """設定変更後にスマホ向けHTTPサーバーを再起動する。"""
+        with self._mobile_api_lock:
+            signature = self._mobile_config_signature()
+            server_running = self.mobile_http_server is not None
+            expected_running = signature[0]
+            if (
+                not force
+                and self._mobile_http_server_signature == signature
+                and server_running == expected_running
+            ):
+                logger.debug("スマホ向けHTTPサーバ設定変更なし: 再起動をスキップ")
+                return
+
+            if self.mobile_http_server:
+                self.mobile_http_server.stop()
+                self.mobile_http_server = None
+            self._mobile_http_server_signature = None
+            if self.config:
+                self._init_mobile_http_server()
+
     def _start_websocket_loop(self):
         """WebSocket用イベントループをスレッドで実行"""
         import asyncio
@@ -162,9 +221,13 @@ class ResultDatabase:
         """サーバーを停止（アプリケーション終了時に呼び出す）"""
         if self.ws_server:
             self.ws_server.stop()
+        with self._mobile_api_lock:
+            if self.mobile_http_server:
+                self.mobile_http_server.stop()
+                self.mobile_http_server = None
         if self.ws_loop:
             self.ws_loop.call_soon_threadsafe(self.ws_loop.stop)
-        logger.info("WebSocketサーバーを停止しました")
+        logger.info("サーバーを停止しました")
 
     def update_websocket_port(self, port: int):
         """WebSocketポート番号を更新"""
@@ -1146,12 +1209,370 @@ class ResultDatabase:
 
         return data
 
+    # ─── スマホ向けHTTP API用データ生成 ─────────────────────────────────────
+
+    @staticmethod
+    def _timestamp_text(timestamp: int | None, fmt: str = "%Y-%m-%d %H:%M") -> str:
+        if not timestamp:
+            return ""
+        try:
+            return datetime.datetime.fromtimestamp(timestamp).strftime(fmt)
+        except Exception:
+            return ""
+
+    @staticmethod
+    def _lamp_text(lamp: clear_lamp | None) -> str:
+        return str(lamp) if lamp else str(clear_lamp.noplay)
+
+    @staticmethod
+    def _today_start_timestamp() -> int:
+        today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        return int(today.timestamp())
+
+    def _songinfo_for_result(self, result: OneResult):
+        return self.song_database.search(
+            title=result.title,
+            play_style=result.play_style,
+            difficulty=result.difficulty,
+        ) or self.song_database.search(chart_id=result.chart_id)
+
+    def _result_level(self, result: OneResult) -> str:
+        songinfo = self._songinfo_for_result(result)
+        if songinfo and getattr(songinfo, "level", None):
+            return str(songinfo.level)
+        return str(result.notes or "")
+
+    def _serialize_mobile_best(self, best: OneBestData) -> dict:
+        lamp = best.lamp
+        best_bp = best.min_bp
+        if best_bp >= 99999:
+            best_bp = None
+        best_score = _to_int_or_none(best.best_score) or 0
+        notes = _to_int_or_none(best.notes) or 0
+        score_rate = best_score / (notes * 2) if notes else 0
+        return {
+            "chart_id": calc_chart_id(best.title, best.style, best.difficulty, battle=best.is_battle),
+            "title": best.title,
+            "difficulty": best.chart,
+            "lv": best.level,
+            "score": best_score,
+            "bp": best_bp,
+            "lamp": lamp.value if lamp else clear_lamp.noplay.value,
+            "lamp_text": self._lamp_text(lamp),
+            "score_rate": score_rate,
+            "notes": notes,
+            "last_played": best.last_play_date,
+            "opt": best.best_score_option,
+        }
+
+    def _serialize_mobile_best_safe(self, best: OneBestData) -> dict | None:
+        try:
+            return self._serialize_mobile_best(best)
+        except Exception:
+            logger.error(
+                "スマホ向け自己ベスト整形エラー: "
+                f"{getattr(best, 'title', '')} {getattr(best, 'chart', '')}\n"
+                f"{traceback.format_exc()}"
+            )
+            return None
+
+    def _serialize_mobile_result(self, result: OneResult) -> dict:
+        songinfo = self._songinfo_for_result(result)
+        detail = DetailedResult(songinfo, result)
+        lamp = result.lamp or clear_lamp.noplay
+        bpi = None
+        bpi_label = ""
+        bpim2 = getattr(result, "bpim2", None)
+        if bpim2 is not None:
+            bpi = f"{bpim2:.2f}"
+            bpi_label = "BPIM2"
+        elif detail.bpi is not None:
+            bpi = f"{detail.bpi:.2f}"
+            bpi_label = "BPI"
+        bp = result.bp
+        if bp is None and result.judge:
+            bp = result.judge.bp
+        notes = _to_int_or_none(result.notes)
+        if not notes and songinfo and getattr(songinfo, "notes", None):
+            notes = _to_int_or_none(songinfo.notes)
+        score = _to_int_or_none(result.score)
+        score_rate = score / (notes * 2) if score is not None and notes else detail.score_rate
+        return {
+            "chart_id": result.chart_id,
+            "title": result.title,
+            "difficulty": get_chart_name(result.play_style, result.difficulty, battle=result.option.battle if result.option else False),
+            "lv": str(songinfo.level) if songinfo and getattr(songinfo, "level", None) else "",
+            "score": score,
+            "bp": _to_int_or_none(bp),
+            "lamp": lamp.value,
+            "lamp_text": self._lamp_text(lamp),
+            "score_rate": score_rate,
+            "bpi": bpi,
+            "bpi_label": bpi_label,
+            "notes": notes,
+            "date": self._timestamp_text(result.timestamp),
+            "opt": str(result.option) if result.option else "",
+            "dead": bool(result.dead),
+        }
+
+    def _mobile_result_items(self, results: list[OneResult]) -> list[dict]:
+        return [self._serialize_mobile_result(r) for r in results if r.detect_mode == detect_mode.result]
+
+    def _notes_by_date(self) -> dict[str, int]:
+        totals = defaultdict(int)
+        for result in self.results:
+            if result.detect_mode != detect_mode.play or not result.judge:
+                continue
+            date_key = self._timestamp_text(result.timestamp, "%Y-%m-%d")
+            totals[date_key] += result.judge.notes
+        return totals
+
+    def _notes_since(self, start_timestamp: int) -> int:
+        total = 0
+        for result in reversed(self.results):
+            if result.timestamp < start_timestamp:
+                break
+            if result.detect_mode == detect_mode.play and result.judge:
+                total += result.judge.notes
+        return total
+
+    def get_mobile_folders_data(self) -> dict:
+        """スマホビューのトップ階層を返す。"""
+        bests = self.get_all_best_results()
+        style_defs = [
+            ("SP", play_style.sp),
+            ("DP", play_style.dp),
+        ]
+        level_folders = []
+        for style_label, style_value in style_defs:
+            levels = sorted(
+                {
+                    _to_int_or_none(best.level)
+                    for best in bests.values()
+                    if best.style == style_value and _to_int_or_none(best.level)
+                },
+                reverse=True,
+            )
+            level_folders.extend(
+                {
+                    "id": f"style/{style_label}/level/{level}",
+                    "label": f"{style_label} LEVEL {level}",
+                    "count": sum(
+                        1
+                        for b in bests.values()
+                        if b.style == style_value and _to_int_or_none(b.level) == level
+                    ),
+                }
+                for level in levels
+            )
+        result_count = sum(1 for r in self.results if r.detect_mode == detect_mode.result)
+        today_notes = self._notes_since(self._today_start_timestamp())
+        current = self.get_mobile_current_folder_data()
+        daily_count = len(self._notes_by_date())
+        return {
+            "total_best_charts": len(bests),
+            "total_results": result_count,
+            "today_notes": today_notes,
+            "levels": level_folders,
+            "special": [
+                {"id": "history", "label": "PLAY HISTORY", "count": result_count, "count_label": f"{result_count} plays"},
+                {"id": "receipt", "label": "RECEIPT", "count": today_notes, "count_label": f"{today_notes:,} notes"},
+                {"id": "daily", "label": "DAILY LOG", "count": daily_count, "count_label": f"{daily_count} days"},
+                {"id": "current", "label": "CURRENT SONG", "count": len(current.get("items", [])), "count_label": "live"},
+            ],
+        }
+
+    def get_mobile_level_folder_data(self, level: int, style_text: str | None = None) -> dict:
+        style_value = None
+        style_label = ""
+        if style_text:
+            style_label = style_text.upper()
+            style_value = play_style.sp if style_label == "SP" else play_style.dp if style_label == "DP" else None
+        bests = [
+            best
+            for best in self.get_all_best_results().values()
+            if _to_int_or_none(best.level) == level
+            and (style_value is None or best.style == style_value)
+        ]
+        bests.sort(key=lambda b: (-( _to_int_or_none(b.best_score) or 0), b.title, b.chart))
+        items = [
+            item
+            for item in (self._serialize_mobile_best_safe(best) for best in bests)
+            if item is not None
+        ]
+        folder_id = f"style/{style_label}/level/{level}" if style_label else f"level/{level}"
+        label = f"{style_label} LEVEL {level}" if style_label else f"LEVEL {level}"
+        return {
+            "folder": {"id": folder_id, "label": label},
+            "items": items,
+            "notes": sum(_to_int_or_none(item.get("notes")) or 0 for item in items),
+        }
+
+    def get_mobile_history_data(self, limit: int = 200, offset: int = 0) -> dict:
+        limit = max(1, min(1000, int(limit or 200)))
+        offset = max(0, int(offset or 0))
+        all_results = [r for r in reversed(self.results) if r.detect_mode == detect_mode.result]
+        page = all_results[offset : offset + limit]
+        return {
+            "folder": {"id": "history", "label": "PLAY HISTORY"},
+            "total": len(all_results),
+            "limit": limit,
+            "offset": offset,
+            "items": self._mobile_result_items(page),
+        }
+
+    def get_mobile_receipt_data(self) -> dict:
+        start = self._today_start_timestamp()
+        today_results = [
+            r for r in reversed(self.results)
+            if r.timestamp >= start and r.detect_mode == detect_mode.result
+        ]
+        today_notes_judge = Judge()
+        for result in reversed(self.results):
+            if result.timestamp < start:
+                break
+            if result.detect_mode == detect_mode.play and result.judge:
+                today_notes_judge += result.judge
+        items = self._mobile_result_items(today_results[:50])
+        top_bpi = ""
+        for item in items:
+            try:
+                value = float(item.get("bpi"))
+            except (TypeError, ValueError):
+                continue
+            if top_bpi == "" or value > float(top_bpi):
+                top_bpi = f"{value:.2f}"
+        return {
+            "folder": {"id": "receipt", "label": "RECEIPT"},
+            "today_notes": today_notes_judge.notes,
+            "score_rate": f"{today_notes_judge.score_rate * 100:.2f}%",
+            "top_bpi": top_bpi,
+            "items": items,
+        }
+
+    def get_mobile_daily_folders_data(self) -> dict:
+        notes_by_date = self._notes_by_date()
+        play_counts = defaultdict(int)
+        for result in self.results:
+            if result.detect_mode == detect_mode.result:
+                play_counts[self._timestamp_text(result.timestamp, "%Y-%m-%d")] += 1
+        dates = sorted(set(notes_by_date.keys()) | set(play_counts.keys()), reverse=True)
+        items = [
+            {
+                "date": date_key,
+                "notes": notes_by_date.get(date_key, 0),
+                "play_count": play_counts.get(date_key, 0),
+            }
+            for date_key in dates
+        ]
+        return {
+            "folder": {"id": "daily", "label": "DAILY LOG"},
+            "total_notes": sum(notes_by_date.values()),
+            "items": items,
+        }
+
+    def get_mobile_daily_log_data(self, date_key: str) -> dict:
+        items = [
+            r for r in reversed(self.results)
+            if r.detect_mode == detect_mode.result
+            and self._timestamp_text(r.timestamp, "%Y-%m-%d") == date_key
+        ]
+        notes = self._notes_by_date().get(date_key, 0)
+        return {
+            "folder": {"id": f"daily/{date_key}", "label": date_key},
+            "notes": notes,
+            "items": self._mobile_result_items(items),
+        }
+
+    def get_mobile_current_folder_data(self) -> dict:
+        data = self.ws_server.history_cursong_data if self.ws_server else None
+        if not data:
+            return {"folder": {"id": "current", "label": "CURRENT SONG"}, "items": [], "detail": None}
+        title = data.get("music") or data.get("title")
+        difficulty_text = data.get("difficulty") or ""
+        chart_id = data.get("chart_id")
+        if not chart_id:
+            for best in self.get_all_best_results().values():
+                if best.title == title and best.chart == difficulty_text:
+                    chart_id = calc_chart_id(best.title, best.style, best.difficulty, battle=best.is_battle)
+                    break
+        try:
+            lamp_value = int(data.get("best_lamp", 0) or 0)
+            lamp_text = self._lamp_text(clear_lamp(lamp_value))
+        except Exception:
+            lamp_value = 0
+            lamp_text = self._lamp_text(clear_lamp.noplay)
+        item = {
+            "chart_id": chart_id,
+            "title": title,
+            "difficulty": difficulty_text,
+            "lv": data.get("lv", ""),
+            "score": data.get("best_score", 0),
+            "bp": data.get("best_bp"),
+            "lamp": lamp_value,
+            "lamp_text": lamp_text,
+            "score_rate": data.get("best_score_rate"),
+            "notes": data.get("notes"),
+            "last_played": data.get("last_played", ""),
+            "opt": data.get("best_score_opt", ""),
+        }
+        detail = dict(data)
+        detail["chart_id"] = chart_id
+        detail["title"] = title
+        for rival in detail.get("rival_items", []):
+            try:
+                rival["lamp_text"] = self._lamp_text(clear_lamp(rival.get("lamp", 0)))
+            except Exception:
+                rival["lamp_text"] = ""
+        for log_item in detail.get("items", []):
+            try:
+                log_item["lamp_text"] = self._lamp_text(clear_lamp(log_item.get("lamp", 0)))
+            except Exception:
+                log_item["lamp_text"] = ""
+        return {
+            "folder": {"id": "current", "label": "CURRENT SONG"},
+            "items": [item],
+            "detail": detail,
+        }
+
+    def get_mobile_chart_detail_data(self, chart_id: str) -> dict | None:
+        best = None
+        for candidate in self.get_all_best_results().values():
+            candidate_id = calc_chart_id(candidate.title, candidate.style, candidate.difficulty, battle=candidate.is_battle)
+            if candidate_id == chart_id:
+                best = candidate
+                break
+        results = [detail.result for detail in self.search(chart_id=chart_id) if detail.result.detect_mode == detect_mode.result]
+        if best is None and not results:
+            return None
+        title = best.title if best else results[0].title
+        style = best.style if best else results[0].play_style
+        diff = best.difficulty if best else results[0].difficulty
+        battle = best.is_battle if best else (results[0].option.battle if results[0].option else False)
+        data = self.get_history_cursong_data(title, style, diff, battle=battle)
+        if not data:
+            return None
+        data["chart_id"] = chart_id
+        data["items"] = self._mobile_result_items(sorted(results, key=lambda r: r.timestamp, reverse=True))
+        for item in data.get("rival_items", []):
+            try:
+                item["lamp_text"] = self._lamp_text(clear_lamp(item.get("lamp", 0)))
+            except Exception:
+                item["lamp_text"] = ""
+        return data
+
     def get_option_data(self, option: CurrentOption) -> dict:
         """最後に設定したオプションをdictとして出力。WebSocketへの送信用。"""
+        if option is None:
+            return {
+                "option": "",
+                "gauge": "",
+                "play_style": "",
+            }
         data = {
             "option": str(option),  # battle, OFF/OFFとか
-            "gauge": str(option.option_gauge),  # easyとかexhとか
-            "play_style": str(option.play_style.name.upper()),  # SP/DP
+            "gauge": str(option.option_gauge) if option.option_gauge else "",  # easyとかexhとか
+            "play_style": str(option.play_style.name.upper()) if option.play_style else "",  # SP/DP
         }
         return data
 

@@ -48,6 +48,9 @@ if os.path.exists("infnotebook"):
 if os.path.exists("recognition_images"):
     include_files.append(("recognition_images/", "recognition_images/"))
 
+if os.path.exists("template/mobile_score_viewer.html"):
+    include_files.append(("template/mobile_score_viewer.html", "template/mobile_score_viewer.html"))
+
 # アイコンファイル
 if os.path.exists('src/icon.ico'):
     include_files.append(('src/icon.ico', 'src/icon.ico'))
@@ -103,6 +106,7 @@ build_exe_options = {
         "src.config_dialog",
         "src.obs_dialog",
         "src.direct_window_capture",
+        "src.mobile_http_server",
         # ctypes関連（Windows APIアクセスに必要）
         "ctypes",
         "ctypes.wintypes",
@@ -133,7 +137,6 @@ build_exe_options = {
         "unittest",
         "email",
         "html",
-        "http",
         # "urllib",
         # "xml",
         # "pydoc",
