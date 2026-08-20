@@ -344,8 +344,6 @@ class ResultDatabase:
                 continue
 
             if battle:
-                if r.result.detect_mode != detect_mode.result:
-                    continue
                 if not option.battle:
                     continue
             else:
@@ -431,12 +429,15 @@ class ResultDatabase:
         battle: bool = False,
     ) -> bool:
         """chart_idの完全一致に加え、songinfo更新前後の表記差も同一譜面として扱う。"""
-        if chart_id and result.chart_id == chart_id:
+        result_battle = result.option.battle if result.option else False
+        if title is not None and style is not None and difficulty is not None:
+            if bool(result_battle) != bool(battle):
+                return False
+            if chart_id and result.chart_id == chart_id:
+                return True
+        elif chart_id and result.chart_id == chart_id:
             return True
         if title is None or style is None or difficulty is None:
-            return False
-        result_battle = result.option.battle if result.option else False
-        if bool(result_battle) != bool(battle):
             return False
         return calc_chart_lookup_key(
             result.title, result.play_style, result.difficulty, battle=result_battle
@@ -1125,7 +1126,7 @@ class ResultDatabase:
             "best_bp_opt": best_bp_opt.__str__() if best_bp_opt else "",
             "best_score": best_score,
             "best_score_opt": best_score_opt.__str__() if best_score_opt else "",
-            "battle": best_score_opt.battle if best_score_opt else 0,
+            "battle": bool(battle),
         }
 
         if songinfo and hasattr(songinfo, "bpi_ave") and songinfo.bpi_ave:
@@ -1409,6 +1410,12 @@ class ResultDatabase:
     def _mobile_result_items(self, results: list[OneResult]) -> list[dict]:
         return [self._serialize_mobile_result(r) for r in results if r.detect_mode == detect_mode.result]
 
+    def _mobile_play_log_items(self, results: list[OneResult], include_select: bool = False) -> list[dict]:
+        allowed_modes = {detect_mode.result}
+        if include_select:
+            allowed_modes.add(detect_mode.select)
+        return [self._serialize_mobile_result(r) for r in results if r.detect_mode in allowed_modes]
+
     def _mobile_katate_enabled(self) -> bool:
         return bool(self.config and getattr(self.config, "enable_katate_difficulty_display", False))
 
@@ -1671,7 +1678,8 @@ class ResultDatabase:
         items = updates_data.get("items", [])
 
         def bpi_value(item):
-            if str(item.get("difficulty") or "").upper().startswith("DP"):
+            difficulty_text = str(item.get("difficulty") or "").upper()
+            if difficulty_text.startswith("DP") or difficulty_text.startswith("DB"):
                 return None
             return _to_float_or_none(item.get("bpi"))
 
@@ -2036,6 +2044,9 @@ class ResultDatabase:
             candidates.sort(key=lambda candidate: bool(candidate.is_battle), reverse=bool(forced_battle))
             best = candidates[0]
         if best is not None:
+            allowed_modes = {detect_mode.result}
+            if best.is_battle:
+                allowed_modes.add(detect_mode.select)
             results = [
                 detail.result
                 for detail in self.search(
@@ -2044,7 +2055,7 @@ class ResultDatabase:
                     difficulty=best.difficulty,
                     battle=best.is_battle,
                 )
-                if detail.result.detect_mode == detect_mode.result
+                if detail.result.detect_mode in allowed_modes
             ]
         else:
             results = [detail.result for detail in self.search(chart_id=base_chart_id) if detail.result.detect_mode == detect_mode.result]
@@ -2058,7 +2069,10 @@ class ResultDatabase:
         if not data:
             return None
         data["chart_id"] = chart_id
-        data["items"] = self._mobile_result_items(sorted(results, key=lambda r: r.timestamp, reverse=True))
+        data["items"] = self._mobile_play_log_items(
+            sorted(results, key=lambda r: r.timestamp, reverse=True),
+            include_select=bool(battle),
+        )
         for item in data.get("rival_items", []):
             try:
                 item["lamp_text"] = self._lamp_text(clear_lamp(item.get("lamp", 0)))

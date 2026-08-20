@@ -721,7 +721,7 @@
       const bp = item.bp ?? item.best_bp;
       if (state.listVariant === "level" || state.listVariant === "compact") {
         return compactSongCell(item, score, bp, {
-          showLevelMarker: state.listVariant === "compact" || isDpChart(item) || Boolean(item.enable_katate_difficulty_display && item.katate_band),
+          showLevelMarker: state.listVariant === "compact" || isDpChart(item) || isDbxChart(item) || Boolean(item.enable_katate_difficulty_display && item.katate_band),
         });
       }
       return `<button class="song-cell" data-chart="${escapeText(item.chart_id || "")}">
@@ -734,10 +734,13 @@
     }
     function isDpChart(item) {
       const difficulty = String(item.difficulty || "").toUpperCase();
-      return difficulty.startsWith("DP") || difficulty.startsWith("DB");
+      return difficulty.startsWith("DP");
+    }
+    function isDbxChart(item) {
+      return String(item.difficulty || "").toUpperCase().startsWith("DB");
     }
     function visibleBpiText(item) {
-      return isDpChart(item) ? "" : (item.bpi || item.best_bpi || "");
+      return isDpChart(item) || isDbxChart(item) ? "" : (item.bpi || item.best_bpi || "");
     }
     function bpiHtml(value) {
       if (value == null || value === "") return "-";
@@ -1024,7 +1027,7 @@
         <div class="section-title">Current Best <span>${escapeText(data.difficulty || "")}</span></div>
         <div class="section-body">
           <div class="row" data-chart="${escapeText(data.chart_id || "")}">${lampHtml(data.best_lamp, data.best_lamp_text)}<div><b>${escapeText(data.music || data.title || "")}</b><span>${levelMarkerHtml(data) || levelHtml(data)}${dpUnofficialHtml(data) ? " " + dpUnofficialHtml(data) : ""} / NOTES ${fmt(data.notes)}</span></div><div class="row-score">${fmt(data.best_score)}<span>BP ${fmt(data.best_bp)}${visibleBpiText(data) ? " / " + bpiHtml(visibleBpiText(data)) : ""}</span></div></div>
-          ${isDpChart(data) ? ereterHtml(data) : arenaAverageHtml(data, "receipt-arena")}
+          ${isDpChart(data) ? ereterHtml(data) : isDbxChart(data) ? "" : arenaAverageHtml(data, "receipt-arena")}
         </div>
       </section>`;
     }
@@ -1050,7 +1053,8 @@
       const logs = data.items || [];
       const rivals = data.rival_items || [];
       const isDp = isDpChart(data);
-      const bpiMetric = isDp ? "" : `<div class="metric featured bpi"><span>${escapeText(data.best_bpi_label || "BPI")}</span><strong>${escapeText(data.best_bpi || "-")}</strong></div>`;
+      const isDbx = isDbxChart(data);
+      const bpiMetric = isDp || isDbx ? "" : `<div class="metric featured bpi"><span>${escapeText(data.best_bpi_label || "BPI")}</span><strong>${escapeText(data.best_bpi || "-")}</strong></div>`;
       setStats([]);
       $("content").innerHTML = `
         <section class="detail-head">
@@ -1068,7 +1072,7 @@
           ${bpiMetric}
           <div class="metric"><span>BEST RATE</span><strong>${pct(data.best_score_rate)}</strong></div>
         </section>
-        ${isDp ? ereterHtml(data) : arenaAverageHtml(data)}
+        ${isDp ? ereterHtml(data) : isDbx ? "" : arenaAverageHtml(data)}
         <section class="section">
           <div class="section-title">Rivals <span>${rivals.length} players</span></div>
           <div class="section-body">${rivals.length ? rivals.map(rivalRow).join("") : '<div class="empty">NO DATA</div>'}</div>
