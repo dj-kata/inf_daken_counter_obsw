@@ -1132,6 +1132,10 @@ class ResultDatabase:
                 data["best_bpi"] = f"{bpim2:.2f}"
                 data["best_bpi_label"] = "BPIM2"
                 arena_averages = getattr(detail.result, "bpim2_arena_averages", None)
+                if not arena_averages or len(arena_averages) <= 2:
+                    refetched = detail.get_bpim2_bpi_detail(force_fetch=True)
+                    if refetched and refetched.arena_averages:
+                        arena_averages = refetched.arena_averages
                 if arena_averages:
                     data["bpi_near_averages"] = [
                         {"rank": avg.rank, "score": avg.avg_ex_score}

@@ -61,7 +61,7 @@ def _difficulty_to_bpim2_name(diff:difficulty) -> Optional[str]:
     return names.get(diff)
 
 
-def _nearest_arena_averages(arena_averages:dict, score:int) -> list[BpiArenaAverage]:
+def _arena_averages(arena_averages:dict) -> list[BpiArenaAverage]:
     averages = []
     for rank, data in arena_averages.items():
         avg_ex_score = data.get('avgExScore') if isinstance(data, dict) else None
@@ -73,24 +73,11 @@ def _nearest_arena_averages(arena_averages:dict, score:int) -> list[BpiArenaAver
         averages.append(BpiArenaAverage(rank=rank, avg_ex_score=math.floor(avg_ex_score)))
     rank_order = {'A1': 1, 'A2': 2, 'A3': 3, 'A4': 4, 'A5': 5}
     averages.sort(key=lambda avg: rank_order.get(avg.rank, 99))
-    if len(averages) <= 2:
-        return averages
-
-    if score >= averages[0].avg_ex_score:
-        return averages[:2]
-    if score <= averages[-1].avg_ex_score:
-        return [averages[-1], averages[-2]]
-
-    for high, low in zip(averages, averages[1:]):
-        if high.avg_ex_score >= score >= low.avg_ex_score:
-            return [high, low]
-
-    averages.sort(key=lambda avg: abs(avg.avg_ex_score - score))
-    return averages[:2]
+    return averages
 
 
 def _extract_arena_averages(data: dict, score:int) -> list[BpiArenaAverage]:
-    """BPIM2 APIレスポンスから近いランク平均を取り出す。"""
+    """BPIM2 APIレスポンスからアリーナランク平均を取り出す。"""
     metadata = data.get('metadata') or {}
     candidates = [
         metadata.get('arenaAverages'),
@@ -100,7 +87,7 @@ def _extract_arena_averages(data: dict, score:int) -> list[BpiArenaAverage]:
     ]
     for candidate in candidates:
         if isinstance(candidate, dict):
-            averages = _nearest_arena_averages(candidate, score)
+            averages = _arena_averages(candidate)
             if averages:
                 return averages
     return []
@@ -522,6 +509,7 @@ class DetailedResult():
         bpim2 = self._get_bpim2_bpi_detail()
         if bpim2 and bpim2.value is not None:
             self.result.bpim2 = bpim2.value
+            self.result.bpim2_arena_averages = bpim2.arena_averages
             self._bpi_detail = bpim2
             return self._bpi_detail
 
@@ -541,6 +529,7 @@ class DetailedResult():
         bpim2 = self._get_bpim2_bpi_detail()
         if bpim2 and bpim2.value is not None:
             self.result.bpim2 = bpim2.value
+            self.result.bpim2_arena_averages = bpim2.arena_averages
             return bpim2
         if saved_bpim2 is not None:
             return BpiDetail(
