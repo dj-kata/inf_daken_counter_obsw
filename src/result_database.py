@@ -1177,6 +1177,9 @@ class ResultDatabase:
                 "pre_bp": r.result.pre_bp if r.result.pre_bp is not None else 0,
                 "opt": r.result.option.__str__() if r.result.option else "",
             }
+            image_url = self._mobile_result_image_url(r.result)
+            if image_url:
+                item["image_url"] = image_url
 
             bpim2 = getattr(r.result, "bpim2", None)
             if bpim2 is not None:
@@ -1373,11 +1376,44 @@ class ResultDatabase:
             "opt": str(result.option) if result.option else "",
             "dead": bool(result.dead),
         }
+        image_url = self._mobile_result_image_url(result)
+        if image_url:
+            data["image_url"] = image_url
         data.update(_extract_songinfo_fields(songinfo))
         return data
 
     def _mobile_result_items(self, results: list[OneResult]) -> list[dict]:
         return [self._serialize_mobile_result(r) for r in results if r.detect_mode == detect_mode.result]
+
+    def _mobile_result_image_url(self, result: OneResult) -> str:
+        image_path = getattr(result, "image_path", None)
+        if not image_path:
+            return ""
+        try:
+            path = Path(image_path)
+            if not path.exists() or not path.is_file():
+                return ""
+        except Exception:
+            return ""
+        return f"/api/result-images/{int(result.timestamp)}"
+
+    def get_mobile_result_image_path(self, timestamp: int) -> Path | None:
+        timestamp = _to_int_or_none(timestamp)
+        if timestamp is None:
+            return None
+        for result in self.results:
+            if result.timestamp != timestamp:
+                continue
+            image_path = getattr(result, "image_path", None)
+            if not image_path:
+                continue
+            try:
+                path = Path(image_path).resolve()
+                if path.exists() and path.is_file():
+                    return path
+            except Exception:
+                continue
+        return None
 
     def _mobile_bpi_near_averages_for_chart(self, chart_id: str) -> list[dict]:
         if not chart_id:

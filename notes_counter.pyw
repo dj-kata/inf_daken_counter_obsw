@@ -508,6 +508,9 @@ class MainWindow(MainWindowUI):
             full_path = Path(self.config.image_save_path) / filename
             logger.info(f"autosaved! dst = {full_path}")
             screen.save(full_path)
+            if self.screen_reader.is_result() and detailed_result and detailed_result.result:
+                detailed_result.result.image_path = str(full_path)
+                self.result_database.save()
             self.statusBar().showMessage(f"保存しました -> {filename}", 10000)
             return True
             

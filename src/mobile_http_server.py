@@ -163,6 +163,14 @@ class MobileScoreHTTPServer:
                 if path == "/api/folders/current":
                     self._send_json(result_database.get_mobile_current_folder_data())
                     return
+                if path.startswith("/api/result-images/"):
+                    timestamp = path.rsplit("/", 1)[-1]
+                    image_path = result_database.get_mobile_result_image_path(int(timestamp))
+                    if image_path is None:
+                        self._send_error(HTTPStatus.NOT_FOUND, "image not found")
+                    else:
+                        self._send_file(image_path)
+                    return
                 if path.startswith("/api/charts/"):
                     chart_id = path.rsplit("/", 1)[-1]
                     data = result_database.get_mobile_chart_detail_data(chart_id)

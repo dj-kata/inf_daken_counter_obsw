@@ -375,6 +375,19 @@
     .arena-diff.positive { color: var(--green); }
     .arena-diff.negative { color: var(--red); }
     .receipt-arena { margin: 0 0 8px 0; padding-left: 10px; }
+    .image-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 42px;
+      min-height: 28px;
+      border: 1px solid color-mix(in srgb, var(--blue), var(--line) 40%);
+      border-radius: 6px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+      text-decoration: none;
+    }
     .section { margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); overflow: hidden; }
     .section-title { display: flex; justify-content: space-between; gap: 10px; min-height: 36px; align-items: center; border-bottom: 1px solid var(--line); padding: 0 12px; font-size: 13px; font-weight: 850; text-transform: uppercase; }
     .section-title span { color: var(--muted); font-size: 11px; }
@@ -823,7 +836,8 @@
       return `<div class="row">${lampHtml(item.lamp, item.lamp_text)}<div><b>${item.rank}. ${escapeText(item.player)}</b><span>${escapeText(item.option || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}</span></div></div>`;
     }
     function logRow(item) {
-      return `<div class="row">${lampHtml(item.lamp, item.lamp_text)}<div><b>${escapeText(item.date)}</b><span>${escapeText(item.opt || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)} / ${escapeText(item.bpi || "-")}</span></div></div>`;
+      const image = item.image_url ? `<a class="image-link" href="${escapeText(item.image_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">IMG</a>` : lampHtml(item.lamp, item.lamp_text);
+      return `<div class="row">${image}<div><b>${escapeText(item.date)}</b><span>${escapeText(item.opt || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)} / ${escapeText(item.bpi || "-")}</span></div></div>`;
     }
     function renderError(e) { $("content").innerHTML = `<div class="error">${escapeText(e.message || e)}</div>`; }
 

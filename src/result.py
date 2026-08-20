@@ -322,6 +322,7 @@ class OneResult:
                     dead:bool=None,
                     average_release:average_release=None,
                     bpim2:float=None,
+                    image_path:str=None,
                 ):
         self.title = title
         '''曲名'''
@@ -360,6 +361,8 @@ class OneResult:
         '''平均リリース時間のログ。Otoge Input Viewerと連携する時のために準備している。'''
         self.bpim2 = bpim2
         '''BPIM2 APIから取得したBPI値。未取得または未対応の場合はNone。'''
+        self.image_path = image_path
+        '''保存済みリザルト画像のパス。画像本体ではなくパス文字列だけを保持する。'''
 
     def is_updated(self) -> bool:
         """更新があるかどうかを返す
