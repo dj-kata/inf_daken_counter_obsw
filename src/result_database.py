@@ -736,6 +736,7 @@ class ResultDatabase:
                 )
 
         data = {
+            "start_time": start_time,
             "playcount": len(target),
             "today_notes": total.pg + total.gr + total.gd + total.bd,
             "today_score_rate": f"{total.score_rate * 100:.2f}%",
@@ -787,8 +788,15 @@ class ResultDatabase:
                 None,
                 songinfo.level if hasattr(songinfo, "level") else None,
             )
+            lamp = r.lamp or clear_lamp.noplay
 
             item = {
+                "chart_id": calc_chart_id(
+                    r.title,
+                    r.play_style,
+                    r.difficulty,
+                    battle=r.option.battle if r.option else False,
+                ),
                 "lv": str(songinfo.level) if hasattr(songinfo, "level") else "",
                 "enable_katate_difficulty_display": bool(
                     self.config and getattr(self.config, "enable_katate_difficulty_display", False)
@@ -799,10 +807,12 @@ class ResultDatabase:
                 "score": r.score,
                 "bp": r.judge.pr + r.judge.bd if r.judge else r.bp,
                 "dead": bool(r.dead),
-                "lamp": r.lamp.value,
+                "lamp": lamp.value,
+                "lamp_text": self._lamp_text(lamp),
                 "pre_score": r.pre_score if r.pre_score is not None else 0,
                 "pre_bp": r.pre_bp if r.pre_bp is not None else 0,
                 "pre_lamp": r.pre_lamp.value if r.pre_lamp is not None else 0,
+                "pre_lamp_text": self._lamp_text(r.pre_lamp),
                 "opt": r.option.__str__() if r.option else "",
                 "battle": r.option.battle if r.option else 0,
                 "playspeed": r.playspeed if r.playspeed else 1.0,
@@ -829,6 +839,7 @@ class ResultDatabase:
             items.append(item)
 
         return {
+            "start_time": start_time,
             "enable_katate_difficulty_display": bool(
                 self.config and getattr(self.config, "enable_katate_difficulty_display", False)
             ),
@@ -1089,6 +1100,7 @@ class ResultDatabase:
                 datetime.datetime.fromtimestamp(last_played_time).strftime("%Y/%m/%d")
             ),
             "best_lamp": best_lamp,
+            "best_lamp_text": self._lamp_text(clear_lamp(best_lamp)),
             "best_lamp_opt": best_lamp_opt.__str__() if best_lamp_opt else "",
             "best_bp": best_bp,
             "best_bp_opt": best_bp_opt.__str__() if best_bp_opt else "",
@@ -1142,6 +1154,7 @@ class ResultDatabase:
                     )
                 ),
                 "lamp": r.result.lamp.value,
+                "lamp_text": self._lamp_text(r.result.lamp),
                 "score": r.result.score,
                 "score_rate": r.result.score / r.result.notes / 2
                 if r.result.notes
@@ -1181,6 +1194,7 @@ class ResultDatabase:
             {
                 "player": "(ME)",
                 "lamp": best_lamp,
+                "lamp_text": self._lamp_text(clear_lamp(best_lamp)),
                 "score": best_score,
                 "bp": best_bp,
                 "option": best_score_opt.__str__() if best_score_opt else "",
@@ -1193,6 +1207,7 @@ class ResultDatabase:
                     {
                         "player": rival_name,
                         "lamp": entry.lamp.value,
+                        "lamp_text": self._lamp_text(entry.lamp),
                         "score": entry.score,
                         "bp": entry.bp,
                         "option": entry.option,  # None → HTML側で"?"を表示
@@ -1228,6 +1243,16 @@ class ResultDatabase:
     def _today_start_timestamp() -> int:
         today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         return int(today.timestamp())
+
+    def _mobile_receipt_start_timestamp(self) -> int:
+        """receiptで使う開始時刻。アプリ側のオフセット込みtoday範囲を優先する。"""
+        for attr in ("today_updates_data", "graph_data", "today_stats_data"):
+            data = getattr(self.ws_server, attr, None) if self.ws_server else None
+            start_time = _to_int_or_none(data.get("start_time") if isinstance(data, dict) else None)
+            if start_time is not None:
+                return start_time
+        offset_hours = _to_int_or_none(getattr(self.config, "autoload_offset", 0) if self.config else 0) or 0
+        return self._today_start_timestamp() - offset_hours * 3600
 
     def _songinfo_for_result(self, result: OneResult):
         return self.song_database.search(
@@ -1422,32 +1447,56 @@ class ResultDatabase:
         }
 
     def get_mobile_receipt_data(self) -> dict:
-        start = self._today_start_timestamp()
-        today_results = [
-            r for r in reversed(self.results)
-            if r.timestamp >= start and r.detect_mode == detect_mode.result
+        start = self._mobile_receipt_start_timestamp()
+        graph_data = self.get_graph_data(start)
+        updates_data = self.get_today_updates_data(start)
+        items = updates_data.get("items", [])
+
+        def bpi_value(item):
+            return _to_float_or_none(item.get("bpi"))
+
+        def valid_previous_bp(item):
+            pre_bp = _to_int_or_none(item.get("pre_bp"))
+            return pre_bp is not None and 0 < pre_bp < 99999
+
+        top_bpi_items = sorted(
+            [item for item in items if bpi_value(item) is not None],
+            key=lambda item: bpi_value(item),
+            reverse=True,
+        )[:20]
+        score_updates = [
+            item for item in items
+            if (_to_int_or_none(item.get("score")) or 0) > (_to_int_or_none(item.get("pre_score")) or 0)
         ]
-        today_notes_judge = Judge()
-        for result in reversed(self.results):
-            if result.timestamp < start:
-                break
-            if result.detect_mode == detect_mode.play and result.judge:
-                today_notes_judge += result.judge
-        items = self._mobile_result_items(today_results[:50])
-        top_bpi = ""
-        for item in items:
-            try:
-                value = float(item.get("bpi"))
-            except (TypeError, ValueError):
-                continue
-            if top_bpi == "" or value > float(top_bpi):
-                top_bpi = f"{value:.2f}"
+        lamp_updates = [
+            item for item in items
+            if (_to_int_or_none(item.get("lamp")) or 0) > (_to_int_or_none(item.get("pre_lamp")) or 0)
+        ]
+        bp_updates = [
+            item for item in items
+            if not item.get("dead")
+            and valid_previous_bp(item)
+            and (_to_int_or_none(item.get("bp")) or 99999) < (_to_int_or_none(item.get("pre_bp")) or 99999)
+        ]
+        current = self.get_mobile_current_folder_data()
+        current_detail = current.get("detail")
+        top_bpi = top_bpi_items[0].get("bpi") if top_bpi_items else ""
         return {
             "folder": {"id": "receipt", "label": "RECEIPT"},
-            "today_notes": today_notes_judge.notes,
-            "score_rate": f"{today_notes_judge.score_rate * 100:.2f}%",
+            "start_time": start,
+            "start_time_text": self._timestamp_text(start),
+            "play_count": graph_data.get("playcount", len(items)),
+            "song_count": len(items),
+            "today_notes": graph_data.get("today_notes", 0),
+            "score_rate": graph_data.get("today_score_rate", "0.00%"),
             "top_bpi": top_bpi,
-            "items": items,
+            "items": items[:20],
+            "top_bpi_items": top_bpi_items,
+            "score_updates": score_updates,
+            "lamp_updates": lamp_updates,
+            "bp_updates": bp_updates,
+            "current_detail": current_detail,
+            "rival_items": current_detail.get("rival_items", []) if current_detail else [],
         }
 
     def get_mobile_daily_folders_data(self) -> dict:

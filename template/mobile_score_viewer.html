@@ -186,6 +186,9 @@
     .row b { display: block; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .row span { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
     .row-score { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .row[data-chart] { cursor: pointer; }
+    .delta { color: var(--green); font-weight: 850; }
+    .bad-delta { color: var(--red); font-weight: 850; }
     .load-more { width: 100%; height: 44px; margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); color: var(--text); }
     @media (min-width: 720px) {
       main { max-width: 920px; width: 100%; margin: 0 auto; }
@@ -328,15 +331,70 @@
 
     function renderReceipt(data) {
       setTitle(data.folder.label);
-      setStats([["NOTES", fmt(data.today_notes)], ["TOP BPI", data.top_bpi || "-"], ["PLAYS", data.items.length]]);
+      const logs = data.items || [];
+      const topBpi = data.top_bpi_items || [];
+      const scoreUpdates = data.score_updates || [];
+      const lampUpdates = data.lamp_updates || [];
+      const bpUpdates = data.bp_updates || [];
+      const current = data.current_detail;
+      const rivals = data.rival_items || [];
+      setStats([["SONGS", fmt(data.song_count)], ["RATE", data.score_rate || "-"], ["NOTES", fmt(data.today_notes)]]);
       const top = `<section class="metrics">
-        <div class="metric"><span>TODAY NOTES</span><strong>${fmt(data.today_notes)}</strong></div>
-        <div class="metric"><span>TOP BPI</span><strong>${escapeText(data.top_bpi || "-")}</strong></div>
-        <div class="metric"><span>PLAY COUNT</span><strong>${data.items.length}</strong></div>
+        <div class="metric"><span>SONGS</span><strong>${fmt(data.song_count)}</strong></div>
         <div class="metric"><span>SCORE RATE</span><strong>${escapeText(data.score_rate || "-")}</strong></div>
+        <div class="metric"><span>NOTES</span><strong>${fmt(data.today_notes)}</strong></div>
+        <div class="metric featured"><span>TOP BPI</span><strong>${escapeText(data.top_bpi || "-")}</strong></div>
       </section>`;
-      $("content").innerHTML = `${top}<div class="song-list">${data.items.length ? data.items.map(songCell).join("") : '<div class="empty">NO DATA</div>'}</div>`;
+      $("content").innerHTML = `${top}
+        ${receiptSection("Play Log", `${logs.length} / ${fmt(data.song_count)} songs`, logs, receiptSongRow)}
+        ${receiptSection("Top BPI", `${topBpi.length} charts`, topBpi, receiptBpiRow)}
+        ${receiptSection("Score Updates", `${scoreUpdates.length} charts`, scoreUpdates, receiptScoreUpdateRow)}
+        ${receiptSection("Lamp Updates", `${lampUpdates.length} charts`, lampUpdates, receiptLampUpdateRow)}
+        ${receiptSection("BP Updates", `${bpUpdates.length} charts`, bpUpdates, receiptBpUpdateRow)}
+        ${receiptCurrentBest(current)}
+        <section class="section">
+          <div class="section-title">Rivals <span>${rivals.length} players</span></div>
+          <div class="section-body">${rivals.length ? rivals.map(rivalRow).join("") : '<div class="empty">NO DATA</div>'}</div>
+        </section>`;
       document.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
+    }
+
+    function receiptSection(title, count, rows, rowRenderer) {
+      return `<section class="section">
+        <div class="section-title">${escapeText(title)} <span>${escapeText(count)}</span></div>
+        <div class="section-body">${rows.length ? rows.map(rowRenderer).join("") : '<div class="empty">NO DATA</div>'}</div>
+      </section>`;
+    }
+    function receiptTitle(item) {
+      return `<b>Lv${escapeText(item.lv || "")} ${escapeText(item.title)} [${escapeText(item.difficulty || "")}]</b>`;
+    }
+    function receiptSongRow(item) {
+      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}">${lampHtml(item.lamp, item.lamp_text)}<div>${receiptTitle(item)}<span>${escapeText(item.opt || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)} / ${escapeText(item.bpi || "-")}</span></div></div>`;
+    }
+    function receiptBpiRow(item) {
+      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="row-score">${escapeText(item.bpi || "-")}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${escapeText(item.rankdiff || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}</span></div></div>`;
+    }
+    function receiptScoreUpdateRow(item) {
+      const delta = (Number(item.score) || 0) - (Number(item.pre_score) || 0);
+      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="delta">+${fmt(delta)}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${escapeText(item.rankdiff || "")}</span></div><div class="row-score">${fmt(item.score)}<span>prev ${fmt(item.pre_score)}</span></div></div>`;
+    }
+    function receiptLampUpdateRow(item) {
+      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}">${lampHtml(item.lamp, item.lamp_text)}<div>${receiptTitle(item)}<span>from ${escapeText(item.pre_lamp_text || item.pre_lamp || "")}</span></div><div class="row-score">${fmt(item.score)}<span>BP ${fmt(item.bp)}</span></div></div>`;
+    }
+    function receiptBpUpdateRow(item) {
+      const delta = (Number(item.pre_bp) || 0) - (Number(item.bp) || 0);
+      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="delta">-${fmt(delta)}</div><div>${receiptTitle(item)}<span>${escapeText(item.opt || "")}</span></div><div class="row-score">BP ${fmt(item.bp)}<span>prev ${fmt(item.pre_bp)}</span></div></div>`;
+    }
+    function receiptCurrentBest(data) {
+      if (!data) {
+        return `<section class="section"><div class="section-title">Current Best <span>no current song</span></div><div class="section-body"><div class="empty">NO CURRENT SONG</div></div></section>`;
+      }
+      return `<section class="section">
+        <div class="section-title">Current Best <span>${escapeText(data.difficulty || "")}</span></div>
+        <div class="section-body">
+          <div class="row" data-chart="${escapeText(data.chart_id || "")}">${lampHtml(data.best_lamp, data.best_lamp_text)}<div><b>${escapeText(data.music || data.title || "")}</b><span>Lv${escapeText(data.lv || "")} / NOTES ${fmt(data.notes)}</span></div><div class="row-score">${fmt(data.best_score)}<span>BP ${fmt(data.best_bp)} / ${escapeText(data.best_bpi || "-")}</span></div></div>
+        </div>
+      </section>`;
     }
 
     function renderDetail(data, options = {}) {
