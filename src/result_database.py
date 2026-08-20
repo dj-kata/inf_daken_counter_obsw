@@ -21,6 +21,9 @@ from pathlib import Path
 from typing import Dict, List
 import copy
 import threading
+from io import BytesIO
+
+from PIL import Image
 
 
 def _to_int_or_none(value):
@@ -66,6 +69,10 @@ def _split_mobile_chart_id(chart_id: str) -> tuple[str, bool | None]:
     if isinstance(chart_id, str) and chart_id.startswith("dbx:"):
         return chart_id[4:], True
     return chart_id, None
+
+
+def _mobile_result_image_id(index: int, result: OneResult) -> str:
+    return f"{index}-{int(result.timestamp)}"
 
 
 def _ws_broadcast(ws_method_name: str):
@@ -1555,6 +1562,7 @@ class ResultDatabase:
                         }
                     )
         result_count = sum(1 for r in self.results if r.detect_mode == detect_mode.result)
+        saved_image_count = len(self._mobile_saved_image_results())
         today_notes = self._notes_since(self._mobile_receipt_start_timestamp())
         current = self.get_mobile_current_folder_data()
         daily_count = len(self._notes_by_date())
@@ -1567,11 +1575,149 @@ class ResultDatabase:
             "katate": katate_folders,
             "special": [
                 {"id": "history", "label": "PLAY HISTORY", "count": result_count, "count_label": f"{result_count} plays"},
+                {"id": "saved-images", "label": "SAVED IMAGES", "count": saved_image_count, "count_label": f"{saved_image_count} images"},
                 {"id": "receipt", "label": "RECEIPT", "count": today_notes, "count_label": f"{today_notes:,} notes"},
                 {"id": "daily", "label": "DAILY LOG", "count": daily_count, "count_label": f"{daily_count} days"},
                 {"id": "current", "label": "CURRENT SONG", "count": len(current.get("items", [])), "count_label": "live"},
             ],
         }
+
+    def _mobile_saved_image_results(self) -> list[tuple[int, OneResult]]:
+        items = []
+        for index, result in enumerate(self.results):
+            if result.detect_mode != detect_mode.result:
+                continue
+            image_path = getattr(result, "image_path", None)
+            if not image_path:
+                continue
+            try:
+                path = Path(image_path)
+                if path.exists() and path.is_file():
+                    items.append((index, result))
+            except Exception:
+                continue
+        return items
+
+    def _mobile_result_by_image_id(self, image_id: str) -> OneResult | None:
+        try:
+            index_text, timestamp_text = str(image_id).split("-", 1)
+            index = int(index_text)
+            timestamp = int(timestamp_text)
+        except (TypeError, ValueError):
+            return None
+        if index < 0 or index >= len(self.results):
+            return None
+        result = self.results[index]
+        if result.timestamp != timestamp or result.detect_mode != detect_mode.result:
+            return None
+        image_path = getattr(result, "image_path", None)
+        if not image_path:
+            return None
+        try:
+            path = Path(image_path)
+            if path.exists() and path.is_file():
+                return result
+        except Exception:
+            return None
+        return None
+
+    def get_mobile_saved_images_data(self) -> dict:
+        items = []
+        for index, result in reversed(self._mobile_saved_image_results()):
+            item = self._serialize_mobile_result(result)
+            item["image_id"] = _mobile_result_image_id(index, result)
+            items.append(item)
+        return {
+            "folder": {"id": "saved-images", "label": "SAVED IMAGES"},
+            "items": items,
+            "notes": sum(_to_int_or_none(item.get("notes")) or 0 for item in items),
+        }
+
+    def generate_mobile_combined_result_image(self, image_ids: list[str]) -> bytes | None:
+        logger.info(f"投稿用画像生成リクエスト: requested={len(image_ids)}, ids={','.join(map(str, image_ids))}")
+        results = []
+        seen = set()
+        for image_id in image_ids:
+            if image_id in seen:
+                logger.debug(f"投稿用画像生成: 重複IDをスキップ id={image_id}")
+                continue
+            seen.add(image_id)
+            result = self._mobile_result_by_image_id(image_id)
+            if result is not None:
+                results.append(result)
+            else:
+                logger.warning(f"投稿用画像生成: リザルト画像IDが見つかりません id={image_id}")
+        if not results:
+            logger.warning("投稿用画像生成: 有効な画像がありません")
+            return None
+
+        logger.info(f"投稿用画像生成開始: {len(results)}枚")
+        images = []
+        for i, result in enumerate(results):
+            try:
+                with Image.open(getattr(result, "image_path")) as image:
+                    logger.info(
+                        f"投稿用画像読み込み: index={i}, path={getattr(result, 'image_path', '')}, "
+                        f"size={image.width}x{image.height}, mode={image.mode}"
+                    )
+                    images.append(image.convert("RGB"))
+            except Exception as e:
+                logger.error(f"投稿用画像の読み込み失敗: {getattr(result, 'image_path', '')} {e}\n{traceback.format_exc()}")
+        if not images:
+            logger.warning("投稿用画像生成: 読み込めた画像がありません")
+            return None
+
+        count = len(images)
+        cols = math.ceil(math.sqrt(count))
+        rows = math.ceil(count / cols)
+        if count == 2:
+            cols, rows = 2, 1
+
+        cell_width = max(image.width for image in images)
+        cell_height = max(image.height for image in images)
+        canvas_width = cell_width * cols
+        canvas_height = cell_height * rows
+        max_side = 4096
+        scale = min(1.0, max_side / max(canvas_width, canvas_height))
+        if scale < 1.0:
+            cell_width = max(1, int(cell_width * scale))
+            cell_height = max(1, int(cell_height * scale))
+            canvas_width = cell_width * cols
+            canvas_height = cell_height * rows
+        logger.info(
+            f"投稿用画像キャンバス: count={count}, cols={cols}, rows={rows}, "
+            f"cell={cell_width}x{cell_height}, canvas={canvas_width}x{canvas_height}, scale={scale:.4f}"
+        )
+
+        canvas = Image.new("RGB", (canvas_width, canvas_height), (0, 0, 0))
+        if hasattr(Image, "Resampling"):
+            resampling_filter = Image.Resampling.LANCZOS
+        else:
+            resampling_filter = Image.LANCZOS
+        for i, image in enumerate(images):
+            ratio = min(cell_width / image.width, cell_height / image.height)
+            resized = image.resize(
+                (max(1, int(image.width * ratio)), max(1, int(image.height * ratio))),
+                resampling_filter,
+            )
+            x = (i % cols) * cell_width + (cell_width - resized.width) // 2
+            y = (i // cols) * cell_height + (cell_height - resized.height) // 2
+            canvas.paste(resized, (x, y))
+            logger.debug(
+                f"投稿用画像貼り付け: index={i}, source={image.width}x{image.height}, "
+                f"resized={resized.width}x{resized.height}, pos={x},{y}"
+            )
+
+        target_size = 4_800_000
+        for quality in (90, 86, 82, 78, 74, 70):
+            output = BytesIO()
+            canvas.save(output, format="JPEG", quality=quality, optimize=True)
+            body = output.getvalue()
+            output.close()
+            if len(body) <= target_size or quality == 70:
+                logger.info(f"投稿用画像生成完了: {canvas_width}x{canvas_height}, {len(body)} bytes, quality={quality}")
+                return body
+        return None
 
     def get_mobile_level_folder_data(self, level: int, style_text: str | None = None, battle_only: bool = False) -> dict:
         style_value = None

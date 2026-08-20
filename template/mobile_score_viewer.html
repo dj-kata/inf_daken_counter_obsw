@@ -309,6 +309,41 @@
     .title-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: 800; }
     .meta { margin-top: 5px; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .score-block { text-align: right; min-width: 92px; display: grid; gap: 3px; justify-items: end; }
+    .song-cell.level-cell.selectable {
+      grid-template-columns: 30px minmax(0, 1fr) auto;
+      padding-left: 0;
+      border-color: var(--line);
+    }
+    .song-cell.selectable.selected {
+      border-color: color-mix(in srgb, var(--green), var(--line) 25%);
+      background: color-mix(in srgb, var(--green), var(--panel) 88%);
+    }
+    .select-rail {
+      align-self: stretch;
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+    }
+    .select-mark {
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: transparent;
+      font-size: 12px;
+      font-weight: 950;
+    }
+    .selected .select-mark {
+      border-color: color-mix(in srgb, var(--green), #ffffff 16%);
+      background: var(--green);
+      color: #07120c;
+    }
     .lamp-wrap { display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; }
     .lamp-box { display: inline-block; width: 24px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.18); }
     .lamp-name { color: var(--muted); font-size: 10px; font-weight: 800; line-height: 1; white-space: nowrap; }
@@ -556,6 +591,31 @@
     .delta { color: var(--green); font-weight: 850; }
     .bad-delta { color: var(--red); font-weight: 850; }
     .load-more { width: 100%; height: 44px; margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); color: var(--text); }
+    .selection-action {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 20;
+      padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+      border-top: 1px solid var(--line);
+      background: rgba(16, 18, 20, 0.94);
+      backdrop-filter: blur(14px);
+    }
+    .selection-action[hidden] { display: none; }
+    .selection-action button {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid color-mix(in srgb, var(--green), var(--line) 35%);
+      border-radius: 8px;
+      background: #1b2b22;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 900;
+    }
+    body.selection-mode main {
+      padding-bottom: max(92px, calc(76px + env(safe-area-inset-bottom)));
+    }
     .tweet-btn {
       width: 100%;
       min-height: 42px;
@@ -594,7 +654,7 @@
   </div>
 
   <script>
-    const state = { view: "home", stack: [], allItems: [], listVariant: "", levelSort: "title", levelSortEnabled: false, historyOffset: 0, historyTotal: 0, currentTimer: null, receiptTimer: null, dailyMode: "daily" };
+    const state = { view: "home", stack: [], allItems: [], listVariant: "", levelSort: "title", levelSortEnabled: false, selectedImageIds: new Set(), savedImagesNotes: 0, historyOffset: 0, historyTotal: 0, currentTimer: null, receiptTimer: null, dailyMode: "daily" };
     const HISTORY_BASE = "inf-mobile-base";
     const HISTORY_APP = "inf-mobile-view";
     const $ = (id) => document.getElementById(id);
@@ -637,8 +697,13 @@
       if (state.receiptTimer) clearInterval(state.receiptTimer);
       state.receiptTimer = null;
     }
+    function clearSelectionMode() {
+      state.selectedImageIds.clear();
+      document.body.classList.remove("selection-mode");
+    }
 
     function renderHome(data) {
+      clearSelectionMode();
       clearCurrentTimer();
       state.view = "home";
       setTitle("INFINITAS");
@@ -655,6 +720,7 @@
     }
 
     function renderList(label, items, options = {}) {
+      clearSelectionMode();
       state.allItems = items;
       state.listVariant = options.variant || "";
       state.levelSortEnabled = Boolean(options.sortControls);
@@ -670,6 +736,20 @@
         }
       }));
       drawSongList(sortListItems(items));
+    }
+    function renderSavedImagesList(data) {
+      state.allItems = data.items || [];
+      state.listVariant = "saved-images";
+      state.levelSortEnabled = false;
+      state.savedImagesNotes = data.notes || 0;
+      state.selectedImageIds.clear();
+      document.body.classList.add("selection-mode");
+      setTitle(data.folder.label);
+      setStats([["IMAGES", state.allItems.length], ["SELECTED", 0], ["NOTES", fmt(data.notes || 0)]]);
+      $("content").innerHTML = `<div class="toolbar"><input id="search" class="search" placeholder="Search" autocomplete="off"></div><div id="songList" class="song-list"></div><div id="selectionAction" class="selection-action" hidden><button id="combineImagesBtn" type="button">CREATE POST IMAGE</button></div>`;
+      $("search").addEventListener("input", applySavedImagesFilter);
+      $("combineImagesBtn").addEventListener("click", openCombinedResultImage);
+      drawSavedImagesList(state.allItems);
     }
     function levelSortControls() {
       const options = [
@@ -715,6 +795,57 @@
       node.innerHTML = items.map(songCell).join("");
       node.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
       bindImageButtons(node);
+    }
+    function applySavedImagesFilter() {
+      const q = $("search").value.trim().toLowerCase();
+      const items = q ? state.allItems.filter((item) => String(item.title || "").toLowerCase().includes(q)) : state.allItems;
+      drawSavedImagesList(items);
+    }
+    function drawSavedImagesList(items) {
+      const node = $("songList");
+      if (!items.length) {
+        node.innerHTML = `<div class="empty">NO DATA</div>`;
+        updateSelectionAction();
+        return;
+      }
+      node.innerHTML = items.map(savedImageCell).join("");
+      node.querySelectorAll("[data-image-id]").forEach((button) => button.addEventListener("click", () => {
+        const imageId = button.dataset.imageId;
+        if (state.selectedImageIds.has(imageId)) state.selectedImageIds.delete(imageId);
+        else state.selectedImageIds.add(imageId);
+        drawSavedImagesList(items);
+      }));
+      bindImageButtons(node);
+      updateSelectionAction();
+    }
+    function savedImageCell(item) {
+      const selected = state.selectedImageIds.has(String(item.image_id));
+      const score = item.score ?? item.best_score;
+      const bp = item.bp ?? item.best_bp;
+      return `<button class="song-cell level-cell selectable ${selected ? "selected" : ""}" data-image-id="${escapeText(item.image_id || "")}">
+        <span class="select-rail"><span class="select-mark">✓</span></span>
+        <div class="level-main">
+          <div class="title"><span class="title-name">${escapeText(item.title)}</span><span class="title-diff">[${escapeText(item.difficulty || "")}]</span></div>
+          <div class="meta">${levelSubInfoHtml(item, score, bp, { showLevelMarker: true })}</div>
+        </div>
+        <div class="level-score"><div class="rankdiff">${rankDiffHtml(item, "-")}</div><div class="rate">${pct(item.score_rate)}</div></div>
+      </button>`;
+    }
+    function updateSelectionAction() {
+      const count = state.selectedImageIds.size;
+      const action = $("selectionAction");
+      const button = $("combineImagesBtn");
+      if (action) action.hidden = count === 0;
+      if (button) button.textContent = `CREATE POST IMAGE (${count})`;
+      if (state.listVariant === "saved-images") {
+        setStats([["IMAGES", state.allItems.length], ["SELECTED", count], ["NOTES", fmt(state.savedImagesNotes || 0)]]);
+      }
+    }
+    function openCombinedResultImage() {
+      const ids = [...state.selectedImageIds];
+      if (!ids.length) return;
+      const query = ids.map(encodeURIComponent).join(",");
+      window.open(`/api/combined-result-image?ids=${query}`, "_blank", "noopener");
     }
     function songCell(item) {
       const score = item.score ?? item.best_score;
@@ -804,6 +935,7 @@
     }
 
     function renderPlainList(label, rows, options = {}) {
+      clearSelectionMode();
       setTitle(label);
       setStats(options.stats || [["ITEMS", rows.length], ["NOTES", fmt(options.notes || 0)], ["", ""]]);
       $("content").innerHTML = `${options.before || ""}<div class="plain-list">${rows.length ? rows.map(options.row).join("") : '<div class="empty">NO DATA</div>'}</div>`;
@@ -849,6 +981,7 @@
     }
 
     function renderReceipt(data) {
+      clearSelectionMode();
       const openSections = {};
       document.querySelectorAll("details[data-section]").forEach((section) => {
         openSections[section.dataset.section] = section.open;
@@ -1049,6 +1182,7 @@
     }
 
     function renderDetail(data, options = {}) {
+      clearSelectionMode();
       setTitle(options.title || data.music || data.title || "DETAIL");
       const logs = data.items || [];
       const rivals = data.rival_items || [];
@@ -1084,6 +1218,7 @@
       bindImageButtons($("content"));
     }
     function renderCurrentSong(data) {
+      clearSelectionMode();
       state.view = "current";
       setTitle("CURRENT SONG");
       if (!data.detail) {
@@ -1114,6 +1249,9 @@
           state.historyOffset = data.items.length;
           state.historyTotal = data.total;
           renderList(data.folder.label, data.items, { loadMore: data.items.length < data.total, variant: "compact" });
+        } else if (id === "saved-images") {
+          state.view = "saved-images";
+          renderSavedImagesList(await api("/api/folders/saved-images"));
         } else if (id === "receipt") {
           state.view = "receipt";
           renderReceipt(await api("/api/folders/receipt"));
