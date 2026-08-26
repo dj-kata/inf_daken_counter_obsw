@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>INFINITAS Scores</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
   <style>
     :root {
       color-scheme: dark;
@@ -516,6 +519,12 @@
     .arena-diff.positive { color: var(--green); }
     .arena-diff.negative { color: var(--red); }
     .receipt-arena { margin: 0 0 8px 0; padding-left: 10px; }
+    .receipt-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 0 0 12px;
+    }
     .image-link {
       display: inline-flex;
       align-items: center;
@@ -630,7 +639,24 @@
       color: var(--text);
       font-size: 14px;
       font-weight: 850;
-      margin: 0 0 12px;
+      margin: 0;
+    }
+    .receipt-actions .secondary-btn { min-height: 42px; margin: 0; }
+    .secondary-btn {
+      width: 100%;
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid color-mix(in srgb, var(--green), var(--line) 35%);
+      border-radius: 8px;
+      background: #17291f;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 850;
+    }
+    @media (max-width: 420px) {
+      .receipt-actions { grid-template-columns: 1fr; }
     }
     @media (min-width: 720px) {
       main { max-width: 920px; width: 100%; margin: 0 auto; }
@@ -1005,7 +1031,10 @@
         <div class="metric featured bpi"><span>TOP BPI</span><strong>${escapeText(data.top_bpi || "-")}</strong></div>
       </section>`;
       $("content").innerHTML = `${top}
-        <button id="tweetBtn" class="tweet-btn" type="button">Tweet</button>
+        <section class="receipt-actions">
+          <button id="summaryBtn" class="secondary-btn" type="button">Generate Summary</button>
+          <button id="tweetBtn" class="tweet-btn" type="button">Tweet</button>
+        </section>
         ${receiptSection("play-log", "Play Log", `${logs.length} / ${fmt(data.song_count)} songs`, logs, receiptSongRow, openSections)}
         ${receiptSection("top-bpi", "Top BPI", `${topBpi.length} charts`, topBpi, receiptBpiRow, openSections)}
         ${receiptSection("score-updates", "Score Updates", `${scoreUpdates.length} charts`, scoreUpdates, receiptScoreUpdateRow, openSections)}
@@ -1019,8 +1048,375 @@
       $("tweetBtn")?.addEventListener("click", () => {
         if (tweet.url) window.open(tweet.url, "_blank", "noopener");
       });
+      $("summaryBtn")?.addEventListener("click", () => openReceiptSummaryImage(data));
       document.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
       bindImageButtons($("content"));
+    }
+
+    async function openReceiptSummaryImage(data) {
+      if (!data.summary_stats) return;
+      if (document.fonts?.ready) {
+        await document.fonts.ready;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = 1500;
+      canvas.height = 2200;
+      const ctx = canvas.getContext("2d");
+      const height = drawSummaryCanvas(ctx, canvas.width, canvas.height, data);
+      const trimmed = document.createElement("canvas");
+      trimmed.width = canvas.width;
+      trimmed.height = height;
+      trimmed.getContext("2d").drawImage(canvas, 0, 0);
+      const url = trimmed.toDataURL("image/png");
+      const win = window.open("", "_blank");
+      if (!win) return;
+      win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Daily Summary</title><style>body{margin:0;background:#080816;display:flex;justify-content:center;}img{display:block;max-width:100%;height:auto;}</style></head><body><img src="${url}" alt="daily summary"></body></html>`);
+      win.document.close();
+    }
+
+    function drawSummaryCanvas(ctx, w, h, data) {
+      const stats = data.summary_stats || {};
+      ctx.fillStyle = "#10112a";
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#070711";
+      ctx.fillRect(10, 10, 465, h - 20);
+      ctx.fillStyle = "#111336";
+      ctx.fillRect(485, 10, w - 495, h - 20);
+
+      const panel = (x, y, ww, hh, title = "") => {
+        ctx.fillStyle = "#070711";
+        roundRect(ctx, x, y, ww, hh, 8, true, false);
+        ctx.strokeStyle = "#24294d";
+        ctx.lineWidth = 1;
+        roundRect(ctx, x, y, ww, hh, 8, false, true);
+        if (title) {
+          ctx.fillStyle = "#002777";
+          roundRect(ctx, x, y, ww, 47, 8, true, false);
+          ctx.strokeStyle = "#0058ad";
+          roundRect(ctx, x, y, ww, 47, 8, false, true);
+          drawText(ctx, title, x + 12, y + 32, 26, "#aaddff", "bold");
+        }
+      };
+
+      panel(10, 10, 465, 125);
+      drawText(ctx, stats.date || "", 55, 78, 58, "#ffffff", "bold");
+      drawText(ctx, "playcount", 25, 118, 28, "#aaddff", "bold");
+      drawText(ctx, fmt(stats.playcount || data.play_count || 0), 162, 118, 30, "#ffff66", "bold");
+      drawText(ctx, "score rate", 215, 118, 28, "#aaddff", "bold");
+      drawText(ctx, stats.score_rate || data.score_rate || "-", 360, 118, 30, "#ffff66", "bold");
+
+      panel(10, 145, 465, 265);
+      drawNotesBars(ctx, stats.daily_notes || [], 22, 175, 430, 150);
+      drawPeriodCards(ctx, stats.monthly_notes || [], stats.yearly_notes, 22, 354, 440);
+
+      panel(10, 423, 465, 430, "Lv Hist");
+      drawLevelHist(ctx, stats.today_level_distribution || {}, 22, 475, 440, 350);
+
+      panel(10, 863, 465, 780, "Lv stats");
+      drawLevelStats(ctx, stats.level_stats || {}, 22, 910, 440);
+
+      const topBottom = drawSummaryList(ctx, "Top BPI", data.top_bpi_items || [], 495, 18, 990, 415, (item) => [
+        levelTextForImage(item), fmt(item.score), pct(item.score_rate), item.rankdiff || "", visibleBpiText(item) || "", item.title || "",
+      ]);
+      const scoreBottom = drawSummaryList(ctx, "Score Updates", data.score_updates || [], 495, 445, 990, 205, (item) => [
+        levelTextForImage(item), fmt(item.score), pct(item.score_rate), item.rankdiff || "", "+" + fmt((Number(item.score) || 0) - (Number(item.pre_score) || 0)), item.title || "",
+      ]);
+      const lampBottom = drawSummaryGroupedUpdates(ctx, "Lamp updates", data.lamp_updates || [], 495, 663, 990, 465);
+      const bpY = Math.max(760, lampBottom + 18);
+      const bpBottom = drawSummaryList(ctx, "BP Updates", data.bp_updates || [], 495, bpY, 990, 95, (item) => [
+        levelTextForImage(item), fmt(item.bp), "-" + fmt((Number(item.pre_bp) || 0) - (Number(item.bp) || 0)), item.title || "",
+      ]);
+      const contentBottom = Math.max(1650, topBottom, scoreBottom, lampBottom, bpBottom) + 12;
+      ctx.fillStyle = "#10112a";
+      ctx.fillRect(0, contentBottom, w, h - contentBottom);
+      return Math.min(h, Math.ceil(contentBottom));
+    }
+
+    function drawText(ctx, text, x, y, size, color = "#fff", weight = "normal", align = "left") {
+      ctx.font = `${weight} ${size}px "RocknRoll One", system-ui, sans-serif`;
+      ctx.fillStyle = color;
+      ctx.textAlign = align;
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText(String(text ?? ""), x, y);
+    }
+
+    function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+
+    function drawNotesBars(ctx, dailyNotes, x, y, w, h) {
+      const rows = dailyNotes.slice(-7);
+      const totals = rows.map((d) => (Number(d.pg) || 0) + (Number(d.gr) || 0) + (Number(d.gd) || 0) + (Number(d.bd) || 0));
+      const maxTotal = Math.max(1, ...totals);
+      drawText(ctx, "Notes", x, y + 14, 19, "#aaddff", "bold");
+      rows.forEach((d, i) => {
+        const total = totals[i];
+        const bx = x + 15 + i * 62;
+        const bh = Math.round(total / maxTotal * 120);
+        drawText(ctx, fmt(total), bx + 15, y + 15 + (120 - bh), 16, "#ffff99", "bold", "center");
+        ctx.fillStyle = "#00a6ff";
+        ctx.fillRect(bx, y + 35 + (120 - bh), 30, bh);
+        ctx.fillStyle = "#00d4dd";
+        ctx.fillRect(bx, y + 35 + (120 - bh), 30, Math.round(bh * 0.25));
+        ctx.fillStyle = "#ffb300";
+        ctx.fillRect(bx, y + 35 + 120 - 12, 30, Math.min(12, bh));
+        drawText(ctx, d.date || "", bx + 15, y + 177, 16, "#aaddff", "bold", "center");
+      });
+    }
+
+    function drawPeriodCards(ctx, monthlyNotes, yearlyNotes, x, y, w) {
+      const cards = [...monthlyNotes.slice(-3), yearlyNotes].filter(Boolean);
+      cards.forEach((item, i) => {
+        const cw = 105;
+        const cx = x + i * 112;
+        ctx.fillStyle = "#181a2c";
+        roundRect(ctx, cx, y, cw, 48, 5, true, false);
+        ctx.strokeStyle = "#303552";
+        roundRect(ctx, cx, y, cw, 48, 5, false, true);
+        drawText(ctx, item.label || "", cx + cw / 2, y + 16, 13, "#aaddff", "bold", "center");
+        drawText(ctx, shortNotes(item.notes), cx + cw / 2, y + 39, 22, i === cards.length - 1 ? "#ff66ff" : "#ffbb77", "bold", "center");
+      });
+    }
+
+    function shortNotes(value) {
+      const n = Number(value) || 0;
+      if (n >= 1000000) return Math.round(n / 10000) + "万";
+      if (n >= 1000) return Math.round(n / 1000) + "k";
+      return String(n);
+    }
+
+    function drawLevelHist(ctx, dist, x, y, w, h) {
+      let total = 0;
+      Object.values(dist).forEach((e) => total += (e.sp || 0) + (e.dp || 0) + (e.battle || 0));
+      total = Math.max(1, total);
+      for (let lv = 1; lv <= 12; lv++) {
+        const e = dist[String(lv)] || {};
+        const rowY = y + (lv - 1) * 28;
+        const count = (e.sp || 0) + (e.dp || 0) + (e.battle || 0);
+        drawText(ctx, `☆${lv}`, x, rowY + 18, 21, "#ffff28", "bold");
+        ctx.fillStyle = "#1b1b31";
+        ctx.fillRect(x + 52, rowY + 5, 335, 18);
+        let ox = x + 52;
+        [["sp", "#ff6666"], ["dp", "#55d68b"], ["battle", "#8060ff"]].forEach(([key, color]) => {
+          const ww = Math.round(((e[key] || 0) / total) * 335);
+          if (ww > 0) {
+            ctx.fillStyle = color;
+            ctx.fillRect(ox, rowY + 5, ww, 18);
+            ox += ww;
+          }
+        });
+        drawText(ctx, count ? (count / total * 100).toFixed(1) + "%" : "", x + 440, rowY + 19, 18, "#ffffff", "bold", "right");
+      }
+    }
+
+    function drawLevelStats(ctx, levelStats, x, y, w) {
+      const entries = [["sp", "SP", "10"], ["sp", "SP", "11"], ["sp", "SP", "12"]];
+      entries.forEach(([key, label, lv], i) => {
+        const data = (levelStats[key] || {})[lv] || {};
+        const cy = y + i * 185;
+        ctx.fillStyle = "#11122b";
+        roundRect(ctx, x, cy, w, 170, 6, true, false);
+        ctx.strokeStyle = "#202646";
+        roundRect(ctx, x, cy, w, 170, 6, false, true);
+        drawText(ctx, `${label} Lv${lv}`, x + 10, cy + 34, 27, "#ff7777", "bold");
+        drawText(ctx, lampSummaryText(data.lamps || {}), x + 10, cy + 62, 19, "#ffff28", "bold");
+        drawStackBar(ctx, data.lamps || {}, ["fc", "easy", "hard", "clear", "assist", "failed"], ["#ff9f1c", "#ffff28", "#ff3333", "#23c7ff", "#ff66ff", "#777"], x + 10, cy + 78, w - 20, 20);
+        drawText(ctx, `AAA:${((data.scores || {}).AAA) || 0}`, x + 10, cy + 126, 19, "#ffff28", "bold");
+        drawStackBar(ctx, data.scores || {}, ["AAA", "AA", "A", "B_below"], ["#ffff28", "#c3c3c3", "#44cc77", "#4444ff"], x + 10, cy + 140, w - 20, 20);
+      });
+    }
+
+    function lampSummaryText(lamps) {
+      return [["fc", "FC"], ["easy", "E"], ["hard", "H"], ["clear", "N"], ["assist", "A"], ["failed", "F"]]
+        .filter(([key]) => lamps[key])
+        .map(([key, label]) => `${label}:${lamps[key]}`)
+        .join(", ");
+    }
+
+    function drawStackBar(ctx, data, keys, colors, x, y, w, h) {
+      const total = keys.reduce((sum, key) => sum + (Number(data[key]) || 0), 0);
+      ctx.fillStyle = "#1b1b31";
+      ctx.fillRect(x, y, w, h);
+      if (!total) return;
+      let ox = x;
+      keys.forEach((key, i) => {
+        const ww = Math.round((Number(data[key]) || 0) / total * w);
+        if (ww > 0) {
+          ctx.fillStyle = colors[i];
+          ctx.fillRect(ox, y, ww, h);
+          ox += ww;
+        }
+      });
+    }
+
+    function drawSummaryList(ctx, title, rows, x, y, w, h, mapper) {
+      ctx.fillStyle = "#05050c";
+      roundRect(ctx, x, y, w, h, 7, true, false);
+      ctx.fillStyle = "#002777";
+      roundRect(ctx, x, y, w, 47, 7, true, false);
+      ctx.strokeStyle = "#0058ad";
+      roundRect(ctx, x, y, w, 47, 7, false, true);
+      drawText(ctx, title, x + 12, y + 32, 24, "#aaddff", "bold");
+      const maxRows = Math.max(1, Math.floor((h - 58) / 35));
+      rows.slice(0, maxRows).forEach((item, i) => drawSummaryRow(ctx, mapper(item), x + 18, y + 80 + i * 35, w - 35, item));
+      return y + h;
+    }
+
+    function drawSummaryRow(ctx, values, x, y, w, item = {}) {
+      const cols = [0, 75, 185, 285, 405, 505];
+      values.forEach((value, i) => {
+        if (i === 3 && String(value || "")) {
+          drawRankDiffImage(ctx, item, value, x + cols[i], y);
+          return;
+        }
+        const color = i === 0 ? "#ffff28" : i === 2 ? "#c8d4e8" : i === 4 ? bpiImageColor(value) : i === values.length - 1 ? difficultyImageColor(item.difficulty) : "#f4f6f8";
+        const size = i === 2 ? 9 : i === values.length - 1 ? 20 : 18;
+        drawText(ctx, value, x + (cols[i] || (i * 90)), y, size, color, "bold");
+      });
+    }
+
+    function drawRankDiffImage(ctx, item, value, x, y) {
+      const raw = String(value || "");
+      const match = raw.match(/^(MAX|AAA|AA|A|B|C|D|E|F)(.*)$/);
+      if (!match) {
+        drawText(ctx, raw, x, y, 18, "#f4f6f8", "bold");
+        return;
+      }
+      const rankText = raw === "MAX+0" ? "MAX" : match[1];
+      const tailText = raw === "MAX+0" ? "" : match[2] || "";
+      const color = rankImageColor(rankClassFromScoreRate(Number(item.score_rate) || 0));
+      drawText(ctx, rankText, x, y, 18, color, "bold");
+      const oldFont = ctx.font;
+      ctx.font = `bold 18px "RocknRoll One", system-ui, sans-serif`;
+      const rankWidth = ctx.measureText(rankText).width;
+      ctx.font = oldFont;
+      if (tailText) drawText(ctx, tailText, x + rankWidth, y, 18, "#a6adb7", "bold");
+    }
+
+    function rankClassFromScoreRate(scoreRate) {
+      if (scoreRate >= 1) return "MAX";
+      if (scoreRate * 18 >= 16) return "AAA";
+      if (scoreRate * 18 >= 14) return "AA";
+      if (scoreRate * 18 >= 12) return "A";
+      if (scoreRate * 18 >= 10) return "B";
+      if (scoreRate * 18 >= 8) return "C";
+      if (scoreRate * 18 >= 6) return "D";
+      if (scoreRate * 18 >= 4) return "E";
+      return scoreRate > 0 ? "F" : "";
+    }
+
+    function rankImageColor(rank) {
+      return {
+        MAX: "#ff66ff",
+        AAA: "#ffff28",
+        AA: "#c3c3c3",
+        A: "#2ddf71",
+        B: "#7777ff",
+        C: "#7777ff",
+        D: "#7777ff",
+        E: "#7777ff",
+        F: "#7777ff",
+      }[rank] || "#f4f6f8";
+    }
+
+    function bpiImageColor(value) {
+      const n = Number(value);
+      return Number.isFinite(n) && n > 0 ? "#50ff5f" : "#a0a83f";
+    }
+
+    function drawSummaryGroupedUpdates(ctx, title, rows, x, y, w, h) {
+      ctx.fillStyle = "#05050c";
+      roundRect(ctx, x, y, w, h, 7, true, false);
+      ctx.fillStyle = "#002777";
+      roundRect(ctx, x, y, w, 47, 7, true, false);
+      ctx.strokeStyle = "#0058ad";
+      roundRect(ctx, x, y, w, 47, 7, false, true);
+      drawText(ctx, title, x + 12, y + 32, 24, "#aaddff", "bold");
+
+      const groups = groupLampUpdatesForImage(rows);
+      let cy = y + 77;
+      groups.forEach((group) => {
+        if (cy > y + h - 32) return;
+        ctx.fillStyle = lampImageColor(group.lamp);
+        roundRect(ctx, x + 18, cy - 16, 17, 17, 3, true, false);
+        drawText(ctx, `New ${group.label} ${group.items.length}`, x + 44, cy, 20, "#ffffff", "bold");
+        cy += 34;
+        group.items.forEach((item) => {
+          if (cy > y + h - 20) return;
+          drawText(ctx, levelTextForImage(item), x + 90, cy, 19, "#ffff28", "bold");
+          drawText(ctx, item.title || "", x + 205, cy, 20, difficultyImageColor(item.difficulty), "bold");
+          cy += 31;
+        });
+        cy += 12;
+        if (cy < y + h - 10) {
+          ctx.strokeStyle = "#24243d";
+          ctx.beginPath();
+          ctx.moveTo(x, cy - 9);
+          ctx.lineTo(x + w, cy - 9);
+          ctx.stroke();
+        }
+      });
+      return y + h;
+    }
+
+    function groupLampUpdatesForImage(rows) {
+      const labels = {
+        7: "FC",
+        6: "EXH",
+        5: "Hard",
+        4: "Clear",
+        3: "Easy",
+        2: "Assist",
+        1: "Failed",
+      };
+      const order = [7, 6, 5, 4, 3, 2, 1];
+      const groups = {};
+      (rows || []).forEach((item) => {
+        const lamp = Number(item.lamp) || 0;
+        const preLamp = Number(item.pre_lamp) || 0;
+        if (lamp <= preLamp) return;
+        if (!groups[lamp]) groups[lamp] = [];
+        groups[lamp].push(item);
+      });
+      return order
+        .filter((lamp) => groups[lamp]?.length)
+        .map((lamp) => ({ lamp, label: labels[lamp] || "Lamp", items: groups[lamp] }));
+    }
+
+    function lampImageColor(lamp) {
+      return {
+        7: "#d5ff28",
+        6: "#ff3333",
+        5: "#ffffff",
+        4: "#22ccff",
+        3: "#22ff22",
+        2: "#ff66ff",
+        1: "#333333",
+      }[Number(lamp)] || "#777777";
+    }
+
+    function difficultyImageColor(difficulty) {
+      const text = String(difficulty || "").toUpperCase();
+      const diffType = text.length >= 3 ? text.charAt(2) : "";
+      return {
+        A: "#ff8888",
+        H: "#ffff88",
+        N: "#8888ff",
+        L: "#ff88ff",
+        B: "#88ff88",
+      }[diffType] || "#ffcccc";
+    }
+
+    function levelTextForImage(item) {
+      return item.dp_unofficial_lv ? `☆${item.lv} ${item.dp_unofficial_lv}` : `☆${item.lv || ""}`;
     }
 
     function receiptSection(id, title, count, rows, rowRenderer, openSections = {}) {

@@ -157,6 +157,7 @@ class MainWindow(MainWindowUI):
         # アプリケーション状態
         self.current_mode = detect_mode.init
         self._start_time = int(datetime.datetime.now().timestamp())
+        self.result_database.app_start_time = self._start_time
         self.today_judge = Judge()
         '''本日のプレーの判定内訳'''
         self.current_judge = Judge()

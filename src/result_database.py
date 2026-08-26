@@ -134,6 +134,7 @@ class ResultDatabase:
         self.mobile_http_server = None
         self._mobile_http_server_signature = None
         self._mobile_api_lock = threading.RLock()
+        self.app_start_time = int(datetime.datetime.now().timestamp())
 
         # configが渡された場合のみWebSocketサーバーを起動
         if config is not None:
@@ -1901,6 +1902,7 @@ class ResultDatabase:
             "current_detail": current_detail,
             "rival_items": current_detail.get("rival_items", []) if current_detail else [],
             "tweet": self.get_mobile_tweet_data(start, graph_data),
+            "summary_stats": self.get_today_stats_data(start),
         }
 
     def get_mobile_tweet_data(self, start_time: int, graph_data: dict | None = None) -> dict:
@@ -1920,11 +1922,12 @@ class ResultDatabase:
                 f"PR:{_to_int_or_none(judge.get('pr')) or 0:,}, "
                 f"CB:{_to_int_or_none(judge.get('cb')) or 0:,})\n"
             )
-        uptime = datetime.datetime.now() - datetime.datetime.fromtimestamp(start_time)
+        app_start_time = _to_int_or_none(getattr(self, "app_start_time", None)) or start_time
+        uptime = datetime.datetime.now() - datetime.datetime.fromtimestamp(app_start_time)
         msg += f"uptime: {str(uptime).split('.')[0]}\n"
         if self.config and getattr(self.config, "enable_folder_updates", False):
             msg += self._collect_mobile_tweet_updates(start_time)
-        start_date = datetime.datetime.fromtimestamp(start_time)
+        start_date = datetime.datetime.fromtimestamp(app_start_time)
         msg += f"({start_date.year}/{start_date.month:02d}: {self.get_monthly_notes():,})\n"
         msg += "#INFINITAS_daken_counter\n"
         return {
