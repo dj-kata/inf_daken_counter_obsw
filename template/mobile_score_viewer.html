@@ -315,7 +315,7 @@
     .meta { margin-top: 5px; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .score-block { text-align: right; min-width: 92px; display: grid; gap: 3px; justify-items: end; }
     .song-cell.level-cell.selectable {
-      grid-template-columns: 30px minmax(0, 1fr) auto;
+      grid-template-columns: 30px 12px minmax(0, 1fr) auto;
       padding-left: 0;
       border-color: var(--line);
     }
@@ -852,6 +852,7 @@
       const bp = item.bp ?? item.best_bp;
       return `<button class="song-cell level-cell selectable ${selected ? "selected" : ""}" data-image-id="${escapeText(item.image_id || "")}">
         <span class="select-rail"><span class="select-mark">✓</span></span>
+        ${leftRailHtml(item)}
         <div class="level-main">
           <div class="title"><span class="title-name">${escapeText(item.title)}</span><span class="title-diff">[${escapeText(item.difficulty || "")}]</span></div>
           <div class="meta">${levelSubInfoHtml(item, score, bp, { showLevelMarker: true })}</div>
@@ -1188,7 +1189,7 @@
 
     function shortNotes(value) {
       const n = Number(value) || 0;
-      if (n >= 1000000) return Math.round(n / 10000) + "万";
+      if (n >= 1000000) return (n / 1000000).toFixed(n >= 10000000 ? 0 : 1) + "M";
       if (n >= 1000) return Math.round(n / 1000) + "k";
       return String(n);
     }
@@ -1227,18 +1228,53 @@
         ctx.strokeStyle = "#202646";
         roundRect(ctx, x, cy, w, 170, 6, false, true);
         drawText(ctx, `${label} Lv${lv}`, x + 10, cy + 34, 27, "#ff7777", "bold");
-        drawText(ctx, lampSummaryText(data.lamps || {}), x + 10, cy + 62, 19, "#ffff28", "bold");
-        drawStackBar(ctx, data.lamps || {}, ["fc", "easy", "hard", "clear", "assist", "failed"], ["#ff9f1c", "#ffff28", "#ff3333", "#23c7ff", "#ff66ff", "#777"], x + 10, cy + 78, w - 20, 20);
+        drawLampSummaryText(ctx, data.lamps || {}, x + 10, cy + 62, 19);
+        drawStackBar(
+          ctx,
+          data.lamps || {},
+          ["fc", "exh", "hard", "clear", "easy", "assist", "failed"],
+          ["#ffaa44", "#ffff44", "#ff4444", "#44bbff", "#44ff44", "#ff66ff", "#888888"],
+          x + 10,
+          cy + 78,
+          w - 20,
+          20
+        );
         drawText(ctx, `AAA:${((data.scores || {}).AAA) || 0}`, x + 10, cy + 126, 19, "#ffff28", "bold");
         drawStackBar(ctx, data.scores || {}, ["AAA", "AA", "A", "B_below"], ["#ffff28", "#c3c3c3", "#44cc77", "#4444ff"], x + 10, cy + 140, w - 20, 20);
       });
     }
 
     function lampSummaryText(lamps) {
-      return [["fc", "FC"], ["easy", "E"], ["hard", "H"], ["clear", "N"], ["assist", "A"], ["failed", "F"]]
+      return [["fc", "FC"], ["exh", "EXH"], ["hard", "H"], ["clear", "N"], ["easy", "E"], ["assist", "A"], ["failed", "F"]]
         .filter(([key]) => lamps[key])
         .map(([key, label]) => `${label}:${lamps[key]}`)
         .join(", ");
+    }
+
+    function drawLampSummaryText(ctx, lamps, x, y, size) {
+      let ox = x;
+      lampSummaryParts(lamps).forEach((part, index) => {
+        const text = `${index ? ", " : ""}${part.label}:${part.value}`;
+        drawText(ctx, text, ox, y, size, part.color, "bold");
+        const oldFont = ctx.font;
+        ctx.font = `bold ${size}px "RocknRoll One", system-ui, sans-serif`;
+        ox += ctx.measureText(text).width;
+        ctx.font = oldFont;
+      });
+    }
+
+    function lampSummaryParts(lamps) {
+      return [
+        ["fc", "FC", "#ffaa44"],
+        ["exh", "EXH", "#ffff44"],
+        ["hard", "H", "#ff6666"],
+        ["clear", "N", "#44bbff"],
+        ["easy", "E", "#44ff44"],
+        ["assist", "A", "#ff66ff"],
+        ["failed", "F", "#888888"],
+      ]
+        .filter(([key]) => lamps[key])
+        .map(([key, label, color]) => ({ key, label, color, value: lamps[key] }));
     }
 
     function drawStackBar(ctx, data, keys, colors, x, y, w, h) {
@@ -1278,7 +1314,7 @@
           return;
         }
         const color = i === 0 ? "#ffff28" : i === 2 ? "#c8d4e8" : i === 4 ? bpiImageColor(value) : i === values.length - 1 ? difficultyImageColor(item.difficulty) : "#f4f6f8";
-        const size = i === 2 ? 9 : i === values.length - 1 ? 20 : 18;
+        const size = i === 2 ? 14 : i === values.length - 1 ? 20 : 18;
         drawText(ctx, value, x + (cols[i] || (i * 90)), y, size, color, "bold");
       });
     }
@@ -1333,30 +1369,35 @@
     }
 
     function drawSummaryGroupedUpdates(ctx, title, rows, x, y, w, h) {
+      const groups = groupLampUpdatesForImage(rows);
+      let neededHeight = 77;
+      groups.forEach((group) => {
+        neededHeight += 34 + group.items.length * 31 + 12;
+      });
+      const actualHeight = Math.min(h, Math.max(95, neededHeight + 8));
       ctx.fillStyle = "#05050c";
-      roundRect(ctx, x, y, w, h, 7, true, false);
+      roundRect(ctx, x, y, w, actualHeight, 7, true, false);
       ctx.fillStyle = "#002777";
       roundRect(ctx, x, y, w, 47, 7, true, false);
       ctx.strokeStyle = "#0058ad";
       roundRect(ctx, x, y, w, 47, 7, false, true);
       drawText(ctx, title, x + 12, y + 32, 24, "#aaddff", "bold");
 
-      const groups = groupLampUpdatesForImage(rows);
       let cy = y + 77;
       groups.forEach((group) => {
-        if (cy > y + h - 32) return;
+        if (cy > y + actualHeight - 32) return;
         ctx.fillStyle = lampImageColor(group.lamp);
         roundRect(ctx, x + 18, cy - 16, 17, 17, 3, true, false);
         drawText(ctx, `New ${group.label} ${group.items.length}`, x + 44, cy, 20, "#ffffff", "bold");
         cy += 34;
         group.items.forEach((item) => {
-          if (cy > y + h - 20) return;
+          if (cy > y + actualHeight - 20) return;
           drawText(ctx, levelTextForImage(item), x + 90, cy, 19, "#ffff28", "bold");
           drawText(ctx, item.title || "", x + 205, cy, 20, difficultyImageColor(item.difficulty), "bold");
           cy += 31;
         });
         cy += 12;
-        if (cy < y + h - 10) {
+        if (cy < y + actualHeight - 10) {
           ctx.strokeStyle = "#24243d";
           ctx.beginPath();
           ctx.moveTo(x, cy - 9);
@@ -1364,7 +1405,7 @@
           ctx.stroke();
         }
       });
-      return y + h;
+      return y + actualHeight;
     }
 
     function groupLampUpdatesForImage(rows) {
@@ -1393,8 +1434,8 @@
 
     function lampImageColor(lamp) {
       return {
-        7: "#d5ff28",
-        6: "#ff3333",
+        7: "#44bbff",
+        6: "#ffff44",
         5: "#ffffff",
         4: "#22ccff",
         3: "#22ff22",

@@ -1681,6 +1681,7 @@ class ResultDatabase:
             logger.warning("投稿用画像生成: 有効な画像がありません")
             return None
 
+        results.sort(key=lambda result: (int(getattr(result, "timestamp", 0) or 0), getattr(result, "title", "")))
         logger.info(f"投稿用画像生成開始: {len(results)}枚")
         images = []
         for i, result in enumerate(results):
@@ -1863,8 +1864,18 @@ class ResultDatabase:
             pre_bp = _to_int_or_none(item.get("pre_bp"))
             return pre_bp is not None and 0 < pre_bp < 99999
 
+        top_bpi_by_chart = {}
+        for item in items:
+            value = bpi_value(item)
+            if value is None:
+                continue
+            key = item.get("chart_id") or f"{item.get('title', '')}\0{item.get('difficulty', '')}"
+            current = top_bpi_by_chart.get(key)
+            if current is None or value > current[0]:
+                top_bpi_by_chart[key] = (value, item)
+
         top_bpi_items = sorted(
-            [item for item in items if bpi_value(item) is not None],
+            [entry[1] for entry in top_bpi_by_chart.values()],
             key=lambda item: bpi_value(item),
             reverse=True,
         )[:20]
