@@ -1883,10 +1883,24 @@ class ResultDatabase:
             item for item in items
             if (_to_int_or_none(item.get("score")) or 0) > (_to_int_or_none(item.get("pre_score")) or 0)
         ]
-        lamp_updates = [
-            item for item in items
-            if (_to_int_or_none(item.get("lamp")) or 0) > (_to_int_or_none(item.get("pre_lamp")) or 0)
-        ]
+        lamp_updates_by_chart = {}
+        for item in items:
+            lamp = _to_int_or_none(item.get("lamp")) or 0
+            pre_lamp = _to_int_or_none(item.get("pre_lamp")) or 0
+            if lamp <= pre_lamp:
+                continue
+            key = item.get("chart_id") or f"{item.get('title', '')}\0{item.get('difficulty', '')}"
+            current = lamp_updates_by_chart.get(key)
+            current_lamp = _to_int_or_none(current.get("lamp")) if current else None
+            current_timestamp = _to_int_or_none(current.get("timestamp")) if current else None
+            item_timestamp = _to_int_or_none(item.get("timestamp")) or 0
+            if (
+                current is None
+                or lamp > (current_lamp or 0)
+                or (lamp == (current_lamp or 0) and item_timestamp > (current_timestamp or 0))
+            ):
+                lamp_updates_by_chart[key] = item
+        lamp_updates = list(lamp_updates_by_chart.values())
         bp_updates = [
             item for item in items
             if not item.get("dead")
