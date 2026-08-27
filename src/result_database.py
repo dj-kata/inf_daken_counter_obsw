@@ -1282,6 +1282,13 @@ class ResultDatabase:
         offset_hours = _to_int_or_none(getattr(self.config, "autoload_offset", 0) if self.config else 0) or 0
         return self._today_start_timestamp() - offset_hours * 3600
 
+    def _mobile_app_start_timestamp_with_offset(self) -> int | None:
+        start = _to_int_or_none(getattr(self, "app_start_time", None))
+        if start is None:
+            return None
+        offset_hours = _to_int_or_none(getattr(self.config, "autoload_offset", 0) if self.config else 0) or 0
+        return start - offset_hours * 3600
+
     @staticmethod
     def _date_range_timestamps(start_date: str | None, end_date: str | None) -> tuple[int, int] | None:
         try:
@@ -1313,7 +1320,7 @@ class ResultDatabase:
         period = (period or "").lower()
         now = datetime.datetime.now()
         if period == "app_start":
-            start = _to_int_or_none(getattr(self, "app_start_time", None))
+            start = self._mobile_app_start_timestamp_with_offset()
             return start or self._mobile_receipt_start_timestamp(), None, "app_start"
         if period == "last_play":
             start, end = self._mobile_last_play_day_range()
