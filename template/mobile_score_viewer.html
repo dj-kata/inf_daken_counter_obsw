@@ -1113,9 +1113,9 @@
       setTitle(data.folder.label);
       const logs = data.items || [];
       const topBpi = data.top_bpi_items || [];
-      const scoreUpdates = data.score_updates || [];
-      const lampUpdates = data.lamp_updates || [];
-      const bpUpdates = data.bp_updates || [];
+      const scoreUpdates = filterSummaryResultRows(data.score_updates || []);
+      const lampUpdates = filterSummaryResultRows(data.lamp_updates || []);
+      const bpUpdates = filterSummaryResultRows(data.bp_updates || []);
       const current = data.current_detail;
       const rivals = data.rival_items || [];
       const tweet = data.tweet || {};
@@ -1159,12 +1159,15 @@
     const SUMMARY_LEVEL_SETTINGS_KEY = "infMobileSummaryLevelStats";
     const SUMMARY_PERIOD_SETTINGS_KEY = "infMobileSummaryPeriod";
     const SUMMARY_LIMIT_SETTINGS_KEY = "infMobileSummarySectionLimit";
+    const SUMMARY_RESULT_LEVEL_SETTINGS_KEY = "infMobileSummaryResultLevels";
 
     function renderSummarySettings(data) {
       const panel = $("summarySettingsPanel");
       if (!panel) return;
       const entries = availableSummaryLevelEntries((data.summary_stats || {}).level_stats || {});
       const selected = new Set(loadSummaryLevelSelection(entries));
+      const resultLevelEntries = availableSummaryLevelEntries({});
+      const selectedResultLevels = new Set(loadSummaryResultLevelSelection(resultLevelEntries));
       const period = loadSummaryPeriodSettings();
       const limit = loadSummaryLimitSettings();
       const sectionRows = summaryLimitSections();
@@ -1185,6 +1188,12 @@
           <summary>Lv stats</summary>
           <div class="summary-settings-body">
             <div class="summary-level-options">${entries.map((entry) => `<label><input type="checkbox" data-summary-level="${escapeText(entry.id)}" ${selected.has(entry.id) ? "checked" : ""}>${escapeText(entry.label)}</label>`).join("") || '<div class="empty">NO DATA</div>'}</div>
+          </div>
+        </details>
+        <details open>
+          <summary>Result levels</summary>
+          <div class="summary-settings-body">
+            <div class="summary-level-options">${resultLevelEntries.map((entry) => `<label><input type="checkbox" data-summary-result-level="${escapeText(entry.id)}" ${selectedResultLevels.has(entry.id) ? "checked" : ""}>${escapeText(entry.label)}</label>`).join("")}</div>
           </div>
         </details>
         <details open>
@@ -1215,6 +1224,12 @@
         input.addEventListener("change", () => {
           const ids = [...panel.querySelectorAll("[data-summary-level]:checked")].map((node) => node.dataset.summaryLevel);
           saveSummaryLevelSelection(ids);
+        });
+      });
+      panel.querySelectorAll("[data-summary-result-level]").forEach((input) => {
+        input.addEventListener("change", () => {
+          const ids = [...panel.querySelectorAll("[data-summary-result-level]:checked")].map((node) => node.dataset.summaryResultLevel);
+          saveSummaryResultLevelSelection(ids);
         });
       });
       panel.querySelectorAll("[data-summary-unlimited]").forEach((input) => input.addEventListener("change", () => {
@@ -1412,6 +1427,45 @@
       return entries.filter((entry) => selected.has(entry.id));
     }
 
+    function defaultSummaryResultLevelSelection(entries) {
+      return entries.map((entry) => entry.id);
+    }
+
+    function loadSummaryResultLevelSelection(entries) {
+      const available = new Set(entries.map((entry) => entry.id));
+      try {
+        const raw = localStorage.getItem(SUMMARY_RESULT_LEVEL_SETTINGS_KEY);
+        if (raw !== null) {
+          const parsed = JSON.parse(raw || "[]");
+          return Array.isArray(parsed) ? parsed.filter((id) => available.has(String(id))).map(String) : [];
+        }
+      } catch (e) {}
+      return defaultSummaryResultLevelSelection(entries);
+    }
+
+    function saveSummaryResultLevelSelection(ids) {
+      localStorage.setItem(SUMMARY_RESULT_LEVEL_SETTINGS_KEY, JSON.stringify(ids));
+    }
+
+    function selectedSummaryResultLevelSet() {
+      const entries = availableSummaryLevelEntries({});
+      return new Set(loadSummaryResultLevelSelection(entries));
+    }
+
+    function resultLevelId(item) {
+      const difficulty = String(item.difficulty || "").toUpperCase();
+      const lv = String(item.lv || "");
+      if (!lv) return "";
+      if (difficulty.startsWith("SP")) return `sp${lv}`;
+      if (difficulty.startsWith("DP") || difficulty.startsWith("DB")) return `dp${lv}`;
+      return "";
+    }
+
+    function filterSummaryResultRows(rows) {
+      const selected = selectedSummaryResultLevelSet();
+      return (rows || []).filter((item) => selected.has(resultLevelId(item)));
+    }
+
     async function openReceiptSummaryImage(data) {
       if (!data.summary_stats) return;
       if (document.fonts?.ready) {
@@ -1457,29 +1511,31 @@
         }
       };
 
-      panel(10, 10, 465, 125);
+      panel(10, 10, 465, 160);
       if (isSingleSummaryRange(data)) {
         drawText(ctx, stats.date || "", 65, 68, 48, "#ffffff", "bold");
         drawText(ctx, summaryRangeText(data), 25, 92, 16, "#8899bb", "bold");
       } else {
         drawText(ctx, summaryRangeText(data), 25, 72, 26, "#ffffff", "bold");
       }
-      drawText(ctx, "plays:", 25, 118, 28, "#aaddff", "bold");
-      drawText(ctx, fmt(stats.playcount || data.play_count || 0), 122, 118, 30, "#ffff66", "bold");
-      drawText(ctx, "rate:", 220, 118, 28, "#aaddff", "bold");
-      drawText(ctx, stats.score_rate || data.score_rate || "-", 300, 118, 30, "#ffff66", "bold");
+      drawText(ctx, "notes:", 25, 120, 25, "#aaddff", "bold");
+      drawText(ctx, fmt(data.today_notes || 0), 130, 120, 27, "#50ff5f", "bold");
+      drawText(ctx, "plays:", 25, 153, 25, "#aaddff", "bold");
+      drawText(ctx, fmt(stats.playcount || data.play_count || 0), 122, 153, 27, "#ffff66", "bold");
+      drawText(ctx, "rate:", 220, 153, 25, "#aaddff", "bold");
+      drawText(ctx, stats.score_rate || data.score_rate || "-", 300, 153, 27, "#ffff66", "bold");
 
-      panel(10, 145, 465, 265);
-      drawNotesBars(ctx, stats.daily_notes || [], 22, 175, 430, 150);
-      drawPeriodCards(ctx, stats.monthly_notes || [], stats.yearly_notes, 22, 354, 440);
+      panel(10, 180, 465, 265);
+      drawNotesBars(ctx, stats.daily_notes || [], 22, 210, 430, 150);
+      drawPeriodCards(ctx, stats.monthly_notes || [], stats.yearly_notes, 22, 389, 440);
 
-      panel(10, 423, 465, 430, "Lv Hist");
-      drawLevelHist(ctx, data.level_distribution || stats.today_level_distribution || {}, 22, 475, 440, 350);
+      panel(10, 458, 465, 430, "Lv Hist");
+      drawLevelHist(ctx, data.level_distribution || stats.today_level_distribution || {}, 22, 510, 440, 350);
 
       const levelStatEntries = selectedSummaryLevelEntries(stats.level_stats || {});
       const lvStatsHeight = Math.max(110, 55 + levelStatEntries.length * 185);
-      panel(10, 863, 465, lvStatsHeight, "Lv stats");
-      drawLevelStats(ctx, stats.level_stats || {}, 22, 910, 440, levelStatEntries);
+      panel(10, 898, 465, lvStatsHeight, "Lv stats");
+      drawLevelStats(ctx, stats.level_stats || {}, 22, 945, 440, levelStatEntries);
 
       const topLimit = summarySectionLimit("top_bpi");
       const scoreLimit = summarySectionLimit("score_updates");
@@ -1495,7 +1551,7 @@
         ], { kind: "ranked", limit: topLimit });
         rightY = topBottom + 18;
       }
-      const scoreUpdateRows = sortedScoreUpdatesForImage(data.score_updates || []);
+      const scoreUpdateRows = sortedScoreUpdatesForImage(filterSummaryResultRows(data.score_updates || []));
       let scoreBottom = rightY;
       if (scoreLimit !== 0) {
         const scoreHeight = summarySectionHeight(scoreUpdateRows.length, scoreLimit, 900);
@@ -1506,10 +1562,10 @@
       }
       let lampBottom = rightY;
       if (lampLimit !== 0) {
-        lampBottom = drawSummaryGroupedUpdates(ctx, "Lamp updates", data.lamp_updates || [], 495, rightY, 990, Number.isFinite(lampLimit) ? 900 : Number.POSITIVE_INFINITY, lampLimit);
+        lampBottom = drawSummaryGroupedUpdates(ctx, "Lamp updates", filterSummaryResultRows(data.lamp_updates || []), 495, rightY, 990, Number.isFinite(lampLimit) ? 900 : Number.POSITIVE_INFINITY, lampLimit);
         rightY = lampBottom + 18;
       }
-      const bpRows = sortedBpUpdatesForImage(data.bp_updates || []);
+      const bpRows = sortedBpUpdatesForImage(filterSummaryResultRows(data.bp_updates || []));
       let bpBottom = rightY;
       if (bpLimit !== 0) {
         const bpHeight = summarySectionHeight(bpRows.length, bpLimit, 900);
@@ -1518,7 +1574,7 @@
         ], { kind: "bp", limit: bpLimit });
         rightY = bpBottom + 18;
       }
-      const leftBottom = 863 + lvStatsHeight;
+      const leftBottom = 898 + lvStatsHeight;
       const contentBottom = Math.max(1650, leftBottom, topBottom, scoreBottom, lampBottom, bpBottom) + 12;
       ctx.fillStyle = "#10112a";
       ctx.fillRect(0, contentBottom, w, h - contentBottom);
@@ -1576,12 +1632,12 @@
       const lampLimit = summarySectionLimit("lamp_updates");
       const bpLimit = summarySectionLimit("bp_updates");
       const levelStatEntries = selectedSummaryLevelEntries(stats.level_stats || {});
-      const leftBottom = 863 + Math.max(110, 55 + levelStatEntries.length * 185);
+      const leftBottom = 898 + Math.max(110, 55 + levelStatEntries.length * 185);
       let rightY = 18;
       if (topLimit !== 0) rightY += summarySectionHeight((data.top_bpi_items || []).length, topLimit, 900) + 18;
-      if (scoreLimit !== 0) rightY += summarySectionHeight((data.score_updates || []).length, scoreLimit, 900) + 18;
-      if (lampLimit !== 0) rightY += summaryGroupedUpdatesHeight(data.lamp_updates || [], lampLimit, Number.isFinite(lampLimit) ? 900 : Number.POSITIVE_INFINITY) + 18;
-      if (bpLimit !== 0) rightY += summarySectionHeight((data.bp_updates || []).length, bpLimit, 900) + 18;
+      if (scoreLimit !== 0) rightY += summarySectionHeight(filterSummaryResultRows(data.score_updates || []).length, scoreLimit, 900) + 18;
+      if (lampLimit !== 0) rightY += summaryGroupedUpdatesHeight(filterSummaryResultRows(data.lamp_updates || []), lampLimit, Number.isFinite(lampLimit) ? 900 : Number.POSITIVE_INFINITY) + 18;
+      if (bpLimit !== 0) rightY += summarySectionHeight(filterSummaryResultRows(data.bp_updates || []).length, bpLimit, 900) + 18;
       return Math.ceil(Math.max(1650, leftBottom, rightY) + 50);
     }
 
