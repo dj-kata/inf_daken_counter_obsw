@@ -43,11 +43,12 @@
     }
     .top {
       display: grid;
-      grid-template-columns: 92px minmax(0, 1fr) 42px;
+      grid-template-columns: 92px minmax(0, 1fr) 92px;
       align-items: center;
       gap: 8px;
     }
     .nav-left { display: flex; gap: 8px; }
+    .nav-right { display: flex; gap: 8px; justify-content: flex-end; }
     .icon-btn {
       width: 42px;
       height: 42px;
@@ -521,7 +522,7 @@
     .receipt-arena { margin: 0 0 8px 0; padding-left: 10px; }
     .receipt-actions {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
       margin: 0 0 12px;
     }
@@ -560,6 +561,54 @@
       white-space: nowrap;
     }
     .summary-level-options input { accent-color: var(--green); }
+    .summary-settings details {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel2);
+      overflow: hidden;
+    }
+    .summary-settings details + details { margin-top: 8px; }
+    .summary-settings summary {
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 900;
+      list-style: none;
+    }
+    .summary-settings summary::-webkit-details-marker { display: none; }
+    .summary-settings summary::after { content: "⌄"; color: var(--muted); }
+    .summary-settings details[open] summary::after { content: "⌃"; }
+    .summary-settings-body { padding: 10px; border-top: 1px solid var(--line); }
+    .period-options { display: grid; gap: 8px; }
+    .period-options label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 850;
+    }
+    .period-options input[type="radio"] { accent-color: var(--green); }
+    .custom-period {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .custom-period input {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 8px;
+    }
     .image-link {
       display: inline-flex;
       align-items: center;
@@ -715,7 +764,10 @@
           <button id="backBtn" class="icon-btn" aria-label="戻る" disabled>&lsaquo;</button>
         </div>
         <h1 id="viewTitle">INFINITAS</h1>
-        <button id="refreshBtn" class="icon-btn" aria-label="更新">&#8635;</button>
+        <div class="nav-right">
+          <button id="settingsBtn" class="icon-btn" aria-label="設定">&#9881;</button>
+          <button id="refreshBtn" class="icon-btn" aria-label="更新">&#8635;</button>
+        </div>
       </div>
     </header>
     <section id="stats" class="stats"></section>
@@ -723,7 +775,7 @@
   </div>
 
   <script>
-    const state = { view: "home", stack: [], allItems: [], listVariant: "", levelSort: "title", levelSortEnabled: false, selectedImageIds: new Set(), savedImagesNotes: 0, historyOffset: 0, historyTotal: 0, currentTimer: null, receiptTimer: null, dailyMode: "daily" };
+    const state = { view: "home", stack: [], allItems: [], listVariant: "", levelSort: "title", levelSortEnabled: false, selectedImageIds: new Set(), savedImagesNotes: 0, historyOffset: 0, historyTotal: 0, currentTimer: null, receiptTimer: null, dailyMode: "daily", receiptData: null };
     const HISTORY_BASE = "inf-mobile-base";
     const HISTORY_APP = "inf-mobile-view";
     const $ = (id) => document.getElementById(id);
@@ -742,6 +794,7 @@
       $("viewTitle").textContent = text;
       $("backBtn").disabled = state.stack.length === 0;
       $("homeBtn").disabled = state.view === "home";
+      $("settingsBtn").disabled = state.view !== "receipt";
     }
     function setStats(items) {
       if (!items || items.length === 0) {
@@ -1052,6 +1105,7 @@
 
     function renderReceipt(data) {
       clearSelectionMode();
+      state.receiptData = data;
       const openSections = {};
       document.querySelectorAll("details[data-section]").forEach((section) => {
         openSections[section.dataset.section] = section.open;
@@ -1071,14 +1125,13 @@
         <div class="metric"><span>SCORE RATE</span><strong>${escapeText(data.score_rate || "-")}</strong></div>
         <div class="metric"><span>NOTES</span><strong>${fmt(data.today_notes)}</strong></div>
         <div class="metric featured bpi"><span>TOP BPI</span><strong>${escapeText(data.top_bpi || "-")}</strong></div>
+        <div class="metric"><span>RANGE</span><strong>${escapeText(data.range_text || "-")}</strong></div>
       </section>`;
       $("content").innerHTML = `${top}
         <section class="receipt-actions">
-          <button id="summarySettingsBtn" class="secondary-btn" type="button">Summary Settings</button>
           <button id="summaryBtn" class="secondary-btn" type="button">Generate Summary</button>
           <button id="tweetBtn" class="tweet-btn" type="button">Tweet</button>
         </section>
-        <section id="summarySettingsPanel" class="summary-settings" hidden></section>
         ${receiptSection("play-log", "Play Log", `${logs.length} / ${fmt(data.song_count)} songs`, logs, receiptSongRow, openSections)}
         ${receiptSection("top-bpi", "Top BPI", `${topBpi.length} charts`, topBpi, receiptBpiRow, openSections)}
         ${receiptSection("score-updates", "Score Updates", `${scoreUpdates.length} charts`, scoreUpdates, receiptScoreUpdateRow, openSections)}
@@ -1089,41 +1142,235 @@
           <div class="section-title">Rivals <span>${rivals.length} players</span></div>
           <div class="section-body">${rivals.length ? rivals.map(rivalRow).join("") : '<div class="empty">NO DATA</div>'}</div>
         </section>`;
-      $("tweetBtn")?.addEventListener("click", () => {
-        if (tweet.url) window.open(tweet.url, "_blank", "noopener");
+      $("tweetBtn")?.addEventListener("click", async () => {
+        const latest = await api(receiptApiPath());
+        state.receiptData = latest;
+        if (latest.tweet?.url) window.open(latest.tweet.url, "_blank", "noopener");
       });
-      $("summaryBtn")?.addEventListener("click", () => openReceiptSummaryImage(data));
-      $("summarySettingsBtn")?.addEventListener("click", () => toggleSummarySettings(data));
+      $("summaryBtn")?.addEventListener("click", async () => {
+        const latest = await api(receiptApiPath());
+        state.receiptData = latest;
+        openReceiptSummaryImage(latest);
+      });
       document.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
       bindImageButtons($("content"));
     }
 
     const SUMMARY_LEVEL_SETTINGS_KEY = "infMobileSummaryLevelStats";
-
-    function toggleSummarySettings(data) {
-      const panel = $("summarySettingsPanel");
-      if (!panel) return;
-      if (!panel.hidden) {
-        panel.hidden = true;
-        return;
-      }
-      renderSummarySettings(data);
-      panel.hidden = false;
-    }
+    const SUMMARY_PERIOD_SETTINGS_KEY = "infMobileSummaryPeriod";
+    const SUMMARY_LIMIT_SETTINGS_KEY = "infMobileSummarySectionLimit";
 
     function renderSummarySettings(data) {
       const panel = $("summarySettingsPanel");
       if (!panel) return;
       const entries = availableSummaryLevelEntries((data.summary_stats || {}).level_stats || {});
       const selected = new Set(loadSummaryLevelSelection(entries));
-      panel.innerHTML = `<div class="summary-settings-title">Lv stats</div>
-        <div class="summary-level-options">${entries.map((entry) => `<label><input type="checkbox" data-summary-level="${escapeText(entry.id)}" ${selected.has(entry.id) ? "checked" : ""}>${escapeText(entry.label)}</label>`).join("") || '<div class="empty">NO DATA</div>'}</div>`;
+      const period = loadSummaryPeriodSettings();
+      const limit = loadSummaryLimitSettings();
+      const sectionRows = summaryLimitSections();
+      panel.innerHTML = `<div class="summary-settings-title">Summary Settings</div>
+        <details open>
+          <summary>Period</summary>
+          <div class="summary-settings-body">
+            <div class="period-options">
+              ${summaryPeriodOptions().map(([value, label]) => `<label><input type="radio" name="summaryPeriod" data-summary-period value="${value}" ${period.period === value ? "checked" : ""}>${label}</label>`).join("")}
+            </div>
+            <div class="custom-period">
+              <input id="summaryStartDate" type="date" value="${escapeText(period.start_date || todayDateInputValue())}">
+              <input id="summaryEndDate" type="date" value="${escapeText(period.end_date || todayDateInputValue())}">
+            </div>
+          </div>
+        </details>
+        <details open>
+          <summary>Lv stats</summary>
+          <div class="summary-settings-body">
+            <div class="summary-level-options">${entries.map((entry) => `<label><input type="checkbox" data-summary-level="${escapeText(entry.id)}" ${selected.has(entry.id) ? "checked" : ""}>${escapeText(entry.label)}</label>`).join("") || '<div class="empty">NO DATA</div>'}</div>
+          </div>
+        </details>
+        <details open>
+          <summary>Section rows</summary>
+          <div class="summary-settings-body">
+            <div class="period-options">
+              ${sectionRows.map((entry) => {
+                const item = limit[entry.key] || { limit: 20, unlimited: false };
+                return `<label>${escapeText(entry.label)} <input data-summary-limit="${entry.key}" type="number" min="0" max="999" value="${escapeText(item.limit)}" ${item.unlimited ? "disabled" : ""}></label>
+                  ${entry.allowUnlimited ? `<label><input data-summary-unlimited="${entry.key}" type="checkbox" ${item.unlimited ? "checked" : ""}>${escapeText(entry.label)} Unlimited</label>` : ""}`;
+              }).join("")}
+            </div>
+          </div>
+        </details>`;
+      panel.querySelectorAll("[data-summary-period]").forEach((input) => {
+        input.addEventListener("change", () => {
+          saveSummaryPeriodFromPanel(panel);
+          refreshReceiptDataForSettings();
+        });
+      });
+      ["summaryStartDate", "summaryEndDate"].forEach((id) => {
+        panel.querySelector(`#${id}`)?.addEventListener("change", () => {
+          saveSummaryPeriodFromPanel(panel);
+          if ((panel.querySelector("[data-summary-period]:checked")?.value || "") === "custom") refreshReceiptDataForSettings();
+        });
+      });
       panel.querySelectorAll("[data-summary-level]").forEach((input) => {
         input.addEventListener("change", () => {
           const ids = [...panel.querySelectorAll("[data-summary-level]:checked")].map((node) => node.dataset.summaryLevel);
           saveSummaryLevelSelection(ids);
         });
       });
+      panel.querySelectorAll("[data-summary-unlimited]").forEach((input) => input.addEventListener("change", () => {
+        saveSummaryLimitFromPanel(panel);
+        renderSummarySettings(state.receiptData || data);
+      }));
+      panel.querySelectorAll("[data-summary-limit]").forEach((input) => input.addEventListener("change", () => saveSummaryLimitFromPanel(panel)));
+    }
+
+    async function refreshReceiptDataForSettings() {
+      try {
+        state.receiptData = await api(receiptApiPath());
+      } catch (e) {
+        renderError(e);
+      }
+    }
+
+    async function openSummarySettingsPage(shouldPush = true) {
+      if (state.view !== "receipt" && state.view !== "summary-settings") return;
+      clearCurrentTimer();
+      const addHistory = shouldPush && state.view !== "summary-settings";
+      if (addHistory) push(state.view);
+      state.view = "summary-settings";
+      setTitle("SUMMARY SETTINGS");
+      setStats([]);
+      $("content").innerHTML = `<section id="summarySettingsPanel" class="summary-settings"></section>`;
+      if (!state.receiptData) {
+        try {
+          state.receiptData = await api(receiptApiPath());
+        } catch (e) {
+          renderError(e);
+          return;
+        }
+      }
+      renderSummarySettings(state.receiptData);
+      if (addHistory) pushHistoryState();
+    }
+
+    function summaryPeriodOptions() {
+      return [
+        ["app_start", "After app start"],
+        ["last_play", "Last play day"],
+        ["week", "Last 1 week"],
+        ["month", "Last 1 month"],
+        ["year", "Last 1 year"],
+        ["custom", "Custom range"],
+      ];
+    }
+
+    function todayDateInputValue() {
+      const date = new Date();
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function loadSummaryPeriodSettings() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(SUMMARY_PERIOD_SETTINGS_KEY) || "{}");
+        if (parsed && typeof parsed === "object") {
+          return {
+            period: parsed.period || "app_start",
+            start_date: parsed.start_date || "",
+            end_date: parsed.end_date || "",
+          };
+        }
+      } catch (e) {}
+      return { period: "app_start", start_date: "", end_date: "" };
+    }
+
+    function saveSummaryPeriodSettings(settings) {
+      localStorage.setItem(SUMMARY_PERIOD_SETTINGS_KEY, JSON.stringify(settings));
+    }
+
+    function saveSummaryPeriodFromPanel(panel) {
+      saveSummaryPeriodSettings({
+        period: panel.querySelector("[data-summary-period]:checked")?.value || "app_start",
+        start_date: panel.querySelector("#summaryStartDate")?.value || "",
+        end_date: panel.querySelector("#summaryEndDate")?.value || "",
+      });
+    }
+
+    function receiptApiPath() {
+      const period = loadSummaryPeriodSettings();
+      const params = new URLSearchParams();
+      params.set("period", period.period || "app_start");
+      if (period.period === "custom") {
+        if (period.start_date) params.set("start_date", period.start_date);
+        if (period.end_date) params.set("end_date", period.end_date);
+      }
+      return `/api/folders/receipt?${params.toString()}`;
+    }
+
+    function loadSummaryLimitSettings() {
+      const defaults = defaultSummaryLimitSettings();
+      try {
+        const parsed = JSON.parse(localStorage.getItem(SUMMARY_LIMIT_SETTINGS_KEY) || "{}");
+        if (parsed && typeof parsed === "object" && Object.prototype.hasOwnProperty.call(parsed, "limit")) {
+          const oldLimit = Math.max(0, Math.floor(Number(parsed.limit) || 20));
+          const oldUnlimited = Boolean(parsed.unlimited);
+          return {
+            top_bpi: { limit: oldLimit || 20, unlimited: false },
+            score_updates: { limit: oldLimit, unlimited: oldUnlimited },
+            lamp_updates: { limit: oldLimit, unlimited: oldUnlimited },
+            bp_updates: { limit: oldLimit, unlimited: oldUnlimited },
+          };
+        }
+        const result = { ...defaults };
+        summaryLimitSections().forEach((entry) => {
+          const item = parsed[entry.key] || {};
+          result[entry.key] = {
+            limit: Math.max(0, Math.floor(Number(item.limit) || 0)),
+            unlimited: entry.allowUnlimited ? Boolean(item.unlimited) : false,
+          };
+          if (!Object.prototype.hasOwnProperty.call(item, "limit")) result[entry.key].limit = 20;
+        });
+        return result;
+      } catch (e) {}
+      return defaults;
+    }
+
+    function saveSummaryLimitFromPanel(panel) {
+      const settings = defaultSummaryLimitSettings();
+      summaryLimitSections().forEach((entry) => {
+        const limitNode = panel.querySelector(`[data-summary-limit="${entry.key}"]`);
+        const unlimitedNode = panel.querySelector(`[data-summary-unlimited="${entry.key}"]`);
+        settings[entry.key] = {
+          limit: Math.max(0, Math.floor(Number(limitNode?.value) || 0)),
+          unlimited: entry.allowUnlimited ? Boolean(unlimitedNode?.checked) : false,
+        };
+      });
+      localStorage.setItem(SUMMARY_LIMIT_SETTINGS_KEY, JSON.stringify(settings));
+    }
+
+    function defaultSummaryLimitSettings() {
+      return {
+        top_bpi: { limit: 20, unlimited: false },
+        score_updates: { limit: 20, unlimited: false },
+        lamp_updates: { limit: 20, unlimited: false },
+        bp_updates: { limit: 20, unlimited: false },
+      };
+    }
+
+    function summaryLimitSections() {
+      return [
+        { key: "top_bpi", label: "Top BPI", allowUnlimited: false },
+        { key: "score_updates", label: "Score Updates", allowUnlimited: true },
+        { key: "lamp_updates", label: "Lamp updates", allowUnlimited: true },
+        { key: "bp_updates", label: "BP Updates", allowUnlimited: true },
+      ];
+    }
+
+    function summarySectionLimit(key) {
+      const settings = loadSummaryLimitSettings()[key] || { limit: 20, unlimited: false };
+      return settings.unlimited ? Number.POSITIVE_INFINITY : Math.max(0, Math.floor(Number(settings.limit) || 0));
     }
 
     function availableSummaryLevelEntries(levelStats) {
@@ -1172,7 +1419,7 @@
       }
       const canvas = document.createElement("canvas");
       canvas.width = 1500;
-      canvas.height = 3600;
+      canvas.height = estimateSummaryCanvasHeight(data);
       const ctx = canvas.getContext("2d");
       const height = drawSummaryCanvas(ctx, canvas.width, canvas.height, data);
       const trimmed = document.createElement("canvas");
@@ -1211,7 +1458,12 @@
       };
 
       panel(10, 10, 465, 125);
-      drawText(ctx, stats.date || "", 65, 78, 52, "#ffffff", "bold");
+      if (isSingleSummaryRange(data)) {
+        drawText(ctx, stats.date || "", 65, 68, 48, "#ffffff", "bold");
+        drawText(ctx, summaryRangeText(data), 25, 92, 16, "#8899bb", "bold");
+      } else {
+        drawText(ctx, summaryRangeText(data), 25, 72, 26, "#ffffff", "bold");
+      }
       drawText(ctx, "plays:", 25, 118, 28, "#aaddff", "bold");
       drawText(ctx, fmt(stats.playcount || data.play_count || 0), 122, 118, 30, "#ffff66", "bold");
       drawText(ctx, "rate:", 220, 118, 28, "#aaddff", "bold");
@@ -1222,29 +1474,115 @@
       drawPeriodCards(ctx, stats.monthly_notes || [], stats.yearly_notes, 22, 354, 440);
 
       panel(10, 423, 465, 430, "Lv Hist");
-      drawLevelHist(ctx, stats.today_level_distribution || {}, 22, 475, 440, 350);
+      drawLevelHist(ctx, data.level_distribution || stats.today_level_distribution || {}, 22, 475, 440, 350);
 
       const levelStatEntries = selectedSummaryLevelEntries(stats.level_stats || {});
       const lvStatsHeight = Math.max(110, 55 + levelStatEntries.length * 185);
       panel(10, 863, 465, lvStatsHeight, "Lv stats");
       drawLevelStats(ctx, stats.level_stats || {}, 22, 910, 440, levelStatEntries);
 
-      const topBottom = drawSummaryList(ctx, "Top BPI", data.top_bpi_items || [], 495, 18, 990, 415, (item) => [
-        levelTextForImage(item), fmt(item.score), pct(item.score_rate), item.rankdiff || "", visibleBpiText(item) || "", item.title || "",
-      ]);
-      const scoreBottom = drawSummaryList(ctx, "Score Updates", data.score_updates || [], 495, 445, 990, 205, (item) => [
-        levelTextForImage(item), fmt(item.score), pct(item.score_rate), item.rankdiff || "", "+" + fmt((Number(item.score) || 0) - (Number(item.pre_score) || 0)), item.title || "",
-      ]);
-      const lampBottom = drawSummaryGroupedUpdates(ctx, "Lamp updates", data.lamp_updates || [], 495, 663, 990, 465);
-      const bpY = Math.max(760, lampBottom + 18);
-      const bpBottom = drawSummaryList(ctx, "BP Updates", data.bp_updates || [], 495, bpY, 990, 95, (item) => [
-        levelTextForImage(item), fmt(item.bp), "-" + fmt((Number(item.pre_bp) || 0) - (Number(item.bp) || 0)), item.title || "",
-      ]);
+      const topLimit = summarySectionLimit("top_bpi");
+      const scoreLimit = summarySectionLimit("score_updates");
+      const lampLimit = summarySectionLimit("lamp_updates");
+      const bpLimit = summarySectionLimit("bp_updates");
+      let rightY = 18;
+      const topRows = data.top_bpi_items || [];
+      let topBottom = rightY;
+      if (topLimit !== 0) {
+        const topHeight = summarySectionHeight(topRows.length, topLimit, 900);
+        topBottom = drawSummaryList(ctx, "Top BPI", topRows, 495, rightY, 990, topHeight, (item) => [
+          "", fmt(item.score), pct(item.score_rate), item.rankdiff || "", visibleBpiText(item) || "", item.title || "",
+        ], { kind: "ranked", limit: topLimit });
+        rightY = topBottom + 18;
+      }
+      const scoreUpdateRows = sortedScoreUpdatesForImage(data.score_updates || []);
+      let scoreBottom = rightY;
+      if (scoreLimit !== 0) {
+        const scoreHeight = summarySectionHeight(scoreUpdateRows.length, scoreLimit, 900);
+        scoreBottom = drawSummaryList(ctx, summarySectionTitle("Score Updates", scoreUpdateRows.length, scoreLimit), scoreUpdateRows, 495, rightY, 990, scoreHeight, (item) => [
+          "", fmt(item.score), pct(item.score_rate), item.rankdiff || "", "+" + fmt((Number(item.score) || 0) - (Number(item.pre_score) || 0)), item.title || "",
+        ], { kind: "ranked", limit: scoreLimit });
+        rightY = scoreBottom + 18;
+      }
+      let lampBottom = rightY;
+      if (lampLimit !== 0) {
+        lampBottom = drawSummaryGroupedUpdates(ctx, "Lamp updates", data.lamp_updates || [], 495, rightY, 990, Number.isFinite(lampLimit) ? 900 : Number.POSITIVE_INFINITY, lampLimit);
+        rightY = lampBottom + 18;
+      }
+      const bpRows = sortedBpUpdatesForImage(data.bp_updates || []);
+      let bpBottom = rightY;
+      if (bpLimit !== 0) {
+        const bpHeight = summarySectionHeight(bpRows.length, bpLimit, 900);
+        bpBottom = drawSummaryList(ctx, summarySectionTitle("BP Updates", bpRows.length, bpLimit), bpRows, 495, rightY, 990, bpHeight, (item) => [
+          "", fmt(item.bp), "-" + fmt((Number(item.pre_bp) || 0) - (Number(item.bp) || 0)), "", "", item.title || "",
+        ], { kind: "bp", limit: bpLimit });
+        rightY = bpBottom + 18;
+      }
       const leftBottom = 863 + lvStatsHeight;
       const contentBottom = Math.max(1650, leftBottom, topBottom, scoreBottom, lampBottom, bpBottom) + 12;
       ctx.fillStyle = "#10112a";
       ctx.fillRect(0, contentBottom, w, h - contentBottom);
       return Math.min(h, Math.ceil(contentBottom));
+    }
+
+    function summaryRangeText(data) {
+      const raw = String((data.summary_stats || {}).range_text || data.range_text || "");
+      const parts = raw.split(":");
+      return parts.length > 1 ? parts.slice(1).join(":").trim() : raw;
+    }
+
+    function isSingleSummaryRange(data) {
+      const start = Number(data.start_time) || 0;
+      const end = Number(data.end_time) || 0;
+      if (!start || !end) return true;
+      const startDate = new Date(start * 1000).toDateString();
+      const endDate = new Date((end - 1) * 1000).toDateString();
+      return startDate === endDate;
+    }
+
+    function sortedScoreUpdatesForImage(rows) {
+      return [...rows].sort((a, b) => {
+        const deltaA = (Number(a.score) || 0) - (Number(a.pre_score) || 0);
+        const deltaB = (Number(b.score) || 0) - (Number(b.pre_score) || 0);
+        return deltaB - deltaA || (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0);
+      });
+    }
+
+    function sortedBpUpdatesForImage(rows) {
+      return [...rows].sort((a, b) => {
+        const deltaA = (Number(a.pre_bp) || 0) - (Number(a.bp) || 0);
+        const deltaB = (Number(b.pre_bp) || 0) - (Number(b.bp) || 0);
+        return deltaB - deltaA || (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0);
+      });
+    }
+
+    function summarySectionHeight(rowCount, limit, maxHeight) {
+      const displayRows = Math.min(rowCount, Number.isFinite(limit) ? limit : rowCount);
+      const omittedRows = rowCount > displayRows ? 1 : 0;
+      return Math.max(95, 60 + (displayRows + omittedRows) * 35);
+    }
+
+    function summarySectionTitle(title, total, limit) {
+      const count = Number(total) || 0;
+      if (!Number.isFinite(limit)) return { text: title, count: String(count), truncated: false };
+      const shown = Math.min(count, Math.max(0, Math.floor(Number(limit) || 0)));
+      return { text: title, count: shown < count ? `${shown} / ${count}` : String(count), truncated: shown < count };
+    }
+
+    function estimateSummaryCanvasHeight(data) {
+      const stats = data.summary_stats || {};
+      const topLimit = summarySectionLimit("top_bpi");
+      const scoreLimit = summarySectionLimit("score_updates");
+      const lampLimit = summarySectionLimit("lamp_updates");
+      const bpLimit = summarySectionLimit("bp_updates");
+      const levelStatEntries = selectedSummaryLevelEntries(stats.level_stats || {});
+      const leftBottom = 863 + Math.max(110, 55 + levelStatEntries.length * 185);
+      let rightY = 18;
+      if (topLimit !== 0) rightY += summarySectionHeight((data.top_bpi_items || []).length, topLimit, 900) + 18;
+      if (scoreLimit !== 0) rightY += summarySectionHeight((data.score_updates || []).length, scoreLimit, 900) + 18;
+      if (lampLimit !== 0) rightY += summaryGroupedUpdatesHeight(data.lamp_updates || [], lampLimit, Number.isFinite(lampLimit) ? 900 : Number.POSITIVE_INFINITY) + 18;
+      if (bpLimit !== 0) rightY += summarySectionHeight((data.bp_updates || []).length, bpLimit, 900) + 18;
+      return Math.ceil(Math.max(1650, leftBottom, rightY) + 50);
     }
 
     function drawText(ctx, text, x, y, size, color = "#fff", weight = "normal", align = "left") {
@@ -1410,30 +1748,87 @@
       });
     }
 
-    function drawSummaryList(ctx, title, rows, x, y, w, h, mapper) {
+    function drawSummaryList(ctx, title, rows, x, y, w, h, mapper, options = {}) {
       ctx.fillStyle = "#05050c";
       roundRect(ctx, x, y, w, h, 7, true, false);
       ctx.fillStyle = "#002777";
       roundRect(ctx, x, y, w, 47, 7, true, false);
       ctx.strokeStyle = "#0058ad";
       roundRect(ctx, x, y, w, 47, 7, false, true);
-      drawText(ctx, title, x + 12, y + 32, 24, "#aaddff", "bold");
+      drawSummarySectionHeader(ctx, title, x + 12, y + 32, 24);
       const maxRows = Math.max(1, Math.floor((h - 58) / 35));
-      rows.slice(0, maxRows).forEach((item, i) => drawSummaryRow(ctx, mapper(item), x + 18, y + 80 + i * 35, w - 35, item));
+      const limit = Number.isFinite(options.limit) ? options.limit : rows.length;
+      const shownRows = Math.min(maxRows, limit);
+      rows.slice(0, shownRows).forEach((item, i) => drawSummaryRow(ctx, mapper(item), x + 18, y + 80 + i * 35, w - 35, item, options.kind || "ranked"));
+      if (rows.length > shownRows || title.truncated) drawVerticalEllipsis(ctx, x + w / 2, y + 80 + shownRows * 35);
       return y + h;
     }
 
-    function drawSummaryRow(ctx, values, x, y, w, item = {}) {
-      const cols = [0, 75, 185, 285, 405, 505];
+    function drawSummarySectionHeader(ctx, title, x, y, size) {
+      if (!title || typeof title !== "object") {
+        drawText(ctx, title, x, y, size, "#aaddff", "bold");
+        return;
+      }
+      drawText(ctx, title.text || "", x, y, size, "#aaddff", "bold");
+      const labelWidth = measureTextImage(ctx, title.text || "", size);
+      if (title.count) drawText(ctx, ` ${title.count}`, x + labelWidth + 4, y, size, "#9aa3b5", "bold");
+    }
+
+    function drawVerticalEllipsis(ctx, x, y) {
+      drawText(ctx, ".", x, y - 18, 22, "#9aa3b5", "bold", "center");
+      drawText(ctx, ".", x, y - 9, 22, "#9aa3b5", "bold", "center");
+      drawText(ctx, ".", x, y, 22, "#9aa3b5", "bold", "center");
+    }
+
+    function drawSummaryRow(ctx, values, x, y, w, item = {}, kind = "ranked") {
+      const cols = [0, 220, 330, 430, 550, 650];
       values.forEach((value, i) => {
-        if (i === 3 && String(value || "")) {
+        if (i === 0) {
+          drawLevelTextImage(ctx, item, x + cols[i], y, 205);
+          return;
+        }
+        if (kind === "ranked" && i === 3 && String(value || "")) {
           drawRankDiffImage(ctx, item, value, x + cols[i], y);
           return;
         }
-        const color = i === 0 ? "#ffff28" : i === 2 ? "#c8d4e8" : i === 4 ? bpiImageColor(value) : i === values.length - 1 ? difficultyImageColor(item.difficulty) : "#f4f6f8";
-        const size = i === 2 ? 14 : i === values.length - 1 ? 20 : 18;
+        const color = i === 1 && kind === "bp" ? "#aaffaa" : i === 2 && kind === "bp" ? "#33ddff" : i === 2 && kind === "ranked" ? "#c8d4e8" : i === 4 && kind === "ranked" ? bpiImageColor(value) : i === values.length - 1 ? difficultyImageColor(item.difficulty) : "#f4f6f8";
+        const size = i === 2 && kind === "ranked" ? 14 : i === values.length - 1 ? 20 : 18;
         drawText(ctx, value, x + (cols[i] || (i * 90)), y, size, color, "bold");
       });
+    }
+
+    function drawLevelTextImage(ctx, item, x, y, maxWidth = 110) {
+      const difficulty = String(item.difficulty || "").toUpperCase();
+      const clear = item.sp_12clear || "";
+      const hard = item.sp_12hard || "";
+      if (String(item.lv || "") === "12" && difficulty.startsWith("SP") && (clear || hard)) {
+        const clearText = clear || "?";
+        const hardText = hard || "?";
+        const sepWidth = measureTextImage(ctx, "/", 16);
+        const clearSize = fitTextSizeImage(ctx, clearText, 16, maxWidth * 0.48);
+        const hardSize = fitTextSizeImage(ctx, hardText, 16, maxWidth * 0.48);
+        drawText(ctx, clearText, x, y, clearSize, "#bbddff", "bold");
+        const clearWidth = measureTextImage(ctx, clearText, clearSize);
+        drawText(ctx, "/", x + clearWidth, y, 16, "#f4f6f8", "bold");
+        drawText(ctx, hardText, x + clearWidth + sepWidth, y, hardSize, "#ffaaaa", "bold");
+        return;
+      }
+      const text = levelTextForImage(item);
+      drawText(ctx, text, x, y, fitTextSizeImage(ctx, text, 18, maxWidth), "#ffff28", "bold");
+    }
+
+    function measureTextImage(ctx, text, size) {
+      const oldFont = ctx.font;
+      ctx.font = `bold ${size}px "RocknRoll One", system-ui, sans-serif`;
+      const width = ctx.measureText(String(text ?? "")).width;
+      ctx.font = oldFont;
+      return width;
+    }
+
+    function fitTextSizeImage(ctx, text, baseSize, maxWidth) {
+      let size = baseSize;
+      while (size > 11 && measureTextImage(ctx, text, size) > maxWidth) size -= 1;
+      return size;
     }
 
     function drawRankDiffImage(ctx, item, value, x, y) {
@@ -1485,13 +1880,9 @@
       return Number.isFinite(n) && n > 0 ? "#50ff5f" : "#a0a83f";
     }
 
-    function drawSummaryGroupedUpdates(ctx, title, rows, x, y, w, h) {
-      const groups = groupLampUpdatesForImage(rows);
-      let neededHeight = 77;
-      groups.forEach((group) => {
-        neededHeight += 34 + group.items.length * 31 + 12;
-      });
-      const actualHeight = Math.min(h, Math.max(95, neededHeight + 8));
+    function drawSummaryGroupedUpdates(ctx, title, rows, x, y, w, h, limit = Number.POSITIVE_INFINITY) {
+      const groups = groupLampUpdatesForImage(rows, limit);
+      const actualHeight = summaryGroupedUpdatesHeight(rows, limit, h);
       ctx.fillStyle = "#05050c";
       roundRect(ctx, x, y, w, actualHeight, 7, true, false);
       ctx.fillStyle = "#002777";
@@ -1505,14 +1896,20 @@
         if (cy > y + actualHeight - 32) return;
         ctx.fillStyle = lampImageColor(group.lamp);
         roundRect(ctx, x + 18, cy - 16, 17, 17, 3, true, false);
-        drawText(ctx, `New ${group.label} ${group.items.length}`, x + 44, cy, 20, "#ffffff", "bold");
+        const label = `New ${group.label}`;
+        drawText(ctx, label, x + 44, cy, 20, "#ffffff", "bold");
+        drawText(ctx, ` ${group.total}`, x + 44 + measureTextImage(ctx, label, 20) + 4, cy, 20, "#9aa3b5", "bold");
         cy += 34;
         group.items.forEach((item) => {
           if (cy > y + actualHeight - 20) return;
-          drawText(ctx, levelTextForImage(item), x + 90, cy, 19, "#ffff28", "bold");
-          drawText(ctx, item.title || "", x + 205, cy, 20, difficultyImageColor(item.difficulty), "bold");
+          drawLevelTextImage(ctx, item, x + 90, cy, 190);
+          drawText(ctx, item.title || "", x + 300, cy, 20, difficultyImageColor(item.difficulty), "bold");
           cy += 31;
         });
+        if (group.total > group.items.length) {
+          drawVerticalEllipsis(ctx, x + w / 2, cy + 6);
+          cy += 35;
+        }
         cy += 12;
         if (cy < y + actualHeight - 10) {
           ctx.strokeStyle = "#24243d";
@@ -1525,7 +1922,17 @@
       return y + actualHeight;
     }
 
-    function groupLampUpdatesForImage(rows) {
+    function summaryGroupedUpdatesHeight(rows, limit = Number.POSITIVE_INFINITY, maxHeight = Number.POSITIVE_INFINITY) {
+      let neededHeight = 77;
+      const groups = groupLampUpdatesForImage(rows, limit);
+      groups.forEach((group) => {
+        neededHeight += 34 + group.items.length * 31 + 12;
+        if (group.total > group.items.length) neededHeight += 35;
+      });
+      return Math.max(95, neededHeight + 8);
+    }
+
+    function groupLampUpdatesForImage(rows, limit = Number.POSITIVE_INFINITY) {
       const labels = {
         7: "FC",
         6: "EXH",
@@ -1546,7 +1953,13 @@
       });
       return order
         .filter((lamp) => groups[lamp]?.length)
-        .map((lamp) => ({ lamp, label: labels[lamp] || "Lamp", items: groups[lamp] }));
+        .map((lamp) => {
+          const total = groups[lamp].length;
+          const maxItems = Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : Number.POSITIVE_INFINITY;
+          const items = groups[lamp].slice(0, maxItems);
+          return { lamp, label: labels[lamp] || "Lamp", total, items };
+        })
+        .filter((group) => group.items.length);
     }
 
     function lampImageColor(lamp) {
@@ -1574,7 +1987,9 @@
     }
 
     function levelTextForImage(item) {
-      return item.dp_unofficial_lv ? `☆${item.lv} ${item.dp_unofficial_lv}` : `☆${item.lv || ""}`;
+      const difficulty = String(item.difficulty || "").toUpperCase();
+      if (difficulty.startsWith("DP") && item.dp_unofficial_lv) return `☆${item.lv} ${item.dp_unofficial_lv}`;
+      return `☆${item.lv || ""}`;
     }
 
     function receiptSection(id, title, count, rows, rowRenderer, openSections = {}) {
@@ -1823,7 +2238,7 @@
           renderList(data.folder.label, data.items, { notes: data.notes, variant: "compact" });
         } else if (id === "receipt") {
           state.view = "receipt";
-          renderReceipt(await api("/api/folders/receipt"));
+          renderReceipt(await api(receiptApiPath()));
           state.receiptTimer = setInterval(() => refreshReceipt(), 5000);
         } else if (id === "daily") {
           state.view = "daily";
@@ -1895,7 +2310,7 @@
     async function refreshReceipt() {
       if (state.view !== "receipt") return;
       try {
-        renderReceipt(await api("/api/folders/receipt"));
+        renderReceipt(await api(receiptApiPath()));
       } catch (e) { renderError(e); }
     }
     async function loadMoreHistory() {
@@ -1930,6 +2345,7 @@
       else if (view.startsWith("daily-month:")) await openDailyMonth(view.slice(12), shouldPush);
       else if (view.startsWith("daily-year:")) await openDailyYear(view.slice(11), shouldPush);
       else if (view.startsWith("daily:")) await openDailyDate(view.slice(6), shouldPush);
+      else if (view === "summary-settings") await openSummarySettingsPage(shouldPush);
       else await openFolder(view, shouldPush);
     }
     async function goUpOneLevel(rewriteHistory = true) {
@@ -1945,6 +2361,7 @@
     $("backBtn").addEventListener("click", () => goUpOneLevel(true));
     $("homeBtn").addEventListener("click", () => loadHome());
     $("refreshBtn").addEventListener("click", () => openView(state.view, false));
+    $("settingsBtn").addEventListener("click", () => openSummarySettingsPage(true));
     $("viewTitle").addEventListener("click", () => {
       $("content").scrollTo({ top: 0, behavior: "smooth" });
       window.scrollTo({ top: 0, behavior: "smooth" });

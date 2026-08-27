@@ -166,7 +166,10 @@ class MobileScoreHTTPServer:
                     self._send_json(result_database.get_mobile_bpi_best_data())
                     return
                 if path == "/api/folders/receipt":
-                    self._send_json(result_database.get_mobile_receipt_data())
+                    period = (query.get("period") or [None])[0]
+                    start_date = (query.get("start_date") or [None])[0]
+                    end_date = (query.get("end_date") or [None])[0]
+                    self._send_json(result_database.get_mobile_receipt_data(period, start_date, end_date))
                     return
                 if path == "/api/folders/daily":
                     mode = (query.get("mode") or ["daily"])[0]

@@ -734,18 +734,16 @@ class ResultDatabase:
 
         return best_results
 
-    def get_graph_data(self, start_time: int) -> dict:
+    def get_graph_data(self, start_time: int, end_time: int | None = None) -> dict:
         """本日のノーツ数用データを辞書形式で返す"""
         target = []
         total = Judge()
         for r in reversed(self.results):
             if r.detect_mode == detect_mode.play:
-                if r.timestamp >= start_time:
+                if self._timestamp_in_range(r.timestamp, start_time, end_time):
                     target.append(r)
                     if r.judge:
                         total += r.judge
-                else:
-                    break
 
         # 現在のスコアレートを計算
         current_score_rate = "0.00%"
@@ -792,15 +790,13 @@ class ResultDatabase:
 
         return data
 
-    def get_today_updates_data(self, start_time: int) -> dict:
+    def get_today_updates_data(self, start_time: int, end_time: int | None = None) -> dict:
         """本日のプレー履歴のデータを辞書形式で返す"""
         target: List[OneResult] = []
         for r in reversed(self.results):
             if r.detect_mode == detect_mode.result:
-                if r.timestamp >= start_time:
+                if self._timestamp_in_range(r.timestamp, start_time, end_time):
                     target.append(r)
-                else:
-                    break
 
         items = []
         for r in target:
@@ -842,6 +838,7 @@ class ResultDatabase:
                 "battle": r.option.battle if r.option else 0,
                 "playspeed": r.playspeed if r.playspeed else 1.0,
                 "score_rate": r.score / r.notes / 2 if r.notes else 0,
+                "timestamp": int(r.timestamp),
             }
             image_url = self._mobile_result_image_url(r)
             if image_url:
@@ -874,21 +871,19 @@ class ResultDatabase:
             "items": items,
         }
 
-    def get_today_stats_data(self, start_time: int) -> dict:
+    def get_today_stats_data(self, start_time: int, end_time: int | None = None) -> dict:
         """today_stats.html用の統計データを生成"""
-        now = datetime.datetime.now()
+        now = datetime.datetime.fromtimestamp(end_time) if end_time else datetime.datetime.now()
 
         # --- playcount, score_rate (get_graph_dataと同等のロジック) ---
         today_target = []
         total_judge = Judge()
         for r in reversed(self.results):
             if r.detect_mode == detect_mode.play:
-                if r.timestamp >= start_time:
+                if self._timestamp_in_range(r.timestamp, start_time, end_time):
                     today_target.append(r)
                     if r.judge:
                         total_judge += r.judge
-                else:
-                    break
 
         playcount = len(today_target)
         score_rate_str = f"{total_judge.score_rate * 100:.1f}%"
@@ -922,7 +917,7 @@ class ResultDatabase:
         level_dist = {}
         for r in reversed(self.results):
             if r.detect_mode == detect_mode.result:
-                if r.timestamp >= start_time:
+                if self._timestamp_in_range(r.timestamp, start_time, end_time):
                     songinfo = self.song_database.search(
                         title=r.title, play_style=r.play_style, difficulty=r.difficulty
                     )
@@ -940,8 +935,6 @@ class ResultDatabase:
                         level_dist[lv]["sp"] += 1
                     else:
                         level_dist[lv]["dp"] += 1
-                else:
-                    break
 
         # --- level_stats: 全レベルのランプ/スコアレート統計 ---
         bests = self.get_all_best_results()
@@ -1288,6 +1281,82 @@ class ResultDatabase:
                 return start_time
         offset_hours = _to_int_or_none(getattr(self.config, "autoload_offset", 0) if self.config else 0) or 0
         return self._today_start_timestamp() - offset_hours * 3600
+
+    @staticmethod
+    def _date_range_timestamps(start_date: str | None, end_date: str | None) -> tuple[int, int] | None:
+        try:
+            start_dt = datetime.datetime.strptime(str(start_date), "%Y-%m-%d")
+            end_dt = datetime.datetime.strptime(str(end_date), "%Y-%m-%d") + datetime.timedelta(days=1)
+        except (TypeError, ValueError):
+            return None
+        if end_dt <= start_dt:
+            end_dt = start_dt + datetime.timedelta(days=1)
+        return int(start_dt.timestamp()), int(end_dt.timestamp())
+
+    def _mobile_last_play_day_range(self) -> tuple[int, int]:
+        latest = None
+        for result in reversed(self.results):
+            if result.detect_mode in (detect_mode.play, detect_mode.result):
+                latest = result.timestamp
+                break
+        if latest is None:
+            latest = int(datetime.datetime.now().timestamp())
+        day = datetime.datetime.fromtimestamp(latest).replace(hour=0, minute=0, second=0, microsecond=0)
+        return int(day.timestamp()), int((day + datetime.timedelta(days=1)).timestamp())
+
+    def _mobile_receipt_range(
+        self,
+        period: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> tuple[int, int | None, str]:
+        period = (period or "").lower()
+        now = datetime.datetime.now()
+        if period == "app_start":
+            start = _to_int_or_none(getattr(self, "app_start_time", None))
+            return start or self._mobile_receipt_start_timestamp(), None, "app_start"
+        if period == "last_play":
+            start, end = self._mobile_last_play_day_range()
+            return start, end, "last_play"
+        if period == "week":
+            return int((now - datetime.timedelta(days=7)).timestamp()), int(now.timestamp()), "week"
+        if period == "month":
+            return int((now - datetime.timedelta(days=30)).timestamp()), int(now.timestamp()), "month"
+        if period == "year":
+            return int((now - datetime.timedelta(days=365)).timestamp()), int(now.timestamp()), "year"
+        if period == "custom":
+            parsed = self._date_range_timestamps(start_date, end_date)
+            if parsed:
+                return parsed[0], parsed[1], "custom"
+        return self._mobile_receipt_start_timestamp(), None, "default"
+
+    def _mobile_receipt_range_text(self, start_time: int, end_time: int | None, period: str) -> str:
+        labels = {
+            "app_start": "After app start",
+            "last_play": "Last play day",
+            "week": "Last 1 week",
+            "month": "Last 1 month",
+            "year": "Last 1 year",
+            "custom": "Custom range",
+            "default": "Receipt range",
+        }
+        start_text = self._timestamp_text(start_time, "%Y-%m-%d %H:%M" if period == "app_start" else "%Y-%m-%d")
+        if end_time is None:
+            return f"{labels.get(period, period)}: {start_text}-"
+        end_date = datetime.datetime.fromtimestamp(end_time) - datetime.timedelta(seconds=1)
+        end_text = end_date.strftime("%Y-%m-%d")
+        if start_text == end_text:
+            return f"{labels.get(period, period)}: {start_text}"
+        return f"{labels.get(period, period)}: {start_text} - {end_text}"
+
+    @staticmethod
+    def _timestamp_in_range(timestamp: int | float | None, start_time: int, end_time: int | None = None) -> bool:
+        value = _to_int_or_none(timestamp)
+        if value is None or value < start_time:
+            return False
+        if end_time is not None and value >= end_time:
+            return False
+        return True
 
     def _songinfo_for_result(self, result: OneResult):
         return self.song_database.search(
@@ -1848,10 +1917,16 @@ class ResultDatabase:
             "items": self._mobile_result_items(page),
         }
 
-    def get_mobile_receipt_data(self) -> dict:
-        start = self._mobile_receipt_start_timestamp()
-        graph_data = self.get_graph_data(start)
-        updates_data = self.get_today_updates_data(start)
+    def get_mobile_receipt_data(
+        self,
+        period: str | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> dict:
+        start, end, period_key = self._mobile_receipt_range(period, start_date, end_date)
+        range_text = self._mobile_receipt_range_text(start, end, period_key)
+        graph_data = self.get_graph_data(start, end)
+        updates_data = self.get_today_updates_data(start, end)
         items = updates_data.get("items", [])
 
         def bpi_value(item):
@@ -1863,6 +1938,19 @@ class ResultDatabase:
         def valid_previous_bp(item):
             pre_bp = _to_int_or_none(item.get("pre_bp"))
             return pre_bp is not None and 0 < pre_bp < 99999
+
+        level_distribution = {}
+        for item in items:
+            lv = str(item.get("lv") or "?")
+            if lv not in level_distribution:
+                level_distribution[lv] = {"sp": 0, "dp": 0, "battle": 0}
+            difficulty_text = str(item.get("difficulty") or "").upper()
+            if item.get("battle") or difficulty_text.startswith("DB"):
+                level_distribution[lv]["battle"] += 1
+            elif difficulty_text.startswith("DP"):
+                level_distribution[lv]["dp"] += 1
+            else:
+                level_distribution[lv]["sp"] += 1
 
         top_bpi_by_chart = {}
         for item in items:
@@ -1913,6 +2001,9 @@ class ResultDatabase:
         return {
             "folder": {"id": "receipt", "label": "RECEIPT"},
             "start_time": start,
+            "end_time": end,
+            "period": period_key,
+            "range_text": range_text,
             "start_time_text": self._timestamp_text(start),
             "play_count": graph_data.get("playcount", len(items)),
             "song_count": len(items),
@@ -1920,18 +2011,22 @@ class ResultDatabase:
             "score_rate": graph_data.get("today_score_rate", "0.00%"),
             "top_bpi": top_bpi,
             "items": items[:20],
+            "level_distribution": level_distribution,
             "top_bpi_items": top_bpi_items,
             "score_updates": score_updates,
             "lamp_updates": lamp_updates,
             "bp_updates": bp_updates,
             "current_detail": current_detail,
             "rival_items": current_detail.get("rival_items", []) if current_detail else [],
-            "tweet": self.get_mobile_tweet_data(start, graph_data),
-            "summary_stats": self.get_today_stats_data(start),
+            "tweet": self.get_mobile_tweet_data(start, graph_data, end),
+            "summary_stats": {
+                **self.get_today_stats_data(start, end),
+                "range_text": range_text,
+            },
         }
 
-    def get_mobile_tweet_data(self, start_time: int, graph_data: dict | None = None) -> dict:
-        graph_data = graph_data or self.get_graph_data(start_time)
+    def get_mobile_tweet_data(self, start_time: int, graph_data: dict | None = None, end_time: int | None = None) -> dict:
+        graph_data = graph_data or self.get_graph_data(start_time, end_time)
         judge = graph_data.get("today_judge", {}) if graph_data else {}
         msg = (
             f"plays:{graph_data.get('playcount', 0)}, "
@@ -1951,7 +2046,7 @@ class ResultDatabase:
         uptime = datetime.datetime.now() - datetime.datetime.fromtimestamp(app_start_time)
         msg += f"uptime: {str(uptime).split('.')[0]}\n"
         if self.config and getattr(self.config, "enable_folder_updates", False):
-            msg += self._collect_mobile_tweet_updates(start_time)
+            msg += self._collect_mobile_tweet_updates(start_time, end_time)
         start_date = datetime.datetime.fromtimestamp(app_start_time)
         msg += f"({start_date.year}/{start_date.month:02d}: {self.get_monthly_notes():,})\n"
         msg += "#INFINITAS_daken_counter\n"
@@ -1960,14 +2055,12 @@ class ResultDatabase:
             "url": f"https://twitter.com/intent/tweet?text={urllib.parse.quote(msg)}",
         }
 
-    def _collect_mobile_tweet_updates(self, start_time: int) -> str:
+    def _collect_mobile_tweet_updates(self, start_time: int, end_time: int | None = None) -> str:
         today_results = []
         for result in reversed(self.results):
             if result.detect_mode == detect_mode.result:
-                if result.timestamp >= start_time:
+                if self._timestamp_in_range(result.timestamp, start_time, end_time):
                     today_results.append(result)
-                else:
-                    break
         if not today_results:
             return ""
 
