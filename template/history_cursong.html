@@ -669,6 +669,7 @@
         
         // BEST情報
         var best_score = data.best_score || 0;
+        var best_score_num = Number(String(best_score).replace(/,/g, '')) || 0;
         var best_score_rate = data.best_score_rate || 0;
         var best_score_opt = data.best_score_opt || '';
         var best_bp = (data.best_bp === undefined || data.best_bp === null) ? 99999999: data.best_bp;
@@ -791,7 +792,17 @@
             if (hasBpim2Data) {
                 var rankOrder = {'A1': 1, 'A2': 2, 'A3': 3, 'A4': 4, 'A5': 5};
                 function selectNearestAverages(averages, score) {
-                    var sorted = averages.slice().sort(function(a, b) {
+                    var sorted = averages
+                        .map(function(avg) {
+                            return {
+                                rank: avg.rank,
+                                score: Number(String(avg.score).replace(/,/g, '')) || 0
+                            };
+                        })
+                        .filter(function(avg) {
+                            return avg.rank && avg.score > 0;
+                        })
+                        .sort(function(a, b) {
                         return (rankOrder[a.rank] || 99) - (rankOrder[b.rank] || 99);
                     });
                     if (sorted.length <= 2) return sorted;
@@ -812,7 +823,7 @@
                         })
                         .slice(0, 2);
                 }
-                var display_averages = selectNearestAverages(bpi_near_averages, best_score).sort(function(a, b) {
+                var display_averages = selectNearestAverages(bpi_near_averages, best_score_num).sort(function(a, b) {
                     return (rankOrder[b.rank] || 99) - (rankOrder[a.rank] || 99);
                 });
                 display_averages.forEach(function(avg) {
@@ -821,7 +832,7 @@
                     bpi_html += '<div class="bpi-item bpi-rank ' + rank_class + '">';
                     bpi_html += '<div class="bpi-item-label">' + avg.rank + '平均</div>';
                     bpi_html += '<div class="bpi-item-value">' + avg_score.toLocaleString() + '</div>';
-                    var diff_avg = best_score - avg_score;
+                    var diff_avg = best_score_num - avg_score;
                     var diff_avg_str = (diff_avg >= 0 ? '+' : '') + diff_avg;
                     var diff_avg_class = diff_avg >= 0 ? 'positive' : 'negative';
                     bpi_html += '<div class="bpi-comparison ' + diff_avg_class + '">' + diff_avg_str + '</div>';
