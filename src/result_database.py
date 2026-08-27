@@ -1973,7 +1973,7 @@ class ResultDatabase:
             [entry[1] for entry in top_bpi_by_chart.values()],
             key=lambda item: bpi_value(item),
             reverse=True,
-        )[:20]
+        )
         score_updates = [
             item for item in items
             if (_to_int_or_none(item.get("score")) or 0) > (_to_int_or_none(item.get("pre_score")) or 0)
