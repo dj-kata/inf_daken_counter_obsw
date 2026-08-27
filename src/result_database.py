@@ -2018,17 +2018,27 @@ class ResultDatabase:
             "bp_updates": bp_updates,
             "current_detail": current_detail,
             "rival_items": current_detail.get("rival_items", []) if current_detail else [],
-            "tweet": self.get_mobile_tweet_data(start, graph_data, end),
+            "tweet": self.get_mobile_tweet_data(start, graph_data, end, period_key, range_text),
             "summary_stats": {
                 **self.get_today_stats_data(start, end),
                 "range_text": range_text,
             },
         }
 
-    def get_mobile_tweet_data(self, start_time: int, graph_data: dict | None = None, end_time: int | None = None) -> dict:
+    def get_mobile_tweet_data(
+        self,
+        start_time: int,
+        graph_data: dict | None = None,
+        end_time: int | None = None,
+        period: str | None = None,
+        range_text: str | None = None,
+    ) -> dict:
         graph_data = graph_data or self.get_graph_data(start_time, end_time)
         judge = graph_data.get("today_judge", {}) if graph_data else {}
-        msg = (
+        msg = ""
+        if period != "app_start" and range_text:
+            msg += f"{range_text}\n"
+        msg += (
             f"plays:{graph_data.get('playcount', 0)}, "
             f"notes:{_to_int_or_none(graph_data.get('today_notes')) or 0:,}, "
             f"{graph_data.get('today_score_rate', '0.00%')}\n"
@@ -2043,8 +2053,9 @@ class ResultDatabase:
                 f"CB:{_to_int_or_none(judge.get('cb')) or 0:,})\n"
             )
         app_start_time = _to_int_or_none(getattr(self, "app_start_time", None)) or start_time
-        uptime = datetime.datetime.now() - datetime.datetime.fromtimestamp(app_start_time)
-        msg += f"uptime: {str(uptime).split('.')[0]}\n"
+        if period == "app_start":
+            uptime = datetime.datetime.now() - datetime.datetime.fromtimestamp(app_start_time)
+            msg += f"uptime: {str(uptime).split('.')[0]}\n"
         if self.config and getattr(self.config, "enable_folder_updates", False):
             msg += self._collect_mobile_tweet_updates(start_time, end_time)
         start_date = datetime.datetime.fromtimestamp(app_start_time)

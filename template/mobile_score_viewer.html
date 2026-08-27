@@ -584,6 +584,13 @@
     .summary-settings summary::after { content: "⌄"; color: var(--muted); }
     .summary-settings details[open] summary::after { content: "⌃"; }
     .summary-settings-body { padding: 10px; border-top: 1px solid var(--line); }
+    .summary-help {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+      line-height: 1.35;
+    }
     .period-options { display: grid; gap: 8px; }
     .period-options label {
       display: flex;
@@ -1191,8 +1198,9 @@
           </div>
         </details>
         <details open>
-          <summary>Result levels</summary>
+          <summary>Update result levels</summary>
           <div class="summary-settings-body">
+            <div class="summary-help">Shown in Score, Lamp, and BP update sections only.</div>
             <div class="summary-level-options">${resultLevelEntries.map((entry) => `<label><input type="checkbox" data-summary-result-level="${escapeText(entry.id)}" ${selectedResultLevels.has(entry.id) ? "checked" : ""}>${escapeText(entry.label)}</label>`).join("")}</div>
           </div>
         </details>
@@ -1525,17 +1533,17 @@
       drawText(ctx, "rate:", 220, 153, 25, "#aaddff", "bold");
       drawText(ctx, stats.score_rate || data.score_rate || "-", 300, 153, 27, "#ffff66", "bold");
 
-      panel(10, 180, 465, 265);
-      drawNotesBars(ctx, stats.daily_notes || [], 22, 210, 430, 150);
-      drawPeriodCards(ctx, stats.monthly_notes || [], stats.yearly_notes, 22, 389, 440);
+      panel(10, 180, 465, 310, "Daily Notes");
+      drawNotesBars(ctx, stats.daily_notes || [], 22, 232, 430, 150);
+      drawPeriodCards(ctx, stats.monthly_notes || [], stats.yearly_notes, 22, 432, 440);
 
-      panel(10, 458, 465, 430, "Lv Hist");
-      drawLevelHist(ctx, data.level_distribution || stats.today_level_distribution || {}, 22, 510, 440, 350);
+      panel(10, 503, 465, 430, "Lv Hist");
+      drawLevelHist(ctx, data.level_distribution || stats.today_level_distribution || {}, 22, 555, 440, 350);
 
       const levelStatEntries = selectedSummaryLevelEntries(stats.level_stats || {});
       const lvStatsHeight = Math.max(110, 55 + levelStatEntries.length * 185);
-      panel(10, 898, 465, lvStatsHeight, "Lv stats");
-      drawLevelStats(ctx, stats.level_stats || {}, 22, 945, 440, levelStatEntries);
+      panel(10, 943, 465, lvStatsHeight, "Lv stats");
+      drawLevelStats(ctx, stats.level_stats || {}, 22, 990, 440, levelStatEntries);
 
       const topLimit = summarySectionLimit("top_bpi");
       const scoreLimit = summarySectionLimit("score_updates");
@@ -1574,7 +1582,7 @@
         ], { kind: "bp", limit: bpLimit });
         rightY = bpBottom + 18;
       }
-      const leftBottom = 898 + lvStatsHeight;
+      const leftBottom = 943 + lvStatsHeight;
       const contentBottom = Math.max(1650, leftBottom, topBottom, scoreBottom, lampBottom, bpBottom) + 12;
       ctx.fillStyle = "#10112a";
       ctx.fillRect(0, contentBottom, w, h - contentBottom);
@@ -1632,7 +1640,7 @@
       const lampLimit = summarySectionLimit("lamp_updates");
       const bpLimit = summarySectionLimit("bp_updates");
       const levelStatEntries = selectedSummaryLevelEntries(stats.level_stats || {});
-      const leftBottom = 898 + Math.max(110, 55 + levelStatEntries.length * 185);
+      const leftBottom = 943 + Math.max(110, 55 + levelStatEntries.length * 185);
       let rightY = 18;
       if (topLimit !== 0) rightY += summarySectionHeight((data.top_bpi_items || []).length, topLimit, 900) + 18;
       if (scoreLimit !== 0) rightY += summarySectionHeight(filterSummaryResultRows(data.score_updates || []).length, scoreLimit, 900) + 18;
@@ -1665,19 +1673,18 @@
       const rows = dailyNotes.slice(-7);
       const totals = rows.map((d) => (Number(d.pg) || 0) + (Number(d.gr) || 0) + (Number(d.gd) || 0) + (Number(d.bd) || 0));
       const maxTotal = Math.max(1, ...totals);
-      drawText(ctx, "Notes", x, y + 14, 19, "#aaddff", "bold");
       rows.forEach((d, i) => {
         const total = totals[i];
         const bx = x + 15 + i * 62;
         const bh = Math.round(total / maxTotal * 120);
         drawText(ctx, fmt(total), bx + 15, y + 15 + (120 - bh), 16, "#ffff99", "bold", "center");
         ctx.fillStyle = "#00a6ff";
-        ctx.fillRect(bx, y + 35 + (120 - bh), 30, bh);
+        ctx.fillRect(bx, y + 27 + (120 - bh), 30, bh);
         ctx.fillStyle = "#00d4dd";
-        ctx.fillRect(bx, y + 35 + (120 - bh), 30, Math.round(bh * 0.25));
+        ctx.fillRect(bx, y + 27 + (120 - bh), 30, Math.round(bh * 0.25));
         ctx.fillStyle = "#ffb300";
-        ctx.fillRect(bx, y + 35 + 120 - 12, 30, Math.min(12, bh));
-        drawText(ctx, d.date || "", bx + 15, y + 177, 16, "#aaddff", "bold", "center");
+        ctx.fillRect(bx, y + 27 + 120 - 12, 30, Math.min(12, bh));
+        drawText(ctx, d.date || "", bx + 15, y + 164, 16, "#aaddff", "bold", "center");
       });
     }
 
