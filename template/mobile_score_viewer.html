@@ -638,6 +638,21 @@
     details.section:not([open]) > summary.section-title { border-bottom: 0; }
     details.section:not([open]) > summary.section-title::after { content: "⌄"; }
     .section-body { padding: 0 10px 2px 10px; }
+    details.receipt-subsection > summary.receipt-subsection-title {
+      cursor: pointer;
+      list-style: none;
+    }
+    details.receipt-subsection > summary.receipt-subsection-title::-webkit-details-marker { display: none; }
+    details.receipt-subsection > summary.receipt-subsection-title::after {
+      content: "⌃";
+      color: var(--muted);
+      font-size: 12px;
+      margin-left: auto;
+    }
+    details.receipt-subsection:not([open]) > summary.receipt-subsection-title {
+      border-bottom: 0;
+    }
+    details.receipt-subsection:not([open]) > summary.receipt-subsection-title::after { content: "⌄"; }
     .receipt-subsection-title {
       min-height: 34px;
       display: flex;
@@ -1191,7 +1206,7 @@
           title: "Score Rank Achievements",
           count: `${rankAchievements.length} charts`,
           rows: rankAchievements,
-          grouped: true,
+          groupKind: "rank",
         },
         "score-updates": {
           title: "Score Updates",
@@ -1203,7 +1218,7 @@
           title: "Lamp Updates",
           count: `${lampUpdates.length} charts`,
           rows: lampUpdates,
-          rowRenderer: receiptLampUpdateRow,
+          groupKind: "lamp",
         },
         "bp-updates": {
           title: "BP Updates",
@@ -1226,8 +1241,8 @@
       state.listVariant = "receipt-section";
       setTitle(config.title);
       setStats([["ITEMS", config.rows.length], ["RANGE", data.range_text || "-"], ["", ""]]);
-      $("content").innerHTML = config.grouped
-        ? receiptRankAchievementSection(sectionId, config.title, config.rows, { [sectionId]: true })
+      $("content").innerHTML = config.groupKind
+        ? receiptGroupedSection(sectionId, config.title, config.rows, config.groupKind, { [sectionId]: true })
         : receiptSection(sectionId, config.title, config.count, config.rows, config.rowRenderer, { [sectionId]: true });
       document.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
       bindImageButtons($("content"));
@@ -1275,9 +1290,9 @@
         </section>
         ${receiptSection("play-log", "Play Log", `${logs.length} / ${fmt(data.song_count)} songs`, logs, receiptSongRow, openSections, { limitKey: "play_log" })}
         ${receiptSection("top-bpi", "Top BPI", `${topBpi.length} charts`, topBpi, receiptBpiRow, openSections, { limitKey: "top_bpi" })}
-        ${rankAchievements.length ? receiptRankAchievementSection("rank-achievements", "Score Rank Achievements", rankAchievements, openSections, { limitKey: "rank_achievement_updates" }) : ""}
+        ${rankAchievements.length ? receiptGroupedSection("rank-achievements", "Score Rank Achievements", rankAchievements, "rank", openSections, { limitKey: "rank_achievement_updates" }) : ""}
         ${receiptSection("score-updates", "Score Updates", `${scoreUpdates.length} charts`, scoreUpdates, receiptScoreUpdateRow, openSections, { limitKey: "score_updates" })}
-        ${receiptSection("lamp-updates", "Lamp Updates", `${lampUpdates.length} charts`, lampUpdates, receiptLampUpdateRow, openSections, { limitKey: "lamp_updates" })}
+        ${receiptGroupedSection("lamp-updates", "Lamp Updates", lampUpdates, "lamp", openSections, { limitKey: "lamp_updates" })}
         ${receiptSection("bp-updates", "BP Updates", `${bpUpdates.length} charts`, bpUpdates, receiptBpUpdateRow, openSections, { limitKey: "bp_updates" })}
         ${receiptCurrentBest(current)}
         <section class="section">
@@ -2411,19 +2426,26 @@
         <div class="section-body">${limited.visibleRows.length ? limited.visibleRows.map((row) => receiptSelectableRow(rowRenderer(row), row)).join("") : '<div class="empty">NO DATA</div>'}${receiptShowAllButton(id, limited)}</div>
       </details>`;
     }
-    function receiptRankAchievementSection(id, title, rows, openSections = {}, options = {}) {
+    function receiptGroupedSection(id, title, rows, groupKind, openSections = {}, options = {}) {
       const limited = limitedReceiptRows(rows, options.limitKey);
-      const groups = groupReceiptRankAchievements(limited.visibleRows);
+      const groups = groupKind === "lamp" ? groupReceiptLampUpdates(limited.visibleRows) : groupReceiptRankAchievements(limited.visibleRows);
+      const rowRenderer = groupKind === "lamp" ? receiptLampUpdateRow : receiptRankAchievementRow;
       const total = rows.length;
       const openAttr = openSections[id] === false ? "" : " open";
-      const body = groups.map((group) => `<div class="receipt-subsection">
-        <div class="receipt-subsection-title"><span class="rank-new">New</span><span class="rank-name rank-${escapeText(group.rank.replace("-", ""))}">${escapeText(group.rank)}</span><span>${group.items.length} charts</span></div>
-        ${group.items.map((row) => receiptSelectableRow(receiptRankAchievementRow(row), row)).join("")}
-      </div>`).join("");
+      const body = groups.map((group) => `<details class="receipt-subsection" open>
+        <summary class="receipt-subsection-title">${receiptSubsectionTitle(group, groupKind)}</summary>
+        ${group.items.map((row) => receiptSelectableRow(rowRenderer(row), row)).join("")}
+      </details>`).join("");
       return `<details class="section" data-section="${escapeText(id)}"${openAttr}>
         <summary class="section-title">${escapeText(title)} <span>${escapeText(receiptLimitedCount(`${total} charts`, limited))}</span></summary>
         <div class="section-body">${body || '<div class="empty">NO DATA</div>'}${receiptShowAllButton(id, limited)}</div>
       </details>`;
+    }
+    function receiptSubsectionTitle(group, groupKind) {
+      if (groupKind === "lamp") {
+        return `${lampHtml(group.lamp, group.label)}<span>${group.items.length} charts</span>`;
+      }
+      return `<span class="rank-new">New</span><span class="rank-name rank-${escapeText(group.rank.replace("-", ""))}">${escapeText(group.rank)}</span><span>${group.items.length} charts</span>`;
     }
     function groupReceiptRankAchievements(rows) {
       const order = ["MAX-", "AAA", "AA"];
@@ -2437,6 +2459,29 @@
       return order
         .filter((rank) => groups[rank]?.length)
         .map((rank) => ({ rank, items: groups[rank] }));
+    }
+    function groupReceiptLampUpdates(rows) {
+      const labels = {
+        7: "FC",
+        6: "EXH",
+        5: "Hard",
+        4: "Clear",
+        3: "Easy",
+        2: "Assist",
+        1: "Failed",
+      };
+      const order = [7, 6, 5, 4, 3, 2, 1];
+      const groups = {};
+      (rows || []).forEach((item) => {
+        const lamp = Number(item.lamp) || 0;
+        const preLamp = Number(item.pre_lamp) || 0;
+        if (lamp <= preLamp) return;
+        if (!groups[lamp]) groups[lamp] = [];
+        groups[lamp].push(item);
+      });
+      return order
+        .filter((lamp) => groups[lamp]?.length)
+        .map((lamp) => ({ lamp, label: labels[lamp] || "Lamp", items: groups[lamp] }));
     }
     function receiptSelectableRow(html, item) {
       if (!state.receiptImageSelection || !item.image_id) return html;
