@@ -2,6 +2,7 @@ import time
 import threading
 import traceback
 import functools
+from html import escape
 from typing import Callable, Optional, List, Dict, Any
 from PySide6.QtCore import QObject, Signal
 
@@ -75,6 +76,7 @@ class OBSWebSocketManager(QObject):
         self.pich = 1080
         self.screen = None
         self.direct_capture: Optional[DirectWindowCapture] = None
+        self._next_direct_capture_probe_at = 0.0
 
         # 起動時シーンコレクション切り替えフラグ（disconnect後にリセット）
         self._scene_collection_applied = False
@@ -87,6 +89,7 @@ class OBSWebSocketManager(QObject):
             self.direct_capture = DirectWindowCapture(config)
         else:
             self.direct_capture.set_config(config)
+        self._next_direct_capture_probe_at = 0.0
         logger.info(f"OBS WebSocket config set: {config.websocket_host}:{config.websocket_port}")
 
     def is_direct_capture(self) -> bool:
@@ -367,7 +370,9 @@ class OBSWebSocketManager(QObject):
     def _direct_capture_status(self) -> tuple[str, bool]:
         error = self.direct_capture.last_error if self.direct_capture else ""
         if error:
-            return f'直接取得: <span style="color:#d93025;">{error}</span>', False
+            if self.direct_capture and self.direct_capture.is_waiting_for_target():
+                return f'直接取得: <span style="color:#5f6368;">ゲーム起動待ち</span> ({escape(error)})', False
+            return f'直接取得: <span style="color:#d93025;">{escape(error)}</span>', False
         if not self.direct_capture or not self.direct_capture.has_successful_frame:
             return '直接取得: <span style="color:#5f6368;">未確認</span>', False
         return '直接取得: <span style="color:#188038;">OK</span>', True
@@ -375,8 +380,17 @@ class OBSWebSocketManager(QObject):
     def _probe_direct_capture_if_needed(self):
         if not self.direct_capture:
             return
-        if self.direct_capture.has_successful_frame or self.direct_capture.last_error:
+        if self.direct_capture.has_successful_frame:
             return
+
+        now = time.monotonic()
+        if self.direct_capture.last_error and not self.direct_capture.is_waiting_for_target():
+            return
+        if now < self._next_direct_capture_probe_at:
+            return
+
+        self._next_direct_capture_probe_at = now + 3.0
+        self.direct_capture.clear_pending_error()
         self.screenshot()
     
     def get_detailed_status(self) -> Dict[str, Any]:

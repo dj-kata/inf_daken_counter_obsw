@@ -5,6 +5,7 @@
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                                QLabel, QGroupBox, QGridLayout, QPushButton,
                                QMessageBox)
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QActionGroup
 import time
 
@@ -18,6 +19,7 @@ import sys, os
 from src.classes import detect_mode
 from src.logger import get_logger
 from src.funcs import load_ui_text
+from src.network_info import get_mobile_score_urls
 from src.score_viewer import ScoreViewer
 logger = get_logger(__name__)
 
@@ -42,6 +44,7 @@ class MainWindowUI(QMainWindow):
         self.keystroke_label = None
         self.result_count_label = None
         self.last_song_label = None
+        self.mobile_score_url_label = None
         self.save_image_button = None
         self.score_viewer = None
     
@@ -97,6 +100,14 @@ class MainWindowUI(QMainWindow):
         self.last_song_label = QLabel("---")
         self.last_song_label.setWordWrap(True)
         status_layout.addWidget(self.last_song_label, 4, 1)
+
+        status_layout.addWidget(QLabel(self.ui.main.mobile_score_url), 5, 0)
+        self.mobile_score_url_label = QLabel("---")
+        self.mobile_score_url_label.setWordWrap(True)
+        self.mobile_score_url_label.setTextInteractionFlags(
+            Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard
+        )
+        status_layout.addWidget(self.mobile_score_url_label, 5, 1)
         
         status_group.setLayout(status_layout)
         main_layout.addWidget(status_group)
@@ -260,6 +271,9 @@ class MainWindowUI(QMainWindow):
             else:
                 self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")
 
+            if self.mobile_score_url_label is not None:
+                self.mobile_score_url_label.setText(self._mobile_score_url_text())
+
             # モード表示
             mode_names = {
                 detect_mode.init: self.ui.mode.init,
@@ -285,6 +299,16 @@ class MainWindowUI(QMainWindow):
         except:
             import traceback
             logger.debug(traceback.format_exc())
+
+    def _mobile_score_url_text(self) -> str:
+        if not bool(getattr(self.config, "mobile_score_server_enabled", False)):
+            return self.ui.main.mobile_score_url_disabled
+
+        port = getattr(self.config, "mobile_score_server_port", 8787)
+        urls = get_mobile_score_urls(port)
+        if not urls:
+            return self.ui.main.mobile_score_url_unavailable
+        return " / ".join(urls)
 
     def open_score_viewer(self):
         """スコアビューワを開く"""

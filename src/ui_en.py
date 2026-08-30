@@ -271,6 +271,9 @@ class UIText:
         today_notes = 'today notes:'
         num_saved_results = 'saved results:'
         last_saved_song = 'last saved song:'
+        mobile_score_url = 'Mobile viewer URL:'
+        mobile_score_url_disabled = 'Disabled'
+        mobile_score_url_unavailable = 'Could not detect IP address'
         save_image = 'Save Image (F6)'
         status_ready = 'Ready'
 

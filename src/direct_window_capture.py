@@ -19,6 +19,7 @@ _LANDSCAPE_SIZE = (1920, 1080)
 _MONITORINFOF_PRIMARY = 0x00000001
 _SRCCOPY = 0x00CC0020
 _DIB_RGB_COLORS = 0
+_TARGET_NOT_FOUND_PREFIX = "対象ウィンドウが見つかりません"
 
 
 class _BITMAPINFOHEADER(ctypes.Structure):
@@ -80,6 +81,15 @@ class DirectWindowCapture:
         self.has_successful_frame = False
         self.read_attempt_count = 0
 
+    def is_waiting_for_target(self) -> bool:
+        """ゲーム未起動など、対象ウィンドウ出現待ちの状態か。"""
+        return self.last_error.startswith(_TARGET_NOT_FOUND_PREFIX)
+
+    def clear_pending_error(self) -> None:
+        """再探索前に、古い未検出エラーをステータス表示から外す。"""
+        if self.is_waiting_for_target():
+            self.last_error = ""
+
     def read_frame(self) -> Image.Image | None:
         self.read_attempt_count += 1
         if self.read_attempt_count <= 3:
@@ -128,7 +138,7 @@ class DirectWindowCapture:
         if not self.hwnd:
             exe = self.config.direct_capture_exe
             title = self.config.direct_capture_title
-            self.last_error = f"対象ウィンドウが見つかりません: {exe} / {title}"
+            self.last_error = f"{_TARGET_NOT_FOUND_PREFIX}: {exe} / {title}"
             self._log_error(self.last_error)
         else:
             self.last_error = ""

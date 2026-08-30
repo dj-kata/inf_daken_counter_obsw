@@ -36,7 +36,7 @@ class MobileScoreHTTPServer:
 
     def start(self):
         if self.httpd is not None:
-            return
+            return True
         self._stopping.clear()
 
         try:
@@ -47,7 +47,7 @@ class MobileScoreHTTPServer:
         except OSError as e:
             logger.error(f"スマホ向けHTTPサーバ起動失敗: {self.host}:{self.port} {e}")
             self.httpd = None
-            return
+            return False
 
         self.thread = threading.Thread(
             target=self.httpd.serve_forever,
@@ -56,6 +56,10 @@ class MobileScoreHTTPServer:
         )
         self.thread.start()
         logger.info(f"スマホ向けHTTPサーバ起動: http://{self.host}:{self.port}/")
+        return True
+
+    def is_running(self) -> bool:
+        return self.httpd is not None and self.thread is not None and self.thread.is_alive()
 
     def stop(self):
         if self.httpd is None:

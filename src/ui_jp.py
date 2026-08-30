@@ -272,6 +272,9 @@ class UIText:
         today_notes = '本日の打鍵数:'
         num_saved_results = '保存したリザルト数:'
         last_saved_song = '最後に保存した曲:'
+        mobile_score_url = 'スマホ閲覧URL:'
+        mobile_score_url_disabled = '無効'
+        mobile_score_url_unavailable = 'IPアドレスを取得できません'
         save_image = '画像保存 (F6)'
         status_ready = '準備完了'
 

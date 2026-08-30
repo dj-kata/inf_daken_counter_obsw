@@ -198,7 +198,8 @@ class ResultDatabase:
 
         _, host, port = signature
         self.mobile_http_server = MobileScoreHTTPServer(self, host=host, port=port)
-        self.mobile_http_server.start()
+        if not self.mobile_http_server.start():
+            self.mobile_http_server = None
 
     def _mobile_config_signature(self):
         """モバイルHTTPサーバーの再起動要否判定に使う設定値。"""
@@ -215,7 +216,9 @@ class ResultDatabase:
         """設定変更後にスマホ向けHTTPサーバーを再起動する。"""
         with self._mobile_api_lock:
             signature = self._mobile_config_signature()
-            server_running = self.mobile_http_server is not None
+            server_running = bool(
+                self.mobile_http_server and self.mobile_http_server.is_running()
+            )
             expected_running = signature[0]
             if (
                 not force
