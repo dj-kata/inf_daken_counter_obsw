@@ -10,7 +10,7 @@
         <style>
             :root {
                 --top-bpi-count: 10;              /* TopBPIの曲数 */
-                --sections: bpi,score,lamp,bp;    /* 表示するセクション。順番も指定可能 */
+                --sections: bpi,rank,score,lamp,bp; /* 表示するセクション。順番も指定可能 */
                 --content-max-width: 1500px;
                 --hide-zero-pre-score: 1;         /* 1:scoreセクションでpre_score=0を非表示 */
             }
@@ -330,7 +330,7 @@
         }
 
         function parseSectionList(value) {
-            var allowed = { lamp: true, bp: true, score: true, bpi: true };
+            var allowed = { lamp: true, bp: true, score: true, bpi: true, rank: true };
             var seen = {};
             var sections = String(value || '')
                 .split(',')
@@ -340,7 +340,7 @@
                     seen[section] = true;
                     return true;
                 });
-            return sections.length ? sections : ['lamp', 'bp', 'score', 'bpi'];
+            return sections.length ? sections : ['bpi', 'rank', 'score', 'lamp', 'bp'];
         }
 
         function getDifficultyColor(difficulty) {
@@ -611,6 +611,30 @@
                 '</tr>';
         }
 
+        function rankAchievementName(item) {
+            var notes = Number(item.notes) || 0;
+            var score = Number(item.score) || 0;
+            if (!notes || !score) return '';
+            var rate = score / notes / 2;
+            var preRate = (Number(item.pre_score) || 0) / notes / 2;
+            if (rate > 17 / 18 && preRate <= 17 / 18) return 'MAX-';
+            if (rate > 16 / 18 && preRate <= 16 / 18) return 'AAA';
+            if (rate > 14 / 18 && preRate <= 14 / 18) return 'AA';
+            return '';
+        }
+
+        function renderRankAchievementRow(item) {
+            var diffColor = getDifficultyColor(item.difficulty || '');
+            return '<tr>' +
+                '<td class="col-level">' + formatLevel(item) + '</td>' +
+                '<td class="col-rank">' + escapeHtml(item.rank_achievement || rankAchievementName(item)) + '</td>' +
+                '<td class="col-score score-value">' + (Number(item.score) || 0) + '</td>' +
+                '<td class="col-rate">' + formatRate(item) + '</td>' +
+                '<td class="col-rank">' + formatRankDiff(item) + '</td>' +
+                '<td class="col-title ' + diffColor + '">' + formatTitle(item) + '</td>' +
+                '</tr>';
+        }
+
         function renderBpiRow(item) {
             var diffColor = getDifficultyColor(item.difficulty || '');
             return '<tr>' +
@@ -675,6 +699,35 @@
                         { label: '減った数', cls: 'col-delta' },
                         { label: 'title', cls: 'col-title' },
                     ], renderBpRow));
+                },
+                rank: function() {
+                    if (data && data.rank_update_enabled === false) return '';
+                    var enabledRanks = new Set((data && data.rank_update_enabled_ranks) || ['MAX-', 'AAA', 'AA']);
+                    var rankOrder = { 'MAX-': 0, AAA: 1, AA: 2 };
+                    var rankRows = items
+                        .map(function(item) {
+                            var rank = rankAchievementName(item);
+                            if (!rank || !enabledRanks.has(rank)) return null;
+                            var row = Object.assign({}, item);
+                            row.rank_achievement = rank;
+                            return row;
+                        })
+                        .filter(Boolean)
+                        .sort(function(a, b) {
+                            var rankA = Object.prototype.hasOwnProperty.call(rankOrder, a.rank_achievement) ? rankOrder[a.rank_achievement] : 99;
+                            var rankB = Object.prototype.hasOwnProperty.call(rankOrder, b.rank_achievement) ? rankOrder[b.rank_achievement] : 99;
+                            var rankDiff = rankA - rankB;
+                            if (rankDiff !== 0) return rankDiff;
+                            return compareLevelDesc(a, b);
+                        });
+                    return renderSection('Score Rank Achievements', renderSubsection('', rankRows, [
+                        { label: 'Lv', cls: 'col-level' },
+                        { label: 'rank', cls: 'col-rank' },
+                        { label: 'score', cls: 'col-score' },
+                        { label: 'score_rate', cls: 'col-rate' },
+                        { label: 'rankdiff', cls: 'col-rank' },
+                        { label: 'title', cls: 'col-title' },
+                    ], renderRankAchievementRow));
                 },
                 score: function() {
                     var scoreRows = items

@@ -21,7 +21,7 @@
             --lv-stats-position: left;                  /* Lv統計情報の表示位置 left/bottom */
             --playlog-page: result;                     /* result/receipt */
             --receipt-top-bpi-count: 10;                /* receiptのTopBPI曲数 */
-            --receipt-sections: bpi,score,lamp,bp;      /* receiptの表示セクション */
+            --receipt-sections: bpi,rank,score,lamp,bp; /* receiptの表示セクション */
             --receipt-hide-zero-pre-score: 1;           /* 1:receiptのscoreでpre_score=0を非表示 */
             --monthly-notes-count: 3;                   /* 月間ノーツ数の表示月数 */
             --period-notes-unit: k;                     /* raw/k */
@@ -520,7 +520,7 @@
         if (getPlaylogPage() === 'today_receipt.html') {
             var receiptMappings = [
                 ['top_bpi_count', '--receipt-top-bpi-count', '10'],
-                ['sections', '--receipt-sections', 'bpi,score,lamp,bp'],
+                ['sections', '--receipt-sections', 'bpi,rank,score,lamp,bp'],
                 ['hide_zero_pre_score', '--receipt-hide-zero-pre-score', '0'],
             ];
 

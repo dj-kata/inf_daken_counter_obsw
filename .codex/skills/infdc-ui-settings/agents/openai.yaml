@@ -1,0 +1,3 @@
+interface:
+  display_name: "Infdc UI Settings"
+  short_description: "Config, settings dialogs, and localized UI strings"

@@ -696,6 +696,34 @@
     .title .unofficial-sep { color: var(--text); opacity: 0.88; }
     .row-score { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
     .row[data-chart] { cursor: pointer; }
+    .row.selectable {
+      position: relative;
+      padding-left: 30px;
+    }
+    .row.selectable::before {
+      content: "";
+      position: absolute;
+      left: 4px;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      border: 1px solid color-mix(in srgb, var(--green), var(--line) 30%);
+      border-radius: 5px;
+      transform: translateY(-50%);
+      background: #0f1514;
+    }
+    .row.selectable.selected {
+      background: color-mix(in srgb, var(--green), transparent 90%);
+    }
+    .row.selectable.selected::before {
+      content: "✓";
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 950;
+    }
     .delta { color: var(--green); font-weight: 850; }
     .bad-delta { color: var(--red); font-weight: 850; }
     .load-more { width: 100%; height: 44px; margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); color: var(--text); }
@@ -782,7 +810,7 @@
   </div>
 
   <script>
-    const state = { view: "home", stack: [], allItems: [], listVariant: "", levelSort: "title", levelSortEnabled: false, selectedImageIds: new Set(), savedImagesNotes: 0, historyOffset: 0, historyTotal: 0, currentTimer: null, receiptTimer: null, dailyMode: "daily", receiptData: null };
+    const state = { view: "home", stack: [], allItems: [], listVariant: "", levelSort: "title", levelSortEnabled: false, selectedImageIds: new Set(), savedImagesNotes: 0, historyOffset: 0, historyTotal: 0, currentTimer: null, receiptTimer: null, dailyMode: "daily", receiptData: null, receiptImageSelection: false };
     const HISTORY_BASE = "inf-mobile-base";
     const HISTORY_APP = "inf-mobile-view";
     const $ = (id) => document.getElementById(id);
@@ -828,6 +856,7 @@
     }
     function clearSelectionMode() {
       state.selectedImageIds.clear();
+      state.receiptImageSelection = false;
       document.body.classList.remove("selection-mode");
     }
 
@@ -969,6 +998,8 @@
       if (button) button.textContent = `CREATE POST IMAGE (${count})`;
       if (state.listVariant === "saved-images") {
         setStats([["IMAGES", state.allItems.length], ["SELECTED", count], ["NOTES", fmt(state.savedImagesNotes || 0)]]);
+      } else if (state.view === "receipt" && state.receiptImageSelection) {
+        setStats([["IMAGES", document.querySelectorAll("[data-image-id]").length], ["SELECTED", count], ["", ""]]);
       }
     }
     function openCombinedResultImage() {
@@ -1111,8 +1142,9 @@
     }
 
     function renderReceipt(data) {
-      clearSelectionMode();
+      if (!state.receiptImageSelection) clearSelectionMode();
       state.receiptData = data;
+      state.listVariant = "receipt";
       const openSections = {};
       document.querySelectorAll("details[data-section]").forEach((section) => {
         openSections[section.dataset.section] = section.open;
@@ -1120,6 +1152,7 @@
       setTitle(data.folder.label);
       const logs = data.items || [];
       const topBpi = data.top_bpi_items || [];
+      const rankAchievements = filterSummaryResultRows(data.rank_achievement_updates || []);
       const scoreUpdates = filterSummaryResultRows(data.score_updates || []);
       const lampUpdates = filterSummaryResultRows(data.lamp_updates || []);
       const bpUpdates = filterSummaryResultRows(data.bp_updates || []);
@@ -1137,10 +1170,12 @@
       $("content").innerHTML = `${top}
         <section class="receipt-actions">
           <button id="summaryBtn" class="secondary-btn" type="button">Generate Summary</button>
+          ${data.combined_images_enabled ? `<button id="selectReceiptImagesBtn" class="secondary-btn" type="button">${state.receiptImageSelection ? "Cancel Selection" : "Select Images"}</button>` : ''}
           <button id="tweetBtn" class="tweet-btn" type="button">Tweet</button>
         </section>
         ${receiptSection("play-log", "Play Log", `${logs.length} / ${fmt(data.song_count)} songs`, logs, receiptSongRow, openSections)}
         ${receiptSection("top-bpi", "Top BPI", `${topBpi.length} charts`, topBpi, receiptBpiRow, openSections)}
+        ${data.rank_update_enabled ? receiptSection("rank-achievements", "Score Rank Achievements", `${rankAchievements.length} charts`, rankAchievements, receiptRankAchievementRow, openSections) : ""}
         ${receiptSection("score-updates", "Score Updates", `${scoreUpdates.length} charts`, scoreUpdates, receiptScoreUpdateRow, openSections)}
         ${receiptSection("lamp-updates", "Lamp Updates", `${lampUpdates.length} charts`, lampUpdates, receiptLampUpdateRow, openSections)}
         ${receiptSection("bp-updates", "BP Updates", `${bpUpdates.length} charts`, bpUpdates, receiptBpUpdateRow, openSections)}
@@ -1148,7 +1183,8 @@
         <section class="section">
           <div class="section-title">Rivals <span>${rivals.length} players</span></div>
           <div class="section-body">${rivals.length ? rivals.map(rivalRow).join("") : '<div class="empty">NO DATA</div>'}</div>
-        </section>`;
+        </section>
+        ${data.combined_images_enabled ? '<div id="selectionAction" class="selection-action" hidden><button id="combineImagesBtn" type="button">CREATE POST IMAGE</button></div>' : ''}`;
       $("tweetBtn")?.addEventListener("click", async () => {
         const latest = await api(receiptApiPath());
         state.receiptData = latest;
@@ -1159,8 +1195,27 @@
         state.receiptData = latest;
         openReceiptSummaryImage(latest);
       });
-      document.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
+      $("selectReceiptImagesBtn")?.addEventListener("click", () => {
+        state.receiptImageSelection = !state.receiptImageSelection;
+        document.body.classList.toggle("selection-mode", state.receiptImageSelection);
+        if (!state.receiptImageSelection) state.selectedImageIds.clear();
+        renderReceipt(state.receiptData || data);
+      });
+      $("combineImagesBtn")?.addEventListener("click", openCombinedResultImage);
+      if (state.receiptImageSelection) {
+        document.querySelectorAll("[data-image-id]").forEach((button) => button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const imageId = button.dataset.imageId;
+          if (state.selectedImageIds.has(imageId)) state.selectedImageIds.delete(imageId);
+          else state.selectedImageIds.add(imageId);
+          renderReceipt(state.receiptData || data);
+        }));
+      } else {
+        document.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
+      }
       bindImageButtons($("content"));
+      updateSelectionAction();
     }
 
     const SUMMARY_LEVEL_SETTINGS_KEY = "infMobileSummaryLevelStats";
@@ -1200,7 +1255,7 @@
         <details open>
           <summary>Update result levels</summary>
           <div class="summary-settings-body">
-            <div class="summary-help">Shown in Score, Lamp, and BP update sections only.</div>
+            <div class="summary-help">Shown in Score Rank, Score, Lamp, and BP update sections only.</div>
             <div class="summary-level-options">${resultLevelEntries.map((entry) => `<label><input type="checkbox" data-summary-result-level="${escapeText(entry.id)}" ${selectedResultLevels.has(entry.id) ? "checked" : ""}>${escapeText(entry.label)}</label>`).join("")}</div>
           </div>
         </details>
@@ -1341,6 +1396,7 @@
           const oldUnlimited = Boolean(parsed.unlimited);
           return {
             top_bpi: { limit: oldLimit || 20, unlimited: false },
+            rank_achievement_updates: { limit: oldLimit, unlimited: oldUnlimited },
             score_updates: { limit: oldLimit, unlimited: oldUnlimited },
             lamp_updates: { limit: oldLimit, unlimited: oldUnlimited },
             bp_updates: { limit: oldLimit, unlimited: oldUnlimited },
@@ -1376,6 +1432,7 @@
     function defaultSummaryLimitSettings() {
       return {
         top_bpi: { limit: 20, unlimited: false },
+        rank_achievement_updates: { limit: 20, unlimited: false },
         score_updates: { limit: 20, unlimited: false },
         lamp_updates: { limit: 20, unlimited: false },
         bp_updates: { limit: 20, unlimited: false },
@@ -1385,6 +1442,7 @@
     function summaryLimitSections() {
       return [
         { key: "top_bpi", label: "Top BPI", allowUnlimited: false },
+        { key: "rank_achievement_updates", label: "Score Rank Achievements", allowUnlimited: true },
         { key: "score_updates", label: "Score Updates", allowUnlimited: true },
         { key: "lamp_updates", label: "Lamp updates", allowUnlimited: true },
         { key: "bp_updates", label: "BP Updates", allowUnlimited: true },
@@ -1546,6 +1604,7 @@
       drawLevelStats(ctx, stats.level_stats || {}, 22, 990, 440, levelStatEntries);
 
       const topLimit = summarySectionLimit("top_bpi");
+      const rankLimit = summarySectionLimit("rank_achievement_updates");
       const scoreLimit = summarySectionLimit("score_updates");
       const lampLimit = summarySectionLimit("lamp_updates");
       const bpLimit = summarySectionLimit("bp_updates");
@@ -1558,6 +1617,15 @@
           "", fmt(item.score), pct(item.score_rate), item.rankdiff || "", visibleBpiText(item) || "", item.title || "",
         ], { kind: "ranked", limit: topLimit });
         rightY = topBottom + 18;
+      }
+      const rankAchievementRows = filterSummaryResultRows(data.rank_achievement_updates || []);
+      let rankBottom = rightY;
+      if (data.rank_update_enabled && rankLimit !== 0) {
+        const rankHeight = summarySectionHeight(rankAchievementRows.length, rankLimit, 900);
+        rankBottom = drawSummaryList(ctx, summarySectionTitle("Score Rank Achievements", rankAchievementRows.length, rankLimit), rankAchievementRows, 495, rightY, 990, rankHeight, (item) => [
+          "", item.rank_achievement || "", fmt(item.score), pct(item.score_rate), item.rankdiff || "", item.title || "",
+        ], { kind: "achievement", limit: rankLimit });
+        rightY = rankBottom + 18;
       }
       const scoreUpdateRows = sortedScoreUpdatesForImage(filterSummaryResultRows(data.score_updates || []));
       let scoreBottom = rightY;
@@ -1583,7 +1651,7 @@
         rightY = bpBottom + 18;
       }
       const leftBottom = 943 + lvStatsHeight;
-      const contentBottom = Math.max(1650, leftBottom, topBottom, scoreBottom, lampBottom, bpBottom) + 12;
+      const contentBottom = Math.max(1650, leftBottom, topBottom, rankBottom, scoreBottom, lampBottom, bpBottom) + 12;
       ctx.fillStyle = "#10112a";
       ctx.fillRect(0, contentBottom, w, h - contentBottom);
       return Math.min(h, Math.ceil(contentBottom));
@@ -1636,6 +1704,7 @@
     function estimateSummaryCanvasHeight(data) {
       const stats = data.summary_stats || {};
       const topLimit = summarySectionLimit("top_bpi");
+      const rankLimit = summarySectionLimit("rank_achievement_updates");
       const scoreLimit = summarySectionLimit("score_updates");
       const lampLimit = summarySectionLimit("lamp_updates");
       const bpLimit = summarySectionLimit("bp_updates");
@@ -1643,6 +1712,7 @@
       const leftBottom = 943 + Math.max(110, 55 + levelStatEntries.length * 185);
       let rightY = 18;
       if (topLimit !== 0) rightY += summarySectionHeight((data.top_bpi_items || []).length, topLimit, 900) + 18;
+      if (data.rank_update_enabled && rankLimit !== 0) rightY += summarySectionHeight(filterSummaryResultRows(data.rank_achievement_updates || []).length, rankLimit, 900) + 18;
       if (scoreLimit !== 0) rightY += summarySectionHeight(filterSummaryResultRows(data.score_updates || []).length, scoreLimit, 900) + 18;
       if (lampLimit !== 0) rightY += summaryGroupedUpdatesHeight(filterSummaryResultRows(data.lamp_updates || []), lampLimit, Number.isFinite(lampLimit) ? 900 : Number.POSITIVE_INFINITY) + 18;
       if (bpLimit !== 0) rightY += summarySectionHeight(filterSummaryResultRows(data.bp_updates || []).length, bpLimit, 900) + 18;
@@ -1854,8 +1924,12 @@
           drawRankDiffImage(ctx, item, value, x + cols[i], y);
           return;
         }
-        const color = i === 1 && kind === "bp" ? "#aaffaa" : i === 2 && kind === "bp" ? "#33ddff" : i === 2 && kind === "ranked" ? "#c8d4e8" : i === 4 && kind === "ranked" ? bpiImageColor(value) : i === values.length - 1 ? difficultyImageColor(item.difficulty) : "#f4f6f8";
-        const size = i === 2 && kind === "ranked" ? 14 : i === values.length - 1 ? 20 : 18;
+        if (kind === "achievement" && i === 4 && String(value || "")) {
+          drawRankDiffImage(ctx, item, value, x + cols[i], y);
+          return;
+        }
+        const color = i === 1 && kind === "bp" ? "#aaffaa" : i === 2 && kind === "bp" ? "#33ddff" : i === 1 && kind === "achievement" ? rankImageColor(String(value || "").replace("-", "")) : i === 3 && kind === "achievement" ? "#c8d4e8" : i === 2 && kind === "ranked" ? "#c8d4e8" : i === 4 && kind === "ranked" ? bpiImageColor(value) : i === values.length - 1 ? difficultyImageColor(item.difficulty) : "#f4f6f8";
+        const size = (i === 2 && kind === "ranked") || (i === 3 && kind === "achievement") ? 14 : i === values.length - 1 ? 20 : 18;
         drawText(ctx, value, x + (cols[i] || (i * 90)), y, size, color, "bold");
       });
     }
@@ -2059,8 +2133,20 @@
       const openAttr = openSections[id] === false ? "" : " open";
       return `<details class="section" data-section="${escapeText(id)}"${openAttr}>
         <summary class="section-title">${escapeText(title)} <span>${escapeText(count)}</span></summary>
-        <div class="section-body">${rows.length ? rows.map(rowRenderer).join("") : '<div class="empty">NO DATA</div>'}</div>
+        <div class="section-body">${rows.length ? rows.map((row) => receiptSelectableRow(rowRenderer(row), row)).join("") : '<div class="empty">NO DATA</div>'}</div>
       </details>`;
+    }
+    function receiptSelectableRow(html, item) {
+      if (!state.receiptImageSelection || !item.image_id) return html;
+      const selected = state.selectedImageIds.has(String(item.image_id));
+      const cls = `row selectable ${selected ? "selected" : ""}`;
+      if (html.startsWith('<div class="row"')) {
+        return html.replace('<div class="row"', `<div class="${cls}" data-image-id="${escapeText(item.image_id || "")}"`);
+      }
+      if (html.startsWith('<button class="song-cell')) {
+        return html.replace('<button class="song-cell', `<button data-image-id="${escapeText(item.image_id || "")}" class="song-cell selectable ${selected ? "selected " : ""}`);
+      }
+      return html;
     }
     function receiptTitle(item) {
       return `<b>${levelHtml(item)} ${escapeText(item.title)} [${escapeText(item.difficulty || "")}]</b>`;
@@ -2176,6 +2262,12 @@
       const bpi = visibleBpiText(item);
       const ereter = ereterHtml(item, { mini: true });
       return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="delta">+${fmt(delta)}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${rankDiffHtml(item)}${bpi ? " / " + bpiHtml(bpi) : ""}${ereter ? " " + ereter : ""}</span></div><div class="row-score">${fmt(item.score)}<span>prev ${fmt(item.pre_score)}</span></div></div>`;
+    }
+    function receiptRankAchievementRow(item) {
+      const bpi = visibleBpiText(item);
+      const ereter = ereterHtml(item, { mini: true });
+      const rank = String(item.rank_achievement || "");
+      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="rank-diff rank-${escapeText(rank.replace("-", ""))}">${escapeText(rank)}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${rankDiffHtml(item)}${bpi ? " / " + bpiHtml(bpi) : ""}${ereter ? " " + ereter : ""}</span></div><div class="row-score">${fmt(item.score)}<span>prev ${fmt(item.pre_score)}</span></div></div>`;
     }
     function receiptLampUpdateRow(item) {
       const ereter = ereterHtml(item, { mini: true });

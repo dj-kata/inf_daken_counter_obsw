@@ -1,0 +1,3 @@
+interface:
+  display_name: "Infdc Release Build"
+  short_description: "Release packaging, versioning, and build inspection"

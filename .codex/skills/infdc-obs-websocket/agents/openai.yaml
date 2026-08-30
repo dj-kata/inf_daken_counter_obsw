@@ -1,0 +1,3 @@
+interface:
+  display_name: "Infdc OBS WebSocket"
+  short_description: "OBS control and local WebSocket data flow"

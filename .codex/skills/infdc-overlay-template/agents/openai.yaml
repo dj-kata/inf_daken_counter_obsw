@@ -1,0 +1,3 @@
+interface:
+  display_name: "Infdc Overlay Template"
+  short_description: "OBS browser-source templates and overlay CSS"
