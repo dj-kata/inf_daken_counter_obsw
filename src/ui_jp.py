@@ -83,6 +83,9 @@ class UIText:
         websocket_port = 'データ表示用port:'
         mobile_score_server_enabled = 'スマホ用スコア閲覧サーバを起動する'
         mobile_score_server_port = 'スマホ用HTTP port:'
+        mobile_score_server_interface = 'スマホ用表示NIC:'
+        mobile_score_server_interface_auto = '自動選択'
+        mobile_score_server_interface_missing = '現在未検出'
         keep_on_top = '常に最前面表示する'
     
     class music_pack:

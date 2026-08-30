@@ -83,6 +83,9 @@ class UIText:
         websocket_port = 'Data display port:'
         mobile_score_server_enabled = 'Start mobile score viewer server'
         mobile_score_server_port = 'Mobile HTTP port:'
+        mobile_score_server_interface = 'Mobile viewer NIC:'
+        mobile_score_server_interface_auto = 'Auto select'
+        mobile_score_server_interface_missing = 'Currently not detected'
         keep_on_top = 'Always on Top'
     
     class music_pack:

@@ -7,7 +7,8 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
                                QLineEdit, QSpinBox, QCheckBox, QPushButton,
                                QGroupBox, QFileDialog, QTabWidget, QWidget,
                                QLabel, QDialogButtonBox, QRadioButton,
-                               QButtonGroup, QScrollArea, QGridLayout, QProgressBar)
+                               QButtonGroup, QScrollArea, QGridLayout, QProgressBar,
+                               QComboBox)
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QIntValidator
 import os
@@ -19,6 +20,7 @@ from src.logger import get_logger
 from src.result import OneResult, PlayOption
 from src.result_database import ResultDatabase
 from src.screen_reader import ScreenReader
+from src.network_info import get_local_ipv4_interfaces
 from src.funcs import *
 logger = get_logger(__name__)
 
@@ -294,6 +296,12 @@ class ConfigDialog(QDialog):
         other_layout.addRow(
             self.ui.feature.mobile_score_server_port,
             self.mobile_score_server_port_edit,
+        )
+
+        self.mobile_score_server_interface_combo = QComboBox()
+        other_layout.addRow(
+            self.ui.feature.mobile_score_server_interface,
+            self.mobile_score_server_interface_combo,
         )
 
         # 最前面表示 
@@ -795,6 +803,8 @@ class ConfigDialog(QDialog):
             self.mobile_score_server_port_edit.setText(
                 str(getattr(self.config, 'mobile_score_server_port', 8787))
             )
+        if hasattr(self, 'mobile_score_server_interface_combo'):
+            self._load_mobile_score_server_interfaces()
         
         # 画像保存先 (Configクラスに image_save_path プロパティがある前提)
         if hasattr(self.config, 'image_save_path'):
@@ -846,6 +856,24 @@ class ConfigDialog(QDialog):
         if hasattr(self, 'csv_export_path_edit'):
             self.csv_export_path_edit.setText(self.config.csv_export_path)
 
+    def _load_mobile_score_server_interfaces(self):
+        """スマホ閲覧URL表示に使うNIC候補を読み込む。"""
+        selected = getattr(self.config, 'mobile_score_server_interface', '')
+        combo = self.mobile_score_server_interface_combo
+        combo.clear()
+        combo.addItem(self.ui.feature.mobile_score_server_interface_auto, "")
+
+        found_selected = not selected
+        for interface in get_local_ipv4_interfaces():
+            combo.addItem(f"{interface.name} ({interface.address})", interface.name)
+            if interface.name == selected:
+                combo.setCurrentIndex(combo.count() - 1)
+                found_selected = True
+
+        if selected and not found_selected:
+            combo.addItem(f"{selected} ({self.ui.feature.mobile_score_server_interface_missing})", selected)
+            combo.setCurrentIndex(combo.count() - 1)
+
     def accept(self):
         """OKボタン押下時の処理"""
         # UIから設定値を取得してConfigに保存
@@ -881,6 +909,10 @@ class ConfigDialog(QDialog):
                 logger.warning(f"無効なスマホ用HTTPポート番号: {mobile_port}. デフォルト値を使用します")
         except ValueError:
             logger.warning("スマホ用HTTPポート番号の変換に失敗しました。デフォルト値を使用します")
+        if hasattr(self, 'mobile_score_server_interface_combo'):
+            self.config.mobile_score_server_interface = (
+                self.mobile_score_server_interface_combo.currentData() or ""
+            )
         
         # 画像保存先
         self.config.image_save_path = self.image_save_path_edit.text()

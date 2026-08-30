@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                                QMessageBox)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QActionGroup
+from html import escape
 import time
 
 try:
@@ -19,7 +20,7 @@ import sys, os
 from src.classes import detect_mode
 from src.logger import get_logger
 from src.funcs import load_ui_text
-from src.network_info import get_mobile_score_urls
+from src.network_info import get_mobile_score_url
 from src.score_viewer import ScoreViewer
 logger = get_logger(__name__)
 
@@ -104,9 +105,9 @@ class MainWindowUI(QMainWindow):
         status_layout.addWidget(QLabel(self.ui.main.mobile_score_url), 5, 0)
         self.mobile_score_url_label = QLabel("---")
         self.mobile_score_url_label.setWordWrap(True)
-        self.mobile_score_url_label.setTextInteractionFlags(
-            Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard
-        )
+        self.mobile_score_url_label.setOpenExternalLinks(True)
+        self.mobile_score_url_label.setTextFormat(Qt.RichText)
+        self.mobile_score_url_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
         status_layout.addWidget(self.mobile_score_url_label, 5, 1)
         
         status_group.setLayout(status_layout)
@@ -205,7 +206,7 @@ class MainWindowUI(QMainWindow):
     
     def restore_window_geometry(self):
         """ウィンドウ位置とサイズを復元"""
-        self.setMinimumSize(450, 300)
+        self.setMinimumSize(450, 310)
         if self.config.main_window_geometry:
             import base64
             from PySide6.QtCore import QByteArray
@@ -214,7 +215,7 @@ class MainWindowUI(QMainWindow):
             geometry = QByteArray(geometry_bytes)
             self.restoreGeometry(geometry)
         else:
-            self.setGeometry(100, 100, 450, 300)
+            self.setGeometry(100, 100, 450, 310)
     
     def save_window_geometry(self):
         """ジオメトリを保存"""
@@ -305,10 +306,12 @@ class MainWindowUI(QMainWindow):
             return self.ui.main.mobile_score_url_disabled
 
         port = getattr(self.config, "mobile_score_server_port", 8787)
-        urls = get_mobile_score_urls(port)
-        if not urls:
+        interface_name = getattr(self.config, "mobile_score_server_interface", "")
+        url = get_mobile_score_url(port, interface_name)
+        if not url:
             return self.ui.main.mobile_score_url_unavailable
-        return " / ".join(urls)
+        escaped_url = escape(url, quote=True)
+        return f'<a href="{escaped_url}">{escaped_url}</a>'
 
     def open_score_viewer(self):
         """スコアビューワを開く"""

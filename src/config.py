@@ -58,6 +58,7 @@ class Config:
         self.mobile_score_server_enabled = False
         self.mobile_score_server_host = "0.0.0.0"
         self.mobile_score_server_port = 8787
+        self.mobile_score_server_interface = ""
         
         # スコアビューワ設定
         self.score_viewer_style = 'SP'  # 'SP', 'DP', 'Battle'
@@ -128,6 +129,7 @@ class Config:
                     self.mobile_score_server_enabled = config_data.get('mobile_score_server_enabled', False)
                     self.mobile_score_server_host = config_data.get('mobile_score_server_host', '0.0.0.0')
                     self.mobile_score_server_port = config_data.get('mobile_score_server_port', 8787)
+                    self.mobile_score_server_interface = config_data.get('mobile_score_server_interface', '')
 
                     # 言語設定
                     self.language = config_data.get('language', 'ja')
@@ -196,6 +198,7 @@ class Config:
             "mobile_score_server_enabled": self.mobile_score_server_enabled,
             "mobile_score_server_host": self.mobile_score_server_host,
             "mobile_score_server_port": self.mobile_score_server_port,
+            "mobile_score_server_interface": self.mobile_score_server_interface,
             "target_music_packs": self.target_music_packs,
             "autosave_image_mode": self.autosave_image_mode.value,
             "modify_rivalarea_mode": self.modify_rivalarea_mode.value,
