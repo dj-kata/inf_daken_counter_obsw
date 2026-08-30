@@ -795,14 +795,14 @@ class ResultDatabase:
 
     def get_today_updates_data(self, start_time: int, end_time: int | None = None) -> dict:
         """本日のプレー履歴のデータを辞書形式で返す"""
-        target: List[OneResult] = []
-        for r in reversed(self.results):
+        target: list[tuple[int, OneResult]] = []
+        for result_index, r in reversed(list(enumerate(self.results))):
             if r.detect_mode == detect_mode.result:
                 if self._timestamp_in_range(r.timestamp, start_time, end_time):
-                    target.append(r)
+                    target.append((result_index, r))
 
         items = []
-        for r in target:
+        for result_index, r in target:
             songinfo = self.song_database.search(
                 title=r.title, play_style=r.play_style, difficulty=r.difficulty
             )
@@ -846,6 +846,7 @@ class ResultDatabase:
             image_url = self._mobile_result_image_url(r)
             if image_url:
                 item["image_url"] = image_url
+                item["image_id"] = _mobile_result_image_id(result_index, r)
 
             item.update(_extract_songinfo_fields(songinfo))
 
@@ -1497,6 +1498,55 @@ class ResultDatabase:
     def _mobile_result_items(self, results: list[OneResult]) -> list[dict]:
         return [self._serialize_mobile_result(r) for r in results if r.detect_mode == detect_mode.result]
 
+    def _mobile_rank_update_enabled_ranks(self) -> set[str]:
+        return {"MAX-", "AAA", "AA"}
+
+    @staticmethod
+    def _mobile_reached_rank_name(rate: float, pre_rate: float) -> str | None:
+        if rate > 17 / 18 and pre_rate <= 17 / 18:
+            return "MAX-"
+        if rate > 16 / 18 and pre_rate <= 16 / 18:
+            return "AAA"
+        if rate > 14 / 18 and pre_rate <= 14 / 18:
+            return "AA"
+        return None
+
+    def _mobile_rank_achievement_updates(self, items: list[dict]) -> list[dict]:
+        enabled = self._mobile_rank_update_enabled_ranks()
+        if not enabled:
+            return []
+        best_by_chart = {}
+        for item in items:
+            notes = _to_int_or_none(item.get("notes"))
+            score = _to_int_or_none(item.get("score"))
+            if not notes or score is None:
+                continue
+            rate = score / (notes * 2)
+            pre_score = _to_int_or_none(item.get("pre_score")) or 0
+            pre_rate = pre_score / (notes * 2)
+            rank_name = self._mobile_reached_rank_name(rate, pre_rate)
+            if rank_name not in enabled:
+                continue
+            row = dict(item)
+            row["rank_achievement"] = rank_name
+            row["_rank_order"] = {"MAX-": 0, "AAA": 1, "AA": 2}.get(rank_name, 99)
+            key = row.get("chart_id") or f"{row.get('title', '')}\0{row.get('difficulty', '')}"
+            current = best_by_chart.get(key)
+            if (
+                current is None
+                or row["_rank_order"] < current["_rank_order"]
+                or (
+                    row["_rank_order"] == current["_rank_order"]
+                    and (_to_int_or_none(row.get("timestamp")) or 0) > (_to_int_or_none(current.get("timestamp")) or 0)
+                )
+            ):
+                best_by_chart[key] = row
+        rows = list(best_by_chart.values())
+        rows.sort(key=lambda item: (item.get("_rank_order", 99), -(_to_int_or_none(item.get("lv")) or 0), item.get("title", "")))
+        for row in rows:
+            row.pop("_rank_order", None)
+        return rows
+
     def _mobile_play_log_items(self, results: list[OneResult], include_select: bool = False) -> list[dict]:
         allowed_modes = {detect_mode.result}
         if include_select:
@@ -1977,6 +2027,7 @@ class ResultDatabase:
             key=lambda item: bpi_value(item),
             reverse=True,
         )
+        rank_achievement_updates = self._mobile_rank_achievement_updates(items)
         score_updates = [
             item for item in items
             if (_to_int_or_none(item.get("score")) or 0) > (_to_int_or_none(item.get("pre_score")) or 0)
@@ -2020,9 +2071,10 @@ class ResultDatabase:
             "today_notes": graph_data.get("today_notes", 0),
             "score_rate": graph_data.get("today_score_rate", "0.00%"),
             "top_bpi": top_bpi,
-            "items": items[:20],
+            "items": items,
             "level_distribution": level_distribution,
             "top_bpi_items": top_bpi_items,
+            "rank_achievement_updates": rank_achievement_updates,
             "score_updates": score_updates,
             "lamp_updates": lamp_updates,
             "bp_updates": bp_updates,

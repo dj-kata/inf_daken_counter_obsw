@@ -638,6 +638,33 @@
     details.section:not([open]) > summary.section-title { border-bottom: 0; }
     details.section:not([open]) > summary.section-title::after { content: "⌄"; }
     .section-body { padding: 0 10px 2px 10px; }
+    .receipt-subsection-title {
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--line);
+      padding: 8px 2px 4px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    .receipt-subsection-title span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .receipt-subsection-title .rank-new {
+      color: var(--text);
+      font-size: 13px;
+    }
+    .receipt-subsection-title .rank-name {
+      font-size: 13px;
+    }
+    .receipt-subsection + .receipt-subsection {
+      border-top: 1px solid color-mix(in srgb, var(--line), transparent 30%);
+      margin-top: 4px;
+    }
     .row { display: grid; grid-template-columns: 82px minmax(0, 1fr) auto; gap: 8px; align-items: center; border-bottom: 1px solid var(--line); padding: 10px 2px; }
     .row:last-child { border-bottom: 0; }
     .row b { display: block; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -727,6 +754,13 @@
     .delta { color: var(--green); font-weight: 850; }
     .bad-delta { color: var(--red); font-weight: 850; }
     .load-more { width: 100%; height: 44px; margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel2); color: var(--text); }
+    .section-more {
+      margin: 10px 0 8px;
+      background: #1b2530;
+      border-color: color-mix(in srgb, var(--blue), var(--line) 35%);
+      font-size: 13px;
+      font-weight: 900;
+    }
     .selection-action {
       position: fixed;
       left: 0;
@@ -1133,6 +1167,72 @@
       });
     }
 
+    function receiptSectionConfig(sectionId, data) {
+      const logs = data.items || [];
+      const topBpi = data.top_bpi_items || [];
+      const rankAchievements = filterRankAchievementRows(filterSummaryResultRows(data.rank_achievement_updates || []));
+      const scoreUpdates = filterSummaryResultRows(data.score_updates || []);
+      const lampUpdates = filterSummaryResultRows(data.lamp_updates || []);
+      const bpUpdates = filterSummaryResultRows(data.bp_updates || []);
+      return {
+        "play-log": {
+          title: "Play Log",
+          count: `${logs.length} / ${fmt(data.song_count)} songs`,
+          rows: logs,
+          rowRenderer: receiptSongRow,
+        },
+        "top-bpi": {
+          title: "Top BPI",
+          count: `${topBpi.length} charts`,
+          rows: topBpi,
+          rowRenderer: receiptBpiRow,
+        },
+        "rank-achievements": {
+          title: "Score Rank Achievements",
+          count: `${rankAchievements.length} charts`,
+          rows: rankAchievements,
+          grouped: true,
+        },
+        "score-updates": {
+          title: "Score Updates",
+          count: `${scoreUpdates.length} charts`,
+          rows: scoreUpdates,
+          rowRenderer: receiptScoreUpdateRow,
+        },
+        "lamp-updates": {
+          title: "Lamp Updates",
+          count: `${lampUpdates.length} charts`,
+          rows: lampUpdates,
+          rowRenderer: receiptLampUpdateRow,
+        },
+        "bp-updates": {
+          title: "BP Updates",
+          count: `${bpUpdates.length} charts`,
+          rows: bpUpdates,
+          rowRenderer: receiptBpUpdateRow,
+        },
+      }[sectionId] || null;
+    }
+
+    function renderReceiptSectionFull(sectionId, data) {
+      clearSelectionMode();
+      state.receiptData = data;
+      const config = receiptSectionConfig(sectionId, data);
+      if (!config) {
+        renderError(new Error("Section not found"));
+        return;
+      }
+      state.view = `receipt-section:${sectionId}`;
+      state.listVariant = "receipt-section";
+      setTitle(config.title);
+      setStats([["ITEMS", config.rows.length], ["RANGE", data.range_text || "-"], ["", ""]]);
+      $("content").innerHTML = config.grouped
+        ? receiptRankAchievementSection(sectionId, config.title, config.rows, { [sectionId]: true })
+        : receiptSection(sectionId, config.title, config.count, config.rows, config.rowRenderer, { [sectionId]: true });
+      document.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
+      bindImageButtons($("content"));
+    }
+
     function renderFolderList(data) {
       renderPlainList(data.folder.label, data.items || [], {
         notes: data.notes,
@@ -1152,7 +1252,7 @@
       setTitle(data.folder.label);
       const logs = data.items || [];
       const topBpi = data.top_bpi_items || [];
-      const rankAchievements = filterSummaryResultRows(data.rank_achievement_updates || []);
+      const rankAchievements = filterRankAchievementRows(filterSummaryResultRows(data.rank_achievement_updates || []));
       const scoreUpdates = filterSummaryResultRows(data.score_updates || []);
       const lampUpdates = filterSummaryResultRows(data.lamp_updates || []);
       const bpUpdates = filterSummaryResultRows(data.bp_updates || []);
@@ -1170,21 +1270,21 @@
       $("content").innerHTML = `${top}
         <section class="receipt-actions">
           <button id="summaryBtn" class="secondary-btn" type="button">Generate Summary</button>
-          ${data.combined_images_enabled ? `<button id="selectReceiptImagesBtn" class="secondary-btn" type="button">${state.receiptImageSelection ? "Cancel Selection" : "Select Images"}</button>` : ''}
+          ${loadReceiptCombinedImagesEnabled() ? `<button id="selectReceiptImagesBtn" class="secondary-btn" type="button">${state.receiptImageSelection ? "Cancel Selection" : "Select Images"}</button>` : ''}
           <button id="tweetBtn" class="tweet-btn" type="button">Tweet</button>
         </section>
-        ${receiptSection("play-log", "Play Log", `${logs.length} / ${fmt(data.song_count)} songs`, logs, receiptSongRow, openSections)}
-        ${receiptSection("top-bpi", "Top BPI", `${topBpi.length} charts`, topBpi, receiptBpiRow, openSections)}
-        ${data.rank_update_enabled ? receiptSection("rank-achievements", "Score Rank Achievements", `${rankAchievements.length} charts`, rankAchievements, receiptRankAchievementRow, openSections) : ""}
-        ${receiptSection("score-updates", "Score Updates", `${scoreUpdates.length} charts`, scoreUpdates, receiptScoreUpdateRow, openSections)}
-        ${receiptSection("lamp-updates", "Lamp Updates", `${lampUpdates.length} charts`, lampUpdates, receiptLampUpdateRow, openSections)}
-        ${receiptSection("bp-updates", "BP Updates", `${bpUpdates.length} charts`, bpUpdates, receiptBpUpdateRow, openSections)}
+        ${receiptSection("play-log", "Play Log", `${logs.length} / ${fmt(data.song_count)} songs`, logs, receiptSongRow, openSections, { limitKey: "play_log" })}
+        ${receiptSection("top-bpi", "Top BPI", `${topBpi.length} charts`, topBpi, receiptBpiRow, openSections, { limitKey: "top_bpi" })}
+        ${rankAchievements.length ? receiptRankAchievementSection("rank-achievements", "Score Rank Achievements", rankAchievements, openSections, { limitKey: "rank_achievement_updates" }) : ""}
+        ${receiptSection("score-updates", "Score Updates", `${scoreUpdates.length} charts`, scoreUpdates, receiptScoreUpdateRow, openSections, { limitKey: "score_updates" })}
+        ${receiptSection("lamp-updates", "Lamp Updates", `${lampUpdates.length} charts`, lampUpdates, receiptLampUpdateRow, openSections, { limitKey: "lamp_updates" })}
+        ${receiptSection("bp-updates", "BP Updates", `${bpUpdates.length} charts`, bpUpdates, receiptBpUpdateRow, openSections, { limitKey: "bp_updates" })}
         ${receiptCurrentBest(current)}
         <section class="section">
           <div class="section-title">Rivals <span>${rivals.length} players</span></div>
           <div class="section-body">${rivals.length ? rivals.map(rivalRow).join("") : '<div class="empty">NO DATA</div>'}</div>
         </section>
-        ${data.combined_images_enabled ? '<div id="selectionAction" class="selection-action" hidden><button id="combineImagesBtn" type="button">CREATE POST IMAGE</button></div>' : ''}`;
+        ${loadReceiptCombinedImagesEnabled() ? '<div id="selectionAction" class="selection-action" hidden><button id="combineImagesBtn" type="button">CREATE POST IMAGE</button></div>' : ''}`;
       $("tweetBtn")?.addEventListener("click", async () => {
         const latest = await api(receiptApiPath());
         state.receiptData = latest;
@@ -1214,6 +1314,7 @@
       } else {
         document.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
       }
+      document.querySelectorAll("[data-receipt-full]").forEach((button) => button.addEventListener("click", () => openReceiptSectionFull(button.dataset.receiptFull, true)));
       bindImageButtons($("content"));
       updateSelectionAction();
     }
@@ -1222,6 +1323,8 @@
     const SUMMARY_PERIOD_SETTINGS_KEY = "infMobileSummaryPeriod";
     const SUMMARY_LIMIT_SETTINGS_KEY = "infMobileSummarySectionLimit";
     const SUMMARY_RESULT_LEVEL_SETTINGS_KEY = "infMobileSummaryResultLevels";
+    const RECEIPT_RANK_SETTINGS_KEY = "infMobileReceiptRankAchievements";
+    const RECEIPT_COMBINED_IMAGES_SETTINGS_KEY = "infMobileReceiptCombinedImages";
 
     function renderSummarySettings(data) {
       const panel = $("summarySettingsPanel");
@@ -1232,8 +1335,18 @@
       const selectedResultLevels = new Set(loadSummaryResultLevelSelection(resultLevelEntries));
       const period = loadSummaryPeriodSettings();
       const limit = loadSummaryLimitSettings();
+      const rankSettings = loadReceiptRankAchievementSettings();
+      const combinedImagesEnabled = loadReceiptCombinedImagesEnabled();
       const sectionRows = summaryLimitSections();
       panel.innerHTML = `<div class="summary-settings-title">Summary Settings</div>
+        <details open>
+          <summary>Receipt</summary>
+          <div class="summary-settings-body">
+            <div class="summary-level-options">
+              <label><input type="checkbox" data-receipt-combined-images ${combinedImagesEnabled ? "checked" : ""}>Enable combined images</label>
+            </div>
+          </div>
+        </details>
         <details open>
           <summary>Period</summary>
           <div class="summary-settings-body">
@@ -1257,6 +1370,14 @@
           <div class="summary-settings-body">
             <div class="summary-help">Shown in Score Rank, Score, Lamp, and BP update sections only.</div>
             <div class="summary-level-options">${resultLevelEntries.map((entry) => `<label><input type="checkbox" data-summary-result-level="${escapeText(entry.id)}" ${selectedResultLevels.has(entry.id) ? "checked" : ""}>${escapeText(entry.label)}</label>`).join("")}</div>
+          </div>
+        </details>
+        <details open>
+          <summary>Score rank achievements</summary>
+          <div class="summary-settings-body">
+            <div class="summary-level-options">
+              ${receiptRankAchievementEntries().map((entry) => `<label><input type="checkbox" data-receipt-rank-achievement="${escapeText(entry.id)}" ${rankSettings.has(entry.id) ? "checked" : ""}>${escapeText(entry.label)}</label>`).join("")}
+            </div>
           </div>
         </details>
         <details open>
@@ -1293,6 +1414,15 @@
         input.addEventListener("change", () => {
           const ids = [...panel.querySelectorAll("[data-summary-result-level]:checked")].map((node) => node.dataset.summaryResultLevel);
           saveSummaryResultLevelSelection(ids);
+        });
+      });
+      panel.querySelector("[data-receipt-combined-images]")?.addEventListener("change", (event) => {
+        saveReceiptCombinedImagesEnabled(Boolean(event.currentTarget.checked));
+      });
+      panel.querySelectorAll("[data-receipt-rank-achievement]").forEach((input) => {
+        input.addEventListener("change", () => {
+          const ids = [...panel.querySelectorAll("[data-receipt-rank-achievement]:checked")].map((node) => node.dataset.receiptRankAchievement);
+          saveReceiptRankAchievementSettings(ids);
         });
       });
       panel.querySelectorAll("[data-summary-unlimited]").forEach((input) => input.addEventListener("change", () => {
@@ -1395,6 +1525,7 @@
           const oldLimit = Math.max(0, Math.floor(Number(parsed.limit) || 20));
           const oldUnlimited = Boolean(parsed.unlimited);
           return {
+            play_log: { limit: oldLimit, unlimited: oldUnlimited },
             top_bpi: { limit: oldLimit || 20, unlimited: false },
             rank_achievement_updates: { limit: oldLimit, unlimited: oldUnlimited },
             score_updates: { limit: oldLimit, unlimited: oldUnlimited },
@@ -1431,6 +1562,7 @@
 
     function defaultSummaryLimitSettings() {
       return {
+        play_log: { limit: 20, unlimited: false },
         top_bpi: { limit: 20, unlimited: false },
         rank_achievement_updates: { limit: 20, unlimited: false },
         score_updates: { limit: 20, unlimited: false },
@@ -1441,6 +1573,7 @@
 
     function summaryLimitSections() {
       return [
+        { key: "play_log", label: "Play Log", allowUnlimited: true },
         { key: "top_bpi", label: "Top BPI", allowUnlimited: false },
         { key: "rank_achievement_updates", label: "Score Rank Achievements", allowUnlimited: true },
         { key: "score_updates", label: "Score Updates", allowUnlimited: true },
@@ -1516,6 +1649,52 @@
     function selectedSummaryResultLevelSet() {
       const entries = availableSummaryLevelEntries({});
       return new Set(loadSummaryResultLevelSelection(entries));
+    }
+
+    function receiptRankAchievementEntries() {
+      return [
+        { id: "MAX-", label: "New MAX-" },
+        { id: "AAA", label: "New AAA" },
+        { id: "AA", label: "New AA" },
+      ];
+    }
+
+    function defaultReceiptRankAchievementSelection() {
+      return receiptRankAchievementEntries().map((entry) => entry.id);
+    }
+
+    function loadReceiptRankAchievementSettings() {
+      const available = new Set(receiptRankAchievementEntries().map((entry) => entry.id));
+      try {
+        const raw = localStorage.getItem(RECEIPT_RANK_SETTINGS_KEY);
+        if (raw !== null) {
+          const parsed = JSON.parse(raw || "[]");
+          return new Set(Array.isArray(parsed) ? parsed.filter((id) => available.has(String(id))).map(String) : []);
+        }
+      } catch (e) {}
+      return new Set(defaultReceiptRankAchievementSelection());
+    }
+
+    function saveReceiptRankAchievementSettings(ids) {
+      localStorage.setItem(RECEIPT_RANK_SETTINGS_KEY, JSON.stringify(ids));
+    }
+
+    function filterRankAchievementRows(rows) {
+      const selected = loadReceiptRankAchievementSettings();
+      if (!selected.size) return [];
+      return (rows || []).filter((item) => selected.has(String(item.rank_achievement || "")));
+    }
+
+    function loadReceiptCombinedImagesEnabled() {
+      try {
+        return localStorage.getItem(RECEIPT_COMBINED_IMAGES_SETTINGS_KEY) === "1";
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function saveReceiptCombinedImagesEnabled(enabled) {
+      localStorage.setItem(RECEIPT_COMBINED_IMAGES_SETTINGS_KEY, enabled ? "1" : "0");
     }
 
     function resultLevelId(item) {
@@ -1618,13 +1797,11 @@
         ], { kind: "ranked", limit: topLimit });
         rightY = topBottom + 18;
       }
-      const rankAchievementRows = filterSummaryResultRows(data.rank_achievement_updates || []);
+      const rankAchievementRows = filterRankAchievementRows(filterSummaryResultRows(data.rank_achievement_updates || []));
       let rankBottom = rightY;
-      if (data.rank_update_enabled && rankLimit !== 0) {
-        const rankHeight = summarySectionHeight(rankAchievementRows.length, rankLimit, 900);
-        rankBottom = drawSummaryList(ctx, summarySectionTitle("Score Rank Achievements", rankAchievementRows.length, rankLimit), rankAchievementRows, 495, rightY, 990, rankHeight, (item) => [
-          "", item.rank_achievement || "", fmt(item.score), pct(item.score_rate), item.rankdiff || "", item.title || "",
-        ], { kind: "achievement", limit: rankLimit });
+      if (rankAchievementRows.length && rankLimit !== 0) {
+        const rankHeight = summaryGroupedRankAchievementsHeight(rankAchievementRows, rankLimit, Number.isFinite(rankLimit) ? 900 : Number.POSITIVE_INFINITY);
+        rankBottom = drawSummaryGroupedRankAchievements(ctx, "Score Rank Achievements", rankAchievementRows, 495, rightY, 990, rankHeight, rankLimit);
         rightY = rankBottom + 18;
       }
       const scoreUpdateRows = sortedScoreUpdatesForImage(filterSummaryResultRows(data.score_updates || []));
@@ -1712,7 +1889,8 @@
       const leftBottom = 943 + Math.max(110, 55 + levelStatEntries.length * 185);
       let rightY = 18;
       if (topLimit !== 0) rightY += summarySectionHeight((data.top_bpi_items || []).length, topLimit, 900) + 18;
-      if (data.rank_update_enabled && rankLimit !== 0) rightY += summarySectionHeight(filterSummaryResultRows(data.rank_achievement_updates || []).length, rankLimit, 900) + 18;
+      const rankAchievementRows = filterRankAchievementRows(filterSummaryResultRows(data.rank_achievement_updates || []));
+      if (rankAchievementRows.length && rankLimit !== 0) rightY += summaryGroupedRankAchievementsHeight(rankAchievementRows, rankLimit, Number.isFinite(rankLimit) ? 900 : Number.POSITIVE_INFINITY) + 18;
       if (scoreLimit !== 0) rightY += summarySectionHeight(filterSummaryResultRows(data.score_updates || []).length, scoreLimit, 900) + 18;
       if (lampLimit !== 0) rightY += summaryGroupedUpdatesHeight(filterSummaryResultRows(data.lamp_updates || []), lampLimit, Number.isFinite(lampLimit) ? 900 : Number.POSITIVE_INFINITY) + 18;
       if (bpLimit !== 0) rightY += summarySectionHeight(filterSummaryResultRows(data.bp_updates || []).length, bpLimit, 900) + 18;
@@ -2059,9 +2237,64 @@
       return y + actualHeight;
     }
 
+    function drawSummaryGroupedRankAchievements(ctx, title, rows, x, y, w, h, limit = Number.POSITIVE_INFINITY) {
+      const groups = groupRankAchievementsForImage(rows, limit);
+      const actualHeight = summaryGroupedRankAchievementsHeight(rows, limit, h);
+      ctx.fillStyle = "#05050c";
+      roundRect(ctx, x, y, w, actualHeight, 7, true, false);
+      ctx.fillStyle = "#002777";
+      roundRect(ctx, x, y, w, 47, 7, true, false);
+      ctx.strokeStyle = "#0058ad";
+      roundRect(ctx, x, y, w, 47, 7, false, true);
+      drawText(ctx, title, x + 12, y + 32, 24, "#aaddff", "bold");
+
+      let cy = y + 77;
+      groups.forEach((group) => {
+        if (cy > y + actualHeight - 32) return;
+        const newLabel = "New ";
+        const rankLabel = group.rank;
+        drawText(ctx, newLabel, x + 18, cy, 20, "#ffffff", "bold");
+        const newWidth = measureTextImage(ctx, newLabel, 20);
+        drawText(ctx, rankLabel, x + 18 + newWidth, cy, 20, rankImageColor(group.rank.replace("-", "")), "bold");
+        const labelWidth = newWidth + measureTextImage(ctx, rankLabel, 20);
+        drawText(ctx, ` ${group.total}`, x + 18 + labelWidth + 4, cy, 20, "#9aa3b5", "bold");
+        cy += 34;
+        group.items.forEach((item) => {
+          if (cy > y + actualHeight - 20) return;
+          drawLevelTextImage(ctx, item, x + 90, cy, 180);
+          drawText(ctx, visibleBpiText(item) || "", x + 280, cy, 18, bpiImageColor(visibleBpiText(item)), "bold");
+          drawText(ctx, item.title || "", x + 390, cy, 20, difficultyImageColor(item.difficulty), "bold");
+          cy += 31;
+        });
+        if (group.total > group.items.length) {
+          drawVerticalEllipsis(ctx, x + w / 2, cy + 6);
+          cy += 35;
+        }
+        cy += 12;
+        if (cy < y + actualHeight - 10) {
+          ctx.strokeStyle = "#24243d";
+          ctx.beginPath();
+          ctx.moveTo(x, cy - 9);
+          ctx.lineTo(x + w, cy - 9);
+          ctx.stroke();
+        }
+      });
+      return y + actualHeight;
+    }
+
     function summaryGroupedUpdatesHeight(rows, limit = Number.POSITIVE_INFINITY, maxHeight = Number.POSITIVE_INFINITY) {
       let neededHeight = 77;
       const groups = groupLampUpdatesForImage(rows, limit);
+      groups.forEach((group) => {
+        neededHeight += 34 + group.items.length * 31 + 12;
+        if (group.total > group.items.length) neededHeight += 35;
+      });
+      return Math.max(95, neededHeight + 8);
+    }
+
+    function summaryGroupedRankAchievementsHeight(rows, limit = Number.POSITIVE_INFINITY, maxHeight = Number.POSITIVE_INFINITY) {
+      let neededHeight = 77;
+      const groups = groupRankAchievementsForImage(rows, limit);
       groups.forEach((group) => {
         neededHeight += 34 + group.items.length * 31 + 12;
         if (group.total > group.items.length) neededHeight += 35;
@@ -2099,6 +2332,26 @@
         .filter((group) => group.items.length);
     }
 
+    function groupRankAchievementsForImage(rows, limit = Number.POSITIVE_INFINITY) {
+      const order = ["MAX-", "AAA", "AA"];
+      const groups = {};
+      (rows || []).forEach((item) => {
+        const rank = String(item.rank_achievement || "");
+        if (!order.includes(rank)) return;
+        if (!groups[rank]) groups[rank] = [];
+        groups[rank].push(item);
+      });
+      return order
+        .filter((rank) => groups[rank]?.length)
+        .map((rank) => {
+          const total = groups[rank].length;
+          const maxItems = Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : Number.POSITIVE_INFINITY;
+          const items = groups[rank].slice(0, maxItems);
+          return { rank, total, items };
+        })
+        .filter((group) => group.items.length);
+    }
+
     function lampImageColor(lamp) {
       return {
         7: "#44bbff",
@@ -2129,12 +2382,61 @@
       return `☆${item.lv || ""}`;
     }
 
-    function receiptSection(id, title, count, rows, rowRenderer, openSections = {}) {
+    function limitedReceiptRows(rows, limitKey) {
+      if (!limitKey) return { visibleRows: rows || [], total: (rows || []).length, shown: (rows || []).length, truncated: false };
+      const limit = summarySectionLimit(limitKey);
+      const total = (rows || []).length;
+      if (limit === 0) return { visibleRows: [], total, shown: 0, truncated: total > 0 };
+      if (!Number.isFinite(limit)) return { visibleRows: rows || [], total, shown: total, truncated: false };
+      const shown = Math.min(total, Math.max(0, Math.floor(Number(limit) || 0)));
+      return { visibleRows: (rows || []).slice(0, shown), total, shown, truncated: shown < total };
+    }
+
+    function receiptLimitedCount(defaultCount, limited) {
+      if (!limited.truncated) return defaultCount;
+      const suffix = String(defaultCount || "").includes("songs") ? "songs" : "charts";
+      return `${limited.shown} / ${limited.total} ${suffix}`;
+    }
+
+    function receiptShowAllButton(id, limited) {
+      if (!limited.truncated) return "";
+      return `<button class="load-more section-more" type="button" data-receipt-full="${escapeText(id)}">SHOW ALL (${limited.total})</button>`;
+    }
+
+    function receiptSection(id, title, count, rows, rowRenderer, openSections = {}, options = {}) {
+      const limited = limitedReceiptRows(rows, options.limitKey);
       const openAttr = openSections[id] === false ? "" : " open";
       return `<details class="section" data-section="${escapeText(id)}"${openAttr}>
-        <summary class="section-title">${escapeText(title)} <span>${escapeText(count)}</span></summary>
-        <div class="section-body">${rows.length ? rows.map((row) => receiptSelectableRow(rowRenderer(row), row)).join("") : '<div class="empty">NO DATA</div>'}</div>
+        <summary class="section-title">${escapeText(title)} <span>${escapeText(receiptLimitedCount(count, limited))}</span></summary>
+        <div class="section-body">${limited.visibleRows.length ? limited.visibleRows.map((row) => receiptSelectableRow(rowRenderer(row), row)).join("") : '<div class="empty">NO DATA</div>'}${receiptShowAllButton(id, limited)}</div>
       </details>`;
+    }
+    function receiptRankAchievementSection(id, title, rows, openSections = {}, options = {}) {
+      const limited = limitedReceiptRows(rows, options.limitKey);
+      const groups = groupReceiptRankAchievements(limited.visibleRows);
+      const total = rows.length;
+      const openAttr = openSections[id] === false ? "" : " open";
+      const body = groups.map((group) => `<div class="receipt-subsection">
+        <div class="receipt-subsection-title"><span class="rank-new">New</span><span class="rank-name rank-${escapeText(group.rank.replace("-", ""))}">${escapeText(group.rank)}</span><span>${group.items.length} charts</span></div>
+        ${group.items.map((row) => receiptSelectableRow(receiptRankAchievementRow(row), row)).join("")}
+      </div>`).join("");
+      return `<details class="section" data-section="${escapeText(id)}"${openAttr}>
+        <summary class="section-title">${escapeText(title)} <span>${escapeText(receiptLimitedCount(`${total} charts`, limited))}</span></summary>
+        <div class="section-body">${body || '<div class="empty">NO DATA</div>'}${receiptShowAllButton(id, limited)}</div>
+      </details>`;
+    }
+    function groupReceiptRankAchievements(rows) {
+      const order = ["MAX-", "AAA", "AA"];
+      const groups = {};
+      (rows || []).forEach((item) => {
+        const rank = String(item.rank_achievement || "");
+        if (!order.includes(rank)) return;
+        if (!groups[rank]) groups[rank] = [];
+        groups[rank].push(item);
+      });
+      return order
+        .filter((rank) => groups[rank]?.length)
+        .map((rank) => ({ rank, items: groups[rank] }));
     }
     function receiptSelectableRow(html, item) {
       if (!state.receiptImageSelection || !item.image_id) return html;
@@ -2266,8 +2568,7 @@
     function receiptRankAchievementRow(item) {
       const bpi = visibleBpiText(item);
       const ereter = ereterHtml(item, { mini: true });
-      const rank = String(item.rank_achievement || "");
-      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="rank-diff rank-${escapeText(rank.replace("-", ""))}">${escapeText(rank)}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${rankDiffHtml(item)}${bpi ? " / " + bpiHtml(bpi) : ""}${ereter ? " " + ereter : ""}</span></div><div class="row-score">${fmt(item.score)}<span>prev ${fmt(item.pre_score)}</span></div></div>`;
+      return `<div class="row" data-chart="${escapeText(item.chart_id || "")}"><div class="row-score">${bpi ? bpiHtml(bpi) : ""}</div><div>${receiptTitle(item)}<span>${pct(item.score_rate)} ${rankDiffHtml(item)}${ereter ? " " + ereter : ""}</span></div><div class="row-score">${fmt(item.score)}<span>prev ${fmt(item.pre_score)}</span></div></div>`;
     }
     function receiptLampUpdateRow(item) {
       const ereter = ereterHtml(item, { mini: true });
@@ -2475,6 +2776,15 @@
       applyFilter();
       if (state.historyOffset >= state.historyTotal) $("loadMore")?.remove();
     }
+    async function openReceiptSectionFull(sectionId, shouldPush) {
+      clearCurrentTimer();
+      if (shouldPush) push(state.view);
+      try {
+        const data = state.receiptData || await api(receiptApiPath());
+        renderReceiptSectionFull(sectionId, data);
+        if (shouldPush) pushHistoryState();
+      } catch (e) { renderError(e); }
+    }
     async function openChart(chartId, shouldPush) {
       if (!chartId) return;
       clearCurrentTimer();
@@ -2500,6 +2810,7 @@
       else if (view.startsWith("daily-month:")) await openDailyMonth(view.slice(12), shouldPush);
       else if (view.startsWith("daily-year:")) await openDailyYear(view.slice(11), shouldPush);
       else if (view.startsWith("daily:")) await openDailyDate(view.slice(6), shouldPush);
+      else if (view.startsWith("receipt-section:")) await openReceiptSectionFull(view.slice(16), shouldPush);
       else if (view === "summary-settings") await openSummarySettingsPage(shouldPush);
       else await openFolder(view, shouldPush);
     }

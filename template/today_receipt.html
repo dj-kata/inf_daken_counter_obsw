@@ -568,7 +568,14 @@
             if (!rows.length) return '';
             var heading = '';
             if (title || lamp) {
-                var titleHtml = lamp ? getLampBox(lamp) + '<span>' + escapeHtml(title) + '</span>' : escapeHtml(title);
+                var titleHtml = '';
+                if (lamp) {
+                    titleHtml = getLampBox(lamp) + '<span>' + escapeHtml(title) + '</span>';
+                } else if (title && typeof title === 'object' && title.html) {
+                    titleHtml = title.html;
+                } else {
+                    titleHtml = escapeHtml(title);
+                }
                 titleHtml += '<span class="count">' + rows.length + '</span>';
                 heading = '<h3 class="subsection-title">' + titleHtml + '</h3>';
             }
@@ -627,10 +634,10 @@
             var diffColor = getDifficultyColor(item.difficulty || '');
             return '<tr>' +
                 '<td class="col-level">' + formatLevel(item) + '</td>' +
-                '<td class="col-rank">' + escapeHtml(item.rank_achievement || rankAchievementName(item)) + '</td>' +
                 '<td class="col-score score-value">' + (Number(item.score) || 0) + '</td>' +
                 '<td class="col-rate">' + formatRate(item) + '</td>' +
                 '<td class="col-rank">' + formatRankDiff(item) + '</td>' +
+                '<td class="col-bpi ' + getBpiClass(item.bpi) + '">' + formatBpi(item) + '</td>' +
                 '<td class="col-title ' + diffColor + '">' + formatTitle(item) + '</td>' +
                 '</tr>';
         }
@@ -720,14 +727,23 @@
                             if (rankDiff !== 0) return rankDiff;
                             return compareLevelDesc(a, b);
                         });
-                    return renderSection('Score Rank Achievements', renderSubsection('', rankRows, [
-                        { label: 'Lv', cls: 'col-level' },
-                        { label: 'rank', cls: 'col-rank' },
-                        { label: 'score', cls: 'col-score' },
-                        { label: 'score_rate', cls: 'col-rate' },
-                        { label: 'rankdiff', cls: 'col-rank' },
-                        { label: 'title', cls: 'col-title' },
-                    ], renderRankAchievementRow));
+                    var rankHtml = '';
+                    ['MAX-', 'AAA', 'AA'].forEach(function(rank) {
+                        var rows = rankRows.filter(function(item) {
+                            return item.rank_achievement === rank;
+                        });
+                        rankHtml += renderSubsection({
+                            html: '<span>New </span><span class="' + escapeHtml(rank.replace('-', '')) + '">' + escapeHtml(rank) + '</span>'
+                        }, rows, [
+                            { label: 'Lv', cls: 'col-level' },
+                            { label: 'score', cls: 'col-score' },
+                            { label: 'score_rate', cls: 'col-rate' },
+                            { label: 'rankdiff', cls: 'col-rank' },
+                            { label: 'BPI', cls: 'col-bpi' },
+                            { label: 'title', cls: 'col-title' },
+                        ], renderRankAchievementRow);
+                    });
+                    return renderSection('Score Rank Achievements', rankHtml);
                 },
                 score: function() {
                     var scoreRows = items
