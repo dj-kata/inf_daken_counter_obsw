@@ -184,8 +184,20 @@
             return parseInt(port) || 8767;
         }
 
+        function getWebSocketHost() {
+            var host = getComputedStyle(document.documentElement).getPropertyValue('--websocket-host').trim().replace(/['"]/g, '');
+            return host || window.location.hostname || 'localhost';
+        }
+
+        function getWebSocketUrl() {
+            return 'ws://' + getWebSocketHost() + ':' + getWebSocketPort();
+        }
+
+        var activeWebSocketUrl = '';
+
         function connectWebSocket() {
-            ws = new WebSocket('ws://localhost:' + getWebSocketPort());
+            activeWebSocketUrl = getWebSocketUrl();
+            ws = new WebSocket(activeWebSocketUrl);
 
             ws.onopen = function() {
                 console.log('WebSocket接続成功');
@@ -217,6 +229,13 @@
                 console.error('WebSocketエラー:', error);
             };
         }
+
+        setInterval(function() {
+            var nextUrl = getWebSocketUrl();
+            if (activeWebSocketUrl && nextUrl !== activeWebSocketUrl && ws) {
+                ws.close();
+            }
+        }, 1000);
 
         function getRank(scoreRate) {
             if (scoreRate * 18 > 16) return 'AAA';

@@ -179,10 +179,10 @@ class DataWebSocketServer:
         async def start_server():
             self.server = await websockets.serve(
                 self.handler,
-                "localhost",
+                "0.0.0.0",
                 self.port
             )
-            logger.info(f"WebSocketサーバー起動: ポート {self.port}")
+            logger.info(f"WebSocketサーバー起動: 0.0.0.0:{self.port}")
         
         asyncio.run_coroutine_threadsafe(start_server(), loop)
     

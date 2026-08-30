@@ -361,9 +361,20 @@
                 .getPropertyValue('--websocket-port').trim();
             return parseInt(port) || 8767;
         }
+
+        function getWebSocketHost() {
+            const host = getComputedStyle(document.documentElement)
+                .getPropertyValue('--websocket-host').trim().replace(/['"]/g, '');
+            return host || window.location.hostname || 'localhost';
+        }
+
+        function getWebSocketUrl() {
+            return `ws://${getWebSocketHost()}:${getWebSocketPort()}`;
+        }
         
         let ws = null;
         let reconnectInterval = null;
+        let activeWebSocketUrl = '';
 
         function escapeHtml(value){
             return String(value ?? '')
@@ -528,8 +539,8 @@
         }
         
         function connectWebSocket() {
-            const WEBSOCKET_PORT = getWebSocketPort();
-            ws = new WebSocket(`ws://localhost:${WEBSOCKET_PORT}`);
+            activeWebSocketUrl = getWebSocketUrl();
+            ws = new WebSocket(activeWebSocketUrl);
             
             ws.onopen = function() {
                 console.log('WebSocket接続成功');
@@ -561,6 +572,13 @@
                 }
             };
         }
+
+        setInterval(function() {
+            const nextUrl = getWebSocketUrl();
+            if (activeWebSocketUrl && nextUrl !== activeWebSocketUrl && ws) {
+                ws.close();
+            }
+        }, 1000);
         
         function getDifficultyColor(difficulty) {
             if (!difficulty || difficulty.length < 3) return '';

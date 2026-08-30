@@ -294,8 +294,19 @@
             return parseInt(port, 10) || 8767;
         }
 
+        function getWebSocketHost() {
+            var host = getComputedStyle(document.documentElement)
+                .getPropertyValue('--websocket-host').trim().replace(/['"]/g, '');
+            return host || window.location.hostname || 'localhost';
+        }
+
+        function getWebSocketUrl() {
+            return 'ws://' + getWebSocketHost() + ':' + getWebSocketPort();
+        }
+
         var ws = null;
         var reconnectInterval = null;
+        var activeWebSocketUrl = '';
 
         function escapeHtml(value) {
             return String(value ?? '')
@@ -792,7 +803,8 @@
         }
 
         function connectWebSocket() {
-            ws = new WebSocket('ws://localhost:' + getWebSocketPort());
+            activeWebSocketUrl = getWebSocketUrl();
+            ws = new WebSocket(activeWebSocketUrl);
 
             ws.onopen = function() {
                 if (reconnectInterval) {
@@ -822,6 +834,13 @@
                 console.error('WebSocketエラー:', error);
             };
         }
+
+        setInterval(function() {
+            var nextUrl = getWebSocketUrl();
+            if (activeWebSocketUrl && nextUrl !== activeWebSocketUrl && ws) {
+                ws.close();
+            }
+        }, 1000);
 
         window.addEventListener('DOMContentLoaded', connectWebSocket);
         window.addEventListener('beforeunload', function() {

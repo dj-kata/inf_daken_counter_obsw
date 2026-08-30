@@ -447,6 +447,15 @@
         return parseInt(getCSSProp('--websocket-port')) || 8767;
     }
 
+    function getWebSocketHost() {
+        var host = getCSSProp('--websocket-host').replace(/['"]/g, '');
+        return host || window.location.hostname || 'localhost';
+    }
+
+    function getWebSocketUrl() {
+        return 'ws://' + getWebSocketHost() + ':' + getWebSocketPort();
+    }
+
     function getNotesGraphDays() {
         return parseInt(getCSSProp('--notes-graph-days')) || 5;
     }
@@ -643,6 +652,7 @@
     var ws = null;
     var reconnectInterval = null;
     var snapshotRequestInterval = null;
+    var activeWebSocketUrl = '';
 
     function requestSnapshot() {
         if (ws && ws.readyState === WebSocket.OPEN) {
@@ -651,8 +661,8 @@
     }
 
     function connectWebSocket() {
-        var port = getWebSocketPort();
-        ws = new WebSocket('ws://localhost:' + port);
+        activeWebSocketUrl = getWebSocketUrl();
+        ws = new WebSocket(activeWebSocketUrl);
 
         ws.onopen = function() {
             if (reconnectInterval) {
@@ -689,6 +699,13 @@
             }
         };
     }
+
+    setInterval(function() {
+        var nextUrl = getWebSocketUrl();
+        if (activeWebSocketUrl && nextUrl !== activeWebSocketUrl && ws) {
+            ws.close();
+        }
+    }, 1000);
 
     window.addEventListener('beforeunload', function() {
         if (snapshotRequestInterval) {

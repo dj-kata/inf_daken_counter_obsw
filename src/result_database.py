@@ -153,6 +153,7 @@ class ResultDatabase:
 
             css_content = f"""/* WebSocket設定 - 自動生成ファイル */
     :root {{
+        --websocket-host: "";
         --websocket-port: {self.config.websocket_data_port};
     }}
     """
