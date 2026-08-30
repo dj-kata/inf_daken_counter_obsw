@@ -20,6 +20,10 @@ _MONITORINFOF_PRIMARY = 0x00000001
 _SRCCOPY = 0x00CC0020
 _DIB_RGB_COLORS = 0
 _TARGET_NOT_FOUND_PREFIX = "対象ウィンドウが見つかりません"
+_PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+_PROCESS_QUERY_INFORMATION = 0x0400
+_PROCESS_VM_READ = 0x0010
+_ENUM_WINDOWS_PROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
 
 
 class _BITMAPINFOHEADER(ctypes.Structure):
@@ -131,6 +135,7 @@ class DirectWindowCapture:
             return None
 
     def _ensure_window(self) -> int | None:
+        self._configure_window_api()
         if self.hwnd and self._is_window_usable(self.hwnd):
             return self.hwnd
 
@@ -147,40 +152,109 @@ class DirectWindowCapture:
 
     def _find_target_window(self) -> int | None:
         user32 = ctypes.windll.user32
-        user32.EnumWindows.argtypes = None
-        enum_windows_proc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        self._configure_window_api()
         target_exe = self.config.direct_capture_exe.strip().casefold()
-        target_title = self.config.direct_capture_title.strip().casefold()
-        fallback_title = "beatmania IIDX INFINITAS".casefold()
-        title_matches: list[int] = []
-        exe_matches: list[int] = []
+        configured_title = self.config.direct_capture_title.strip()
+        target_title = self._normalize_title(configured_title)
+        raw_fallback_titles = [
+            configured_title,
+            "beatmania IIDX INFINITAS",
+            "beatmaniaIIDX INFINITAS",
+        ]
+        fallback_titles = [
+            self._normalize_title("beatmania IIDX INFINITAS"),
+            self._normalize_title("beatmaniaIIDX INFINITAS"),
+        ]
+        title_matches: list[tuple[int, str, str]] = []
+        exe_matches: list[tuple[int, str, str]] = []
+
+        for title in raw_fallback_titles:
+            if not title:
+                continue
+            hwnd = int(user32.FindWindowW(None, title))
+            if hwnd and self._is_window_candidate(hwnd):
+                logger.info(
+                    "直接キャプチャ対象候補: hwnd=%s title=%r exe=%r match=findwindow",
+                    hwnd,
+                    self._window_text(hwnd),
+                    self._window_process_name(hwnd),
+                )
+                return hwnd
 
         def callback(hwnd, _lparam):
-            if not self._is_window_usable(hwnd):
+            if not self._is_window_candidate(hwnd):
                 return True
 
             title = self._window_text(hwnd)
             exe_name = self._window_process_name(hwnd)
             hwnd_int = int(hwnd)
-            title_cf = title.casefold()
+            title_cf = self._normalize_title(title)
             title_matches_target = bool(
                 (target_title and target_title in title_cf)
-                or fallback_title in title_cf
+                or any(fallback_title in title_cf for fallback_title in fallback_titles)
             )
             exe_matches_target = bool(target_exe and exe_name.casefold() == target_exe)
 
             if title_matches_target:
-                title_matches.append(hwnd_int)
+                title_matches.append((hwnd_int, title, exe_name))
                 return False
 
             if exe_matches_target:
-                exe_matches.append(hwnd_int)
+                exe_matches.append((hwnd_int, title, exe_name))
             return True
 
-        user32.EnumWindows(enum_windows_proc(callback), 0)
-        if title_matches:
-            return title_matches[0]
-        return exe_matches[0] if exe_matches else None
+        user32.EnumWindows(_ENUM_WINDOWS_PROC(callback), 0)
+        matches = title_matches or exe_matches
+        if not matches:
+            return None
+
+        hwnd, title, exe_name = matches[0]
+        logger.info(
+            "直接キャプチャ対象候補: hwnd=%s title=%r exe=%r match=%s",
+            hwnd,
+            title,
+            exe_name,
+            "title" if title_matches else "exe",
+        )
+        return hwnd
+
+    def _configure_window_api(self) -> None:
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+
+        user32.EnumWindows.argtypes = (_ENUM_WINDOWS_PROC, wintypes.LPARAM)
+        user32.EnumWindows.restype = wintypes.BOOL
+        user32.IsWindow.argtypes = (wintypes.HWND,)
+        user32.IsWindow.restype = wintypes.BOOL
+        user32.IsWindowVisible.argtypes = (wintypes.HWND,)
+        user32.IsWindowVisible.restype = wintypes.BOOL
+        user32.IsIconic.argtypes = (wintypes.HWND,)
+        user32.IsIconic.restype = wintypes.BOOL
+        user32.GetWindowTextLengthW.argtypes = (wintypes.HWND,)
+        user32.GetWindowTextLengthW.restype = ctypes.c_int
+        user32.GetWindowTextW.argtypes = (wintypes.HWND, wintypes.LPWSTR, ctypes.c_int)
+        user32.GetWindowTextW.restype = ctypes.c_int
+        user32.GetWindowThreadProcessId.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.DWORD))
+        user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+        user32.FindWindowW.argtypes = (wintypes.LPCWSTR, wintypes.LPCWSTR)
+        user32.FindWindowW.restype = wintypes.HWND
+        user32.GetClientRect.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.RECT))
+        user32.GetClientRect.restype = wintypes.BOOL
+
+        kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.QueryFullProcessImageNameW.argtypes = (
+            wintypes.HANDLE,
+            wintypes.DWORD,
+            wintypes.LPWSTR,
+            ctypes.POINTER(wintypes.DWORD),
+        )
+        kernel32.QueryFullProcessImageNameW.restype = wintypes.BOOL
+        kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+        kernel32.CloseHandle.restype = wintypes.BOOL
+
+    def _normalize_title(self, title: str) -> str:
+        return "".join(str(title).casefold().split())
 
     def _is_window_usable(self, hwnd: int) -> bool:
         user32 = ctypes.windll.user32
@@ -189,6 +263,16 @@ class DirectWindowCapture:
         if user32.IsIconic(hwnd):
             return False
         return True
+
+    def _is_window_candidate(self, hwnd: int) -> bool:
+        user32 = ctypes.windll.user32
+        if not user32.IsWindow(hwnd) or user32.IsIconic(hwnd):
+            return False
+
+        client_rect = wintypes.RECT()
+        if not user32.GetClientRect(hwnd, ctypes.byref(client_rect)):
+            return False
+        return (client_rect.right - client_rect.left) > 0 and (client_rect.bottom - client_rect.top) > 0
 
     def _window_text(self, hwnd: int) -> str:
         user32 = ctypes.windll.user32
@@ -207,7 +291,13 @@ class DirectWindowCapture:
         if not process_id.value:
             return ""
 
-        handle = kernel32.OpenProcess(0x1000, False, process_id.value)
+        handle = kernel32.OpenProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, process_id.value)
+        if not handle:
+            handle = kernel32.OpenProcess(
+                _PROCESS_QUERY_INFORMATION | _PROCESS_VM_READ,
+                False,
+                process_id.value,
+            )
         if not handle:
             return ""
         try:
