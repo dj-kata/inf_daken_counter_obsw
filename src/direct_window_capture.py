@@ -19,11 +19,19 @@ _LANDSCAPE_SIZE = (1920, 1080)
 _MONITORINFOF_PRIMARY = 0x00000001
 _SRCCOPY = 0x00CC0020
 _DIB_RGB_COLORS = 0
+_MONITOR_DEFAULTTONEAREST = 0x00000002
 _TARGET_NOT_FOUND_PREFIX = "対象ウィンドウが見つかりません"
 _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 _PROCESS_QUERY_INFORMATION = 0x0400
 _PROCESS_VM_READ = 0x0010
 _ENUM_WINDOWS_PROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+_IGNORED_WINDOW_NAMES = {"d3dproxywindow"}
+
+
+def _hwnd_value(hwnd) -> int:
+    """ctypes HWND may be returned as None for NULL handles."""
+    value = getattr(hwnd, "value", hwnd)
+    return int(value or 0)
 
 
 class _BITMAPINFOHEADER(ctypes.Structure):
@@ -110,16 +118,18 @@ class DirectWindowCapture:
                 self.has_successful_frame = False
                 return None
 
-            x, y, width, height = self._client_geometry(hwnd)
-            if width <= 0 or height <= 0:
-                self.last_error = "対象ウィンドウのクライアント領域を取得できません"
-                self.hwnd = None
-                self.has_successful_frame = False
-                return None
-
-            image = self._grab_client_area(hwnd, x, y, width, height)
+            image = self._grab_fullscreen_area(hwnd)
             if image is None:
-                self.last_error = "対象ウィンドウの画像取得に失敗しました"
+                x, y, width, height = self._client_geometry(hwnd)
+                if width <= 0 or height <= 0:
+                    self.last_error = "対象ウィンドウのクライアント領域を取得できません"
+                    self.hwnd = None
+                    self.has_successful_frame = False
+                    return None
+                image = self._grab_client_area(hwnd, x, y, width, height)
+
+            if image is None:
+                self.last_error = "対象画面の画像取得に失敗しました"
                 self.hwnd = None
                 self.has_successful_frame = False
                 return None
@@ -171,7 +181,7 @@ class DirectWindowCapture:
         for title in raw_fallback_titles:
             if not title:
                 continue
-            hwnd = int(user32.FindWindowW(None, title))
+            hwnd = _hwnd_value(user32.FindWindowW(None, title))
             if hwnd and self._is_window_candidate(hwnd):
                 logger.info(
                     "直接キャプチャ対象候補: hwnd=%s title=%r exe=%r match=findwindow",
@@ -186,8 +196,11 @@ class DirectWindowCapture:
                 return True
 
             title = self._window_text(hwnd)
+            if self._should_ignore_window(hwnd, title):
+                return True
+
             exe_name = self._window_process_name(hwnd)
-            hwnd_int = int(hwnd)
+            hwnd_int = _hwnd_value(hwnd)
             title_cf = self._normalize_title(title)
             title_matches_target = bool(
                 (target_title and target_title in title_cf)
@@ -234,12 +247,22 @@ class DirectWindowCapture:
         user32.GetWindowTextLengthW.restype = ctypes.c_int
         user32.GetWindowTextW.argtypes = (wintypes.HWND, wintypes.LPWSTR, ctypes.c_int)
         user32.GetWindowTextW.restype = ctypes.c_int
+        user32.GetClassNameW.argtypes = (wintypes.HWND, wintypes.LPWSTR, ctypes.c_int)
+        user32.GetClassNameW.restype = ctypes.c_int
         user32.GetWindowThreadProcessId.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.DWORD))
         user32.GetWindowThreadProcessId.restype = wintypes.DWORD
         user32.FindWindowW.argtypes = (wintypes.LPCWSTR, wintypes.LPCWSTR)
         user32.FindWindowW.restype = wintypes.HWND
         user32.GetClientRect.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.RECT))
         user32.GetClientRect.restype = wintypes.BOOL
+        user32.GetWindowRect.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.RECT))
+        user32.GetWindowRect.restype = wintypes.BOOL
+        user32.ClientToScreen.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.POINT))
+        user32.ClientToScreen.restype = wintypes.BOOL
+        user32.MonitorFromWindow.argtypes = (wintypes.HWND, wintypes.DWORD)
+        user32.MonitorFromWindow.restype = wintypes.HANDLE
+        user32.GetMonitorInfoW.argtypes = (wintypes.HANDLE, ctypes.POINTER(_MONITORINFO))
+        user32.GetMonitorInfoW.restype = wintypes.BOOL
 
         kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
         kernel32.OpenProcess.restype = wintypes.HANDLE
@@ -262,17 +285,24 @@ class DirectWindowCapture:
             return False
         if user32.IsIconic(hwnd):
             return False
+        if self._should_ignore_window(hwnd):
+            return False
         return True
 
     def _is_window_candidate(self, hwnd: int) -> bool:
         user32 = ctypes.windll.user32
-        if not user32.IsWindow(hwnd) or user32.IsIconic(hwnd):
+        if not user32.IsWindow(hwnd) or not user32.IsWindowVisible(hwnd) or user32.IsIconic(hwnd):
             return False
 
         client_rect = wintypes.RECT()
         if not user32.GetClientRect(hwnd, ctypes.byref(client_rect)):
             return False
         return (client_rect.right - client_rect.left) > 0 and (client_rect.bottom - client_rect.top) > 0
+
+    def _should_ignore_window(self, hwnd: int, title: str | None = None) -> bool:
+        title_name = self._normalize_title(title or self._window_text(hwnd))
+        class_name = self._normalize_title(self._window_class_name(hwnd))
+        return title_name in _IGNORED_WINDOW_NAMES or class_name in _IGNORED_WINDOW_NAMES
 
     def _window_text(self, hwnd: int) -> str:
         user32 = ctypes.windll.user32
@@ -281,6 +311,14 @@ class DirectWindowCapture:
             return ""
         buffer = ctypes.create_unicode_buffer(length + 1)
         user32.GetWindowTextW(hwnd, buffer, length + 1)
+        return buffer.value
+
+    def _window_class_name(self, hwnd: int) -> str:
+        user32 = ctypes.windll.user32
+        buffer = ctypes.create_unicode_buffer(256)
+        length = user32.GetClassNameW(hwnd, buffer, len(buffer))
+        if length <= 0:
+            return ""
         return buffer.value
 
     def _window_process_name(self, hwnd: int) -> str:
@@ -342,19 +380,32 @@ class DirectWindowCapture:
             return None
         return top_left.x, top_left.y, bottom_right.x, bottom_right.y
 
+    def _grab_fullscreen_area(self, hwnd: int) -> Image.Image | None:
+        bbox = self._window_monitor_rect(hwnd)
+        if bbox is None:
+            bbox = self._primary_monitor_rect()
+        if bbox is None:
+            return None
+        return self._grab_screen_area(bbox)
+
+    def _grab_screen_area(self, bbox: tuple[int, int, int, int]) -> Image.Image | None:
+        image = self._grab_with_gdi(bbox)
+        if image is not None:
+            return image
+
+        try:
+            all_screens = self._should_grab_all_screens(bbox)
+            return ImageGrab.grab(bbox=bbox, all_screens=all_screens).convert("RGB")
+        except Exception as e:
+            self._log_error("ImageGrabで画面全体を直接キャプチャできませんでした: %s", e)
+            return None
+
     def _grab_client_area(self, hwnd: int, x: int, y: int, width: int, height: int) -> Image.Image | None:
         bbox = self._client_screen_bbox(hwnd)
         if bbox is not None:
-            image = self._grab_with_gdi(bbox)
+            image = self._grab_screen_area(bbox)
             if image is not None:
                 return image
-
-        if bbox is not None:
-            try:
-                all_screens = self._should_grab_all_screens(bbox)
-                return ImageGrab.grab(bbox=bbox, all_screens=all_screens).convert("RGB")
-            except Exception as e:
-                self._log_error("ImageGrabで直接キャプチャできませんでした: %s", e)
 
         screen = QGuiApplication.primaryScreen()
         if screen is None:
@@ -431,9 +482,24 @@ class DirectWindowCapture:
             or bottom > primary_bottom
         )
 
+    def _window_monitor_rect(self, hwnd: int) -> tuple[int, int, int, int] | None:
+        user32 = ctypes.windll.user32
+        hmonitor = user32.MonitorFromWindow(hwnd, _MONITOR_DEFAULTTONEAREST)
+        if not hmonitor:
+            return None
+
+        info = _MONITORINFO()
+        info.cbSize = ctypes.sizeof(_MONITORINFO)
+        if not user32.GetMonitorInfoW(hmonitor, ctypes.byref(info)):
+            return None
+
+        rect = info.rcMonitor
+        if rect.right <= rect.left or rect.bottom <= rect.top:
+            return None
+        return rect.left, rect.top, rect.right, rect.bottom
+
     def _primary_monitor_rect(self) -> tuple[int, int, int, int] | None:
         user32 = ctypes.windll.user32
-        user32.EnumDisplayMonitors.argtypes = None
         result: list[tuple[int, int, int, int]] = []
         enum_monitor_proc = ctypes.WINFUNCTYPE(
             wintypes.BOOL,
@@ -442,6 +508,13 @@ class DirectWindowCapture:
             ctypes.POINTER(wintypes.RECT),
             wintypes.LPARAM,
         )
+        user32.EnumDisplayMonitors.argtypes = (
+            wintypes.HDC,
+            ctypes.POINTER(wintypes.RECT),
+            enum_monitor_proc,
+            wintypes.LPARAM,
+        )
+        user32.EnumDisplayMonitors.restype = wintypes.BOOL
 
         def callback(hmonitor, _hdc, _rect, _lparam):
             info = _MONITORINFO()
