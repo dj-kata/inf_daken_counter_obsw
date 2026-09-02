@@ -264,12 +264,22 @@
     </head>
     <script>
     function getWebSocketPort() {
+        const queryPort = parseInt(new URLSearchParams(window.location.search).get('websocket_port'), 10);
+        if (Number.isFinite(queryPort)) {
+            return queryPort;
+        }
+
         const port = getComputedStyle(document.documentElement)
             .getPropertyValue('--websocket-port').trim();
         return parseInt(port) || 8767;
     }
 
     function getWebSocketHost() {
+        const queryHost = (new URLSearchParams(window.location.search).get('websocket_host') || '').trim().replace(/['"]/g, '');
+        if (queryHost) {
+            return queryHost;
+        }
+
         const host = getComputedStyle(document.documentElement)
             .getPropertyValue('--websocket-host').trim().replace(/['"]/g, '');
         if (host) {

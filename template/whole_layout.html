@@ -36,6 +36,8 @@
             --original-width: 1920;    /* 元ページの幅 */
             --original-height: 1080;   /* 元ページの高さ */
             --scale-method: fit;       /* fit | fill | exact */
+            --websocket-host: "";
+            --websocket-port: 8767;
 
             --color-bg: #000;
             --primary-color: #00bbbb;
@@ -519,6 +521,39 @@
             }
         }
 
+        function getCssCustomProperty(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+
+        function getWebSocketHost() {
+            return getCssCustomProperty('--websocket-host').replace(/['"]/g, '');
+        }
+
+        function getWebSocketPort() {
+            return parseInt(getCssCustomProperty('--websocket-port'), 10) || 8767;
+        }
+
+        function withWebSocketParams(src) {
+            const url = new URL(src, window.location.href);
+            const host = getWebSocketHost();
+            if (host) {
+                url.searchParams.set('websocket_host', host);
+            } else {
+                url.searchParams.delete('websocket_host');
+            }
+            url.searchParams.set('websocket_port', String(getWebSocketPort()));
+            return url.href;
+        }
+
+        function syncWebSocketIframeParams() {
+            document.querySelectorAll('iframe').forEach(function(iframe) {
+                const nextSrc = withWebSocketParams(iframe.getAttribute('src') || iframe.src);
+                if (iframe.src !== nextSrc) {
+                    iframe.src = nextSrc;
+                }
+            });
+        }
+
         // スケーリング機能（修正版：正確な中央配置対応）
         function setupScaledIframe(iframeId, containerId, originalWidth = 1920, originalHeight = 1080, method = 'fit') {
             const iframe = document.getElementById(iframeId);
@@ -627,6 +662,9 @@
 
         // iframe制御とスケーリング設定
         $(function(){
+            syncWebSocketIframeParams();
+            setInterval(syncWebSocketIframeParams, 1000);
+
             // スケーリング対応iframeの設定
             // setupScaledIframe('scaled-iframe-clock', 'scaled-container-clock', 500, 120, 'fit');
             setupScaledIframe('scaled-iframe-1', 'scaled-container-1', 1700, 400, 'fit');
@@ -667,7 +705,7 @@
         window.changeIframeSrc = function(iframeId, newSrc) {
             const iframe = document.getElementById(iframeId);
             if (iframe) {
-                iframe.src = newSrc;
+                iframe.src = withWebSocketParams(newSrc);
             }
         };
 
@@ -690,7 +728,7 @@
                 const iframe = document.createElement('iframe');
                 iframe.className = 'scaled-iframe';
                 iframe.id = 'bottom-right-lower-iframe';
-                iframe.src = src;
+                iframe.src = withWebSocketParams(src);
                 container.appendChild(iframe);
                 
                 // スケーリング設定
@@ -702,7 +740,7 @@
                 container.style.position = 'relative';
                 const iframe = document.createElement('iframe');
                 iframe.className = 'normal-iframe';
-                iframe.src = src;
+                iframe.src = withWebSocketParams(src);
                 container.appendChild(iframe);
             }
         };

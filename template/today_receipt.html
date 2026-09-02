@@ -289,12 +289,22 @@
 
         <script>
         function getWebSocketPort() {
+            var queryPort = parseInt(new URLSearchParams(window.location.search).get('websocket_port'), 10);
+            if (Number.isFinite(queryPort)) {
+                return queryPort;
+            }
+
             var port = getComputedStyle(document.documentElement)
                 .getPropertyValue('--websocket-port').trim();
             return parseInt(port, 10) || 8767;
         }
 
         function getWebSocketHost() {
+            var queryHost = (new URLSearchParams(window.location.search).get('websocket_host') || '').trim().replace(/['"]/g, '');
+            if (queryHost) {
+                return queryHost;
+            }
+
             var host = getComputedStyle(document.documentElement)
                 .getPropertyValue('--websocket-host').trim().replace(/['"]/g, '');
             if (host) {

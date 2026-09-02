@@ -444,10 +444,20 @@
     }
 
     function getWebSocketPort() {
+        var queryPort = parseInt(new URLSearchParams(window.location.search).get('websocket_port'), 10);
+        if (Number.isFinite(queryPort)) {
+            return queryPort;
+        }
+
         return parseInt(getCSSProp('--websocket-port')) || 8767;
     }
 
     function getWebSocketHost() {
+        var queryHost = (new URLSearchParams(window.location.search).get('websocket_host') || '').trim().replace(/['"]/g, '');
+        if (queryHost) {
+            return queryHost;
+        }
+
         var host = getCSSProp('--websocket-host').replace(/['"]/g, '');
         if (host) {
             return host;

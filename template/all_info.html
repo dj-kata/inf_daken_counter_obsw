@@ -14,6 +14,8 @@
             --gap: 6px;
             --frame-border-color: rgba(170, 170, 255, 0.45);
             --frame-bg: #050514;
+            --websocket-host: "";
+            --websocket-port: 8767;
         }
 
         * {
@@ -175,6 +177,39 @@
     </main>
 
     <script>
+        function getCssCustomProperty(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+
+        function getWebSocketHost() {
+            return getCssCustomProperty('--websocket-host').replace(/['"]/g, '');
+        }
+
+        function getWebSocketPort() {
+            return parseInt(getCssCustomProperty('--websocket-port'), 10) || 8767;
+        }
+
+        function withWebSocketParams(src) {
+            var url = new URL(src, window.location.href);
+            var host = getWebSocketHost();
+            if (host) {
+                url.searchParams.set('websocket_host', host);
+            } else {
+                url.searchParams.delete('websocket_host');
+            }
+            url.searchParams.set('websocket_port', String(getWebSocketPort()));
+            return url.href;
+        }
+
+        function syncWebSocketIframeParams() {
+            document.querySelectorAll('iframe').forEach(function(iframe) {
+                var nextSrc = withWebSocketParams(iframe.getAttribute('src') || iframe.src);
+                if (iframe.src !== nextSrc) {
+                    iframe.src = nextSrc;
+                }
+            });
+        }
+
         function scaleFrame(panel) {
             var iframe = panel.querySelector('iframe');
             var sourceWidth = Number(panel.dataset.sourceWidth);
@@ -210,8 +245,10 @@
             document.querySelectorAll('.scaled-frame').forEach(scaleFrame);
         }
 
+        window.addEventListener('load', syncWebSocketIframeParams);
         window.addEventListener('load', scaleAllFrames);
         window.addEventListener('resize', scaleAllFrames);
+        setInterval(syncWebSocketIframeParams, 1000);
         document.querySelectorAll('.scaled-frame iframe').forEach(function (iframe) {
             iframe.addEventListener('load', scaleAllFrames);
         });
