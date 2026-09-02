@@ -1132,13 +1132,29 @@ class ResultDatabase:
         if not notes and songinfo and getattr(songinfo, "notes", None):
             notes = _to_int_or_none(songinfo.notes)
 
+        level = str(songinfo.level) if songinfo and getattr(songinfo, "level", None) else ""
+
         if len(results) == 0:
+            if songinfo:
+                return {
+                    "lv": level,
+                    "enable_katate_difficulty_display": bool(
+                        self.config
+                        and getattr(self.config, "enable_katate_difficulty_display", False)
+                    ),
+                    "music": title,
+                    "difficulty": get_chart_name(style, difficulty, battle=battle),
+                    "playspeed": playspeed if playspeed else 1.0,
+                    "notes": notes if notes else "",
+                    "battle": bool(battle),
+                    **_extract_songinfo_fields(songinfo),
+                }
             return {}
 
         last_played_time = max(r.result.timestamp for r in results)
 
         data = {
-            "lv": str(songinfo.level) if hasattr(songinfo, "level") else "",
+            "lv": level,
             "enable_katate_difficulty_display": bool(
                 self.config and getattr(self.config, "enable_katate_difficulty_display", False)
             ),
