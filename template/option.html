@@ -232,7 +232,16 @@
 
         function getWebSocketHost() {
             const host = getComputedStyle(document.documentElement).getPropertyValue('--websocket-host').trim().replace(/['"]/g, '');
-            return host || window.location.hostname || 'localhost';
+            if (host) {
+                return host;
+            }
+
+            const locationHost = window.location.hostname;
+            if (!locationHost || locationHost.toLowerCase() === 'absolute') {
+                return '127.0.0.1';
+            }
+
+            return locationHost;
         }
 
         function getWebSocketUrl() {

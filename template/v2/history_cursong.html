@@ -203,7 +203,16 @@
 
         function getWebSocketHost() {
             var host = getComputedStyle(document.documentElement).getPropertyValue('--websocket-host').trim().replace(/['"]/g, '');
-            return host || window.location.hostname || 'localhost';
+            if (host) {
+                return host;
+            }
+
+            var locationHost = window.location.hostname;
+            if (!locationHost || locationHost.toLowerCase() === 'absolute') {
+                return '127.0.0.1';
+            }
+
+            return locationHost;
         }
 
         function getWebSocketUrl() {

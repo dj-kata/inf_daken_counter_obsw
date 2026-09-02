@@ -449,7 +449,16 @@
 
     function getWebSocketHost() {
         var host = getCSSProp('--websocket-host').replace(/['"]/g, '');
-        return host || window.location.hostname || 'localhost';
+        if (host) {
+            return host;
+        }
+
+        var locationHost = window.location.hostname;
+        if (!locationHost || locationHost.toLowerCase() === 'absolute') {
+            return '127.0.0.1';
+        }
+
+        return locationHost;
     }
 
     function getWebSocketUrl() {

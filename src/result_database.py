@@ -147,13 +147,13 @@ class ResultDatabase:
         self.save()
 
     def _write_websocket_config(self):
-        """WebSocketポート番号をCSSファイルに書き込む"""
+        """WebSocketホスト/ポート番号をCSSファイルに書き込む"""
         try:
             os.makedirs("out", exist_ok=True)
 
             css_content = f"""/* WebSocket設定 - 自動生成ファイル */
     :root {{
-        --websocket-host: "";
+        --websocket-host: "127.0.0.1";
         --websocket-port: {self.config.websocket_data_port};
     }}
     """
@@ -163,6 +163,7 @@ class ResultDatabase:
                 f.write(css_content)
 
             logger.info(f"WebSocket設定を書き込みました: {css_path}")
+            logger.debug("  ホスト: 127.0.0.1")
             logger.debug(f"  ポート番号: {self.config.websocket_data_port}")
         except Exception as e:
             logger.error(f"WebSocket設定ファイル書き込みエラー: {e}")
