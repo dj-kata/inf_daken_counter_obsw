@@ -166,28 +166,25 @@ class DirectWindowCapture:
         target_exe = self.config.direct_capture_exe.strip().casefold()
         configured_title = self.config.direct_capture_title.strip()
         target_title = self._normalize_title(configured_title)
-        raw_fallback_titles = [
-            configured_title,
-            "beatmania IIDX INFINITAS",
-            "beatmaniaIIDX INFINITAS",
-        ]
-        fallback_titles = [
-            self._normalize_title("beatmania IIDX INFINITAS"),
-            self._normalize_title("beatmaniaIIDX INFINITAS"),
-        ]
-        title_matches: list[tuple[int, str, str]] = []
+        exact_titles = [configured_title] if configured_title else ["beatmania IIDX INFINITAS"]
+        exact_matches: list[tuple[int, str, str]] = []
         exe_matches: list[tuple[int, str, str]] = []
 
-        for title in raw_fallback_titles:
+        for title in exact_titles:
             if not title:
                 continue
             hwnd = _hwnd_value(user32.FindWindowW(None, title))
             if hwnd and self._is_window_candidate(hwnd):
+                if self._should_ignore_window(hwnd):
+                    continue
+                exe_name = self._window_process_name(hwnd)
+                if target_exe and exe_name.casefold() != target_exe:
+                    continue
                 logger.info(
                     "直接キャプチャ対象候補: hwnd=%s title=%r exe=%r match=findwindow",
                     hwnd,
                     self._window_text(hwnd),
-                    self._window_process_name(hwnd),
+                    exe_name,
                 )
                 return hwnd
 
@@ -203,21 +200,20 @@ class DirectWindowCapture:
             hwnd_int = _hwnd_value(hwnd)
             title_cf = self._normalize_title(title)
             title_matches_target = bool(
-                (target_title and target_title in title_cf)
-                or any(fallback_title in title_cf for fallback_title in fallback_titles)
+                target_title and title_cf == target_title
             )
             exe_matches_target = bool(target_exe and exe_name.casefold() == target_exe)
 
-            if title_matches_target:
-                title_matches.append((hwnd_int, title, exe_name))
+            if title_matches_target and (not target_exe or exe_matches_target):
+                exact_matches.append((hwnd_int, title, exe_name))
                 return False
 
-            if exe_matches_target:
+            if exe_matches_target and not target_title:
                 exe_matches.append((hwnd_int, title, exe_name))
             return True
 
         user32.EnumWindows(_ENUM_WINDOWS_PROC(callback), 0)
-        matches = title_matches or exe_matches
+        matches = exact_matches or exe_matches
         if not matches:
             return None
 
@@ -227,7 +223,7 @@ class DirectWindowCapture:
             hwnd,
             title,
             exe_name,
-            "title" if title_matches else "exe",
+            "title+exe" if exact_matches else "exe",
         )
         return hwnd
 
@@ -287,6 +283,8 @@ class DirectWindowCapture:
             return False
         if self._should_ignore_window(hwnd):
             return False
+        if not self._window_matches_config(hwnd):
+            return False
         return True
 
     def _is_window_candidate(self, hwnd: int) -> bool:
@@ -303,6 +301,22 @@ class DirectWindowCapture:
         title_name = self._normalize_title(title or self._window_text(hwnd))
         class_name = self._normalize_title(self._window_class_name(hwnd))
         return title_name in _IGNORED_WINDOW_NAMES or class_name in _IGNORED_WINDOW_NAMES
+
+    def _window_matches_config(self, hwnd: int) -> bool:
+        target_exe = self.config.direct_capture_exe.strip().casefold()
+        configured_title = self.config.direct_capture_title.strip()
+        target_title = self._normalize_title(configured_title)
+
+        exe_name = self._window_process_name(hwnd).casefold()
+        title = self._normalize_title(self._window_text(hwnd))
+        exe_matches = bool(target_exe and exe_name == target_exe)
+        title_matches = bool(target_title and title == target_title)
+
+        if target_exe and target_title:
+            return exe_matches and title_matches
+        if target_exe:
+            return exe_matches
+        return title_matches
 
     def _window_text(self, hwnd: int) -> str:
         user32 = ctypes.windll.user32
