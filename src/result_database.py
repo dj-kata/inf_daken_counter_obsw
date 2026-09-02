@@ -739,6 +739,28 @@ class ResultDatabase:
 
         return best_results
 
+    def get_result_play_counts(self) -> Dict[tuple, int]:
+        """譜面別プレー回数を集計する。"""
+        play_counts = defaultdict(int)
+        include_legacy_v2_logs = bool(
+            self.config and getattr(self.config, "include_legacy_v2_logs", False)
+        )
+
+        for result in self.results:
+            is_countable_result = result.detect_mode == detect_mode.result
+            is_countable_legacy_v2 = (
+                include_legacy_v2_logs
+                and result.detect_mode == detect_mode.select
+                and result.timestamp != 0
+            )
+            if not (is_countable_result or is_countable_legacy_v2):
+                continue
+            battle = result.option.battle if result.option else None
+            key = (result.title, result.play_style, result.difficulty, battle)
+            play_counts[key] += 1
+
+        return play_counts
+
     def get_graph_data(self, start_time: int, end_time: int | None = None) -> dict:
         """本日のノーツ数用データを辞書形式で返す"""
         target = []
@@ -2478,11 +2500,13 @@ class ResultDatabase:
             "Opt(best score)",
             "Opt(min bp)",
             "Last Played",
+            "Play Count",
         ]
         os.makedirs("out", exist_ok=True)
 
         # 全曲の自己べを取得
         bests = self.get_all_best_results()
+        play_counts = self.get_result_play_counts()
 
         # 出力先の決定
         if csv_path:
@@ -2533,6 +2557,7 @@ class ResultDatabase:
                     best_score_opt,
                     min_bp_opt,
                     timestamp,
+                    play_counts.get((title_str, style, diff, battle), 0),
                 ]
                 if mode == "":
                     continue
