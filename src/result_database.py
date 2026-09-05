@@ -1135,25 +1135,56 @@ class ResultDatabase:
         level = str(songinfo.level) if songinfo and getattr(songinfo, "level", None) else ""
 
         if len(results) == 0:
-            if songinfo:
-                return {
-                    "lv": level,
-                    "enable_katate_difficulty_display": bool(
-                        self.config
-                        and getattr(self.config, "enable_katate_difficulty_display", False)
-                    ),
-                    "music": title,
-                    "difficulty": get_chart_name(style, difficulty, battle=battle),
-                    "playspeed": playspeed if playspeed else 1.0,
-                    "notes": notes if notes else "",
-                    "battle": bool(battle),
-                    **_extract_songinfo_fields(songinfo),
-                }
-            return {}
+            data = {
+                "chart_id": _mobile_chart_id(title, style, difficulty, battle=bool(battle)),
+                "lv": level,
+                "enable_katate_difficulty_display": bool(
+                    self.config
+                    and getattr(self.config, "enable_katate_difficulty_display", False)
+                ),
+                "music": title,
+                "difficulty": get_chart_name(style, difficulty, battle=battle),
+                "playspeed": playspeed if playspeed else 1.0,
+                "notes": notes if notes else "",
+                "last_played": "",
+                "best_lamp": clear_lamp.noplay.value,
+                "best_lamp_text": self._lamp_text(clear_lamp.noplay),
+                "best_lamp_opt": "",
+                "best_bp": "",
+                "best_bp_opt": "",
+                "best_score": 0,
+                "best_score_opt": "",
+                "battle": bool(battle),
+                "items": [],
+                **_extract_songinfo_fields(songinfo),
+            }
+            if self.rival_manager:
+                mode = get_chart_name(style, difficulty)
+                rival_items = []
+                for rival_name, entry in self.rival_manager.get_rival_scores(title, mode):
+                    rival_items.append(
+                        {
+                            "player": rival_name,
+                            "lamp": entry.lamp.value,
+                            "lamp_text": self._lamp_text(entry.lamp),
+                            "score": entry.score,
+                            "bp": entry.bp,
+                            "option": entry.option,
+                            "is_me": False,
+                        }
+                    )
+                rival_items.sort(key=lambda x: x["score"], reverse=True)
+                for i, item in enumerate(rival_items):
+                    item["rank"] = i + 1
+                data["rival_items"] = rival_items
+            else:
+                data["rival_items"] = []
+            return data
 
         last_played_time = max(r.result.timestamp for r in results)
 
         data = {
+            "chart_id": _mobile_chart_id(title, style, difficulty, battle=bool(battle)),
             "lv": level,
             "enable_katate_difficulty_display": bool(
                 self.config and getattr(self.config, "enable_katate_difficulty_display", False)
