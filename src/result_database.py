@@ -332,6 +332,8 @@ class ResultDatabase:
             # detect_mode.play は常に除外（途中落ちの判定ができないため）
             if r.result.detect_mode == detect_mode.play:
                 continue
+            if self._is_unknown_option_result(r.result):
+                continue
             # 特殊配置オプション(H-RAN, SYMM-RAN, SYNC-RAN)は常に除外
             if r.result.option and r.result.option.arrange:
                 if any(
@@ -368,6 +370,51 @@ class ResultDatabase:
             filtered.append(r)
         return filtered
 
+    def _is_unknown_option_result(self, result: OneResult) -> bool:
+        """リザルト画面でオプションだけ取得できなかった仮保存データかどうか。"""
+        return (
+            result is not None
+            and result.detect_mode == detect_mode.result
+            and (result.option is None or not result.option.valid)
+        )
+
+    def _is_same_result_except_option(self, left: OneResult, right: OneResult) -> bool:
+        """後続フレームでオプションだけ確定した同一リザルトを見つける。"""
+        if not isinstance(left, OneResult) or not isinstance(right, OneResult):
+            return False
+        return (
+            left.title == right.title
+            and left.play_style == right.play_style
+            and left.difficulty == right.difficulty
+            and left.lamp == right.lamp
+            and left.timestamp == right.timestamp
+            and left.playspeed == right.playspeed
+            and left.is_arcade == right.is_arcade
+            and left.judge == right.judge
+            and left.score == right.score
+            and left.bp == right.bp
+            and left.dead == right.dead
+            and left.detect_mode == right.detect_mode
+        )
+
+    def _find_unknown_option_result_index(self, result: OneResult) -> int | None:
+        for index, saved_result in enumerate(self.results):
+            if self._is_unknown_option_result(saved_result) and self._is_same_result_except_option(
+                saved_result, result
+            ):
+                return index
+        return None
+
+    def _replace_unknown_option_result(self, index: int, result: OneResult):
+        previous = self.results[index]
+        if getattr(result, "image_path", None) is None:
+            result.image_path = getattr(previous, "image_path", None)
+        if getattr(result, "bpim2", None) is None:
+            result.bpim2 = getattr(previous, "bpim2", None)
+        if getattr(result, "average_release", None) is None:
+            result.average_release = getattr(previous, "average_release", None)
+        self.results[index] = result
+
     def add(self, result: OneResult) -> bool:
         """リザルト登録用関数。chart_id情報を何も渡さなくても受ける(途中落ちのノーツ数保存用)
 
@@ -387,11 +434,38 @@ class ResultDatabase:
             if not result.lamp or not result.score:
                 logger.warning(f"result rejected (lamp or score missing): {result}")
                 return False
-            if (result.detect_mode == detect_mode.result) and (
-                result.option.valid == False
-            ):
-                logger.warning(f"result rejected (option is invalid): {result}")
+            if self._is_unknown_option_result(result):
+                unknown_index = self._find_unknown_option_result_index(result)
+                if result not in self.results and unknown_index is None:
+                    self.results.append(result)
+                    logger.warning(
+                        f"result added with unknown option! hash:{hash(result)}, "
+                        f"len:{len(self.results)}, result:{result}"
+                    )
+                    return True
                 return False
+            if result.detect_mode == detect_mode.result:
+                if result in self.results:
+                    return False
+                unknown_index = self._find_unknown_option_result_index(result)
+                if unknown_index is not None:
+                    battle = True if result.option and result.option.battle else False
+                    if result.pre_lamp is None:
+                        result.pre_score, result.pre_bp, result.pre_lamp = self.get_best(
+                            title=result.title,
+                            style=result.play_style,
+                            difficulty=result.difficulty,
+                            battle=battle,
+                            playspeed=result.playspeed,
+                            allscratch=result.option.allscratch,
+                            regularspeed=result.option.regularspeed,
+                        )
+                    self._replace_unknown_option_result(unknown_index, result)
+                    logger.info(
+                        f"result option resolved! hash:{hash(result)}, "
+                        f"index:{unknown_index}, len:{len(self.results)}, result:{result}"
+                    )
+                    return True
             if result not in self.results:
                 battle = True if result.option and result.option.battle else False
                 if result.pre_lamp is None:
@@ -655,6 +729,8 @@ class ResultDatabase:
         for result in self.results:
             if result.detect_mode == detect_mode.play:
                 continue
+            if self._is_unknown_option_result(result):
+                continue
             if result.playspeed not in (None, 1.0):
                 continue
             if result.option.allscratch:
@@ -754,6 +830,8 @@ class ResultDatabase:
                 and result.timestamp != 0
             )
             if not (is_countable_result or is_countable_legacy_v2):
+                continue
+            if self._is_unknown_option_result(result):
                 continue
             battle = result.option.battle if result.option else None
             key = (result.title, result.play_style, result.difficulty, battle)
