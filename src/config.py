@@ -15,13 +15,13 @@ class Config:
         self.websocket_port = 4444
         self.websocket_password = ""
         self.capture_method = "direct_window"
-        """'direct_window' = INFINITASウィンドウを直接取得 / 'obs_websocket' = OBS WebSocket経由"""
+        """'direct_window' = DXCAM直接取得 / 'obs_websocket' = OBS WebSocket経由"""
         self.direct_capture_exe = "bm2dx.exe"
         """直接取得対象のプロセス名"""
         self.direct_capture_title = "beatmania IIDX INFINITAS"
         """直接取得対象のウィンドウタイトル。exe一致時のフォールバックも行う。"""
         self.direct_capture_all_monitors = False
-        """直接取得時に常に全モニターを対象にするか。Falseの場合は対象ウィンドウ位置から自動判定する。"""
+        """旧設定互換用。DXCAM直接取得では使用しない。"""
         self.autoload_offset = 4
         self.main_window_geometry = None
 

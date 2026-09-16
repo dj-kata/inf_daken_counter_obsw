@@ -87,6 +87,8 @@ build_exe_options = {
         "typing",
         "ctypes",
         "ctypes.wintypes",
+        "dxcam",
+        "comtypes",
         "tkinter",      # GUIに必要
         "winsound",     # サウンド再生に必要
         # infnotebookはinclude_filesで対応（パッケージスキャンを回避）
@@ -106,6 +108,7 @@ build_exe_options = {
         "src.config_dialog",
         "src.obs_dialog",
         "src.direct_window_capture",
+        "src.dxcam_window_capture",
         "src.mobile_http_server",
         # ctypes関連（Windows APIアクセスに必要）
         "ctypes",

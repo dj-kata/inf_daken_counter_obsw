@@ -10,7 +10,7 @@ import logging
 from src.config import Config
 from src.logger import get_logger
 from src.funcs import load_ui_text
-from src.direct_window_capture import DirectWindowCapture
+from src.dxcam_window_capture import DxcamWindowCapture
 logger = get_logger(__name__)
 
 # obsws_pythonライブラリの接続エラートレースバックを抑制
@@ -75,7 +75,7 @@ class OBSWebSocketManager(QObject):
         self.picw = 1920
         self.pich = 1080
         self.screen = None
-        self.direct_capture: Optional[DirectWindowCapture] = None
+        self.direct_capture: Optional[Any] = None
         self._next_direct_capture_probe_at = 0.0
 
         # 起動時シーンコレクション切り替えフラグ（disconnect後にリセット）
@@ -85,8 +85,11 @@ class OBSWebSocketManager(QObject):
         """設定をセット"""
         self.config = config
         self.ui = load_ui_text(config)
-        if self.direct_capture is None:
-            self.direct_capture = DirectWindowCapture(config)
+        capture_cls = self._direct_capture_class()
+        if self.direct_capture is None or not isinstance(self.direct_capture, capture_cls):
+            if self.direct_capture and hasattr(self.direct_capture, "close"):
+                self.direct_capture.close()
+            self.direct_capture = capture_cls(config)
         else:
             self.direct_capture.set_config(config)
         self._next_direct_capture_probe_at = 0.0
@@ -94,6 +97,9 @@ class OBSWebSocketManager(QObject):
 
     def is_direct_capture(self) -> bool:
         return bool(self.config and getattr(self.config, 'capture_method', 'direct_window') == 'direct_window')
+
+    def _direct_capture_class(self):
+        return DxcamWindowCapture
 
     def is_obs_control_enabled(self) -> bool:
         if not self.config:
@@ -191,6 +197,9 @@ class OBSWebSocketManager(QObject):
         
         # 監視スレッドを停止
         self.stop_monitor()
+
+        if self.direct_capture and hasattr(self.direct_capture, "close"):
+            self.direct_capture.close()
         
         # 接続を切断
         if self.client:
@@ -371,11 +380,14 @@ class OBSWebSocketManager(QObject):
         error = self.direct_capture.last_error if self.direct_capture else ""
         if error:
             if self.direct_capture and self.direct_capture.is_waiting_for_target():
-                return f'直接取得: <span style="color:#5f6368;">ゲーム起動待ち</span> ({escape(error)})', False
-            return f'直接取得: <span style="color:#d93025;">{escape(error)}</span>', False
+                return f'{self._direct_capture_label()}: <span style="color:#5f6368;">ゲーム起動待ち</span> ({escape(error)})', False
+            return f'{self._direct_capture_label()}: <span style="color:#d93025;">{escape(error)}</span>', False
         if not self.direct_capture or not self.direct_capture.has_successful_frame:
-            return '直接取得: <span style="color:#5f6368;">未確認</span>', False
-        return '直接取得: <span style="color:#188038;">OK</span>', True
+            return f'{self._direct_capture_label()}: <span style="color:#5f6368;">未確認</span>', False
+        return f'{self._direct_capture_label()}: <span style="color:#188038;">OK</span>', True
+
+    def _direct_capture_label(self) -> str:
+        return '直接取得'
 
     def _probe_direct_capture_if_needed(self):
         if not self.direct_capture:
@@ -496,7 +508,7 @@ class OBSWebSocketManager(QObject):
             from src.infnotebook_compat import pil_image_to_screen
 
             if self.direct_capture is None:
-                self.direct_capture = DirectWindowCapture(self.config)
+                self.direct_capture = self._direct_capture_class()(self.config)
             image = self.direct_capture.read_frame()
             self.screen = pil_image_to_screen(image) if image is not None else None
             return

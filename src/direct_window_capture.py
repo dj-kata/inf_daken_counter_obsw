@@ -85,6 +85,8 @@ class DirectWindowCapture:
         self.has_successful_frame = False
         self.read_attempt_count = 0
         self._next_error_log_at = 0.0
+        self._next_window_search_at = 0.0
+        self._next_capture_retry_at = 0.0
 
     def set_config(self, config: Config) -> None:
         self.config = config
@@ -92,6 +94,8 @@ class DirectWindowCapture:
         self.last_error = ""
         self.has_successful_frame = False
         self.read_attempt_count = 0
+        self._next_window_search_at = 0.0
+        self._next_capture_retry_at = 0.0
 
     def is_waiting_for_target(self) -> bool:
         """ゲーム未起動など、対象ウィンドウ出現待ちの状態か。"""
@@ -108,6 +112,10 @@ class DirectWindowCapture:
             logger.info("直接キャプチャ試行: %s回目", self.read_attempt_count)
 
         try:
+            now = time.monotonic()
+            if now < self._next_capture_retry_at:
+                return None
+
             if not sys.platform.startswith("win"):
                 self.last_error = "直接取得はWindows専用です"
                 self.has_successful_frame = False
@@ -130,17 +138,18 @@ class DirectWindowCapture:
 
             if image is None:
                 self.last_error = "対象画面の画像取得に失敗しました"
-                self.hwnd = None
+                self._next_capture_retry_at = time.monotonic() + 1.0
                 self.has_successful_frame = False
                 return None
 
             self.last_error = ""
             self.has_successful_frame = True
+            self._next_capture_retry_at = 0.0
             return self._normalize_size(image)
         except Exception as e:
             self.last_error = str(e)
-            self.hwnd = None
             self.has_successful_frame = False
+            self._next_capture_retry_at = time.monotonic() + 1.0
             self._log_error("直接キャプチャエラー: %s", e)
             return None
 
@@ -148,6 +157,11 @@ class DirectWindowCapture:
         self._configure_window_api()
         if self.hwnd and self._is_window_usable(self.hwnd):
             return self.hwnd
+
+        now = time.monotonic()
+        if self.hwnd and now < self._next_window_search_at:
+            return None
+        self._next_window_search_at = now + 3.0
 
         self.hwnd = self._find_target_window()
         if not self.hwnd:
@@ -157,6 +171,7 @@ class DirectWindowCapture:
             self._log_error(self.last_error)
         else:
             self.last_error = ""
+            self._next_window_search_at = 0.0
             logger.info("直接キャプチャ対象を検出: hwnd=%s", self.hwnd)
         return self.hwnd
 
@@ -237,6 +252,8 @@ class DirectWindowCapture:
         user32.IsWindow.restype = wintypes.BOOL
         user32.IsWindowVisible.argtypes = (wintypes.HWND,)
         user32.IsWindowVisible.restype = wintypes.BOOL
+        user32.IsHungAppWindow.argtypes = (wintypes.HWND,)
+        user32.IsHungAppWindow.restype = wintypes.BOOL
         user32.IsIconic.argtypes = (wintypes.HWND,)
         user32.IsIconic.restype = wintypes.BOOL
         user32.GetWindowTextLengthW.argtypes = (wintypes.HWND,)
@@ -279,6 +296,8 @@ class DirectWindowCapture:
         user32 = ctypes.windll.user32
         if not user32.IsWindow(hwnd) or not user32.IsWindowVisible(hwnd):
             return False
+        if user32.IsHungAppWindow(hwnd):
+            return False
         if user32.IsIconic(hwnd):
             return False
         if self._should_ignore_window(hwnd):
@@ -289,7 +308,12 @@ class DirectWindowCapture:
 
     def _is_window_candidate(self, hwnd: int) -> bool:
         user32 = ctypes.windll.user32
-        if not user32.IsWindow(hwnd) or not user32.IsWindowVisible(hwnd) or user32.IsIconic(hwnd):
+        if (
+            not user32.IsWindow(hwnd)
+            or not user32.IsWindowVisible(hwnd)
+            or user32.IsHungAppWindow(hwnd)
+            or user32.IsIconic(hwnd)
+        ):
             return False
 
         client_rect = wintypes.RECT()

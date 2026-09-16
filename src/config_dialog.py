@@ -237,6 +237,7 @@ class ConfigDialog(QDialog):
 
         self.direct_capture_all_monitors_check = QCheckBox(self.ui.feature.direct_capture_all_monitors)
         self.direct_capture_all_monitors_check.setToolTip(self.ui.feature.direct_capture_all_monitors_tip)
+        self.direct_capture_all_monitors_check.setVisible(False)
         game_capture_layout.addWidget(self.direct_capture_all_monitors_check)
         self.capture_method_group.idClicked.connect(self._update_direct_capture_option_enabled)
 
@@ -339,7 +340,7 @@ class ConfigDialog(QDialog):
 
     def _update_direct_capture_option_enabled(self, *_args):
         """直接取得向けの詳細設定を、直接取得選択時だけ操作可能にする。"""
-        self.direct_capture_all_monitors_check.setEnabled(self.capture_method_group.checkedId() == 0)
+        self.direct_capture_all_monitors_check.setEnabled(False)
 
     def on_browse_clicked(self):
         """フォルダ参照ボタン押下時の処理"""
@@ -784,7 +785,8 @@ class ConfigDialog(QDialog):
         self.enable_judge_check.setChecked(self.config.enable_judge)
         self.enable_folder_updates_check.setChecked(self.config.enable_folder_updates)
         self.enable_music_select_score_import_check.setChecked(self.config.enable_music_select_score_import)
-        if getattr(self.config, 'capture_method', 'direct_window') == 'obs_websocket':
+        capture_method = getattr(self.config, 'capture_method', 'direct_window')
+        if capture_method == 'obs_websocket':
             self.capture_method_obs_radio.setChecked(True)
         else:
             self.capture_method_direct_radio.setChecked(True)

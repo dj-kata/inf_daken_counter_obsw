@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32'",
@@ -210,6 +210,15 @@ wheels = [
 ]
 
 [[package]]
+name = "comtypes"
+version = "1.4.16"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/2a/65274c13327f637ec13af8d39f2cf579d9ebe7a0e683696b5f05236d2805/comtypes-1.4.16.tar.gz", hash = "sha256:cd66d1add01265cface4df51ba1e31cd1657e04463c281c802e737e79e1ba93c", size = 260252, upload-time = "2026-03-02T23:11:42.413Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5f/7c/0eb685107290b6221c03c46d39214a4e42a124189691cb83ae3228257f46/comtypes-1.4.16-py3-none-any.whl", hash = "sha256:e18d85179ff12955524c5a8c3bc09cb3c0d890f1da4d7123d14244c7b78f84c8", size = 296230, upload-time = "2026-03-02T23:11:41.049Z" },
+]
+
+[[package]]
 name = "cryptography"
 version = "46.0.4"
 source = { registry = "https://pypi.org/simple" }
@@ -310,6 +319,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e9/11/971e423750b219ec3f3a7f27dfb9bd74aef3d3fdfee6cc7df10a0217b5cd/ds_store-1.3.2.tar.gz", hash = "sha256:e4da49df901123481a85b9250945f2aac054a0f0c29352cd2cc858c536cdd364", size = 26574, upload-time = "2025-12-04T00:52:46.178Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/03/83/7135cae57531edc070c73ea92b9129be0714323f5face6e15f415ca8ef52/ds_store-1.3.2-py3-none-any.whl", hash = "sha256:3b37332d9f8c18ff04c385d2933b66a1d84950071364f94bfc5f5a3ab1fb361e", size = 15928, upload-time = "2025-12-04T00:52:44.528Z" },
+]
+
+[[package]]
+name = "dxcam"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "comtypes" },
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/de/b7/b3d3e3fa42f347ac4b37fd639634935b4eefff1d5d61bdf72a6d8b906919/dxcam-0.3.0.tar.gz", hash = "sha256:d524da45adf70e044865e7d4e9098e655d6734951781155dda50c1292e20d8bd", size = 48742, upload-time = "2026-03-12T02:52:17.298Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/50/6eaa432be12554dfc44fde995134fda64c1bf7a58c3ae9555b411b2faf92/dxcam-0.3.0-cp311-cp311-win_amd64.whl", hash = "sha256:499aba3283349a19d09db67e98547c8cb686470491f0127463072bc45cf3d611", size = 338876, upload-time = "2026-03-12T02:52:11.394Z" },
+    { url = "https://files.pythonhosted.org/packages/32/3c/6aca1d8a906ccb5d7b5993b99822dbd60ac18470e88eee845afd927d678f/dxcam-0.3.0-cp312-cp312-win_amd64.whl", hash = "sha256:ab75b16529b8bd7337dfcb663525c338233a24b4c5b76193ced82a70e16edf49", size = 339445, upload-time = "2026-03-12T02:52:13.037Z" },
+    { url = "https://files.pythonhosted.org/packages/32/a0/f4c321b068cc1eb20aa56cd531c5cb449370d77b115075d9828853da8a05/dxcam-0.3.0-cp313-cp313-win_amd64.whl", hash = "sha256:d3de4d64e6d85a4c3c5b869dd35eba82d4784e5b6c4b1703e0cb09da14be9575", size = 339188, upload-time = "2026-03-12T02:52:14.622Z" },
+    { url = "https://files.pythonhosted.org/packages/be/a0/ef29032254cfb88d0ad595579c1cc9912dbd0d0ca8a525e0a235e87f5098/dxcam-0.3.0-cp314-cp314-win_amd64.whl", hash = "sha256:f08a8505b4ea0afbf1ad9f741c512030ef9119dd029f65a08a0e635f616113e0", size = 339467, upload-time = "2026-03-12T02:52:15.833Z" },
 ]
 
 [[package]]
@@ -533,6 +558,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "bs4" },
     { name = "cx-freeze" },
+    { name = "dxcam" },
     { name = "google-cloud-storage" },
     { name = "imagehash" },
     { name = "keyboard" },
@@ -548,6 +574,7 @@ dependencies = [
 requires-dist = [
     { name = "bs4", specifier = ">=0.0.2" },
     { name = "cx-freeze", specifier = ">=8.5.3" },
+    { name = "dxcam", specifier = ">=0.0.5" },
     { name = "google-cloud-storage", specifier = ">=3.9.0" },
     { name = "imagehash", specifier = ">=4.3.2" },
     { name = "keyboard", specifier = ">=0.13.5" },
@@ -728,7 +755,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/89/a9/a9a2103e159fd65bffbc21ecc5c8c36e44eb34fe53b4ef85fb6d08c2a635/patchelf-0.17.2.4-py3-none-manylinux2014_armv7l.manylinux_2_17_armv7l.musllinux_1_1_armv7l.whl", hash = "sha256:ae44cb3c857d50f54b99e5697aa978726ada33a8a6129d4b8b7ffd28b996652d", size = 431226, upload-time = "2025-07-23T21:16:26.765Z" },
     { url = "https://files.pythonhosted.org/packages/87/93/897d612f6df7cfd987bdf668425127efeff8d8e4ad8bfbab1c69d2a0d861/patchelf-0.17.2.4-py3-none-manylinux2014_ppc64le.manylinux_2_17_ppc64le.musllinux_1_1_ppc64le.whl", hash = "sha256:680a266a70f60a7a4f4c448482c5bdba80cc8e6bb155a49dcc24238ba49927b0", size = 540276, upload-time = "2025-07-23T21:16:27.983Z" },
     { url = "https://files.pythonhosted.org/packages/5d/b8/2b92d11533482bac9ee989081d6880845287751b5f528adbd6bb27667fbd/patchelf-0.17.2.4-py3-none-manylinux2014_s390x.manylinux_2_17_s390x.musllinux_1_1_s390x.whl", hash = "sha256:d842b51f0401460f3b1f3a3a67d2c266a8f515a5adfbfa6e7b656cb3ac2ed8bc", size = 596632, upload-time = "2025-07-23T21:16:29.253Z" },
-    { url = "https://files.pythonhosted.org/packages/14/e2/975d4bdb418f942b53e6187b95bd9e0d5e0488b7bc214685a1e43e2c2751/patchelf-0.17.2.4-py3-none-manylinux_2_31_riscv64.musllinux_1_1_riscv64.whl", hash = "sha256:7076d9e127230982e20a81a6e2358d3343004667ba510d9f822d4fdee29b0d71", size = 508281, upload-time = "2025-07-23T21:16:30.865Z" },
 ]
 
 [[package]]
