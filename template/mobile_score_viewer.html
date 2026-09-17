@@ -862,7 +862,7 @@
   </div>
 
   <script>
-    const state = { view: "home", stack: [], allItems: [], listVariant: "", levelSort: "title", levelSortEnabled: false, selectedImageIds: new Set(), savedImagesNotes: 0, historyOffset: 0, historyTotal: 0, currentTimer: null, receiptTimer: null, dailyMode: "daily", receiptData: null, receiptImageSelection: false };
+    const state = { view: "home", stack: [], allItems: [], listVariant: "", levelSort: "title", levelSortEnabled: false, selectedImageIds: new Set(), savedImagesNotes: 0, historyOffset: 0, historyTotal: 0, currentTimer: null, receiptTimer: null, listRefreshTimer: null, dailyMode: "daily", receiptData: null, receiptImageSelection: false };
     const HISTORY_BASE = "inf-mobile-base";
     const HISTORY_APP = "inf-mobile-view";
     const $ = (id) => document.getElementById(id);
@@ -905,6 +905,8 @@
       state.currentTimer = null;
       if (state.receiptTimer) clearInterval(state.receiptTimer);
       state.receiptTimer = null;
+      if (state.listRefreshTimer) clearInterval(state.listRefreshTimer);
+      state.listRefreshTimer = null;
     }
     function clearSelectionMode() {
       state.selectedImageIds.clear();
@@ -2737,9 +2739,11 @@
           state.historyOffset = data.items.length;
           state.historyTotal = data.total;
           renderList(data.folder.label, data.items, { loadMore: data.items.length < data.total, variant: "compact" });
+          state.listRefreshTimer = setInterval(() => refreshHistory(), 5000);
         } else if (id === "saved-images") {
           state.view = "saved-images";
           renderSavedImagesList(await api("/api/folders/saved-images"));
+          state.listRefreshTimer = setInterval(() => refreshSavedImages(), 5000);
         } else if (id === "bpi-best") {
           const data = await api("/api/folders/bpi-best");
           state.view = "bpi-best";
@@ -2821,6 +2825,44 @@
         renderReceipt(await api(receiptApiPath()));
       } catch (e) { renderError(e); }
     }
+    async function refreshReceiptSection(sectionId) {
+      if (state.view !== `receipt-section:${sectionId}`) return;
+      try {
+        renderReceiptSectionFull(sectionId, await api(receiptApiPath()));
+      } catch (e) { renderError(e); }
+    }
+    async function refreshHistory() {
+      if (state.view !== "history") return;
+      try {
+        const search = $("search")?.value || "";
+        const limit = Math.max(state.historyOffset || 200, 200);
+        const data = await api(`/api/folders/history?limit=${limit}&offset=0`);
+        state.historyOffset = data.items.length;
+        state.historyTotal = data.total;
+        renderList(data.folder.label, data.items, { loadMore: data.items.length < data.total, variant: "compact" });
+        if ($("search")) {
+          $("search").value = search;
+          applyFilter();
+        }
+      } catch (e) { renderError(e); }
+    }
+    async function refreshSavedImages() {
+      if (state.view !== "saved-images") return;
+      try {
+        const search = $("search")?.value || "";
+        const selected = new Set(state.selectedImageIds);
+        const data = await api("/api/folders/saved-images");
+        renderSavedImagesList(data);
+        const available = new Set(state.allItems.map((item) => String(item.image_id)));
+        state.selectedImageIds = new Set([...selected].filter((id) => available.has(String(id))));
+        if ($("search")) {
+          $("search").value = search;
+          applySavedImagesFilter();
+        } else {
+          drawSavedImagesList(state.allItems);
+        }
+      } catch (e) { renderError(e); }
+    }
     async function loadMoreHistory() {
       const data = await api(`/api/folders/history?limit=200&offset=${state.historyOffset}`);
       state.historyOffset += data.items.length;
@@ -2834,6 +2876,7 @@
       try {
         const data = state.receiptData || await api(receiptApiPath());
         renderReceiptSectionFull(sectionId, data);
+        state.receiptTimer = setInterval(() => refreshReceiptSection(sectionId), 5000);
         if (shouldPush) pushHistoryState();
       } catch (e) { renderError(e); }
     }
