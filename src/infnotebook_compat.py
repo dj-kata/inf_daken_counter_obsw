@@ -31,6 +31,14 @@ def pil_image_to_screen(image: Image.Image, filename: str = 'direct_capture.png'
     return Screen(np.array(image.convert('RGB')), filename)
 
 
+def np_image_to_screen(image: np.ndarray, filename: str = 'direct_capture.png'):
+    """RGB配列からinfnotebook.capture.Screenを作る"""
+    if Screen is None:
+        raise ImportError('infnotebook capture.Screen is not available')
+
+    return Screen(image, filename)
+
+
 class Screenshot:
     """旧API互換用のダミー。現状本アプリでは直接使用しない。"""
 

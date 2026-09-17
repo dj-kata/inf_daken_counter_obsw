@@ -23,6 +23,7 @@ import webbrowser, urllib
 import copy
 import os
 import threading
+import json
 
 try:
     import keyboard
@@ -178,6 +179,10 @@ class MainWindow(MainWindowUI):
         '''選曲画面でカーソル停止待ち中の譜面キー。'''
         self._scheduled_select_bpim2_args = None
         '''現在タイマーに積まれている選曲画面BPI取得キー。'''
+        self._runtime_state_file = Path("runtime_state.json")
+        self._result_screen_handled = False
+        '''同じリザルト画面滞在中の重複保存を防ぐ永続ガード。'''
+        self._load_runtime_state()
         
         # HTMLを更新しておく
         self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
@@ -566,6 +571,8 @@ class MainWindow(MainWindowUI):
 
             # 現在のゲーム画面状態を判定
             new_mode = self.detect_current_mode()
+            if new_mode != detect_mode.result:
+                self._set_result_screen_handled(False)
 
             # モードが変わった場合のイベント処理
             if new_mode != self.current_mode:
@@ -599,6 +606,35 @@ class MainWindow(MainWindowUI):
                 return detect_mode.play
             else:
                 return detect_mode.init
+
+    def _load_runtime_state(self):
+        """アプリ終了をまたいで保持する実行状態を読み込む。"""
+        try:
+            if not self._runtime_state_file.exists():
+                return
+            with self._runtime_state_file.open("r", encoding="utf-8") as f:
+                state = json.load(f)
+            self._result_screen_handled = bool(state.get("result_screen_handled", False))
+        except Exception:
+            logger.debug(f"runtime state load failed: {traceback.format_exc()}")
+
+    def _save_runtime_state(self):
+        """アプリ終了をまたいで保持する実行状態を書き込む。"""
+        try:
+            state = {
+                "result_screen_handled": self._result_screen_handled,
+            }
+            with self._runtime_state_file.open("w", encoding="utf-8") as f:
+                json.dump(state, f, ensure_ascii=False, indent=2)
+        except Exception:
+            logger.debug(f"runtime state save failed: {traceback.format_exc()}")
+
+    def _set_result_screen_handled(self, handled: bool):
+        if self._result_screen_handled == handled:
+            return
+        self._result_screen_handled = handled
+        self._save_runtime_state()
+        logger.info(f"result screen save guard: {'locked' if handled else 'unlocked'}")
     
     def on_mode_changed(self, old_mode: detect_mode, new_mode: detect_mode):
         """モード変更時の処理"""
@@ -913,6 +949,9 @@ class MainWindow(MainWindowUI):
     def process_result_mode(self):
         """リザルト画面での処理"""
         try:
+            if self._result_screen_handled:
+                return False
+
             detailed_result = self.screen_reader.read_result_screen()
             result = detailed_result.result
             result.timestamp = self.result_timestamp
@@ -950,6 +989,7 @@ class MainWindow(MainWindowUI):
                         ,battle=result.option.battle
                         ,playspeed=result.playspeed
                     )
+                    self._set_result_screen_handled(True)
 
                 self.result_pre = result
         except Exception:

@@ -7,10 +7,12 @@ import sys
 import time
 from ctypes import wintypes
 
+import numpy as np
 from PIL import Image
 
 from src.config import Config
 from src.direct_window_capture import DirectWindowCapture
+from src.infnotebook_compat import np_image_to_screen
 from src.logger import get_logger
 
 logger = get_logger(__name__)
@@ -69,6 +71,22 @@ class DxcamWindowCapture:
             self.last_error = ""
 
     def read_frame(self) -> Image.Image | None:
+        frame = self._grab_frame()
+        if frame is None:
+            return None
+
+        image = Image.fromarray(frame).convert("RGB")
+        return self._normalize_size(image)
+
+    def read_screen(self, filename: str = "direct_capture.png"):
+        frame = self._grab_frame()
+        if frame is None:
+            return None
+
+        frame = self._normalize_frame(frame)
+        return np_image_to_screen(frame, filename)
+
+    def _grab_frame(self) -> np.ndarray | None:
         self.read_attempt_count += 1
         if self.read_attempt_count <= 3:
             logger.info("DXCAM直接キャプチャ試行: %s回目", self.read_attempt_count)
@@ -97,10 +115,9 @@ class DxcamWindowCapture:
             self.has_successful_frame = False
             return None
 
-        image = Image.fromarray(frame).convert("RGB")
         self.last_error = ""
         self.has_successful_frame = True
-        return self._normalize_size(image)
+        return frame
 
     def _ensure_camera(self) -> bool:
         if self.camera is not None and self.hwnd and self.window._is_window_usable(self.hwnd):
@@ -189,6 +206,14 @@ class DxcamWindowCapture:
         if image.size == _LANDSCAPE_SIZE:
             return image
         return image.resize(_LANDSCAPE_SIZE, Image.Resampling.LANCZOS)
+
+    def _normalize_frame(self, frame: np.ndarray) -> np.ndarray:
+        height, width = frame.shape[:2]
+        if (width, height) == _LANDSCAPE_SIZE:
+            return np.ascontiguousarray(frame)
+
+        image = Image.fromarray(frame).resize(_LANDSCAPE_SIZE, Image.Resampling.LANCZOS)
+        return np.asarray(image, dtype=np.uint8)
 
     def _log_error(self, message: str, *args) -> None:
         now = time.monotonic()

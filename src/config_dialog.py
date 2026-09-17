@@ -225,12 +225,15 @@ class ConfigDialog(QDialog):
 
         self.capture_method_group = QButtonGroup()
         self.capture_method_direct_radio = QRadioButton(self.ui.feature.capture_method_direct)
+        self.capture_method_direct_legacy_radio = QRadioButton(self.ui.feature.capture_method_direct_legacy)
         self.capture_method_obs_radio = QRadioButton(self.ui.feature.capture_method_obs)
         self.capture_method_group.addButton(self.capture_method_direct_radio, 0)
-        self.capture_method_group.addButton(self.capture_method_obs_radio, 1)
+        self.capture_method_group.addButton(self.capture_method_direct_legacy_radio, 1)
+        self.capture_method_group.addButton(self.capture_method_obs_radio, 2)
 
         capture_method_layout = QHBoxLayout()
         capture_method_layout.addWidget(self.capture_method_direct_radio)
+        capture_method_layout.addWidget(self.capture_method_direct_legacy_radio)
         capture_method_layout.addWidget(self.capture_method_obs_radio)
         capture_method_layout.addStretch()
         game_capture_layout.addLayout(capture_method_layout)
@@ -339,8 +342,10 @@ class ConfigDialog(QDialog):
         return widget
 
     def _update_direct_capture_option_enabled(self, *_args):
-        """直接取得向けの詳細設定を、直接取得選択時だけ操作可能にする。"""
-        self.direct_capture_all_monitors_check.setEnabled(False)
+        """旧方式の直接取得向け詳細設定を、旧方式選択時だけ操作可能にする。"""
+        is_legacy_direct = self.capture_method_group.checkedId() == 1
+        self.direct_capture_all_monitors_check.setVisible(is_legacy_direct)
+        self.direct_capture_all_monitors_check.setEnabled(is_legacy_direct)
 
     def on_browse_clicked(self):
         """フォルダ参照ボタン押下時の処理"""
@@ -788,6 +793,8 @@ class ConfigDialog(QDialog):
         capture_method = getattr(self.config, 'capture_method', 'direct_window')
         if capture_method == 'obs_websocket':
             self.capture_method_obs_radio.setChecked(True)
+        elif capture_method == 'direct_window_legacy':
+            self.capture_method_direct_legacy_radio.setChecked(True)
         else:
             self.capture_method_direct_radio.setChecked(True)
         self.direct_capture_all_monitors_check.setChecked(
@@ -886,10 +893,14 @@ class ConfigDialog(QDialog):
         self.config.enable_judge = self.enable_judge_check.isChecked()
         self.config.enable_folder_updates = self.enable_folder_updates_check.isChecked()
         self.config.enable_music_select_score_import = self.enable_music_select_score_import_check.isChecked()
-        self.config.capture_method = (
-            'direct_window'
-            if self.capture_method_group.checkedId() == 0
-            else 'obs_websocket'
+        capture_method_by_id = {
+            0: 'direct_window',
+            1: 'direct_window_legacy',
+            2: 'obs_websocket',
+        }
+        self.config.capture_method = capture_method_by_id.get(
+            self.capture_method_group.checkedId(),
+            'direct_window',
         )
         self.config.direct_capture_all_monitors = self.direct_capture_all_monitors_check.isChecked()
         self.config.autoload_offset = self.autoload_offset_spin.value()

@@ -67,10 +67,11 @@ class UIText:
     class feature:
         """Feature settings tab"""
         game_capture_group = 'Game Screen Capture'
-        capture_method_direct = 'Direct capture'
+        capture_method_direct = 'Direct capture (DXCAM)'
+        capture_method_direct_legacy = 'Direct capture (legacy)'
         capture_method_obs = 'via OBS WebSocket'
         direct_capture_all_monitors = 'Always capture all monitors without auto-detection'
-        direct_capture_all_monitors_tip = 'When off, all monitors are used automatically only if the target window needs them.'
+        direct_capture_all_monitors_tip = 'Used by legacy direct capture. When off, all monitors are used automatically only if the target window needs them.'
         tweet_group = 'Tweet Function'
         enable_autotweet = 'Enable auto-tweet on exit'
         enable_judge = 'Include judge data'

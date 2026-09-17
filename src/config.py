@@ -15,13 +15,13 @@ class Config:
         self.websocket_port = 4444
         self.websocket_password = ""
         self.capture_method = "direct_window"
-        """'direct_window' = DXCAM直接取得 / 'obs_websocket' = OBS WebSocket経由"""
+        """'direct_window' = DXCAM直接取得 / 'direct_window_legacy' = 旧直接取得 / 'obs_websocket' = OBS WebSocket経由"""
         self.direct_capture_exe = "bm2dx.exe"
         """直接取得対象のプロセス名"""
         self.direct_capture_title = "beatmania IIDX INFINITAS"
         """直接取得対象のウィンドウタイトル。exe一致時のフォールバックも行う。"""
         self.direct_capture_all_monitors = False
-        """旧設定互換用。DXCAM直接取得では使用しない。"""
+        """旧直接取得用。DXCAM直接取得では使用しない。"""
         self.autoload_offset = 4
         self.main_window_geometry = None
 
@@ -227,7 +227,7 @@ class Config:
     def _load_capture_method(self, config_data: dict) -> str:
         """旧バージョン設定はOBS取得、新規設定は直接取得に寄せる。"""
         method = config_data.get("capture_method")
-        if method in ("direct_window", "obs_websocket"):
+        if method in ("direct_window", "direct_window_legacy", "obs_websocket"):
             return method
 
         has_websocket_settings = any(

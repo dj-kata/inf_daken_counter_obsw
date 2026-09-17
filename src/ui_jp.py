@@ -67,10 +67,11 @@ class UIText:
     class feature:
         """機能設定タブ"""
         game_capture_group = 'ゲーム画面取得'
-        capture_method_direct = '直接取得'
+        capture_method_direct = '直接取得(DXCAM)'
+        capture_method_direct_legacy = '直接取得(旧方式)'
         capture_method_obs = 'OBS WebSocket経由'
         direct_capture_all_monitors = '自動判定せずに常に全モニターを対象にする'
-        direct_capture_all_monitors_tip = 'OFFの場合は、対象ウィンドウの位置から必要なときだけ自動で全モニターを対象にします。'
+        direct_capture_all_monitors_tip = '旧方式の直接取得で使います。OFFの場合は、対象ウィンドウの位置から必要なときだけ自動で全モニターを対象にします。'
         tweet_group = 'ツイート機能'
         enable_autotweet = '終了時の自動ツイートを有効にする'
         enable_judge = '判定部分を含める'

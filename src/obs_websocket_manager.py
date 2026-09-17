@@ -10,6 +10,7 @@ import logging
 from src.config import Config
 from src.logger import get_logger
 from src.funcs import load_ui_text
+from src.direct_window_capture import DirectWindowCapture
 from src.dxcam_window_capture import DxcamWindowCapture
 logger = get_logger(__name__)
 
@@ -96,9 +97,15 @@ class OBSWebSocketManager(QObject):
         logger.info(f"OBS WebSocket config set: {config.websocket_host}:{config.websocket_port}")
 
     def is_direct_capture(self) -> bool:
-        return bool(self.config and getattr(self.config, 'capture_method', 'direct_window') == 'direct_window')
+        return bool(
+            self.config
+            and getattr(self.config, 'capture_method', 'direct_window')
+            in ('direct_window', 'direct_window_legacy')
+        )
 
     def _direct_capture_class(self):
+        if self.config and getattr(self.config, 'capture_method', 'direct_window') == 'direct_window_legacy':
+            return DirectWindowCapture
         return DxcamWindowCapture
 
     def is_obs_control_enabled(self) -> bool:
@@ -509,6 +516,10 @@ class OBSWebSocketManager(QObject):
 
             if self.direct_capture is None:
                 self.direct_capture = self._direct_capture_class()(self.config)
+            if hasattr(self.direct_capture, "read_screen"):
+                self.screen = self.direct_capture.read_screen()
+                return
+
             image = self.direct_capture.read_frame()
             self.screen = pil_image_to_screen(image) if image is not None else None
             return

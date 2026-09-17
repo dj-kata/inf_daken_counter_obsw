@@ -18,6 +18,7 @@ infnotebook/*
 log/*
 out/*
 config.json
+runtime_state.json
 pic/*
 qt.conf
 *.pkl
