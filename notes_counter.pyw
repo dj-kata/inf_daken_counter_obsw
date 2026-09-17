@@ -571,7 +571,7 @@ class MainWindow(MainWindowUI):
 
             # 現在のゲーム画面状態を判定
             new_mode = self.detect_current_mode()
-            if new_mode != detect_mode.result:
+            if new_mode in (detect_mode.select, detect_mode.play, detect_mode.option):
                 self._set_result_screen_handled(False)
 
             # モードが変わった場合のイベント処理
