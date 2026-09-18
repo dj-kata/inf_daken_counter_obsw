@@ -106,6 +106,20 @@ def level_str(level: Optional[int]) -> str:
     return str(level) if level is not None else '-'
 
 
+def chart_short_name(chart: OneSongInfo) -> str:
+    return f'{chart.play_style.name.upper()}{chart.difficulty.name.upper()[0]}'
+
+
+def value_exists(value) -> bool:
+    return value is not None and value != ''
+
+
+def value_str(value) -> str:
+    if isinstance(value, float):
+        return f'{value:g}'
+    return str(value)
+
+
 # =========================================================
 #  EditDialog – モードレス編集ダイアログ
 # =========================================================
@@ -631,6 +645,11 @@ class PropertiesPanel(QGroupBox):
         self.lbl_dp      = lbl()
         self.lbl_version = lbl()
         self.lbl_pack    = lbl()
+        self.lbl_notes   = lbl()
+        self.lbl_sp12    = lbl()
+        self.lbl_katate  = lbl()
+        self.lbl_dp_unofficial = lbl()
+        self.lbl_ereter  = lbl()
 
         grid.addWidget(QLabel('曲名:'),   0, 0, Qt.AlignTop)
         grid.addWidget(self.lbl_title,   0, 1)
@@ -642,6 +661,16 @@ class PropertiesPanel(QGroupBox):
         grid.addWidget(self.lbl_version, 3, 1)
         grid.addWidget(QLabel('Pack:'),   4, 0, Qt.AlignTop)
         grid.addWidget(self.lbl_pack,    4, 1)
+        grid.addWidget(QLabel('Notes:'),  5, 0, Qt.AlignTop)
+        grid.addWidget(self.lbl_notes,   5, 1)
+        grid.addWidget(QLabel('SP12:'),   6, 0, Qt.AlignTop)
+        grid.addWidget(self.lbl_sp12,    6, 1)
+        grid.addWidget(QLabel('Katate:'), 7, 0, Qt.AlignTop)
+        grid.addWidget(self.lbl_katate,  7, 1)
+        grid.addWidget(QLabel('DP非公式:'), 8, 0, Qt.AlignTop)
+        grid.addWidget(self.lbl_dp_unofficial, 8, 1)
+        grid.addWidget(QLabel('ereter:'), 9, 0, Qt.AlignTop)
+        grid.addWidget(self.lbl_ereter,  9, 1)
         grid.setColumnStretch(1, 1)
 
         layout.addLayout(grid)
@@ -662,6 +691,11 @@ class PropertiesPanel(QGroupBox):
             self.lbl_dp.setText('-')
             self.lbl_version.setText('-')
             self.lbl_pack.setText('-')
+            self.lbl_notes.setText('-')
+            self.lbl_sp12.setText('-')
+            self.lbl_katate.setText('-')
+            self.lbl_dp_unofficial.setText('-')
+            self.lbl_ereter.setText('-')
             self.btn_edit.setEnabled(False)
             return
 
@@ -691,7 +725,73 @@ class PropertiesPanel(QGroupBox):
         pk = next((c.music_pack for c in charts.values() if c.music_pack is not None), None)
         self.lbl_pack.setText(pack_str(pk) or '-')
 
+        self.lbl_notes.setText(self._format_chart_values(charts, lambda c: c.notes))
+        self.lbl_sp12.setText(self._format_sp12(charts))
+        self.lbl_katate.setText(self._format_katate(charts))
+        self.lbl_dp_unofficial.setText(self._format_chart_values(
+            charts,
+            lambda c: c.dp_unofficial if c.play_style == play_style.dp else None,
+        ))
+        self.lbl_ereter.setText(self._format_ereter(charts))
+
         self.btn_edit.setEnabled(True)
+
+    @staticmethod
+    def _format_chart_values(charts: dict, getter) -> str:
+        parts = []
+        for key in sorted(charts, key=lambda item: (item[0].value, item[1].value)):
+            chart = charts[key]
+            value = getter(chart)
+            if value_exists(value):
+                parts.append(f'{chart_short_name(chart)}:{value_str(value)}')
+        return '  '.join(parts) if parts else '-'
+
+    @staticmethod
+    def _format_sp12(charts: dict) -> str:
+        parts = []
+        for key in sorted(charts, key=lambda item: item[1].value):
+            chart = charts[key]
+            if chart.play_style != play_style.sp or chart.level != 12:
+                continue
+            if value_exists(chart.sp12_hard) or value_exists(chart.sp12_clear):
+                hard = value_str(chart.sp12_hard) if value_exists(chart.sp12_hard) else '?'
+                clear = value_str(chart.sp12_clear) if value_exists(chart.sp12_clear) else '?'
+                parts.append(f'{chart_short_name(chart)}:H {hard} / C {clear}')
+        return '  '.join(parts) if parts else '-'
+
+    @staticmethod
+    def _format_katate(charts: dict) -> str:
+        parts = []
+        for key in sorted(charts, key=lambda item: item[1].value):
+            chart = charts[key]
+            if chart.play_style != play_style.sp:
+                continue
+            value = None
+            if chart.level == 12:
+                value = chart.katate_12
+            elif chart.level == 11:
+                value = chart.katate_11
+            if value_exists(value):
+                parts.append(f'{chart_short_name(chart)}:{value_str(value)}')
+        return '  '.join(parts) if parts else '-'
+
+    @staticmethod
+    def _format_ereter(charts: dict) -> str:
+        parts = []
+        for key in sorted(charts, key=lambda item: item[1].value):
+            chart = charts[key]
+            if chart.play_style != play_style.dp:
+                continue
+            values = []
+            if value_exists(chart.dp_ereter_easy):
+                values.append(f'E {value_str(chart.dp_ereter_easy)}')
+            if value_exists(chart.dp_ereter_hard):
+                values.append(f'H {value_str(chart.dp_ereter_hard)}')
+            if value_exists(chart.dp_ereter_exh):
+                values.append(f'EXH {value_str(chart.dp_ereter_exh)}')
+            if values:
+                parts.append(f'{chart_short_name(chart)}:' + ' / '.join(values))
+        return '  '.join(parts) if parts else '-'
 
 
 # =========================================================
@@ -895,23 +995,41 @@ class MainWindow(QMainWindow):
 
         # テーブル更新 (ソートを一時停止)
         self.table.setSortingEnabled(False)
+        self.table.blockSignals(True)
+        self.table.clearSelection()
+        selection_model = self.table.selectionModel()
+        if selection_model:
+            selection_model.clearCurrentIndex()
         self.table.setRowCount(len(filtered))
         for row, title in enumerate(filtered):
             charts = self.title_data[title]['charts']
             ver = next((c.version for c in charts.values() if c.version is not None), None)
             pk  = next((c.music_pack for c in charts.values() if c.music_pack is not None), None)
-            self.table.setItem(row, 0, QTableWidgetItem(title))
-            self.table.setItem(row, 1, QTableWidgetItem(version_str(ver)))
-            self.table.setItem(row, 2, QTableWidgetItem(pack_str(pk)))
+            title_item = QTableWidgetItem(title)
+            title_item.setData(Qt.UserRole, title)
+            version_item = QTableWidgetItem(version_str(ver))
+            version_item.setData(Qt.UserRole, title)
+            pack_item = QTableWidgetItem(pack_str(pk))
+            pack_item.setData(Qt.UserRole, title)
+            self.table.setItem(row, 0, title_item)
+            self.table.setItem(row, 1, version_item)
+            self.table.setItem(row, 2, pack_item)
         self.table.setSortingEnabled(True)
+        self.table.blockSignals(False)
 
         # 選択を復元
+        restored = False
         if selected_title:
             for row in range(self.table.rowCount()):
                 item = self.table.item(row, 0)
-                if item and item.text() == selected_title:
+                if item and item.data(Qt.UserRole) == selected_title:
                     self.table.selectRow(row)
+                    restored = True
                     break
+        if not restored and self.table.rowCount() > 0:
+            self.table.selectRow(0)
+        elif not restored:
+            self._on_selection_changed()
 
     @staticmethod
     def _matches_missing_filters(charts: list[OneSongInfo], missing_filters: dict[str, bool]) -> bool:
@@ -978,7 +1096,10 @@ class MainWindow(QMainWindow):
         if row < 0:
             return None
         item = self.table.item(row, 0)
-        return item.text() if item else None
+        if not item:
+            return None
+        title = item.data(Qt.UserRole)
+        return title if title else item.text()
 
     def _on_selection_changed(self):
         title = self._selected_title()
