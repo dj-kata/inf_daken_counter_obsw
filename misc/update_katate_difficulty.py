@@ -23,8 +23,8 @@ if str(ROOT_DIR) not in sys.path:
 from src.classes import difficulty, play_style
 
 
-SPREADSHEET_ID = "1EiJIMKyknIdsB-SUp9U5I9bynbjf6FQCt4CpvLTDUKo"
-SHEET_GID = "1439819974"
+SPREADSHEET_ID = "1IS-W0U3F-uquX014-Ab3o7a4Cn1lwjMF-Uz_yooWrps"
+SHEET_GID = "0"
 CSV_URL = (
     f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export"
     f"?format=csv&gid={SHEET_GID}"
@@ -66,7 +66,9 @@ def parse_args(argv=None):
     )
     parser.add_argument("--url", default=CSV_URL, help="取得元CSV URL")
     parser.add_argument("--input-csv", type=Path, help="取得済みCSVを使う")
-    parser.add_argument("--dry-run", action="store_true", help="DBを書き換えず結果だけ表示")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="DBを書き換えず結果だけ表示"
+    )
     parser.add_argument(
         "--clear-missing",
         action="store_true",
@@ -117,7 +119,9 @@ def csv_rows_from_text(text):
         raise ValueError("downloaded content looks like HTML, not CSV")
     rows = list(csv.reader(io.StringIO(text)))
     if not rows or not any("片手難易度表" in cell for row in rows[:5] for cell in row):
-        raise ValueError("downloaded CSV does not look like the katate difficulty sheet")
+        raise ValueError(
+            "downloaded CSV does not look like the katate difficulty sheet"
+        )
     return rows
 
 
@@ -132,7 +136,16 @@ def download_text_with_urllib(url):
 
 def download_text_with_curl(curl_path, url):
     result = subprocess.run(
-        [curl_path, "-L", "--fail", "--silent", "--show-error", "--max-time", "30", url],
+        [
+            curl_path,
+            "-L",
+            "--fail",
+            "--silent",
+            "--show-error",
+            "--max-time",
+            "30",
+            url,
+        ],
         check=True,
         capture_output=True,
         timeout=40,
@@ -334,7 +347,9 @@ def main(argv=None):
     print(f"parsed charts: {len(katate)}")
     print(f"conflicts: {len(conflicts)}")
     for key, music_level, old, new in conflicts[:20]:
-        print(f"  {key[0]} ({key[2].name}) ☆{music_level}: {old} vs {new}; kept {max(old, new)}")
+        print(
+            f"  {key[0]} ({key[2].name}) ☆{music_level}: {old} vs {new}; kept {max(old, new)}"
+        )
     if len(conflicts) > 20:
         print(f"  ... and {len(conflicts) - 20} more")
 
