@@ -953,7 +953,12 @@ class MainWindow(MainWindowUI):
                 return False
 
             detailed_result = self.screen_reader.read_result_screen()
+            if not detailed_result or not detailed_result.result:
+                return False
             result = detailed_result.result
+            if result.option is None or not result.option.valid:
+                logger.warning(f"result skipped until option is recognized: {result}")
+                return False
             result.timestamp = self.result_timestamp
             if result and result.chart_id:
                 if result == self.result_pre:

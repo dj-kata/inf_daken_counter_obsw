@@ -127,6 +127,9 @@ class ScreenReader:
                 style = convert_play_style(_get_attr(informations, 'playmode', 'play_mode'))
                 level = informations.level
                 notes = informations.notes
+                if details.options is None:
+                    logger.warning("result screen incomplete: options is None")
+                    return None
                 option = PlayOption(details.options)
                 playspeed = informations.playspeed
                 misscount = _get_attr(details, 'misscount', 'miss_count')

@@ -435,14 +435,7 @@ class ResultDatabase:
                 logger.warning(f"result rejected (lamp or score missing): {result}")
                 return False
             if self._is_unknown_option_result(result):
-                unknown_index = self._find_unknown_option_result_index(result)
-                if result not in self.results and unknown_index is None:
-                    self.results.append(result)
-                    logger.warning(
-                        f"result added with unknown option! hash:{hash(result)}, "
-                        f"len:{len(self.results)}, result:{result}"
-                    )
-                    return True
+                logger.warning(f"result rejected (unknown option): {result}")
                 return False
             if result.detect_mode == detect_mode.result:
                 if result in self.results:
