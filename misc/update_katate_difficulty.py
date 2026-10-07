@@ -33,6 +33,7 @@ ALT_CSV_URL = (
     f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export"
     f"?format=csv&id={SPREADSHEET_ID}&gid={SHEET_GID}&single=true"
 )
+DEFAULT_TIMEOUT_SECONDS = 8
 
 CIRCLED_DIGITS = {
     "①": 1,
@@ -67,6 +68,12 @@ def parse_args(argv=None):
     parser.add_argument("--url", default=CSV_URL, help="取得元CSV URL")
     parser.add_argument("--input-csv", type=Path, help="取得済みCSVを使う")
     parser.add_argument(
+        "--timeout",
+        type=float,
+        default=DEFAULT_TIMEOUT_SECONDS,
+        help="CSVダウンロードのタイムアウト秒数",
+    )
+    parser.add_argument(
         "--dry-run", action="store_true", help="DBを書き換えず結果だけ表示"
     )
     parser.add_argument(
@@ -96,7 +103,7 @@ def read_csv_rows(args):
     for url in urls:
         try:
             print(f"downloading katate CSV: {url}")
-            return csv_rows_from_text(download_text_with_urllib(url))
+            return csv_rows_from_text(download_text_with_urllib(url, args.timeout))
         except Exception as e:
             errors.append(f"{url}: {type(e).__name__}: {e}")
             print(f"katate CSV download failed with urllib: {type(e).__name__}: {e}")
@@ -106,7 +113,7 @@ def read_csv_rows(args):
         for url in urls:
             try:
                 print(f"downloading katate CSV with curl: {url}")
-                return csv_rows_from_text(download_text_with_curl(curl_path, url))
+                return csv_rows_from_text(download_text_with_curl(curl_path, url, args.timeout))
             except Exception as e:
                 errors.append(f"curl {url}: {type(e).__name__}: {e}")
                 print(f"katate CSV download failed with curl: {type(e).__name__}: {e}")
@@ -125,16 +132,16 @@ def csv_rows_from_text(text):
     return rows
 
 
-def download_text_with_urllib(url):
+def download_text_with_urllib(url, timeout=DEFAULT_TIMEOUT_SECONDS):
     req = urllib.request.Request(
         url,
         headers={"User-Agent": "Mozilla/5.0"},
     )
-    with urllib.request.urlopen(req, timeout=30) as response:
+    with urllib.request.urlopen(req, timeout=timeout) as response:
         return response.read().decode("utf-8-sig")
 
 
-def download_text_with_curl(curl_path, url):
+def download_text_with_curl(curl_path, url, timeout=DEFAULT_TIMEOUT_SECONDS):
     result = subprocess.run(
         [
             curl_path,
@@ -143,12 +150,12 @@ def download_text_with_curl(curl_path, url):
             "--silent",
             "--show-error",
             "--max-time",
-            "30",
+            str(timeout),
             url,
         ],
         check=True,
         capture_output=True,
-        timeout=40,
+        timeout=timeout + 2,
     )
     return result.stdout.decode("utf-8-sig")
 

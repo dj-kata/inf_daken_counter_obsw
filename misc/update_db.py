@@ -25,6 +25,7 @@ from src.songinfo import *
 logger = get_logger('convert_db')
 
 OUT_DIR = Path('out')
+DEFAULT_KATATE_CSV = Path('misc/katate_difficulty.csv')
 
 
 def get_pkl_path(filename):
@@ -74,6 +75,17 @@ def parse_args():
         '--skip-katate',
         action='store_true',
         help='skip updating katate difficulty after songinfo generation',
+    )
+    parser.add_argument(
+        '--katate-csv',
+        type=Path,
+        default=DEFAULT_KATATE_CSV,
+        help='use a manually downloaded katate difficulty CSV',
+    )
+    parser.add_argument(
+        '--download-katate',
+        action='store_true',
+        help='download katate difficulty CSV during update_db',
     )
     return parser.parse_args()
 
@@ -624,5 +636,16 @@ sdb.save()
 if getattr(args, 'skip_katate', False):
     print("skipping katate difficulty update")
 else:
-    print("updating katate difficulty...")
-    update_katate_difficulty.main([])
+    katate_csv = getattr(args, 'katate_csv', DEFAULT_KATATE_CSV)
+    if katate_csv and katate_csv.exists():
+        print(f"updating katate difficulty from CSV: {katate_csv}")
+        update_katate_difficulty.main(["--input-csv", str(katate_csv)])
+    elif getattr(args, 'download_katate', False):
+        print("updating katate difficulty from download...")
+        update_katate_difficulty.main([])
+    else:
+        print(
+            "skipping katate difficulty update: "
+            f"{katate_csv} not found. "
+            "Download the Google Sheets CSV there or pass --download-katate."
+        )
