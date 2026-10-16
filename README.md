@@ -70,6 +70,15 @@ cp -a $(inf-notebook-binary-dir)/resources inf_daken_counter_obsw/
 make
 ```
 
+DB更新時、片手難易度表は通常ネットワーク取得せず `misc/katate_difficulty.csv` があればそれを使います。Google SheetsからCSVを手動ダウンロードして以下のどちらかで更新できます。
+
+```bash
+python misc/update_db.py --katate-csv misc/katate_difficulty.csv
+python misc/update_katate_difficulty.py --input-csv misc/katate_difficulty.csv
+```
+
+従来通り片手難易度表をオンライン取得したい場合は `python misc/update_db.py --download-katate` を使います。
+
 # ライセンス
 Apache License 2.0に準じるものとします。
 
