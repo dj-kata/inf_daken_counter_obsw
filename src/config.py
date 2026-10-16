@@ -34,6 +34,9 @@ class Config:
         self.enable_judge = False # 判定部分
         self.enable_folder_updates = True # フォルダごとの更新数表示
         self.enable_music_select_score_import = True # 選曲画面から自己ベストを取り込む
+        self.enable_random_lane_analysis = False # RANDOMレーン配置認識
+        self.random_lane_capture_backend = "current" # 'current' or 'spout'
+        self.random_lane_spout_sender_name = "Spout_OBS_Filter"
         
         # ウィンドウ位置設定
         self.main_window_x = 100
@@ -106,6 +109,13 @@ class Config:
                     self.enable_judge = config_data.get("enable_judge", True)
                     self.enable_folder_updates = config_data.get("enable_folder_updates", False)
                     self.enable_music_select_score_import = config_data.get("enable_music_select_score_import", True)
+                    self.enable_random_lane_analysis = config_data.get("enable_random_lane_analysis", False)
+                    self.random_lane_capture_backend = config_data.get("random_lane_capture_backend", "current")
+                    if self.random_lane_capture_backend not in ("current", "spout"):
+                        self.random_lane_capture_backend = "current"
+                    self.random_lane_spout_sender_name = config_data.get(
+                        "random_lane_spout_sender_name", "Spout_OBS_Filter"
+                    )
                     self.autoload_offset = config_data.get("autoload_offset", 0)
                     self.main_window_geometry = config_data.get("main_window_geometry", None)
                     
@@ -188,6 +198,9 @@ class Config:
             "enable_judge": self.enable_judge,
             "enable_folder_updates": self.enable_folder_updates,
             "enable_music_select_score_import": self.enable_music_select_score_import,
+            "enable_random_lane_analysis": self.enable_random_lane_analysis,
+            "random_lane_capture_backend": self.random_lane_capture_backend,
+            "random_lane_spout_sender_name": self.random_lane_spout_sender_name,
             "autoload_offset": self.autoload_offset,
             "main_window_geometry": self.main_window_geometry,
             "obs_control_settings": self.obs_control_settings,

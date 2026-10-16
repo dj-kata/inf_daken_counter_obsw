@@ -102,13 +102,18 @@ class MainWindowUI(QMainWindow):
         self.last_song_label.setWordWrap(True)
         status_layout.addWidget(self.last_song_label, 4, 1)
 
-        status_layout.addWidget(QLabel(self.ui.main.mobile_score_url), 5, 0)
+        status_layout.addWidget(QLabel(self.ui.main.random_lane), 5, 0)
+        self.random_lane_label = QLabel("---")
+        self.random_lane_label.setWordWrap(True)
+        status_layout.addWidget(self.random_lane_label, 5, 1)
+
+        status_layout.addWidget(QLabel(self.ui.main.mobile_score_url), 6, 0)
         self.mobile_score_url_label = QLabel("---")
         self.mobile_score_url_label.setWordWrap(True)
         self.mobile_score_url_label.setOpenExternalLinks(True)
         self.mobile_score_url_label.setTextFormat(Qt.RichText)
         self.mobile_score_url_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
-        status_layout.addWidget(self.mobile_score_url_label, 5, 1)
+        status_layout.addWidget(self.mobile_score_url_label, 6, 1)
         
         status_group.setLayout(status_layout)
         main_layout.addWidget(status_group)

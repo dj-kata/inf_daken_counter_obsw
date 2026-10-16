@@ -247,6 +247,40 @@ class ConfigDialog(QDialog):
         self.enable_music_select_score_import_check = QCheckBox(self.ui.feature.enable_music_select_score_import)
         game_capture_layout.addWidget(self.enable_music_select_score_import_check)
 
+        self.enable_random_lane_analysis_check = QCheckBox(
+            self.ui.feature.enable_random_lane_analysis
+        )
+        self.enable_random_lane_analysis_check.setToolTip(
+            self.ui.feature.enable_random_lane_analysis_tip
+        )
+        game_capture_layout.addWidget(self.enable_random_lane_analysis_check)
+
+        random_lane_capture_form = QFormLayout()
+        self.random_lane_capture_backend_combo = QComboBox()
+        self.random_lane_capture_backend_combo.addItem(
+            self.ui.feature.random_lane_capture_current, "current"
+        )
+        self.random_lane_capture_backend_combo.addItem(
+            self.ui.feature.random_lane_capture_spout, "spout"
+        )
+        random_lane_capture_form.addRow(
+            self.ui.feature.random_lane_capture_backend,
+            self.random_lane_capture_backend_combo,
+        )
+        self.random_lane_spout_sender_edit = QLineEdit()
+        self.random_lane_spout_sender_edit.setPlaceholderText("Spout_OBS_Filter")
+        random_lane_capture_form.addRow(
+            self.ui.feature.random_lane_spout_sender,
+            self.random_lane_spout_sender_edit,
+        )
+        game_capture_layout.addLayout(random_lane_capture_form)
+        self.enable_random_lane_analysis_check.toggled.connect(
+            self._update_random_lane_capture_options
+        )
+        self.random_lane_capture_backend_combo.currentIndexChanged.connect(
+            self._update_random_lane_capture_options
+        )
+
         layout.addWidget(game_capture_group)
         
         # ツイート機能グループ
@@ -346,6 +380,12 @@ class ConfigDialog(QDialog):
         is_legacy_direct = self.capture_method_group.checkedId() == 1
         self.direct_capture_all_monitors_check.setVisible(is_legacy_direct)
         self.direct_capture_all_monitors_check.setEnabled(is_legacy_direct)
+
+    def _update_random_lane_capture_options(self, *_args):
+        enabled = self.enable_random_lane_analysis_check.isChecked()
+        uses_spout = self.random_lane_capture_backend_combo.currentData() == "spout"
+        self.random_lane_capture_backend_combo.setEnabled(enabled)
+        self.random_lane_spout_sender_edit.setEnabled(enabled and uses_spout)
 
     def on_browse_clicked(self):
         """フォルダ参照ボタン押下時の処理"""
@@ -790,6 +830,16 @@ class ConfigDialog(QDialog):
         self.enable_judge_check.setChecked(self.config.enable_judge)
         self.enable_folder_updates_check.setChecked(self.config.enable_folder_updates)
         self.enable_music_select_score_import_check.setChecked(self.config.enable_music_select_score_import)
+        self.enable_random_lane_analysis_check.setChecked(
+            bool(getattr(self.config, 'enable_random_lane_analysis', False))
+        )
+        random_lane_backend = getattr(self.config, 'random_lane_capture_backend', 'current')
+        backend_index = self.random_lane_capture_backend_combo.findData(random_lane_backend)
+        self.random_lane_capture_backend_combo.setCurrentIndex(max(0, backend_index))
+        self.random_lane_spout_sender_edit.setText(
+            str(getattr(self.config, 'random_lane_spout_sender_name', 'Spout_OBS_Filter'))
+        )
+        self._update_random_lane_capture_options()
         capture_method = getattr(self.config, 'capture_method', 'direct_window')
         if capture_method == 'obs_websocket':
             self.capture_method_obs_radio.setChecked(True)
@@ -893,6 +943,13 @@ class ConfigDialog(QDialog):
         self.config.enable_judge = self.enable_judge_check.isChecked()
         self.config.enable_folder_updates = self.enable_folder_updates_check.isChecked()
         self.config.enable_music_select_score_import = self.enable_music_select_score_import_check.isChecked()
+        self.config.enable_random_lane_analysis = self.enable_random_lane_analysis_check.isChecked()
+        self.config.random_lane_capture_backend = (
+            self.random_lane_capture_backend_combo.currentData() or 'current'
+        )
+        self.config.random_lane_spout_sender_name = (
+            self.random_lane_spout_sender_edit.text().strip() or 'Spout_OBS_Filter'
+        )
         capture_method_by_id = {
             0: 'direct_window',
             1: 'direct_window_legacy',

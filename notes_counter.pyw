@@ -24,6 +24,7 @@ import copy
 import os
 import threading
 import json
+import time
 
 try:
     import keyboard
@@ -51,6 +52,8 @@ from src.obs_dialog import OBSControlDialog
 from src.main_window import MainWindowUI
 from src.storage import StorageAccessor
 from src.update import GitHubUpdater
+from src.random_lane_analysis import RandomLaneAnalysis
+from src.spout_capture import SpoutCapture
 
 sys.path.append('infnotebook')
 from define import define
@@ -151,6 +154,12 @@ class MainWindow(MainWindowUI):
         # 接続状態変化のシグナルを接続
         self.obs_manager.connection_changed.connect(self.on_obs_connection_changed)
 
+        self.random_lane_analysis = RandomLaneAnalysis(
+            enabled=self.config.enable_random_lane_analysis
+        )
+        self.spout_capture = SpoutCapture(self.random_lane_analysis.process_frame)
+        self._next_regular_loop_at = 0.0
+
         # その他
         self.result_stats_writer = ResultStatsWriter()
         '''起動時刻を覚えておく'''
@@ -210,14 +219,15 @@ class MainWindow(MainWindowUI):
         # アプリ起動時のOBS処理
         self.execute_obs_triggers('app_start')
 
-        # メインループタイマーの設定（100ms間隔）
+        # RANDOM配置認識時は画面取得だけ高頻度化し、通常の画面認識は100ms周期を維持する
         self.main_timer = QTimer()
         self.main_timer.timeout.connect(self.main_loop)
-        self.main_timer.start(100)
+        self._update_main_timer_interval()
         
         # 表示更新タイマー（500ms間隔）
         self.display_timer = QTimer()
         self.display_timer.timeout.connect(self.update_display)
+        self.display_timer.timeout.connect(self._poll_random_lane_spout_status)
         self.display_timer.start(500)
 
         # 選曲画面BPI取得はカーソルが一定時間止まってから実行する
@@ -405,6 +415,8 @@ class MainWindow(MainWindowUI):
         self.obs_manager.set_config(self.config)
         self.result_database.config = self.config
         self.result_database.song_database.load()  # 必要に応じて再読み込み
+        self.random_lane_analysis.set_enabled(self.config.enable_random_lane_analysis)
+        self._update_main_timer_interval()
         if hasattr(self.result_database, "restart_mobile_http_server"):
             self.result_database.restart_mobile_http_server()
 
@@ -420,6 +432,52 @@ class MainWindow(MainWindowUI):
         # OBS接続状態の再評価
         if not self.obs_manager.uses_obs_websocket() or not self.obs_manager.is_connected:
             self.obs_manager.connect()
+
+    def _random_lane_uses_spout(self) -> bool:
+        return getattr(self.config, 'random_lane_capture_backend', 'current') == 'spout'
+
+    def _random_lane_uses_current_frames(self) -> bool:
+        return (
+            self.config.enable_random_lane_analysis
+            and not self._random_lane_uses_spout()
+            and self.config.capture_method == 'direct_window'
+        )
+
+    def _update_main_timer_interval(self):
+        if self.config.enable_random_lane_analysis and self._random_lane_uses_spout():
+            error = self.spout_capture.dependency_error()
+            if error:
+                self.spout_capture.stop()
+                self.spout_capture.take_status()
+                self.random_lane_analysis.set_capture_supported(False, error)
+            else:
+                sender_name = getattr(
+                    self.config, 'random_lane_spout_sender_name', 'Spout_OBS_Filter'
+                )
+                if self.spout_capture.start(sender_name):
+                    self.random_lane_analysis.set_capture_supported(
+                        False, f"Spout送信待ち: {sender_name}"
+                    )
+        else:
+            self.spout_capture.stop()
+            supported = self.config.capture_method == 'direct_window'
+            self.random_lane_analysis.set_capture_supported(
+                supported,
+                "現在のゲーム画面取得はDXCAM直接取得で利用できます",
+            )
+
+        self.main_timer.start(16 if self._random_lane_uses_current_frames() else 100)
+        self._show_random_lane_notification()
+
+    def _poll_random_lane_spout_status(self):
+        status = self.spout_capture.take_status()
+        if not status:
+            return
+        if not self.config.enable_random_lane_analysis or not self._random_lane_uses_spout():
+            return
+        kind, message = status
+        self.random_lane_analysis.set_capture_supported(kind == "connected", message)
+        self._show_random_lane_notification()
     
     def show_about(self):
         """バージョン情報表示"""
@@ -558,7 +616,7 @@ class MainWindow(MainWindowUI):
             # 例: 自動制御を一時停止など
 
     def main_loop(self):
-        """メインループ - 100ms毎に呼ばれる"""
+        """画面取得ループ。通常認識は100msごと、配置認識用取得は最大約60fps。"""
         try:
             if not self.obs_manager.is_capture_ready():
                 return
@@ -568,6 +626,15 @@ class MainWindow(MainWindowUI):
                 return
 
             self.screen_reader.update_screen(self.obs_manager.screen)
+
+            now = time.monotonic()
+            regular_loop_due = now >= self._next_regular_loop_at
+            if not regular_loop_due:
+                if self.current_mode == detect_mode.play and self._random_lane_uses_current_frames():
+                    self.random_lane_analysis.process_frame(self.obs_manager.screen.np_value)
+                    self._show_random_lane_notification()
+                return
+            self._next_regular_loop_at = now + 0.1
 
             # 現在のゲーム画面状態を判定
             new_mode = self.detect_current_mode()
@@ -588,9 +655,19 @@ class MainWindow(MainWindowUI):
                 self.process_result_mode()
             elif self.current_mode == detect_mode.option:
                 self.process_option_mode()
+
+            if self.current_mode == detect_mode.play and self._random_lane_uses_current_frames():
+                self.random_lane_analysis.process_frame(self.obs_manager.screen.np_value)
+            self._show_random_lane_notification()
         
         except Exception as e:
             logger.error(f"メインループエラー: {traceback.format_exc()}")
+
+    def _show_random_lane_notification(self):
+        message = self.random_lane_analysis.take_notification()
+        if message:
+            self.random_lane_label.setText(message)
+            self.statusBar().showMessage(message, 5000)
     
     def detect_current_mode(self) -> detect_mode:
         """現在のゲーム画面状態を判定"""
@@ -658,8 +735,26 @@ class MainWindow(MainWindowUI):
             self.execute_obs_triggers(trigger)
 
 
-        if trigger == 'play_start': # プレー画面の先頭で実行
+        if new_mode == detect_mode.play and old_mode != detect_mode.play: # プレー画面の先頭で実行
             self.last_play_mode = self.screen_reader.detect_playside()
+            song = self.song_database.search(
+                title=self.screen_reader.last_select_title,
+                play_style=self.screen_reader.last_select_style,
+                difficulty=self.screen_reader.last_select_difficulty,
+            )
+            self.random_lane_analysis.start_play(
+                title=self.screen_reader.last_select_title,
+                style=(self.screen_reader.last_select_style.name
+                       if self.screen_reader.last_select_style else None),
+                difficulty=(self.screen_reader.last_select_difficulty.name.upper()
+                            if self.screen_reader.last_select_difficulty else None),
+                level=getattr(song, 'level', None),
+                option=self.current_option,
+                play_mode=self.last_play_mode.name if self.last_play_mode else None,
+            )
+
+        if old_mode == detect_mode.play and new_mode != detect_mode.play:
+            self.random_lane_analysis.end_play()
 
         if trigger == 'play_end': # プレー画面の終わりに実行
             if self.current_judge and  self.current_judge.notes > 0:
@@ -1008,6 +1103,9 @@ class MainWindow(MainWindowUI):
     
     def closeEvent(self, event):
         """アプリ終了時に実行する処理"""
+        self.spout_capture.stop()
+        self.random_lane_analysis.set_enabled(False)
+
         # アプリ終了時のOBS処理
         self.execute_obs_triggers('app_end')
 
