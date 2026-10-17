@@ -365,7 +365,12 @@ class ConfigDialog(QDialog):
         self.direct_capture_all_monitors_check.setEnabled(is_legacy_direct)
 
     def _update_spout_capture_option_enabled(self, *_args):
-        self.spout_sender_edit.setEnabled(self.capture_method_group.checkedId() == 3)
+        spout_enabled = self.capture_method_group.checkedId() == 3
+        self.spout_sender_edit.setEnabled(spout_enabled)
+        if hasattr(self, 'enable_random_lane_analysis_check'):
+            self.enable_random_lane_analysis_check.setEnabled(spout_enabled)
+            if not spout_enabled:
+                self.enable_random_lane_analysis_check.setChecked(False)
 
     def on_browse_clicked(self):
         """フォルダ参照ボタン押下時の処理"""

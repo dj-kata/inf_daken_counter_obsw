@@ -218,7 +218,7 @@ class MainWindow(MainWindowUI):
         # アプリ起動時のOBS処理
         self.execute_obs_triggers('app_start')
 
-        # RANDOM配置認識時は画面取得だけ高頻度化し、通常の画面認識は100ms周期を維持する
+        # 通常の画面認識は100ms周期。RANDOM配置認識用フレームはSpout側で受信する。
         self.main_timer = QTimer()
         self.main_timer.timeout.connect(self.main_loop)
         self._update_main_timer_interval()
@@ -435,12 +435,6 @@ class MainWindow(MainWindowUI):
     def _random_lane_uses_spout(self) -> bool:
         return getattr(self.config, 'capture_method', 'direct_window') == 'spout'
 
-    def _random_lane_uses_current_frames(self) -> bool:
-        return (
-            self.config.enable_random_lane_analysis
-            and self.config.capture_method == 'direct_window'
-        )
-
     def _process_random_lane_spout_frame(self, frame):
         if (
             self.config.enable_random_lane_analysis
@@ -465,13 +459,12 @@ class MainWindow(MainWindowUI):
                     False, f"Spout送信待ち: {sender_name}"
                 )
         else:
-            supported = self.config.capture_method == 'direct_window'
             self.random_lane_analysis.set_capture_supported(
-                supported,
-                "RANDOM配置認識はDXCAM直接取得またはSpout経由で利用できます",
+                False,
+                "RANDOM配置認識はSpout経由で利用できます",
             )
 
-        self.main_timer.start(16 if self._random_lane_uses_current_frames() else 100)
+        self.main_timer.start(100)
         self._show_random_lane_notification()
 
     def _poll_random_lane_spout_status(self):
@@ -621,7 +614,7 @@ class MainWindow(MainWindowUI):
             # 例: 自動制御を一時停止など
 
     def main_loop(self):
-        """画面取得ループ。通常認識は100msごと、配置認識用取得は最大約60fps。"""
+        """画面取得ループ。通常認識は100msごとに実行する。"""
         try:
             if not self.obs_manager.is_capture_ready():
                 return
@@ -635,9 +628,6 @@ class MainWindow(MainWindowUI):
             now = time.monotonic()
             regular_loop_due = now >= self._next_regular_loop_at
             if not regular_loop_due:
-                if self.current_mode == detect_mode.play and self._random_lane_uses_current_frames():
-                    self.random_lane_analysis.process_frame(self.obs_manager.screen.np_value)
-                    self._show_random_lane_notification()
                 return
             self._next_regular_loop_at = now + 0.1
 
@@ -661,8 +651,6 @@ class MainWindow(MainWindowUI):
             elif self.current_mode == detect_mode.option:
                 self.process_option_mode()
 
-            if self.current_mode == detect_mode.play and self._random_lane_uses_current_frames():
-                self.random_lane_analysis.process_frame(self.obs_manager.screen.np_value)
             self._show_random_lane_notification()
         
         except Exception as e:
@@ -764,6 +752,7 @@ class MainWindow(MainWindowUI):
         if trigger == 'play_end': # プレー画面の終わりに実行
             if self.current_judge and  self.current_judge.notes > 0:
                 result = self.screen_reader.read_play_screen(self.current_judge)
+                self._apply_lane_layout_to_result(result)
                 self.result_database.add(result)
                 self.result_database.save()
                 self.result_database.broadcast_graph_data(self.start_time_with_offset)
@@ -1056,6 +1045,7 @@ class MainWindow(MainWindowUI):
             if not detailed_result or not detailed_result.result:
                 return False
             result = detailed_result.result
+            self._apply_lane_layout_to_result(result)
             if result.option is None or not result.option.valid:
                 logger.warning(f"result skipped until option is recognized: {result}")
                 return False
@@ -1100,6 +1090,13 @@ class MainWindow(MainWindowUI):
         except Exception:
             # logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
             pass
+
+    def _apply_lane_layout_to_result(self, result):
+        if result is None:
+            return
+        lane_layout = self.random_lane_analysis.get_result_lane_layout()
+        if lane_layout:
+            result.lane_layout = lane_layout
 
     def process_option_mode(self):
         """オプション画面での処理"""

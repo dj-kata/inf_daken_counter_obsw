@@ -79,8 +79,8 @@ class UIText:
         enable_judge = '判定部分を含める'
         enable_folder_updates = 'フォルダごとの更新数を表示(開発中)'
         enable_music_select_score_import = '選曲画面から自己ベストを登録する'
-        enable_random_lane_analysis = 'RANDOMレーン配置を認識する（SP）'
-        enable_random_lane_analysis_tip = 'DXCAM直接取得またはSpout経由で、正規配置のノーツイベントを記録し、同じ譜面のRANDOM配置を解析します。最初にオプション画面を開いてからプレーしてください。'
+        enable_random_lane_analysis = 'RANDOMレーン配置を認識する（SP・Spout専用）'
+        enable_random_lane_analysis_tip = 'Spout経由でREGULARまたはMIRROR配置のノーツイベントを正規化して記録し、同じ譜面のRANDOM配置を解析します。最初にオプション画面を開いてからプレーしてください。'
         
         other_group = 'その他'
         image_save_path = '画像保存先:'

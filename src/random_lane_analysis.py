@@ -30,6 +30,8 @@ def _synchronized(method):
     return wrapper
 
 LANES = tuple(range(1, 8))
+REGULAR_LAYOUT = "1234567"
+MIRROR_LAYOUT = "7654321"
 LANE_BOUNDARIES_RATIO = (0.000, 0.153, 0.282, 0.436, 0.564, 0.718, 0.847, 1.000)
 
 COLOR_RANGES = (
@@ -178,6 +180,8 @@ class RandomLaneAnalysis:
         self.chart_meta = None
         self.recorder = None
         self.analyzer = None
+        self.record_mirror = False
+        self.result_layout = None
         self._notification = None
         self._last_state = None
         self.capture_supported = True
@@ -189,7 +193,7 @@ class RandomLaneAnalysis:
         if enabled == self.enabled:
             return
         self.enabled = enabled
-        self._reset_session()
+        self._reset_session(clear_result_layout=True)
         if enabled:
             self._ensure_database()
             self._publish("waiting", message="次のSPプレーを待っています")
@@ -210,7 +214,7 @@ class RandomLaneAnalysis:
 
     @_synchronized
     def start_play(self, *, title, style, difficulty, level, option, play_mode):
-        self._reset_session()
+        self._reset_session(clear_result_layout=True)
         if not self.enabled:
             return
         if not self.capture_supported:
@@ -240,17 +244,43 @@ class RandomLaneAnalysis:
         self.chart_meta = {"title": title, "style": style, "difficulty": difficulty, "level": level}
         self.detectors[side].reset()
 
-        if arrange == "REGULAR":
+        if arrange in ("REGULAR", "MIRROR"):
+            self.result_layout = (
+                REGULAR_LAYOUT if arrange == "REGULAR" else MIRROR_LAYOUT
+            )
             if self._load_chart(self.chart_key):
-                self._publish("ready", title=title, chart=difficulty, message="正規譜面データは登録済みです")
+                self._publish(
+                    "ready",
+                    title=title,
+                    chart=difficulty,
+                    layout=self.result_layout,
+                    message="正規譜面データは登録済みです",
+                )
                 return
             self.mode = "record"
             self.recorder = NormalChartRecorder()
-            self._publish("recording", title=title, chart=difficulty, message="正規譜面データを記録中")
+            self.record_mirror = arrange == "MIRROR"
+            message = (
+                "MIRROR譜面を正規配置へ変換して記録中"
+                if self.record_mirror
+                else "正規譜面データを記録中"
+            )
+            self._publish(
+                "recording",
+                title=title,
+                chart=difficulty,
+                layout=self.result_layout,
+                message=message,
+            )
         elif arrange == "RANDOM":
             events = self._load_chart(self.chart_key)
             if not events:
-                self._publish("needs_normal", title=title, chart=difficulty, message="先に正規配置でこの譜面をプレーしてください")
+                self._publish(
+                    "needs_normal",
+                    title=title,
+                    chart=difficulty,
+                    message="先にREGULARまたはMIRRORでこの譜面をプレーしてください",
+                )
                 return
             self.mode = "analyze"
             self.analyzer = RandomMappingAnalyzer(events)
@@ -269,16 +299,25 @@ class RandomLaneAnalysis:
         if not lanes:
             return
 
-        if self.mode == "record" and self.recorder.add(lanes):
+        if self.mode == "record":
+            if self.record_mirror:
+                lanes = [8 - lane for lane in lanes]
+            recording_complete = self.recorder.add(lanes)
+        else:
+            recording_complete = False
+
+        if self.mode == "record" and recording_complete:
             self._save_chart(self.chart_key, self.chart_meta, self.recorder.events)
             self.mode = None
             self._publish(
                 "registered", **self.chart_meta,
+                layout=self.result_layout,
                 message=f"正規譜面データを登録しました（{len(self.recorder.events)}イベント）",
             )
         elif self.mode == "analyze":
             self.analyzer.add(lanes)
             if self.analyzer.layout:
+                self.result_layout = self.analyzer.layout
                 self.mode = None
                 self._publish(
                     "confirmed", **self.chart_meta, layout=self.analyzer.layout,
@@ -302,13 +341,21 @@ class RandomLaneAnalysis:
         self._notification = None
         return notification
 
-    def _reset_session(self):
+    @_synchronized
+    def get_result_lane_layout(self):
+        """現在のプレーで確定した配置をOneResult保存用の文字列で返す。"""
+        return self.result_layout
+
+    def _reset_session(self, *, clear_result_layout=False):
         self.mode = None
         self.side = None
         self.chart_key = None
         self.chart_meta = None
         self.recorder = None
         self.analyzer = None
+        self.record_mirror = False
+        if clear_result_layout:
+            self.result_layout = None
 
     def _ensure_database(self):
         with sqlite3.connect(self.db_path) as conn:

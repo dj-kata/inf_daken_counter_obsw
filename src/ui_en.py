@@ -79,8 +79,8 @@ class UIText:
         enable_judge = 'Include judge data'
         enable_folder_updates = 'Show folder update count(coming soon)'
         enable_music_select_score_import = 'Register best scores from song selection screen'
-        enable_random_lane_analysis = 'Detect RANDOM lane mapping (SP)'
-        enable_random_lane_analysis_tip = 'With DXCAM or Spout capture, records note events from a regular play and analyzes RANDOM mapping for the same chart. Open the options screen before playing.'
+        enable_random_lane_analysis = 'Detect RANDOM lane mapping (SP, Spout only)'
+        enable_random_lane_analysis_tip = 'Via Spout, normalizes and records note events from a REGULAR or MIRROR play, then analyzes RANDOM mapping for the same chart. Open the options screen before playing.'
         
         other_group = 'Other'
         image_save_path = 'Image save path:'

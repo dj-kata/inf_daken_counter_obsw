@@ -413,6 +413,8 @@ class ResultDatabase:
             result.bpim2 = getattr(previous, "bpim2", None)
         if getattr(result, "average_release", None) is None:
             result.average_release = getattr(previous, "average_release", None)
+        if getattr(result, "lane_layout", None) is None:
+            result.lane_layout = getattr(previous, "lane_layout", None)
         self.results[index] = result
 
     def add(self, result: OneResult) -> bool:
@@ -491,6 +493,9 @@ class ResultDatabase:
         try:
             with bz2.BZ2File("playlog.infdc", "rb", compresslevel=9) as f:
                 self.results = pickle.load(f)
+            for result in self.results:
+                if not hasattr(result, "lane_layout"):
+                    result.lane_layout = None
         except Exception:
             logger.error(traceback.format_exc())
 
