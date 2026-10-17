@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import array
+import ctypes
 import sys
 import threading
 import time
@@ -15,6 +15,12 @@ from src.logger import get_logger
 logger = get_logger(__name__)
 
 TARGET_SIZE = (1920, 1080)
+GL_TEXTURE_2D = 0x0DE1
+GL_RGBA = 0x1908
+GL_UNSIGNED_BYTE = 0x1401
+GL_TEXTURE_MIN_FILTER = 0x2801
+GL_TEXTURE_MAG_FILTER = 0x2800
+GL_LINEAR = 0x2601
 
 
 class SpoutCapture:
@@ -30,6 +36,7 @@ class SpoutCapture:
         self._last_status = None
         self._connected = False
         self._latest_frame = None
+        self._surface = None
 
     @staticmethod
     def dependency_error():
@@ -58,6 +65,17 @@ class SpoutCapture:
         if error:
             self._emit_status("error", error)
             return False
+        try:
+            from PySide6.QtGui import QOffscreenSurface
+
+            self._surface = QOffscreenSurface()
+            self._surface.create()
+            if not self._surface.isValid():
+                raise RuntimeError("OpenGLオフスクリーンサーフェスを作成できません")
+        except Exception as exc:
+            self._surface = None
+            self._emit_status("error", f"Spout受信初期化エラー: {exc}")
+            return False
         self._stop_event.clear()
         self._thread = threading.Thread(
             target=self._run,
@@ -75,6 +93,7 @@ class SpoutCapture:
         stopped = thread is None or not thread.is_alive()
         if stopped:
             self._thread = None
+            self._surface = None
             with self._lock:
                 self._connected = False
                 self._latest_frame = None
@@ -116,20 +135,83 @@ class SpoutCapture:
             logger.info(message)
 
     def _run(self):
+        context = None
+        texture = ctypes.c_uint()
+        gl = None
         try:
             import SpoutGL
+            from PySide6.QtGui import QOpenGLContext
 
-            rgba_format = SpoutGL.enums.GL_RGBA
+            surface = self._surface
+            if surface is None or not surface.isValid():
+                raise RuntimeError("OpenGLオフスクリーンサーフェスが無効です")
+
+            context = QOpenGLContext()
+            context.setFormat(surface.format())
+            if not context.create() or not context.makeCurrent(surface):
+                raise RuntimeError("OpenGLコンテキストを作成できません")
+
+            gl = ctypes.WinDLL("opengl32")
+            gl.glGenTextures.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_uint)]
+            gl.glGenTextures.restype = None
+            gl.glDeleteTextures.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_uint)]
+            gl.glDeleteTextures.restype = None
+            gl.glBindTexture.argtypes = [ctypes.c_uint, ctypes.c_uint]
+            gl.glBindTexture.restype = None
+            gl.glTexParameteri.argtypes = [ctypes.c_uint, ctypes.c_uint, ctypes.c_int]
+            gl.glTexParameteri.restype = None
+            gl.glTexImage2D.argtypes = [
+                ctypes.c_uint,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_uint,
+                ctypes.c_uint,
+                ctypes.c_void_p,
+            ]
+            gl.glTexImage2D.restype = None
+            gl.glGetTexImage.argtypes = [
+                ctypes.c_uint,
+                ctypes.c_int,
+                ctypes.c_uint,
+                ctypes.c_uint,
+                ctypes.c_void_p,
+            ]
+            gl.glGetTexImage.restype = None
+
+            gl.glGenTextures(1, ctypes.byref(texture))
+            if not texture.value:
+                raise RuntimeError("OpenGLテクスチャを作成できません")
+            gl.glBindTexture(GL_TEXTURE_2D, texture.value)
+            gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+            gl.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+            gl.glTexImage2D(
+                GL_TEXTURE_2D,
+                0,
+                GL_RGBA,
+                1,
+                1,
+                0,
+                GL_RGBA,
+                GL_UNSIGNED_BYTE,
+                None,
+            )
+
             with SpoutGL.SpoutReceiver() as receiver:
                 receiver.setReceiverName(self._sender_name)
-                buffer = None
-                buffer_size = None
+                pixels = None
+                texture_size = None
                 connected = False
+                next_sender_check = 0.0
                 self._emit_status("waiting", f"Spout送信待ち: {self._sender_name}")
 
                 while not self._stop_event.is_set():
-                    result = receiver.receiveImage(buffer, rgba_format, False, 0)
+                    result = receiver.receiveTexture(texture.value, GL_TEXTURE_2D, False, 0)
                     is_connected = bool(receiver.isConnected())
+                    width = int(receiver.getSenderWidth())
+                    height = int(receiver.getSenderHeight())
 
                     if is_connected != connected:
                         connected = is_connected
@@ -144,38 +226,64 @@ class SpoutCapture:
                             )
                         else:
                             self._emit_status("waiting", f"Spout送信待ち: {self._sender_name}")
-                            buffer = None
-                            buffer_size = None
+                            pixels = None
+                            texture_size = None
 
                     if not connected:
+                        now = time.monotonic()
+                        if now >= next_sender_check:
+                            next_sender_check = now + 1.0
+                            senders = [str(name) for name in receiver.getSenderList()]
+                            if senders:
+                                detected = ", ".join(senders[:5])
+                                self._emit_status(
+                                    "waiting",
+                                    f"Spout送信待ち: {self._sender_name}（検出: {detected}）",
+                                )
                         time.sleep(0.05)
                         continue
 
-                    width = int(receiver.getSenderWidth())
-                    height = int(receiver.getSenderHeight())
                     size = (width, height)
                     if width <= 0 or height <= 0:
                         time.sleep(0.01)
                         continue
 
-                    if bool(receiver.isUpdated()) or buffer_size != size:
-                        buffer = array.array("B", [0]) * (width * height * 4)
-                        buffer_size = size
+                    if bool(receiver.isUpdated()) or texture_size != size:
+                        gl.glBindTexture(GL_TEXTURE_2D, texture.value)
+                        gl.glTexImage2D(
+                            GL_TEXTURE_2D,
+                            0,
+                            GL_RGBA,
+                            width,
+                            height,
+                            0,
+                            GL_RGBA,
+                            GL_UNSIGNED_BYTE,
+                            None,
+                        )
+                        pixels = np.empty((height, width, 4), dtype=np.uint8)
+                        texture_size = size
                         continue
 
-                    if result and bool(receiver.isFrameNew()) and buffer is not None:
-                        rgba = np.frombuffer(buffer, dtype=np.uint8)
-                        if rgba.size == width * height * 4:
-                            rgb = rgba.reshape((height, width, 4))[:, :, :3]
-                            if size != TARGET_SIZE:
-                                rgb = cv2.resize(rgb, TARGET_SIZE, interpolation=cv2.INTER_AREA)
-                            else:
-                                rgb = np.ascontiguousarray(rgb)
-                            with self._lock:
-                                self._latest_frame = rgb
-                                frame_callback = self.frame_callback
-                            if frame_callback is not None:
-                                frame_callback(rgb)
+                    if result and bool(receiver.isFrameNew()) and pixels is not None:
+                        gl.glBindTexture(GL_TEXTURE_2D, texture.value)
+                        gl.glGetTexImage(
+                            GL_TEXTURE_2D,
+                            0,
+                            GL_RGBA,
+                            GL_UNSIGNED_BYTE,
+                            pixels.ctypes.data_as(ctypes.c_void_p),
+                        )
+                        rgb = pixels[:, :, :3]
+                        if size != TARGET_SIZE:
+                            rgb = cv2.resize(rgb, TARGET_SIZE, interpolation=cv2.INTER_AREA)
+                        else:
+                            rgb = np.ascontiguousarray(rgb)
+                        with self._lock:
+                            self._latest_frame = rgb
+                            frame_callback = self.frame_callback
+                        if frame_callback is not None:
+                            frame_callback(rgb)
 
                     receiver.waitFrameSync(self._sender_name, 16)
         except Exception as exc:
@@ -183,3 +291,14 @@ class SpoutCapture:
                 self._connected = False
                 self._latest_frame = None
             self._emit_status("error", f"Spout受信エラー: {exc}")
+        finally:
+            if gl is not None and texture.value:
+                try:
+                    gl.glDeleteTextures(1, ctypes.byref(texture))
+                except Exception:
+                    pass
+            if context is not None:
+                try:
+                    context.doneCurrent()
+                except Exception:
+                    pass
