@@ -25,13 +25,13 @@
       layout.removeAttribute('aria-label');
       if (state.phase !== 'confirmed' || !/^[1-7]{7}$/.test(state.layout || '')) return;
 
-      const lanes = state.side === '2P' ? [...state.layout, 'S'] : ['S', ...state.layout];
+      const lanes = [...state.layout];
       layout.setAttribute('role', 'img');
       layout.setAttribute('aria-label', lanes.join(' '));
       for (const lane of lanes) {
         const sprite = document.createElement('span');
         sprite.className = 'lane';
-        const index = lane === 'S' ? 7 : Number(lane) - 1;
+        const index = Number(lane) - 1;
         sprite.style.backgroundPosition = `${-61 * index}px 0`;
         layout.appendChild(sprite);
       }
