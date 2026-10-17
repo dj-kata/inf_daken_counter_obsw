@@ -6,8 +6,12 @@
   <style>
     html, body { margin: 0; background: transparent; overflow: hidden; }
     #layout {
-      color: white; font: 700 64px/1.1 sans-serif; letter-spacing: .12em;
-      text-shadow: 0 0 5px #000, 2px 2px 3px #000; white-space: nowrap;
+      display: flex; gap: 1px; width: max-content;
+    }
+    .lane {
+      flex: 0 0 60px; width: 60px; height: 100px;
+      /* Each cell starts every 61px in the 487 x 100 sprite sheet. */
+      background: url('random_pattern.png') no-repeat;
     }
   </style>
 </head>
@@ -16,7 +20,21 @@
   <script>
     function render() {
       const state = window.INFDC_RANDOM_LANE_STATE || {};
-      document.getElementById('layout').textContent = state.phase === 'confirmed' ? state.layout : '';
+      const layout = document.getElementById('layout');
+      layout.replaceChildren();
+      layout.removeAttribute('aria-label');
+      if (state.phase !== 'confirmed' || !/^[1-7]{7}$/.test(state.layout || '')) return;
+
+      const lanes = state.side === '2P' ? [...state.layout, 'S'] : ['S', ...state.layout];
+      layout.setAttribute('role', 'img');
+      layout.setAttribute('aria-label', lanes.join(' '));
+      for (const lane of lanes) {
+        const sprite = document.createElement('span');
+        sprite.className = 'lane';
+        const index = lane === 'S' ? 7 : Number(lane) - 1;
+        sprite.style.backgroundPosition = `${-61 * index}px 0`;
+        layout.appendChild(sprite);
+      }
     }
     function reloadState() {
       const old = document.getElementById('random-lane-state');

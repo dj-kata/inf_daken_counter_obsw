@@ -395,6 +395,7 @@ class RandomLaneAnalysis:
                  level=None, layout="", message=""):
         payload = {
             "phase": phase,
+            "side": self.side,
             "title": title or "",
             "chart": chart or difficulty or "",
             "layout": layout,
