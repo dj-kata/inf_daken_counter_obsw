@@ -42,6 +42,8 @@ COLOR_RANGES = (
 )
 MIN_ACTIVE_PIXELS = 8
 MIN_ACTIVE_RATIO = 0.035
+ARM_CLEAR_FRAMES = 10
+CHART_DATA_VERSION = 2
 WHITE_LANE_MARGIN = 0.15
 BLACK_LANE_MARGIN = 0.08
 MORPH_KERNEL = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 1))
@@ -61,10 +63,14 @@ class NoteDetector:
         self.band = tuple(map(int, band))
         self.last_lane_state = [False] * 7
         self.event_counter = 0
+        self.armed = False
+        self.clear_frame_count = 0
 
     def reset(self):
         self.last_lane_state = [False] * 7
         self.event_counter = 0
+        self.armed = False
+        self.clear_frame_count = 0
 
     def detect(self, rgb_image):
         x, y, width, height = self.roi
@@ -94,6 +100,17 @@ class NoteDetector:
             pixels = cv2.countNonZero(lane_mask)
             ratio = pixels / max(1, lane_mask.shape[0] * lane_mask.shape[1])
             lane_state.append(pixels >= MIN_ACTIVE_PIXELS and ratio >= MIN_ACTIVE_RATIO)
+
+        if not self.armed:
+            self.last_lane_state = lane_state
+            if any(lane_state):
+                self.clear_frame_count = 0
+            else:
+                self.clear_frame_count += 1
+                if self.clear_frame_count >= ARM_CLEAR_FRAMES:
+                    self.armed = True
+                    logger.info("レーン検出開始: %dフレーム連続で検出帯が空", ARM_CLEAR_FRAMES)
+            return None, []
 
         rising_lanes = [
             index + 1
@@ -140,21 +157,32 @@ class RandomMappingAnalyzer:
         self.pair_index = 0
         self.layout = None
         self.failed = False
+        self.failure_reason = None
 
     def add(self, random_lanes):
         if self.failed or self.layout or self.pair_index >= len(self.normal_events):
             self.failed = self.layout is None
+            if self.failed and self.failure_reason is None:
+                self.failure_reason = "正規譜面データの末尾までに配置を確定できませんでした"
             return
+        event_no = self.pair_index + 1
         normal_lanes = set(self.normal_events[self.pair_index]["event_lanes"])
         random_lanes = set(map(int, random_lanes))
         if len(normal_lanes) != len(random_lanes):
             self.candidates = []
+            self.failure_reason = (
+                f"イベント{event_no}: 正規{sorted(normal_lanes)} / RANDOM{sorted(random_lanes)}"
+            )
         else:
             self.candidates = [
                 permutation
                 for permutation in self.candidates
                 if {permutation[lane - 1] for lane in normal_lanes} == random_lanes
             ]
+            if not self.candidates:
+                self.failure_reason = (
+                    f"イベント{event_no}: 正規{sorted(normal_lanes)} / RANDOM{sorted(random_lanes)}"
+                )
         self.pair_index += 1
         if not self.candidates:
             self.failed = True
@@ -295,13 +323,14 @@ class RandomLaneAnalysis:
         rgb = np.asarray(image)
         if rgb.ndim != 3 or rgb.shape[2] < 3:
             return
-        _event_no, lanes = self.detectors[self.side].detect(rgb[:, :, :3])
+        event_no, lanes = self.detectors[self.side].detect(rgb[:, :, :3])
         if not lanes:
             return
 
         if self.mode == "record":
             if self.record_mirror:
                 lanes = [8 - lane for lane in lanes]
+            logger.info("正規譜面記録 event=%s lanes=%s", event_no, sorted(lanes))
             recording_complete = self.recorder.add(lanes)
         else:
             recording_complete = False
@@ -315,7 +344,22 @@ class RandomLaneAnalysis:
                 message=f"正規譜面データを登録しました（{len(self.recorder.events)}イベント）",
             )
         elif self.mode == "analyze":
+            pair_index = self.analyzer.pair_index
+            normal_lanes = (
+                self.analyzer.normal_events[pair_index]["event_lanes"]
+                if pair_index < len(self.analyzer.normal_events)
+                else []
+            )
+            candidates_before = len(self.analyzer.candidates)
             self.analyzer.add(lanes)
+            logger.info(
+                "RANDOM解析 event=%s normal=%s random=%s candidates=%d->%d",
+                event_no,
+                normal_lanes,
+                sorted(lanes),
+                candidates_before,
+                len(self.analyzer.candidates),
+            )
             if self.analyzer.layout:
                 self.result_layout = self.analyzer.layout
                 self.mode = None
@@ -325,7 +369,13 @@ class RandomLaneAnalysis:
                 )
             elif self.analyzer.failed:
                 self.mode = None
-                self._publish("failed", **self.chart_meta, message="RANDOM配置を確定できませんでした")
+                reason = self.analyzer.failure_reason or "イベント列が一致しません"
+                logger.warning("RANDOM配置を確定できませんでした: %s", reason)
+                self._publish(
+                    "failed",
+                    **self.chart_meta,
+                    message=f"RANDOM配置を確定できませんでした（{reason}）",
+                )
 
     @_synchronized
     def end_play(self):
@@ -367,26 +417,45 @@ class RandomLaneAnalysis:
                     difficulty TEXT NOT NULL,
                     level INTEGER,
                     note_events TEXT NOT NULL,
-                    created_at INTEGER NOT NULL
+                    created_at INTEGER NOT NULL,
+                    data_version INTEGER NOT NULL DEFAULT 1
                 )"""
             )
+            columns = {
+                row[1] for row in conn.execute("PRAGMA table_info(normal_charts)")
+            }
+            if "data_version" not in columns:
+                conn.execute(
+                    "ALTER TABLE normal_charts "
+                    "ADD COLUMN data_version INTEGER NOT NULL DEFAULT 1"
+                )
 
     def _load_chart(self, chart_key):
         with sqlite3.connect(self.db_path) as conn:
             row = conn.execute(
-                "SELECT note_events FROM normal_charts WHERE chart_key=?", (chart_key,)
+                "SELECT note_events FROM normal_charts "
+                "WHERE chart_key=? AND data_version=?",
+                (chart_key, CHART_DATA_VERSION),
             ).fetchone()
         return json.loads(row[0]) if row else None
 
     def _save_chart(self, chart_key, meta, events):
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
-                """INSERT OR IGNORE INTO normal_charts
-                   (chart_key,title,style,difficulty,level,note_events,created_at)
-                   VALUES (?,?,?,?,?,?,?)""",
+                """INSERT INTO normal_charts
+                   (chart_key,title,style,difficulty,level,note_events,created_at,data_version)
+                   VALUES (?,?,?,?,?,?,?,?)
+                   ON CONFLICT(chart_key) DO UPDATE SET
+                       title=excluded.title,
+                       style=excluded.style,
+                       difficulty=excluded.difficulty,
+                       level=excluded.level,
+                       note_events=excluded.note_events,
+                       created_at=excluded.created_at,
+                       data_version=excluded.data_version""",
                 (
                     chart_key, meta["title"], meta["style"], meta["difficulty"], meta["level"],
-                    json.dumps(events, ensure_ascii=False), int(time.time()),
+                    json.dumps(events, ensure_ascii=False), int(time.time()), CHART_DATA_VERSION,
                 ),
             )
         logger.info("RANDOM配置認識用の正規譜面を登録: %s", chart_key)
