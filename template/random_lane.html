@@ -3,15 +3,12 @@
 <head>
   <meta charset="utf-8">
   <title>RANDOM lane</title>
+  <link rel="stylesheet" href="lane_option.css">
+  <script src="lane_option.js"></script>
   <style>
     html, body { margin: 0; background: transparent; overflow: hidden; }
     #layout {
-      display: flex; gap: 1px; width: max-content;
-    }
-    .lane {
-      flex: 0 0 60px; width: 60px; height: 100px;
-      /* Each cell starts every 61px in the 487 x 100 sprite sheet. */
-      background: url('random_pattern.png') no-repeat;
+      display: flex; width: max-content; font-size: 90px;
     }
   </style>
 </head>
@@ -21,20 +18,8 @@
     function render() {
       const state = window.INFDC_RANDOM_LANE_STATE || {};
       const layout = document.getElementById('layout');
-      layout.replaceChildren();
-      layout.removeAttribute('aria-label');
-      if (state.phase !== 'confirmed' || !/^[1-7]{7}$/.test(state.layout || '')) return;
-
-      const lanes = [...state.layout];
-      layout.setAttribute('role', 'img');
-      layout.setAttribute('aria-label', lanes.join(' '));
-      for (const lane of lanes) {
-        const sprite = document.createElement('span');
-        sprite.className = 'lane';
-        const index = Number(lane) - 1;
-        sprite.style.backgroundPosition = `${-61 * index}px 0`;
-        layout.appendChild(sprite);
-      }
+      layout.innerHTML = state.phase === 'confirmed'
+        ? renderLaneOptionToken('RANDOM', state.layout) : '';
     }
     function reloadState() {
       const old = document.getElementById('random-lane-state');

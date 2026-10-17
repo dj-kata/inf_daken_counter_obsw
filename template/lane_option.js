@@ -21,8 +21,8 @@ function renderLaneOptionToken(token, savedLayout) {
     var label = escapeLaneOptionText(option + ': ' + layout);
     return '<span class="lane-option" role="img" aria-label="' + label + '" title="' + label + '">' +
         Array.from(layout, function(lane) {
-            var position = -61 * (Number(lane) - 1) / 100;
-            return '<span class="lane-option-key" style="background-position:' + position + 'em 0"></span>';
+            var color = lane === '1' ? 'red' : Number(lane) % 2 === 0 ? 'blue' : 'white';
+            return '<span class="lane-option-key lane-option-key-' + color + '">' + lane + '</span>';
         }).join('') + '</span>';
 }
 

@@ -1,19 +1,49 @@
-/* Seven keys, scaled to the surrounding option text (no scratch). */
+/* Seven lane numbers, sized to the surrounding option text (no scratch). */
 .lane-option {
     display: inline-flex;
-    gap: .01em;
-    height: 1em;
-    width: 4.26em;
+    gap: .04em;
+    height: 1.1em;
+    width: 4.44em;
     vertical-align: middle;
-    line-height: 1;
+    font-family: Arial, sans-serif;
+    font-weight: 700;
+    font-style: normal;
+    line-height: 1.1;
+    letter-spacing: normal;
+    text-shadow: none;
     white-space: nowrap;
 }
 
 .lane-option-key {
     display: block;
     flex: 0 0 .6em;
-    height: 1em;
-    background-image: url('random_pattern.png');
-    background-repeat: no-repeat;
-    background-size: 4.87em 1em;
+    height: 1.1em;
+    text-align: center;
+}
+
+.lane-option-key-white {
+    color: #000;
+    background: #fff;
+}
+
+.lane-option-key-red {
+    color: #d00000;
+    background: #fff;
+}
+
+.lane-option-key-blue {
+    color: #ffff00;
+    background: #0066cc;
+}
+
+/* Enlarge the digits in result views while keeping the same inline height. */
+.lane-options-large .lane-option {
+    gap: .09em;
+    width: 5.5em;
+}
+
+.lane-options-large .lane-option-key {
+    font-size: 118%;
+    height: 100%;
+    line-height: .9322;
 }
