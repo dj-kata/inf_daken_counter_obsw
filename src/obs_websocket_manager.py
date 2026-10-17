@@ -12,6 +12,7 @@ from src.logger import get_logger
 from src.funcs import load_ui_text
 from src.direct_window_capture import DirectWindowCapture
 from src.dxcam_window_capture import DxcamWindowCapture
+from src.spout_capture import SpoutCapture
 logger = get_logger(__name__)
 
 # obsws_pythonライブラリの接続エラートレースバックを抑制
@@ -77,6 +78,7 @@ class OBSWebSocketManager(QObject):
         self.pich = 1080
         self.screen = None
         self.direct_capture: Optional[Any] = None
+        self.spout_capture = SpoutCapture()
         self._next_direct_capture_probe_at = 0.0
 
         # 起動時シーンコレクション切り替えフラグ（disconnect後にリセット）
@@ -86,13 +88,22 @@ class OBSWebSocketManager(QObject):
         """設定をセット"""
         self.config = config
         self.ui = load_ui_text(config)
-        capture_cls = self._direct_capture_class()
-        if self.direct_capture is None or not isinstance(self.direct_capture, capture_cls):
-            if self.direct_capture and hasattr(self.direct_capture, "close"):
-                self.direct_capture.close()
-            self.direct_capture = capture_cls(config)
+        if self.is_direct_capture():
+            capture_cls = self._direct_capture_class()
+            if self.direct_capture is None or not isinstance(self.direct_capture, capture_cls):
+                if self.direct_capture and hasattr(self.direct_capture, "close"):
+                    self.direct_capture.close()
+                self.direct_capture = capture_cls(config)
+            else:
+                self.direct_capture.set_config(config)
+        elif self.direct_capture and hasattr(self.direct_capture, "close"):
+            self.direct_capture.close()
+            self.direct_capture = None
+
+        if self.is_spout_capture():
+            self.spout_capture.start(getattr(config, "spout_sender_name", "Spout_OBS_Filter"))
         else:
-            self.direct_capture.set_config(config)
+            self.spout_capture.stop()
         self._next_direct_capture_probe_at = 0.0
         logger.info(f"OBS WebSocket config set: {config.websocket_host}:{config.websocket_port}")
 
@@ -102,6 +113,12 @@ class OBSWebSocketManager(QObject):
             and getattr(self.config, 'capture_method', 'direct_window')
             in ('direct_window', 'direct_window_legacy')
         )
+
+    def is_spout_capture(self) -> bool:
+        return bool(self.config and getattr(self.config, 'capture_method', '') == 'spout')
+
+    def set_spout_frame_callback(self, frame_callback):
+        self.spout_capture.set_frame_callback(frame_callback)
 
     def _direct_capture_class(self):
         if self.config and getattr(self.config, 'capture_method', 'direct_window') == 'direct_window_legacy':
@@ -118,7 +135,13 @@ class OBSWebSocketManager(QObject):
 
     def uses_obs_websocket(self) -> bool:
         """OBS WebSocket接続が必要な設定か。"""
-        return bool(self.config and (not self.is_direct_capture() or self.is_obs_control_enabled()))
+        return bool(
+            self.config
+            and (
+                getattr(self.config, 'capture_method', 'direct_window') == 'obs_websocket'
+                or self.is_obs_control_enabled()
+            )
+        )
 
     def is_capture_ready(self) -> bool:
         """メインループがキャプチャを試行してよい状態か。"""
@@ -126,6 +149,8 @@ class OBSWebSocketManager(QObject):
             return False
         if self.is_direct_capture():
             return True
+        if self.is_spout_capture():
+            return self.spout_capture.get_latest_frame() is not None
         return self.is_connected and self.is_monitor_source_configured()
     
     def connect(self):
@@ -139,7 +164,8 @@ class OBSWebSocketManager(QObject):
                     pass
                 self.client = None
             self.is_connected = False
-            self._emit_status("直接取得モード", False)
+            capture_mode = "Spout取得モード" if self.is_spout_capture() else "直接取得モード"
+            self._emit_status(capture_mode, False)
             return False
 
         if not OBSWS_AVAILABLE:
@@ -207,6 +233,7 @@ class OBSWebSocketManager(QObject):
 
         if self.direct_capture and hasattr(self.direct_capture, "close"):
             self.direct_capture.close()
+        self.spout_capture.stop()
         
         # 接続を切断
         if self.client:
@@ -352,6 +379,8 @@ class OBSWebSocketManager(QObject):
             return False
         if self.is_direct_capture():
             return True
+        if self.is_spout_capture():
+            return True
         return bool(self.config.monitor_source_name and self.config.monitor_source_name.strip())
     
     def get_status(self) -> tuple[str, bool]:
@@ -364,6 +393,14 @@ class OBSWebSocketManager(QObject):
         """
         if not self.config:
             return self.ui.obs.not_configured, False
+        elif self.is_spout_capture() and not self.is_obs_control_enabled():
+            spout_status, spout_ready = self._spout_capture_status()
+            return f'{spout_status} / OBS制御: -', spout_ready
+        elif self.is_spout_capture() and self.is_obs_control_enabled():
+            spout_status, spout_ready = self._spout_capture_status()
+            if not self.is_connected:
+                return f'{spout_status} / OBS制御: <span style="color:#d93025;">未接続</span>', False
+            return f'{spout_status} / OBS制御: <span style="color:#188038;">接続中</span> ({self.config.websocket_host}:{self.config.websocket_port})', spout_ready
         elif self.is_direct_capture() and not self.is_obs_control_enabled():
             self._probe_direct_capture_if_needed()
             direct_status, direct_ready = self._direct_capture_status()
@@ -382,6 +419,19 @@ class OBSWebSocketManager(QObject):
             return f"OBS WebSocket: {self.ui.obs.no_source}", False
         else:
             return f"OBS WebSocket: {self.ui.obs.connected} ({self.config.websocket_host}:{self.config.websocket_port})", True
+
+    def _spout_capture_status(self) -> tuple[str, bool]:
+        error = self.spout_capture.dependency_error()
+        if error:
+            return f'Spout: <span style="color:#d93025;">{escape(error)}</span>', False
+
+        sender_name = escape(str(getattr(self.config, "spout_sender_name", "Spout_OBS_Filter")))
+        status = self.spout_capture.current_status()
+        if status and status[0] == "error":
+            return f'Spout: <span style="color:#d93025;">{escape(status[1])}</span>', False
+        if self.spout_capture.is_connected and self.spout_capture.get_latest_frame() is not None:
+            return f'Spout: <span style="color:#188038;">接続中</span> ({sender_name})', True
+        return f'Spout: <span style="color:#5f6368;">送信待ち</span> ({sender_name})', False
 
     def _direct_capture_status(self) -> tuple[str, bool]:
         error = self.direct_capture.last_error if self.direct_capture else ""
@@ -510,6 +560,13 @@ class OBSWebSocketManager(QObject):
     def screenshot(self):
         """設定された方式のキャプチャをself.screenに格納"""
         import os
+
+        if self.is_spout_capture():
+            from src.infnotebook_compat import np_image_to_screen
+
+            frame = self.spout_capture.get_latest_frame()
+            self.screen = np_image_to_screen(frame, "spout_capture.png") if frame is not None else None
+            return
 
         if self.is_direct_capture():
             from src.infnotebook_compat import pil_image_to_screen

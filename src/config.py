@@ -15,7 +15,7 @@ class Config:
         self.websocket_port = 4444
         self.websocket_password = ""
         self.capture_method = "direct_window"
-        """'direct_window' = DXCAM直接取得 / 'direct_window_legacy' = 旧直接取得 / 'obs_websocket' = OBS WebSocket経由"""
+        """'direct_window' / 'direct_window_legacy' / 'obs_websocket' / 'spout'"""
         self.direct_capture_exe = "bm2dx.exe"
         """直接取得対象のプロセス名"""
         self.direct_capture_title = "beatmania IIDX INFINITAS"
@@ -35,8 +35,7 @@ class Config:
         self.enable_folder_updates = True # フォルダごとの更新数表示
         self.enable_music_select_score_import = True # 選曲画面から自己ベストを取り込む
         self.enable_random_lane_analysis = False # RANDOMレーン配置認識
-        self.random_lane_capture_backend = "current" # 'current' or 'spout'
-        self.random_lane_spout_sender_name = "Spout_OBS_Filter"
+        self.spout_sender_name = "Spout_OBS_Filter"
         
         # ウィンドウ位置設定
         self.main_window_x = 100
@@ -110,11 +109,9 @@ class Config:
                     self.enable_folder_updates = config_data.get("enable_folder_updates", False)
                     self.enable_music_select_score_import = config_data.get("enable_music_select_score_import", True)
                     self.enable_random_lane_analysis = config_data.get("enable_random_lane_analysis", False)
-                    self.random_lane_capture_backend = config_data.get("random_lane_capture_backend", "current")
-                    if self.random_lane_capture_backend not in ("current", "spout"):
-                        self.random_lane_capture_backend = "current"
-                    self.random_lane_spout_sender_name = config_data.get(
-                        "random_lane_spout_sender_name", "Spout_OBS_Filter"
+                    self.spout_sender_name = config_data.get(
+                        "spout_sender_name",
+                        config_data.get("random_lane_spout_sender_name", "Spout_OBS_Filter"),
                     )
                     self.autoload_offset = config_data.get("autoload_offset", 0)
                     self.main_window_geometry = config_data.get("main_window_geometry", None)
@@ -199,8 +196,7 @@ class Config:
             "enable_folder_updates": self.enable_folder_updates,
             "enable_music_select_score_import": self.enable_music_select_score_import,
             "enable_random_lane_analysis": self.enable_random_lane_analysis,
-            "random_lane_capture_backend": self.random_lane_capture_backend,
-            "random_lane_spout_sender_name": self.random_lane_spout_sender_name,
+            "spout_sender_name": self.spout_sender_name,
             "autoload_offset": self.autoload_offset,
             "main_window_geometry": self.main_window_geometry,
             "obs_control_settings": self.obs_control_settings,
@@ -239,8 +235,10 @@ class Config:
 
     def _load_capture_method(self, config_data: dict) -> str:
         """旧バージョン設定はOBS取得、新規設定は直接取得に寄せる。"""
+        if config_data.get("random_lane_capture_backend") == "spout":
+            return "spout"
         method = config_data.get("capture_method")
-        if method in ("direct_window", "direct_window_legacy", "obs_websocket"):
+        if method in ("direct_window", "direct_window_legacy", "obs_websocket", "spout"):
             return method
 
         has_websocket_settings = any(

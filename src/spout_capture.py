@@ -1,4 +1,4 @@
-"""Optional high-frequency Spout receiver for RANDOM lane analysis."""
+"""High-frequency Spout receiver shared by screen reading and lane analysis."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ TARGET_SIZE = (1920, 1080)
 class SpoutCapture:
     """Receive RGB frames on a worker thread without blocking the Qt loop."""
 
-    def __init__(self, frame_callback):
+    def __init__(self, frame_callback=None):
         self.frame_callback = frame_callback
         self._thread = None
         self._stop_event = threading.Event()
@@ -28,6 +28,8 @@ class SpoutCapture:
         self._sender_name = ""
         self._status = None
         self._last_status = None
+        self._connected = False
+        self._latest_frame = None
 
     @staticmethod
     def dependency_error():
@@ -50,6 +52,8 @@ class SpoutCapture:
         with self._lock:
             self._status = None
             self._last_status = None
+            self._connected = False
+            self._latest_frame = None
         error = self.dependency_error()
         if error:
             self._emit_status("error", error)
@@ -71,7 +75,27 @@ class SpoutCapture:
         stopped = thread is None or not thread.is_alive()
         if stopped:
             self._thread = None
+            with self._lock:
+                self._connected = False
+                self._latest_frame = None
         return stopped
+
+    def set_frame_callback(self, frame_callback):
+        with self._lock:
+            self.frame_callback = frame_callback
+
+    def get_latest_frame(self):
+        with self._lock:
+            return self._latest_frame
+
+    @property
+    def is_connected(self):
+        with self._lock:
+            return self._connected
+
+    def current_status(self):
+        with self._lock:
+            return self._last_status
 
     def take_status(self):
         with self._lock:
@@ -109,10 +133,14 @@ class SpoutCapture:
 
                     if is_connected != connected:
                         connected = is_connected
+                        with self._lock:
+                            self._connected = connected
+                            if not connected:
+                                self._latest_frame = None
                         if connected:
                             self._emit_status(
                                 "connected",
-                                f"Spout接続: {self._sender_name}（次のSPプレーを待っています）",
+                                f"Spout接続: {self._sender_name}",
                             )
                         else:
                             self._emit_status("waiting", f"Spout送信待ち: {self._sender_name}")
@@ -141,8 +169,17 @@ class SpoutCapture:
                             rgb = rgba.reshape((height, width, 4))[:, :, :3]
                             if size != TARGET_SIZE:
                                 rgb = cv2.resize(rgb, TARGET_SIZE, interpolation=cv2.INTER_AREA)
-                            self.frame_callback(rgb)
+                            else:
+                                rgb = np.ascontiguousarray(rgb)
+                            with self._lock:
+                                self._latest_frame = rgb
+                                frame_callback = self.frame_callback
+                            if frame_callback is not None:
+                                frame_callback(rgb)
 
                     receiver.waitFrameSync(self._sender_name, 16)
         except Exception as exc:
+            with self._lock:
+                self._connected = False
+                self._latest_frame = None
             self._emit_status("error", f"Spout受信エラー: {exc}")

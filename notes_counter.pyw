@@ -53,7 +53,6 @@ from src.main_window import MainWindowUI
 from src.storage import StorageAccessor
 from src.update import GitHubUpdater
 from src.random_lane_analysis import RandomLaneAnalysis
-from src.spout_capture import SpoutCapture
 
 sys.path.append('infnotebook')
 from define import define
@@ -157,7 +156,7 @@ class MainWindow(MainWindowUI):
         self.random_lane_analysis = RandomLaneAnalysis(
             enabled=self.config.enable_random_lane_analysis
         )
-        self.spout_capture = SpoutCapture(self.random_lane_analysis.process_frame)
+        self.obs_manager.set_spout_frame_callback(self._process_random_lane_spout_frame)
         self._next_regular_loop_at = 0.0
 
         # その他
@@ -434,43 +433,49 @@ class MainWindow(MainWindowUI):
             self.obs_manager.connect()
 
     def _random_lane_uses_spout(self) -> bool:
-        return getattr(self.config, 'random_lane_capture_backend', 'current') == 'spout'
+        return getattr(self.config, 'capture_method', 'direct_window') == 'spout'
 
     def _random_lane_uses_current_frames(self) -> bool:
         return (
             self.config.enable_random_lane_analysis
-            and not self._random_lane_uses_spout()
             and self.config.capture_method == 'direct_window'
         )
 
+    def _process_random_lane_spout_frame(self, frame):
+        if (
+            self.config.enable_random_lane_analysis
+            and self._random_lane_uses_spout()
+            and getattr(self, 'current_mode', None) == detect_mode.play
+        ):
+            self.random_lane_analysis.process_frame(frame)
+
     def _update_main_timer_interval(self):
         if self.config.enable_random_lane_analysis and self._random_lane_uses_spout():
-            error = self.spout_capture.dependency_error()
+            spout_capture = self.obs_manager.spout_capture
+            error = spout_capture.dependency_error()
             if error:
-                self.spout_capture.stop()
-                self.spout_capture.take_status()
                 self.random_lane_analysis.set_capture_supported(False, error)
+            elif spout_capture.is_connected:
+                status = spout_capture.current_status()
+                message = status[1] if status else "Spout接続中"
+                self.random_lane_analysis.set_capture_supported(True, message)
             else:
-                sender_name = getattr(
-                    self.config, 'random_lane_spout_sender_name', 'Spout_OBS_Filter'
+                sender_name = getattr(self.config, 'spout_sender_name', 'Spout_OBS_Filter')
+                self.random_lane_analysis.set_capture_supported(
+                    False, f"Spout送信待ち: {sender_name}"
                 )
-                if self.spout_capture.start(sender_name):
-                    self.random_lane_analysis.set_capture_supported(
-                        False, f"Spout送信待ち: {sender_name}"
-                    )
         else:
-            self.spout_capture.stop()
             supported = self.config.capture_method == 'direct_window'
             self.random_lane_analysis.set_capture_supported(
                 supported,
-                "現在のゲーム画面取得はDXCAM直接取得で利用できます",
+                "RANDOM配置認識はDXCAM直接取得またはSpout経由で利用できます",
             )
 
         self.main_timer.start(16 if self._random_lane_uses_current_frames() else 100)
         self._show_random_lane_notification()
 
     def _poll_random_lane_spout_status(self):
-        status = self.spout_capture.take_status()
+        status = self.obs_manager.spout_capture.take_status()
         if not status:
             return
         if not self.config.enable_random_lane_analysis or not self._random_lane_uses_spout():
@@ -1103,7 +1108,6 @@ class MainWindow(MainWindowUI):
     
     def closeEvent(self, event):
         """アプリ終了時に実行する処理"""
-        self.spout_capture.stop()
         self.random_lane_analysis.set_enabled(False)
 
         # アプリ終了時のOBS処理

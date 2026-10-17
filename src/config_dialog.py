@@ -227,22 +227,31 @@ class ConfigDialog(QDialog):
         self.capture_method_direct_radio = QRadioButton(self.ui.feature.capture_method_direct)
         self.capture_method_direct_legacy_radio = QRadioButton(self.ui.feature.capture_method_direct_legacy)
         self.capture_method_obs_radio = QRadioButton(self.ui.feature.capture_method_obs)
+        self.capture_method_spout_radio = QRadioButton(self.ui.feature.capture_method_spout)
         self.capture_method_group.addButton(self.capture_method_direct_radio, 0)
         self.capture_method_group.addButton(self.capture_method_direct_legacy_radio, 1)
         self.capture_method_group.addButton(self.capture_method_obs_radio, 2)
+        self.capture_method_group.addButton(self.capture_method_spout_radio, 3)
 
-        capture_method_layout = QHBoxLayout()
-        capture_method_layout.addWidget(self.capture_method_direct_radio)
-        capture_method_layout.addWidget(self.capture_method_direct_legacy_radio)
-        capture_method_layout.addWidget(self.capture_method_obs_radio)
-        capture_method_layout.addStretch()
+        capture_method_layout = QGridLayout()
+        capture_method_layout.addWidget(self.capture_method_direct_radio, 0, 0)
+        capture_method_layout.addWidget(self.capture_method_direct_legacy_radio, 0, 1)
+        capture_method_layout.addWidget(self.capture_method_obs_radio, 1, 0)
+        capture_method_layout.addWidget(self.capture_method_spout_radio, 1, 1)
         game_capture_layout.addLayout(capture_method_layout)
+
+        spout_capture_form = QFormLayout()
+        self.spout_sender_edit = QLineEdit()
+        self.spout_sender_edit.setPlaceholderText("Spout_OBS_Filter")
+        spout_capture_form.addRow(self.ui.feature.spout_sender, self.spout_sender_edit)
+        game_capture_layout.addLayout(spout_capture_form)
 
         self.direct_capture_all_monitors_check = QCheckBox(self.ui.feature.direct_capture_all_monitors)
         self.direct_capture_all_monitors_check.setToolTip(self.ui.feature.direct_capture_all_monitors_tip)
         self.direct_capture_all_monitors_check.setVisible(False)
         game_capture_layout.addWidget(self.direct_capture_all_monitors_check)
         self.capture_method_group.idClicked.connect(self._update_direct_capture_option_enabled)
+        self.capture_method_group.idClicked.connect(self._update_spout_capture_option_enabled)
 
         self.enable_music_select_score_import_check = QCheckBox(self.ui.feature.enable_music_select_score_import)
         game_capture_layout.addWidget(self.enable_music_select_score_import_check)
@@ -254,32 +263,6 @@ class ConfigDialog(QDialog):
             self.ui.feature.enable_random_lane_analysis_tip
         )
         game_capture_layout.addWidget(self.enable_random_lane_analysis_check)
-
-        random_lane_capture_form = QFormLayout()
-        self.random_lane_capture_backend_combo = QComboBox()
-        self.random_lane_capture_backend_combo.addItem(
-            self.ui.feature.random_lane_capture_current, "current"
-        )
-        self.random_lane_capture_backend_combo.addItem(
-            self.ui.feature.random_lane_capture_spout, "spout"
-        )
-        random_lane_capture_form.addRow(
-            self.ui.feature.random_lane_capture_backend,
-            self.random_lane_capture_backend_combo,
-        )
-        self.random_lane_spout_sender_edit = QLineEdit()
-        self.random_lane_spout_sender_edit.setPlaceholderText("Spout_OBS_Filter")
-        random_lane_capture_form.addRow(
-            self.ui.feature.random_lane_spout_sender,
-            self.random_lane_spout_sender_edit,
-        )
-        game_capture_layout.addLayout(random_lane_capture_form)
-        self.enable_random_lane_analysis_check.toggled.connect(
-            self._update_random_lane_capture_options
-        )
-        self.random_lane_capture_backend_combo.currentIndexChanged.connect(
-            self._update_random_lane_capture_options
-        )
 
         layout.addWidget(game_capture_group)
         
@@ -381,11 +364,8 @@ class ConfigDialog(QDialog):
         self.direct_capture_all_monitors_check.setVisible(is_legacy_direct)
         self.direct_capture_all_monitors_check.setEnabled(is_legacy_direct)
 
-    def _update_random_lane_capture_options(self, *_args):
-        enabled = self.enable_random_lane_analysis_check.isChecked()
-        uses_spout = self.random_lane_capture_backend_combo.currentData() == "spout"
-        self.random_lane_capture_backend_combo.setEnabled(enabled)
-        self.random_lane_spout_sender_edit.setEnabled(enabled and uses_spout)
+    def _update_spout_capture_option_enabled(self, *_args):
+        self.spout_sender_edit.setEnabled(self.capture_method_group.checkedId() == 3)
 
     def on_browse_clicked(self):
         """フォルダ参照ボタン押下時の処理"""
@@ -833,20 +813,19 @@ class ConfigDialog(QDialog):
         self.enable_random_lane_analysis_check.setChecked(
             bool(getattr(self.config, 'enable_random_lane_analysis', False))
         )
-        random_lane_backend = getattr(self.config, 'random_lane_capture_backend', 'current')
-        backend_index = self.random_lane_capture_backend_combo.findData(random_lane_backend)
-        self.random_lane_capture_backend_combo.setCurrentIndex(max(0, backend_index))
-        self.random_lane_spout_sender_edit.setText(
-            str(getattr(self.config, 'random_lane_spout_sender_name', 'Spout_OBS_Filter'))
-        )
-        self._update_random_lane_capture_options()
         capture_method = getattr(self.config, 'capture_method', 'direct_window')
         if capture_method == 'obs_websocket':
             self.capture_method_obs_radio.setChecked(True)
+        elif capture_method == 'spout':
+            self.capture_method_spout_radio.setChecked(True)
         elif capture_method == 'direct_window_legacy':
             self.capture_method_direct_legacy_radio.setChecked(True)
         else:
             self.capture_method_direct_radio.setChecked(True)
+        self.spout_sender_edit.setText(
+            str(getattr(self.config, 'spout_sender_name', 'Spout_OBS_Filter'))
+        )
+        self._update_spout_capture_option_enabled()
         self.direct_capture_all_monitors_check.setChecked(
             bool(getattr(self.config, 'direct_capture_all_monitors', False))
         )
@@ -944,16 +923,12 @@ class ConfigDialog(QDialog):
         self.config.enable_folder_updates = self.enable_folder_updates_check.isChecked()
         self.config.enable_music_select_score_import = self.enable_music_select_score_import_check.isChecked()
         self.config.enable_random_lane_analysis = self.enable_random_lane_analysis_check.isChecked()
-        self.config.random_lane_capture_backend = (
-            self.random_lane_capture_backend_combo.currentData() or 'current'
-        )
-        self.config.random_lane_spout_sender_name = (
-            self.random_lane_spout_sender_edit.text().strip() or 'Spout_OBS_Filter'
-        )
+        self.config.spout_sender_name = self.spout_sender_edit.text().strip() or 'Spout_OBS_Filter'
         capture_method_by_id = {
             0: 'direct_window',
             1: 'direct_window_legacy',
             2: 'obs_websocket',
+            3: 'spout',
         }
         self.config.capture_method = capture_method_by_id.get(
             self.capture_method_group.checkedId(),
