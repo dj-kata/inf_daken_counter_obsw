@@ -19,6 +19,8 @@
     flex: 0 0 .6em;
     height: 1.1em;
     text-align: center;
+    /* Draw inside the rectangle so its size and the row height stay unchanged. */
+    box-shadow: inset 0 0 0 max(1px, .025em) #000;
 }
 
 .lane-option-key-white {
