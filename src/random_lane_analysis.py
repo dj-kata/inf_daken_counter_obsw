@@ -43,7 +43,12 @@ COLOR_RANGES = (
 MIN_ACTIVE_PIXELS = 8
 MIN_ACTIVE_RATIO = 0.035
 ARM_CLEAR_FRAMES = 10
-CHART_DATA_VERSION = 2
+# The INFINITAS play-start animation crosses the detector band twice.
+START_ACTIVITY_WAIT_SECONDS = 2.0
+START_ACTIVITY_GAP_SECONDS = 0.5
+START_ACTIVITY_BURSTS = 2
+EVENT_MERGE_FRAMES = 1
+CHART_DATA_VERSION = 3
 WHITE_LANE_MARGIN = 0.15
 BLACK_LANE_MARGIN = 0.08
 MORPH_KERNEL = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 1))
@@ -65,12 +70,22 @@ class NoteDetector:
         self.event_counter = 0
         self.armed = False
         self.clear_frame_count = 0
+        self.start_activity_bursts = 0
+        self.last_start_activity_at = None
+        self.prearm_started_at = time.monotonic()
+        self.pending_lanes = set()
+        self.pending_frames = 0
 
     def reset(self):
         self.last_lane_state = [False] * 7
         self.event_counter = 0
         self.armed = False
         self.clear_frame_count = 0
+        self.start_activity_bursts = 0
+        self.last_start_activity_at = None
+        self.prearm_started_at = time.monotonic()
+        self.pending_lanes = set()
+        self.pending_frames = 0
 
     def detect(self, rgb_image):
         x, y, width, height = self.roi
@@ -102,14 +117,52 @@ class NoteDetector:
             lane_state.append(pixels >= MIN_ACTIVE_PIXELS and ratio >= MIN_ACTIVE_RATIO)
 
         if not self.armed:
+            now = time.monotonic()
             self.last_lane_state = lane_state
             if any(lane_state):
+                if (
+                    self.last_start_activity_at is None
+                    or now - self.last_start_activity_at >= START_ACTIVITY_GAP_SECONDS
+                ):
+                    self.start_activity_bursts += 1
+                    logger.info(
+                        "プレー開始演出を検出: %d/%d",
+                        min(self.start_activity_bursts, START_ACTIVITY_BURSTS),
+                        START_ACTIVITY_BURSTS,
+                    )
+                self.last_start_activity_at = now
                 self.clear_frame_count = 0
             else:
                 self.clear_frame_count += 1
-                if self.clear_frame_count >= ARM_CLEAR_FRAMES:
+                start_sequence_finished = self.start_activity_bursts >= START_ACTIVITY_BURSTS
+                no_activity_timeout = (
+                    self.start_activity_bursts == 0
+                    and now - self.prearm_started_at >= START_ACTIVITY_WAIT_SECONDS
+                )
+                partial_activity_timeout = (
+                    self.start_activity_bursts == 1
+                    and self.last_start_activity_at is not None
+                    and now - self.last_start_activity_at >= START_ACTIVITY_WAIT_SECONDS
+                )
+                if (
+                    self.clear_frame_count >= ARM_CLEAR_FRAMES
+                    and (start_sequence_finished or no_activity_timeout or partial_activity_timeout)
+                ):
                     self.armed = True
-                    logger.info("レーン検出開始: %dフレーム連続で検出帯が空", ARM_CLEAR_FRAMES)
+                    if start_sequence_finished:
+                        logger.info(
+                            "レーン検出開始: プレー開始演出%d回の後、"
+                            "%dフレーム連続で検出帯が空",
+                            self.start_activity_bursts,
+                            ARM_CLEAR_FRAMES,
+                        )
+                    else:
+                        logger.info(
+                            "レーン検出開始: 開始演出の追加検出を%.1f秒間待った後、"
+                            "%dフレーム連続で検出帯が空",
+                            START_ACTIVITY_WAIT_SECONDS,
+                            ARM_CLEAR_FRAMES,
+                        )
             return None, []
 
         rising_lanes = [
@@ -118,10 +171,23 @@ class NoteDetector:
             if new and not old
         ]
         self.last_lane_state = lane_state
+
+        if self.pending_lanes:
+            self.pending_lanes.update(rising_lanes)
+            self.pending_frames -= 1
+            if self.pending_frames > 0:
+                return None, []
+            merged_lanes = sorted(self.pending_lanes)
+            self.pending_lanes = set()
+            self.pending_frames = 0
+            self.event_counter += 1
+            return self.event_counter, merged_lanes
+
         if not rising_lanes:
             return None, []
-        self.event_counter += 1
-        return self.event_counter, rising_lanes
+        self.pending_lanes = set(rising_lanes)
+        self.pending_frames = EVENT_MERGE_FRAMES
+        return None, []
 
 
 class NormalChartRecorder:
