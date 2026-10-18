@@ -82,6 +82,7 @@ class ResultStatsWriter:
         sp12_hard:clear_lamp=None,
         songinfo=None,
         enable_katate_difficulty_display=False,
+        lane_layout=None,
         position=(600, 405),  # (x, y) 座標で指定
         box_width=790,     # ボックス幅（Noneで画像幅）
         box_height=430,
@@ -97,6 +98,7 @@ class ResultStatsWriter:
         """
         # 画像を開く
         max_score = max_notes * 2
+        lane_layout_text = str(lane_layout).strip() if lane_layout else ""
         
         # RGBA変換（透明度サポート）
         if img.mode != 'RGBA':
@@ -124,7 +126,7 @@ class ResultStatsWriter:
         panel_left = x - padding_x
         panel_top = y - 12
         panel_right = panel_left + box_width
-        panel_bottom = y + box_height
+        panel_bottom = y + box_height + (50 if lane_layout_text else 0)
 
         # 背景ボックスを描画（半透明、透明度を指定可能）
         self._draw_rounded_rectangle(
@@ -180,6 +182,18 @@ class ResultStatsWriter:
         self._draw_metric(draw, content_x, y, col_w, "RATE", f"{rate:.2f}%", (255, 245, 90))
         self._draw_metric(draw, content_x + col_w + col_gap, y, col_w, bpi_label, bpi_text, (255, 245, 90))
         y += row_h + 3
+
+        if lane_layout_text:
+            self._draw_metric(
+                draw,
+                content_x,
+                y,
+                content_w,
+                "LANE",
+                lane_layout_text,
+                (120, 245, 255),
+            )
+            y += row_h
 
         arena_text = self._format_arena_average_text(bpi_arena_averages, bpi_arena_average_text)
         if arena_text:
