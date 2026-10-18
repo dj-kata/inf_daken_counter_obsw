@@ -503,6 +503,9 @@ class MainWindow(MainWindowUI):
                 if self.result_database.results:
                     detailed_result.result = self.result_database.results[-1]
                 result = detailed_result.result
+                # 手動保存ではprocess_result_modeより先にここへ来る場合があるため、
+                # 保存処理側でも現在のプレーで確定した配置を補完する。
+                self._apply_lane_layout_to_result(result)
                 if skip_no_update and (self.config.autosave_image_mode == config_autosave_image.only_updates): # 更新している場合のみ保存
                     if not result.is_updated():
                         logger.debug(f"skipped!, pre score:{result.pre_score}, bp:{result.pre_bp}, lamp:{result.pre_lamp}")
