@@ -48,7 +48,11 @@ START_ACTIVITY_WAIT_SECONDS = 2.0
 START_ACTIVITY_GAP_SECONDS = 0.5
 START_ACTIVITY_BURSTS = 2
 EVENT_MERGE_FRAMES = 1
-CHART_DATA_VERSION = 3
+MIN_NORMAL_EVENTS = 64
+MIN_ANALYSIS_EVENTS = 24
+MIN_ANALYSIS_MATCH_RATIO = 0.80
+MIN_ANALYSIS_SCORE_MARGIN = 3
+CHART_DATA_VERSION = 4
 WHITE_LANE_MARGIN = 0.15
 BLACK_LANE_MARGIN = 0.08
 MORPH_KERNEL = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 1))
@@ -201,7 +205,11 @@ class NormalChartRecorder:
             return False
         self.events.append({"event_no": len(self.events) + 1, "event_lanes": list(lanes)})
         self.seen_lanes.update(lanes)
-        return self.seen_lanes == set(LANES) and self._identity_is_unique()
+        return (
+            len(self.events) >= MIN_NORMAL_EVENTS
+            and self.seen_lanes == set(LANES)
+            and self._identity_is_unique()
+        )
 
     def _identity_is_unique(self) -> bool:
         for permutation in itertools.permutations(LANES):
@@ -219,41 +227,60 @@ class NormalChartRecorder:
 class RandomMappingAnalyzer:
     def __init__(self, normal_events):
         self.normal_events = normal_events
-        self.candidates = list(itertools.permutations(LANES))
+        self._permutations = list(itertools.permutations(LANES))
+        self._scores = [0] * len(self._permutations)
+        self.candidates = list(self._permutations)
         self.pair_index = 0
         self.layout = None
         self.failed = False
         self.failure_reason = None
+        self.best_score = 0
+        self.second_score = 0
+        self.score_margin = 0
+        self.match_ratio = 0.0
 
     def add(self, random_lanes):
-        if self.failed or self.layout or self.pair_index >= len(self.normal_events):
-            self.failed = self.layout is None
-            if self.failed and self.failure_reason is None:
-                self.failure_reason = "正規譜面データの末尾までに配置を確定できませんでした"
+        if self.failed or self.layout:
             return
-        event_no = self.pair_index + 1
+        if self.pair_index >= len(self.normal_events):
+            self._fail_at_end()
+            return
+
         normal_lanes = set(self.normal_events[self.pair_index]["event_lanes"])
         random_lanes = set(map(int, random_lanes))
-        if len(normal_lanes) != len(random_lanes):
-            self.candidates = []
-            self.failure_reason = (
-                f"イベント{event_no}: 正規{sorted(normal_lanes)} / RANDOM{sorted(random_lanes)}"
-            )
-        else:
-            self.candidates = [
-                permutation
-                for permutation in self.candidates
-                if {permutation[lane - 1] for lane in normal_lanes} == random_lanes
-            ]
-            if not self.candidates:
-                self.failure_reason = (
-                    f"イベント{event_no}: 正規{sorted(normal_lanes)} / RANDOM{sorted(random_lanes)}"
-                )
+        if len(normal_lanes) == len(random_lanes):
+            for index, permutation in enumerate(self._permutations):
+                if {permutation[lane - 1] for lane in normal_lanes} == random_lanes:
+                    self._scores[index] += 1
+
         self.pair_index += 1
-        if not self.candidates:
-            self.failed = True
-        elif len(self.candidates) == 1:
+        self.best_score = max(self._scores)
+        self.candidates = [
+            permutation
+            for permutation, score in zip(self._permutations, self._scores)
+            if score == self.best_score
+        ]
+        lower_scores = [score for score in self._scores if score < self.best_score]
+        self.second_score = max(lower_scores) if lower_scores else self.best_score
+        self.score_margin = self.best_score - self.second_score if len(self.candidates) == 1 else 0
+        self.match_ratio = self.best_score / self.pair_index
+
+        if (
+            self.pair_index >= MIN_ANALYSIS_EVENTS
+            and len(self.candidates) == 1
+            and self.match_ratio >= MIN_ANALYSIS_MATCH_RATIO
+            and self.score_margin >= MIN_ANALYSIS_SCORE_MARGIN
+        ):
             self.layout = _layout_text(self.candidates[0])
+        elif self.pair_index >= len(self.normal_events):
+            self._fail_at_end()
+
+    def _fail_at_end(self):
+        self.failed = True
+        self.failure_reason = (
+            f"{self.pair_index}イベントで確定条件に到達せず"
+            f"（最良一致{self.best_score}、候補{len(self.candidates)}、差{self.score_margin}）"
+        )
 
 
 class RandomLaneAnalysis:
@@ -355,9 +382,9 @@ class RandomLaneAnalysis:
             self.recorder = NormalChartRecorder()
             self.record_mirror = arrange == "MIRROR"
             message = (
-                "MIRROR譜面を正規配置へ変換して記録中"
+                f"MIRROR譜面を正規配置へ変換して記録中（最低{MIN_NORMAL_EVENTS}イベント）"
                 if self.record_mirror
-                else "正規譜面データを記録中"
+                else f"正規譜面データを記録中（最低{MIN_NORMAL_EVENTS}イベント）"
             )
             self._publish(
                 "recording",
@@ -378,7 +405,12 @@ class RandomLaneAnalysis:
                 return
             self.mode = "analyze"
             self.analyzer = RandomMappingAnalyzer(events)
-            self._publish("analyzing", title=title, chart=difficulty, message="RANDOM配置を解析中")
+            self._publish(
+                "analyzing",
+                title=title,
+                chart=difficulty,
+                message=f"RANDOM配置を解析中（最低{MIN_ANALYSIS_EVENTS}イベント）",
+            )
         else:
             self._publish("unsupported", title=title, chart=difficulty, message=f"{arrange}は現在対象外です")
 
@@ -416,15 +448,18 @@ class RandomLaneAnalysis:
                 if pair_index < len(self.analyzer.normal_events)
                 else []
             )
-            candidates_before = len(self.analyzer.candidates)
             self.analyzer.add(lanes)
             logger.info(
-                "RANDOM解析 event=%s normal=%s random=%s candidates=%d->%d",
+                "RANDOM解析 event=%s normal=%s random=%s "
+                "leaders=%d best=%d/%d ratio=%.3f margin=%d",
                 event_no,
                 normal_lanes,
                 sorted(lanes),
-                candidates_before,
                 len(self.analyzer.candidates),
+                self.analyzer.best_score,
+                self.analyzer.pair_index,
+                self.analyzer.match_ratio,
+                self.analyzer.score_margin,
             )
             if self.analyzer.layout:
                 self.result_layout = self.analyzer.layout
