@@ -6,10 +6,27 @@ from pathlib import Path
 import re
 from urllib.error import URLError
 from urllib.request import Request, urlopen
+from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = "dj-kata/inf_daken_counter_obsw"
 RELEASES_URL = f"https://github.com/{REPOSITORY}/releases"
+
+
+def local_manual_link(match):
+    """旧説明書への参照を、公開サイト内の対応するページへ置き換える。"""
+    page = unquote(urlsplit(match[0]).path).split("/wiki", 1)[1]
+    if "OBS-WebSocket" in page:
+        return "obs-control.md"
+    if "ビューのHTML" in page or "情報ビュー" in page or "HTML一式" in page:
+        return "obs-views.md"
+    if "スマホ" in page:
+        return "mobile.md"
+    if "設定画面" in page:
+        return "features.md"
+    if "設定方法" in page:
+        return "install.md"
+    return "index.md"
 
 
 def fetch_releases():
@@ -65,6 +82,9 @@ def nest_headings(body):
             lines.append(line)
             continue
         if fence_char is None:
+            line = re.sub(r"https://github\.com/" + re.escape(REPOSITORY)
+                          + r"/wiki(?:[^\s)>\]]*)", local_manual_link, line)
+            line = re.sub(r"\[(?:wiki|Wiki)\]\(([^)]+\.md)\)", r"[使い方](\1)", line)
             line = re.sub(r"^( {0,3})(#{1,6})(?=\s|$)",
                           lambda m: m[1] + "#" * min(6, len(m[2]) + 2), line)
         lines.append(line)
@@ -76,6 +96,7 @@ def render_releases(releases):
         "# 更新情報", "",
         "GitHub Releasesから取り込んだ、一部のバージョンのリリースノートです。",
         "本文は公開当時の内容です。現在の機能や今後の予定とは異なる場合があります。",
+        "説明書へのリンクは、このサイト内の案内へ置き換えています。",
         f"最新版は[最新のReleaseページ]({RELEASES_URL}/latest)で確認できます。",
         f"全バージョンの情報と配布ファイルは[GitHub Releases]({RELEASES_URL})を参照してください。",
         "", "<!-- misc/import_release_notes.py で生成。本文の修正はGitHub Releasesで行い再取り込みする。 -->", "",

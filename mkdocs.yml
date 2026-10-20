@@ -23,6 +23,7 @@ plugins:
       lang: ja
 markdown_extensions:
   - admonition
+  - attr_list
   - fenced_code
   - pymdownx.magiclink
   - tables
@@ -30,7 +31,15 @@ markdown_extensions:
       permalink: true
 nav:
   - はじめに: index.md
-  - 使い方:
+  - 打鍵カウンタの導入方法:
+      - 通常の手順: install.md
+      - v2から移行する場合: migration-v2.md
+  - OBS向けHTMLビューの利用方法: obs-views.md
+  - その他の機能:
+      - スコアビューワ: score-viewer.md
+      - HTTPサーバ（スマホ連携）: mobile.md
+      - ライバル登録: rivals.md
+      - OBS自動制御: obs-control.md
       - リザルト画像の保存: image-save.md
-      - 時計テンプレート: clock.md
+      - その他の機能: features.md
   - 更新情報: releases.md

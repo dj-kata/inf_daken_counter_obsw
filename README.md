@@ -50,9 +50,8 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 また、HTMLなので表示部分の見た目をCSSによって自由にカスタマイズできます。  
 
 # 設定方法
-こちらの[wiki](https://github.com/dj-kata/inf_daken_counter_obsw/wiki)を参照してください。
-
-リポジトリ内の[説明書サイト原稿](docs/index.md)も順次整備しています。
+[説明書](docs/index.md)を参照してください。
+[通常の導入手順](docs/install.md)、[v2からの移行](docs/migration-v2.md)、[OBS向けHTMLビュー](docs/obs-views.md)を掲載しています。
 画像保存の設定は[こちら](docs/image-save.md)、プレビューや更新方法は[作業者向け手順](docs/README.md)を参照してください。
 
 ## RANDOM配置認識（SP・Spout）

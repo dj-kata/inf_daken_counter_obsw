@@ -1,27 +1,32 @@
 # INFINITAS打鍵カウンタ
 
-beatmania IIDX INFINITASの打鍵数をカウントし、スコアの記録やOBSへの表示を行うツールです。
-SP・DPの両方に対応しています。
+beatmania IIDX INFINITASのプレー画面から、打鍵数やスコアを記録するツールです。
+SP・DPに対応し、OBSへの情報表示やスマホでのスコア確認にも使えます。
 
-## 使い方を探す
+## 打鍵カウンタの導入方法
 
-| やりたいこと | 説明 |
+- [通常の手順](install.md) — 初めて使う場合のダウンロード・起動・画面取得の確認
+- [打鍵カウンタv2から移行する場合に必要な手順](migration-v2.md) — 設定・プレーログの引き継ぎとHTMLの入れ替え
+
+## OBS向けHTMLビューの利用方法
+
+[HTMLビューをOBSに追加する](obs-views.md)。プレーログ、ノーツ数グラフ、ライバル比較などを配信に表示できます。
+使えるビューの一覧や、別PCのOBSに表示する方法もこちらで説明しています。
+
+## その他の機能
+
+| 機能 | できること |
 | --- | --- |
-| リザルト画像を保存・加工したい | [画像保存の設定](image-save.md) |
-| 配信に時計を表示したい | [時計テンプレート](clock.md) |
-| バージョンごとの変更を知りたい | [更新情報](releases.md) |
-| 導入方法や、その他の機能を調べたい | [既存Wiki](https://github.com/dj-kata/inf_daken_counter_obsw/wiki) |
+| [スコアビューワ](score-viewer.md) | 自己ベストの検索、プレー履歴の確認・削除、ライバルとの比較 |
+| [HTTPサーバ（スマホ連携）](mobile.md) | 同じLANのスマホからスコアの確認やリザルト画像の結合 |
+| [ライバル登録](rivals.md) | Google DriveのCSVを登録し、スコアを比較 |
+| [OBS自動制御](obs-control.md) | ゲーム画面に合わせたソースの表示切り替えやシーン切り替え |
+| [リザルト画像の保存](image-save.md) | 自動保存、ライバル欄の加工、統計情報の追加 |
+| [その他の機能](features.md) | 成果の投稿、自己ベスト登録、難易度表、RANDOM配置認識 |
 
-このサイトには説明書を順次移しています。まだ掲載していない機能はWikiを参照してください。
-左のメニューやサイト内検索から、掲載済みの説明を探せます。
+## ダウンロード・更新情報
 
-## ダウンロード
+- [最新版のReleaseページ](https://github.com/dj-kata/inf_daken_counter_obsw/releases/latest)
+- [バージョンごとの更新情報](releases.md)
 
-[最新版のReleaseページ](https://github.com/dj-kata/inf_daken_counter_obsw/releases/latest)から、
-利用するバージョンの `inf_daken_counter.zip` をダウンロードしてください。
-各バージョンの注意事項も、ダウンロード前に確認してください。
-
-## 困ったとき
-
-- [Wikiで設定方法を確認する](https://github.com/dj-kata/inf_daken_counter_obsw/wiki)
-- [GitHub Issuesで不具合や要望を確認・報告する](https://github.com/dj-kata/inf_daken_counter_obsw/issues)
+不具合や要望は[GitHub Issues](https://github.com/dj-kata/inf_daken_counter_obsw/issues)へお寄せください。

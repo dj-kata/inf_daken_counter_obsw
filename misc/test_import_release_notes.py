@@ -58,6 +58,19 @@ class ImportReleaseNotesTests(unittest.TestCase):
             self.assertEqual(len(fetch_releases()), 101)
             self.assertTrue(opened.call_args_list[1].args[0].full_url.endswith("page=2"))
 
+    def test_imported_manual_links_stay_within_site(self):
+        root = "https://github.com/dj-kata/inf_daken_counter_obsw/wiki"
+        body = (f"[wiki]({root}/%E5%90%84%E3%83%93%E3%83%A5%E3%83%BC%E3%81%AEHTML%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6#old)\n"
+                f"[OBS]({root}/OBS-WebSocket%E8%A8%AD%E5%AE%9A)\n"
+                f"[説明書]({root})\n"
+                f"[スマホ]({root}/スマホ用ビューの利用方法)")
+        converted = nest_headings(body)
+        self.assertNotIn("/wiki", converted)
+        self.assertIn("[使い方](obs-views.md)", converted)
+        self.assertIn("[OBS](obs-control.md)", converted)
+        self.assertIn("[説明書](index.md)", converted)
+        self.assertIn("[スマホ](mobile.md)", converted)
+
     def test_cli_offline_import_and_failure_preserve_existing_output(self):
         script = Path(__file__).with_name("import_release_notes.py")
         with tempfile.TemporaryDirectory() as temp:

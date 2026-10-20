@@ -2,6 +2,7 @@
 
 GitHub Releasesから取り込んだ、一部のバージョンのリリースノートです。
 本文は公開当時の内容です。現在の機能や今後の予定とは異なる場合があります。
+説明書へのリンクは、このサイト内の案内へ置き換えています。
 最新版は[最新のReleaseページ](https://github.com/dj-kata/inf_daken_counter_obsw/releases/latest)で確認できます。
 全バージョンの情報と配布ファイルは[GitHub Releases](https://github.com/dj-kata/inf_daken_counter_obsw/releases)を参照してください。
 
@@ -15,7 +16,7 @@ GitHub Releasesから取り込んだ、一部のバージョンのリリース�
 - オプションが確定するまでリザルトの保存を行わないように戻した
   - 主に1P側向け
 
-設定方法については[wiki](https://github.com/dj-kata/inf_daken_counter_obsw/wiki/%E5%90%84%E3%83%93%E3%83%A5%E3%83%BC%E3%81%AEHTML%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6#%E3%83%97%E3%83%AC%E3%83%BC%E3%83%AD%E3%82%B0%E3%83%93%E3%83%A5%E3%83%BCtoday_resultshtml)を参照してください。
+設定方法については[使い方](obs-views.md)を参照してください。
 
 ### 注意
 自動アップデートで上手く取り込めない場合はお手数ですが[こちらのzip](https://t.co/QxLQoAitG8)を手動でインストールしてください。
@@ -27,7 +28,7 @@ GitHub Releasesから取り込んだ、一部のバージョンのリリース�
 
 ### その他
 inf_daken_counter.zipをダウンロードしてインストールしてください。  
-設定方法などは[説明書](https://github.com/dj-kata/inf_daken_counter_obsw/wiki)を参照してください。
+設定方法などは[説明書](index.md)を参照してください。
 
 **Full Changelog**: https://github.com/dj-kata/inf_daken_counter_obsw/compare/3.0.11...3.0.12
 
@@ -42,7 +43,7 @@ inf_daken_counter.zipをダウンロードしてインストールしてくだ�
 - 画面取得方式について、dxcam/ImageGrab(従来)を切り替えられるようにした
 - HTTPサーバ機能において、一部ページの自動更新が行われないバグを修正
 
-設定方法については[wiki](https://github.com/dj-kata/inf_daken_counter_obsw/wiki/%E5%90%84%E3%83%93%E3%83%A5%E3%83%BC%E3%81%AEHTML%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6#%E3%83%97%E3%83%AC%E3%83%BC%E3%83%AD%E3%82%B0%E3%83%93%E3%83%A5%E3%83%BCtoday_resultshtml)を参照してください。
+設定方法については[使い方](obs-views.md)を参照してください。
 
 ### 注意
 自動アップデートで上手く取り込めない場合はお手数ですが[こちらのzip](https://t.co/QxLQoAitG8)を手動でインストールしてください。
@@ -54,7 +55,7 @@ inf_daken_counter.zipをダウンロードしてインストールしてくだ�
 
 ### その他
 inf_daken_counter.zipをダウンロードしてインストールしてください。  
-設定方法などは[説明書](https://github.com/dj-kata/inf_daken_counter_obsw/wiki)を参照してください。
+設定方法などは[説明書](index.md)を参照してください。
 
 **Full Changelog**: https://github.com/dj-kata/inf_daken_counter_obsw/compare/3.0.11...3.0.12
 
@@ -70,7 +71,7 @@ inf_daken_counter.zipをダウンロードしてインストールしてくだ�
   - 例外処理方式を見直し
 - オプション取得に失敗した場合のケアを追加
 
-設定方法については[wiki](https://github.com/dj-kata/inf_daken_counter_obsw/wiki/%E5%90%84%E3%83%93%E3%83%A5%E3%83%BC%E3%81%AEHTML%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6#%E3%83%97%E3%83%AC%E3%83%BC%E3%83%AD%E3%82%B0%E3%83%93%E3%83%A5%E3%83%BCtoday_resultshtml)を参照してください。
+設定方法については[使い方](obs-views.md)を参照してください。
 
 ### 注意
 自動アップデートで上手く取り込めない場合はお手数ですが[こちらのzip](https://t.co/QxLQoAitG8)を手動でインストールしてください。
@@ -82,7 +83,7 @@ inf_daken_counter.zipをダウンロードしてインストールしてくだ�
 
 ### その他
 inf_daken_counter.zipをダウンロードしてインストールしてください。  
-設定方法などは[説明書](https://github.com/dj-kata/inf_daken_counter_obsw/wiki)を参照してください。
+設定方法などは[説明書](index.md)を参照してください。
 
 **Full Changelog**: https://github.com/dj-kata/inf_daken_counter_obsw/compare/3.0.11...3.0.12
 
@@ -95,7 +96,7 @@ inf_daken_counter.zipをダウンロードしてインストールしてくだ�
 ### 更新内容
 - 直接取得モードにおける画面取得処理を修正
 
-設定方法については[wiki](https://github.com/dj-kata/inf_daken_counter_obsw/wiki/%E5%90%84%E3%83%93%E3%83%A5%E3%83%BC%E3%81%AEHTML%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6#%E3%83%97%E3%83%AC%E3%83%BC%E3%83%AD%E3%82%B0%E3%83%93%E3%83%A5%E3%83%BCtoday_resultshtml)を参照してください。
+設定方法については[使い方](obs-views.md)を参照してください。
 
 ### 注意
 自動アップデートで上手く取り込めない場合はお手数ですが[こちらのzip](https://t.co/QxLQoAitG8)を手動でインストールしてください。
@@ -107,7 +108,7 @@ inf_daken_counter.zipをダウンロードしてインストールしてくだ�
 
 ### その他
 inf_daken_counter.zipをダウンロードしてインストールしてください。  
-設定方法などは[説明書](https://github.com/dj-kata/inf_daken_counter_obsw/wiki)を参照してください。
+設定方法などは[説明書](index.md)を参照してください。
 
 **Full Changelog**: https://github.com/dj-kata/inf_daken_counter_obsw/compare/3.0.11...3.0.12
 
@@ -125,7 +126,7 @@ inf_daken_counter.zipをダウンロードしてインストールしてくだ�
   - v2以前のリザルトについては、設定で`v2以前のログを集計対象とする`にチェックしている場合に加算される
 - その他バグ修正
 
-設定方法については[wiki](https://github.com/dj-kata/inf_daken_counter_obsw/wiki/%E5%90%84%E3%83%93%E3%83%A5%E3%83%BC%E3%81%AEHTML%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6#%E3%83%97%E3%83%AC%E3%83%BC%E3%83%AD%E3%82%B0%E3%83%93%E3%83%A5%E3%83%BCtoday_resultshtml)を参照してください。
+設定方法については[使い方](obs-views.md)を参照してください。
 
 ### 注意
 自動アップデートで上手く取り込めない場合はお手数ですが[こちらのzip](https://t.co/QxLQoAitG8)を手動でインストールしてください。
@@ -137,7 +138,7 @@ inf_daken_counter.zipをダウンロードしてインストールしてくだ�
 
 ### その他
 inf_daken_counter.zipをダウンロードしてインストールしてください。  
-設定方法などは[説明書](https://github.com/dj-kata/inf_daken_counter_obsw/wiki)を参照してください。
+設定方法などは[説明書](index.md)を参照してください。
 
 **Full Changelog**: https://github.com/dj-kata/inf_daken_counter_obsw/compare/3.0.11...3.0.12
 
