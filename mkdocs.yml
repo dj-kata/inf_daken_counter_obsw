@@ -1,0 +1,36 @@
+site_name: INFINITAS打鍵カウンタ 説明書
+site_description: INFINITAS打鍵カウンタの使い方と更新情報
+site_url: https://dj-kata.github.io/inf_daken_counter_obsw/
+repo_url: https://github.com/dj-kata/inf_daken_counter_obsw
+repo_name: dj-kata/inf_daken_counter_obsw
+edit_uri: edit/master/docs/
+docs_dir: docs
+site_dir: site
+exclude_docs: |
+  README.md
+theme:
+  name: material
+  language: ja
+  palette:
+    primary: indigo
+    accent: indigo
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+plugins:
+  - search:
+      lang: ja
+markdown_extensions:
+  - admonition
+  - fenced_code
+  - pymdownx.magiclink
+  - tables
+  - toc:
+      permalink: true
+nav:
+  - はじめに: index.md
+  - 使い方:
+      - リザルト画像の保存: image-save.md
+      - 時計テンプレート: clock.md
+  - 更新情報: releases.md

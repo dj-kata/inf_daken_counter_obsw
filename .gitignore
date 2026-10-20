@@ -28,3 +28,5 @@ hoge*
 inf_score.csv
 playlog.infdc
 results/*
+site/
+.codex-venv/

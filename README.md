@@ -52,7 +52,8 @@ OBSのブラウザソースで読み込めるhtmlを同梱しているため、�
 # 設定方法
 こちらの[wiki](https://github.com/dj-kata/inf_daken_counter_obsw/wiki)を参照してください。
 
-画像保存の設定は、リポジトリ内の[説明書](docs/image-save.md)を参照してください。
+リポジトリ内の[説明書サイト原稿](docs/index.md)も順次整備しています。
+画像保存の設定は[こちら](docs/image-save.md)、プレビューや更新方法は[作業者向け手順](docs/README.md)を参照してください。
 
 ## RANDOM配置認識（SP・Spout）
 「ゲーム画面取得」でSpoutを選び、RANDOMレーン配置認識を有効にしてください。
