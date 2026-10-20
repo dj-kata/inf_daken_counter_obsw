@@ -537,6 +537,15 @@ class ConfigDialog(QDialog):
         
         self.write_statistics_check = QCheckBox(self.ui.image_save.write_statistics)
         other_layout.addWidget(self.write_statistics_check)
+
+        cache_layout = QHBoxLayout()
+        cache_layout.addWidget(QLabel(self.ui.image_save.cache_limit))
+        self.result_image_cache_limit_spin = QSpinBox()
+        self.result_image_cache_limit_spin.setRange(0, 10000)
+        self.result_image_cache_limit_spin.setSpecialValueText(self.ui.image_save.cache_all)
+        self.result_image_cache_limit_spin.setToolTip(self.ui.image_save.cache_help)
+        cache_layout.addWidget(self.result_image_cache_limit_spin)
+        other_layout.addLayout(cache_layout)
         
         layout.addWidget(other_group)
         layout.addStretch()
@@ -900,6 +909,7 @@ class ConfigDialog(QDialog):
         #             self.music_pack_checkboxes[pack_name].setChecked(True)
         
         # 画像保存設定
+        self.result_image_cache_limit_spin.setValue(self.config.result_image_cache_limit)
         if hasattr(self.config, 'autosave_image_mode'):
             button = self.autosave_button_group.button(self.config.autosave_image_mode.value)
             if button:
@@ -1021,6 +1031,9 @@ class ConfigDialog(QDialog):
         self.config.autosave_image_mode = config_autosave_image(self.autosave_button_group.checkedId())
         self.config.modify_rivalarea_mode = config_modify_rivalarea(self.rivalarea_button_group.checkedId())
         self.config.write_statistics = self.write_statistics_check.isChecked()
+        self.config.result_image_cache_limit = self.result_image_cache_limit_spin.value()
+        if self.result_database:
+            self.result_database.trim_result_image_cache()
         self.config.include_legacy_v2_logs = self.include_legacy_v2_logs_check.isChecked()
         self.config.enable_katate_difficulty_display = self.enable_katate_difficulty_display_check.isChecked()
         self.config.enable_katate_tweet_grouping = self.enable_katate_tweet_grouping_check.isChecked()

@@ -104,6 +104,9 @@ class UIText:
     
     class image_save:
         """Image save settings tab"""
+        cache_limit = 'Temporary result images to keep:'
+        cache_all = 'Keep all'
+        cache_help = '0 keeps all images. Older images exceeding the limit are discarded. Saved files remain available for posting. Temporary images are unavailable after restart.'
         condition_group = 'Image Save Condition'
         always = 'Always save'
         only_updates = 'Save on update only'

@@ -104,6 +104,9 @@ class UIText:
     
     class image_save:
         """画像保存設定タブ"""
+        cache_limit = '起動中に一時保持するリザルト画像の上限:'
+        cache_all = '全件保持'
+        cache_help = '0は全件保持。上限を超えた古い一時画像は破棄します。ファイル保存済みの画像は引き続き投稿できます。再起動で一時画像は利用できなくなります。'
         condition_group = '画像保存条件'
         always = '常に保存'
         only_updates = '更新時のみ保存'

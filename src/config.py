@@ -75,6 +75,7 @@ class Config:
         self.target_music_packs = [pack.name for pack in music_pack if pack != music_pack.unknown]
         
         # 画像保存設定
+        self.result_image_cache_limit = 0  # 0: 起動中の全画像を保持
         self.autosave_image_mode = config_autosave_image.only_updates  # 画像保存条件
         self.modify_rivalarea_mode = config_modify_rivalarea.invalid  # ライバル欄編集方法
         self.write_statistics = False  # 統計情報を書き込むか
@@ -170,6 +171,7 @@ class Config:
                     # 画像保存設定
                     self.autosave_image_mode = config_autosave_image(config_data.get('autosave_image_mode', config_autosave_image.invalid.value))
                     self.modify_rivalarea_mode = config_modify_rivalarea(config_data.get('modify_rivalarea_mode', config_modify_rivalarea.invalid.value))
+                    self.result_image_cache_limit = max(0, int(config_data.get('result_image_cache_limit', 0)))
                     self.write_statistics = config_data.get('write_statistics', False)
                     self.include_legacy_v2_logs = config_data.get('include_legacy_v2_logs', False)
                     self.enable_katate_difficulty_display = config_data.get('enable_katate_difficulty_display', False)
@@ -216,6 +218,7 @@ class Config:
             "target_music_packs": self.target_music_packs,
             "autosave_image_mode": self.autosave_image_mode.value,
             "modify_rivalarea_mode": self.modify_rivalarea_mode.value,
+            "result_image_cache_limit": self.result_image_cache_limit,
             "write_statistics": self.write_statistics,
             "include_legacy_v2_logs": self.include_legacy_v2_logs,
             "enable_katate_difficulty_display": self.enable_katate_difficulty_display,

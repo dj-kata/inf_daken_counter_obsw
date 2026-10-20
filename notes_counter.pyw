@@ -486,7 +486,7 @@ class MainWindow(MainWindowUI):
                          f"INFINITAS daken counter {SWVER}\n\n"
                          "author: dj-kata")
     
-    def save_image(self, skip_no_update:bool=False, detailed_result:DetailedResult=None):
+    def save_image(self, skip_no_update:bool=False, detailed_result:DetailedResult=None, cache_only:bool=False):
         """
         ゲーム画面のキャプチャ画像を保存する。リザルト画面なら曲名などをファイル名に入れる。
         """
@@ -495,6 +495,7 @@ class MainWindow(MainWindowUI):
                 self.statusBar().showMessage("保存できるゲーム画面がありません", 3000)
                 return False
 
+            skip_save = False
             date = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
             if self.screen_reader.is_result():
                 detailed_result = detailed_result if detailed_result else self.screen_reader.read_result_screen()
@@ -511,8 +512,7 @@ class MainWindow(MainWindowUI):
                 if skip_no_update and (self.config.autosave_image_mode == config_autosave_image.only_updates): # 更新している場合のみ保存
                     if not result.is_updated():
                         logger.debug(f"skipped!, pre score:{result.pre_score}, bp:{result.pre_bp}, lamp:{result.pre_lamp}")
-                        self.statusBar().showMessage(f"伸びていないのでスキップします。", 10000)
-                        return False
+                        skip_save = True
 
                 if detailed_result.result.option:
                     filename = f"inf_{detailed_result.result.title}_{get_chart_name(detailed_result.result.play_style, detailed_result.result.difficulty, detailed_result.result.option.battle)}"
@@ -568,6 +568,18 @@ class MainWindow(MainWindowUI):
                     screen = cut_rival_area(screen, detailed_result.result_side)
 
                     filename += f"_cut{detailed_result.result_side.name[1:]}"
+
+            if self.screen_reader.is_result() and detailed_result and detailed_result.result:
+                try:
+                    self.result_database.cache_result_image(detailed_result.result, screen)
+                except Exception:
+                    # 一時保存に失敗しても、従来のファイル保存は続行する。
+                    logger.error(f"リザルト画像の一時保存エラー: {traceback.format_exc()}")
+            if cache_only:
+                return False
+            if skip_save:
+                self.statusBar().showMessage("伸びていないのでスキップします。", 10000)
+                return False
 
             # 画像を保存
             filename += '.png'
@@ -1075,12 +1087,14 @@ class MainWindow(MainWindowUI):
                         self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
                         self.fetch_bpim2_async(detailed_result)
 
-                        # 画像の保存
-                        if self.config.autosave_image_mode is not config_autosave_image.invalid:
-                            detailed_result.result = result # best_bpなどはaddで付与されるので渡しておく
-                            if self.save_image(skip_no_update=self.config.autosave_image_mode==config_autosave_image.only_updates, detailed_result=detailed_result):
-                                # 曲名の更新
-                                self.last_saved_song = get_title_with_chart(result.title, result.play_style, result.difficulty)
+                        # 全リザルトを一時保持し、条件に合うものだけファイルに保存する。
+                        detailed_result.result = result # best_bpなどはaddで付与されるので渡しておく
+                        if self.save_image(
+                            skip_no_update=self.config.autosave_image_mode == config_autosave_image.only_updates,
+                            detailed_result=detailed_result,
+                            cache_only=self.config.autosave_image_mode == config_autosave_image.invalid,
+                        ):
+                            self.last_saved_song = get_title_with_chart(result.title, result.play_style, result.difficulty)
 
                     # xml更新
                     self.result_database.broadcast_history_cursong_data(

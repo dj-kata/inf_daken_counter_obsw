@@ -196,6 +196,10 @@ class MobileScoreHTTPServer:
                     return
                 if path.startswith("/api/result-images/"):
                     timestamp = path.rsplit("/", 1)[-1]
+                    image_data = result_database.get_mobile_result_image_data(int(timestamp))
+                    if image_data is not None:
+                        self._send_body(HTTPStatus.OK, image_data, "image/png", cache_control="no-store")
+                        return
                     image_path = result_database.get_mobile_result_image_path(int(timestamp))
                     if image_path is None:
                         self._send_error(HTTPStatus.NOT_FOUND, "image not found")
