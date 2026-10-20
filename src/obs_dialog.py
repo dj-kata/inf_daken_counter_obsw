@@ -110,17 +110,21 @@ class OBSControlDialog(QDialog):
         monitor_group.setLayout(monitor_layout)
         
         self.monitor_label = QLabel(self.ui.obs.target_source_not_set)
+        self.monitor_label.setTextFormat(Qt.TextFormat.PlainText)
         self.monitor_label.setStyleSheet("font-weight: bold; color: blue;")
         monitor_layout.addWidget(QLabel(self.ui.obs.target_source_label))
         monitor_layout.addWidget(self.monitor_label)
         monitor_layout.addStretch()
         
         # クリアボタンを追加
-        clear_monitor_button = QPushButton(self.ui.button.clear)
-        clear_monitor_button.clicked.connect(self.clear_monitor_source)
-        monitor_layout.addWidget(clear_monitor_button)
+        self.clear_monitor_button = QPushButton(self.ui.button.clear)
+        self.clear_monitor_button.clicked.connect(self.clear_monitor_source)
+        monitor_layout.addWidget(self.clear_monitor_button)
         
         layout.addWidget(monitor_group)
+        self.monitor_hint = QLabel(self.ui.obs.monitor_capture_hint)
+        self.monitor_hint.setWordWrap(True)
+        layout.addWidget(self.monitor_hint)
         
         # 新しい制御設定を追加するグループ
         add_group = QGroupBox(self.ui.obs.new_settings_group)
@@ -131,6 +135,10 @@ class OBSControlDialog(QDialog):
         self.action_combo = QComboBox()
         for action_id, action_name in self.ACTIONS:
             self.action_combo.addItem(action_name, action_id)
+            if action_id == "set_monitor_source" and not self._uses_obs_capture():
+                item = self.action_combo.model().item(self.action_combo.count() - 1)
+                item.setEnabled(False)
+                item.setToolTip(self.ui.obs.monitor_capture_hint)
         self.action_combo.currentIndexChanged.connect(self.on_action_changed)
         add_layout.addRow(self.ui.obs.new_settings_action, self.action_combo)
         
@@ -329,6 +337,25 @@ class OBSControlDialog(QDialog):
         except Exception as e:
             logger.error(f"ソース一覧取得エラー: {e}")
     
+    def _uses_obs_capture(self):
+        return self.config.capture_method == "obs_websocket"
+
+    def update_monitor_display(self):
+        method = self.config.capture_method
+        if method == "spout":
+            text = self.ui.obs.monitor_spout_source.format(self.config.spout_sender_name)
+        elif method == "direct_window_legacy":
+            text = self.ui.feature.capture_method_direct_legacy
+        elif method == "direct_window":
+            text = self.ui.feature.capture_method_direct
+        elif self.config.monitor_source_name:
+            text = self.ui.obs.monitor_obs_source.format(self.config.monitor_source_name)
+        else:
+            text = self.ui.obs.target_source_not_set
+        self.monitor_label.setText(text)
+        self.clear_monitor_button.setEnabled(self._uses_obs_capture())
+        self.monitor_hint.setVisible(not self._uses_obs_capture())
+
     def on_action_changed(self):
         """アクション変更時に入力フィールドの有効/無効を切り替え"""
         action_id = self.action_combo.currentData()
@@ -362,6 +389,8 @@ class OBSControlDialog(QDialog):
         """設定を追加"""
         try:
             action_id = self.action_combo.currentData()
+            if action_id == "set_monitor_source" and not self._uses_obs_capture():
+                return
             action_name = self.action_combo.currentText()
             timing_id = self.timing_combo.currentData()
             timing_name = self.timing_combo.currentText()
@@ -428,13 +457,13 @@ class OBSControlDialog(QDialog):
                 
                 # 監視対象ソース名を更新
                 self.config.monitor_source_name = target_source
-                self.monitor_label.setText(target_source)
+                self.update_monitor_display()
                 
                 # 設定を追加(ただしテーブルには追加しない)
                 self.config.obs_control_settings.append(setting)
                 
                 logger.info(f"監視対象ソースを設定: {target_source} (シーン: {target_scene})")
-                QMessageBox.information(self, self.ui.obs.setting_complete, self.ui.obs.source_configured.format(target_source))
+                QMessageBox.information(self, self.ui.obs.setting_complete, self.ui.obs.source_configured.format(target_source=target_source))
                 
                 # フォームをリセット
                 self.reset_form()
@@ -575,10 +604,7 @@ class OBSControlDialog(QDialog):
         self.scene_collection_combo.blockSignals(False)
         
         # 監視対象ソースを表示
-        if self.config.monitor_source_name:
-            self.monitor_label.setText(self.config.monitor_source_name)
-        else:
-            self.monitor_label.setText(self.ui.obs.target_source_not_set)
+        self.update_monitor_display()
         
         # トリガーとアクションの逆引き辞書を作成
         timing_dict = {timing_id: name for timing_id, name in self.TIMINGS}
@@ -622,6 +648,8 @@ class OBSControlDialog(QDialog):
     
     def clear_monitor_source(self):
         """監視対象ソースをクリア"""
+        if not self._uses_obs_capture():
+            return
         reply = QMessageBox.question(
             self, "確認",
             "監視対象ソースをクリアしますか?",
@@ -637,7 +665,7 @@ class OBSControlDialog(QDialog):
             
             # 監視対象ソース名をクリア
             self.config.monitor_source_name = ""
-            self.monitor_label.setText(self.ui.obs.target_source_not_set)
+            self.update_monitor_display()
             
             logger.info("監視対象ソースをクリアしました")
             QMessageBox.information(self, self.ui.message.completed_title, self.ui.message.target_source_removed)

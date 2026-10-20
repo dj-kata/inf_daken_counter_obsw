@@ -14,14 +14,14 @@ class Config:
         self.websocket_host = "localhost"
         self.websocket_port = 4444
         self.websocket_password = ""
-        self.capture_method = "direct_window"
+        self.capture_method = "direct_window_legacy"
         """'direct_window' / 'direct_window_legacy' / 'obs_websocket' / 'spout'"""
         self.direct_capture_exe = "bm2dx.exe"
         """直接取得対象のプロセス名"""
         self.direct_capture_title = "beatmania IIDX INFINITAS"
         """直接取得対象のウィンドウタイトル。exe一致時のフォールバックも行う。"""
         self.direct_capture_all_monitors = False
-        """旧直接取得用。DXCAM直接取得では使用しない。"""
+        """GDI直接取得用。DXCAM直接取得では使用しない。"""
         self.autoload_offset = 4
         self.main_window_geometry = None
 
@@ -255,7 +255,7 @@ class Config:
         return bands
 
     def _load_capture_method(self, config_data: dict) -> str:
-        """旧バージョン設定はOBS取得、新規設定は直接取得に寄せる。"""
+        """旧バージョン設定はOBS取得、新規設定はGDI直接取得に寄せる。"""
         if config_data.get("random_lane_capture_backend") == "spout":
             return "spout"
         method = config_data.get("capture_method")
@@ -271,7 +271,7 @@ class Config:
         has_obs_scene_collection = bool(str(config_data.get("obs_scene_collection", "")).strip())
         if has_websocket_settings or has_obs_capture_settings or has_obs_control_settings or has_obs_scene_collection:
             return "obs_websocket"
-        return "direct_window"
+        return "direct_window_legacy"
     
     def save_window_position(self, x, y, width, height):
         """ウィンドウ位置を保存"""

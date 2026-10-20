@@ -867,7 +867,7 @@ class ConfigDialog(QDialog):
             top, bottom = self.config.random_lane_detection_bands[side]
             top_spin.setValue(top)
             height_spin.setValue(bottom - top)
-        capture_method = getattr(self.config, 'capture_method', 'direct_window')
+        capture_method = getattr(self.config, 'capture_method', 'direct_window_legacy')
         if capture_method == 'obs_websocket':
             self.capture_method_obs_radio.setChecked(True)
         elif capture_method == 'spout':
@@ -991,7 +991,7 @@ class ConfigDialog(QDialog):
         }
         self.config.capture_method = capture_method_by_id.get(
             self.capture_method_group.checkedId(),
-            'direct_window',
+            'direct_window_legacy',
         )
         self.config.direct_capture_all_monitors = self.direct_capture_all_monitors_check.isChecked()
         self.config.autoload_offset = self.autoload_offset_spin.value()

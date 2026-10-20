@@ -110,7 +110,7 @@ class OBSWebSocketManager(QObject):
     def is_direct_capture(self) -> bool:
         return bool(
             self.config
-            and getattr(self.config, 'capture_method', 'direct_window')
+            and getattr(self.config, 'capture_method', 'direct_window_legacy')
             in ('direct_window', 'direct_window_legacy')
         )
 
@@ -121,7 +121,7 @@ class OBSWebSocketManager(QObject):
         self.spout_capture.set_frame_callback(frame_callback)
 
     def _direct_capture_class(self):
-        if self.config and getattr(self.config, 'capture_method', 'direct_window') == 'direct_window_legacy':
+        if self.config and getattr(self.config, 'capture_method', 'direct_window_legacy') == 'direct_window_legacy':
             return DirectWindowCapture
         return DxcamWindowCapture
 
@@ -138,7 +138,7 @@ class OBSWebSocketManager(QObject):
         return bool(
             self.config
             and (
-                getattr(self.config, 'capture_method', 'direct_window') == 'obs_websocket'
+                getattr(self.config, 'capture_method', 'direct_window_legacy') == 'obs_websocket'
                 or self.is_obs_control_enabled()
             )
         )
