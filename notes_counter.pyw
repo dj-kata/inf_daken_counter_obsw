@@ -154,7 +154,8 @@ class MainWindow(MainWindowUI):
         self.obs_manager.connection_changed.connect(self.on_obs_connection_changed)
 
         self.random_lane_analysis = RandomLaneAnalysis(
-            enabled=self.config.enable_random_lane_analysis
+            enabled=self.config.enable_random_lane_analysis,
+            detection_bands=self.config.random_lane_detection_bands,
         )
         self.obs_manager.set_spout_frame_callback(self._process_random_lane_spout_frame)
         self._next_regular_loop_at = 0.0
@@ -415,6 +416,7 @@ class MainWindow(MainWindowUI):
         self.result_database.config = self.config
         self.result_database.song_database.load()  # 必要に応じて再読み込み
         self.random_lane_analysis.set_enabled(self.config.enable_random_lane_analysis)
+        self.random_lane_analysis.set_detection_bands(self.config.random_lane_detection_bands)
         self._update_main_timer_interval()
         if hasattr(self.result_database, "restart_mobile_http_server"):
             self.result_database.restart_mobile_http_server()

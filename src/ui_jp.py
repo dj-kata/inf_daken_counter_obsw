@@ -80,7 +80,10 @@ class UIText:
         enable_folder_updates = 'フォルダごとの更新数を表示(開発中)'
         enable_music_select_score_import = '選曲画面から自己ベストを登録する'
         enable_random_lane_analysis = 'RANDOMレーン配置を認識する（SP・Spout専用）'
-        enable_random_lane_analysis_tip = 'Spout経由でREGULARまたはMIRROR配置のノーツイベントを正規化して記録し、同じ譜面のRANDOM配置を解析します。最初にオプション画面を開いてからプレーしてください。'
+        enable_random_lane_analysis_tip = 'Spout経由でREGULARまたはMIRROR配置のノーツイベントを正規化して記録し、同じ譜面のRANDOM・R-RANDOM配置を解析します。最初にオプション画面を開いてからプレーしてください。'
+        random_lane_band_top = '検出帯上端（ROI内Y）'
+        random_lane_band_height = '高さ'
+        random_lane_band_tip = '1920×1080映像用。初期値は上端55・高さ20px。高さは1～300px。広げすぎると近接ノーツがつながる場合があります。変更は次のプレーから適用され、変更後の検出帯でREGULARまたはMIRRORの再登録が必要です。'
         
         other_group = 'その他'
         image_save_path = '画像保存先:'

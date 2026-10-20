@@ -80,7 +80,10 @@ class UIText:
         enable_folder_updates = 'Show folder update count(coming soon)'
         enable_music_select_score_import = 'Register best scores from song selection screen'
         enable_random_lane_analysis = 'Detect RANDOM lane mapping (SP, Spout only)'
-        enable_random_lane_analysis_tip = 'Via Spout, normalizes and records note events from a REGULAR or MIRROR play, then analyzes RANDOM mapping for the same chart. Open the options screen before playing.'
+        enable_random_lane_analysis_tip = 'Via Spout, normalizes and records note events from a REGULAR or MIRROR play, then analyzes RANDOM or R-RANDOM mapping for the same chart. Open the options screen before playing.'
+        random_lane_band_top = 'Band top (Y in ROI)'
+        random_lane_band_height = 'Height'
+        random_lane_band_tip = 'For 1920×1080 video. Defaults: top 55, height 20px. Height: 1–300px. A tall band may merge nearby notes. Changes apply from the next play and require recording REGULAR or MIRROR again with the new band.'
         
         other_group = 'Other'
         image_save_path = 'Image save path:'

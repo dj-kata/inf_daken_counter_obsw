@@ -35,6 +35,7 @@ class Config:
         self.enable_folder_updates = True # フォルダごとの更新数表示
         self.enable_music_select_score_import = True # 選曲画面から自己ベストを取り込む
         self.enable_random_lane_analysis = False # RANDOMレーン配置認識
+        self.random_lane_detection_bands = {"1P": [55, 75], "2P": [55, 75]}
         self.spout_sender_name = "Spout_OBS_Filter"
         
         # ウィンドウ位置設定
@@ -109,6 +110,9 @@ class Config:
                     self.enable_folder_updates = config_data.get("enable_folder_updates", False)
                     self.enable_music_select_score_import = config_data.get("enable_music_select_score_import", True)
                     self.enable_random_lane_analysis = config_data.get("enable_random_lane_analysis", False)
+                    self.random_lane_detection_bands = self._load_random_lane_detection_bands(
+                        config_data.get("random_lane_detection_bands")
+                    )
                     self.spout_sender_name = config_data.get(
                         "spout_sender_name",
                         config_data.get("random_lane_spout_sender_name", "Spout_OBS_Filter"),
@@ -196,6 +200,7 @@ class Config:
             "enable_folder_updates": self.enable_folder_updates,
             "enable_music_select_score_import": self.enable_music_select_score_import,
             "enable_random_lane_analysis": self.enable_random_lane_analysis,
+            "random_lane_detection_bands": self.random_lane_detection_bands,
             "spout_sender_name": self.spout_sender_name,
             "autoload_offset": self.autoload_offset,
             "main_window_geometry": self.main_window_geometry,
@@ -232,6 +237,19 @@ class Config:
         except Exception as e:
             logger.error(traceback.format_exc())
             print(f"設定ファイル保存エラー: {e}")
+
+    @staticmethod
+    def _load_random_lane_detection_bands(value):
+        bands = {"1P": [55, 75], "2P": [55, 75]}
+        if isinstance(value, dict):
+            for side in bands:
+                band = value.get(side)
+                if (isinstance(band, (list, tuple)) and len(band) == 2
+                        and all(type(v) is int for v in band)
+                        and 0 <= band[0] < band[1] <= 996
+                        and band[1] - band[0] <= 300):
+                    bands[side] = list(band)
+        return bands
 
     def _load_capture_method(self, config_data: dict) -> str:
         """旧バージョン設定はOBS取得、新規設定は直接取得に寄せる。"""

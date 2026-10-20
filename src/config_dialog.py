@@ -264,6 +264,34 @@ class ConfigDialog(QDialog):
         )
         game_capture_layout.addWidget(self.enable_random_lane_analysis_check)
 
+        band_form = QFormLayout()
+        self.random_lane_band_controls = {}
+        for side in ('1P', '2P'):
+            row = QHBoxLayout()
+            top_spin = QSpinBox()
+            top_spin.setRange(0, 995)
+            height_spin = QSpinBox()
+            height_spin.setRange(1, 300)
+            top_spin.setSuffix(' px')
+            height_spin.setSuffix(' px')
+            # ROI starts at Y=84 in a 1080px frame. Keep the band inside it.
+            top_spin.valueChanged.connect(
+                lambda top, height=height_spin: height.setMaximum(min(300, 996 - top))
+            )
+            row.addWidget(QLabel(self.ui.feature.random_lane_band_top))
+            row.addWidget(top_spin)
+            row.addWidget(QLabel(self.ui.feature.random_lane_band_height))
+            row.addWidget(height_spin)
+            band_form.addRow(f'{side}:', row)
+            self.random_lane_band_controls[side] = (top_spin, height_spin)
+        game_capture_layout.addLayout(band_form)
+        band_tip = QLabel(self.ui.feature.random_lane_band_tip)
+        band_tip.setWordWrap(True)
+        game_capture_layout.addWidget(band_tip)
+        self.enable_random_lane_analysis_check.toggled.connect(
+            self._update_random_lane_band_enabled
+        )
+
         layout.addWidget(game_capture_group)
         
         # ツイート機能グループ
@@ -371,6 +399,14 @@ class ConfigDialog(QDialog):
             self.enable_random_lane_analysis_check.setEnabled(spout_enabled)
             if not spout_enabled:
                 self.enable_random_lane_analysis_check.setChecked(False)
+        self._update_random_lane_band_enabled()
+
+    def _update_random_lane_band_enabled(self, *_args):
+        spout_enabled = self.capture_method_group.checkedId() == 3
+        if hasattr(self, 'random_lane_band_controls'):
+            for controls in self.random_lane_band_controls.values():
+                for control in controls:
+                    control.setEnabled(spout_enabled and self.enable_random_lane_analysis_check.isChecked())
 
     def on_browse_clicked(self):
         """フォルダ参照ボタン押下時の処理"""
@@ -818,6 +854,10 @@ class ConfigDialog(QDialog):
         self.enable_random_lane_analysis_check.setChecked(
             bool(getattr(self.config, 'enable_random_lane_analysis', False))
         )
+        for side, (top_spin, height_spin) in self.random_lane_band_controls.items():
+            top, bottom = self.config.random_lane_detection_bands[side]
+            top_spin.setValue(top)
+            height_spin.setValue(bottom - top)
         capture_method = getattr(self.config, 'capture_method', 'direct_window')
         if capture_method == 'obs_websocket':
             self.capture_method_obs_radio.setChecked(True)
@@ -928,6 +968,10 @@ class ConfigDialog(QDialog):
         self.config.enable_folder_updates = self.enable_folder_updates_check.isChecked()
         self.config.enable_music_select_score_import = self.enable_music_select_score_import_check.isChecked()
         self.config.enable_random_lane_analysis = self.enable_random_lane_analysis_check.isChecked()
+        self.config.random_lane_detection_bands = {
+            side: [top.value(), top.value() + height.value()]
+            for side, (top, height) in self.random_lane_band_controls.items()
+        }
         self.config.spout_sender_name = self.spout_sender_edit.text().strip() or 'Spout_OBS_Filter'
         capture_method_by_id = {
             0: 'direct_window',

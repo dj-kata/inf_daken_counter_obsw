@@ -11,6 +11,7 @@ import json
 import sqlite3
 import threading
 import time
+from contextlib import closing
 from functools import wraps
 from pathlib import Path
 
@@ -286,7 +287,8 @@ class RandomMappingAnalyzer:
 class RandomLaneAnalysis:
     """Coordinates capture frames, chart persistence, and overlay state."""
 
-    def __init__(self, enabled=False, db_path="random_lane.sqlite3", state_path="template/random_lane_state.js"):
+    def __init__(self, enabled=False, db_path="random_lane.sqlite3", state_path="template/random_lane_state.js",
+                 detection_bands=None):
         self._lock = threading.RLock()
         self.enabled = None
         self.db_path = Path(db_path)
@@ -306,7 +308,31 @@ class RandomLaneAnalysis:
         self._notification = None
         self._last_state = None
         self.capture_supported = True
+        self.set_detection_bands(detection_bands)
         self.set_enabled(enabled)
+
+    @_synchronized
+    def set_detection_bands(self, bands=None):
+        """Apply per-side bands for the next play, cancelling any active capture."""
+        bands = bands or {}
+        profiles = {}
+        for side, roi in (("1P", DEFAULT_ROI_1P), ("2P", DEFAULT_ROI_2P)):
+            top, bottom = map(int, bands.get(side, DEFAULT_BAND))
+            if not (0 <= top < bottom <= 1080 - roi[1] and bottom - top <= 300):
+                raise ValueError(f"Invalid {side} detection band: {(top, bottom)}")
+            profiles[side] = (top, bottom)
+        if all(self.detectors[side].band == band for side, band in profiles.items()):
+            return
+        for side, band in profiles.items():
+            detector = self.detectors[side]
+            x, y, width, _ = detector.roi
+            detector.roi = (x, y, width, max(DEFAULT_ROI_1P[3], band[1]))
+            detector.band = band
+            detector.reset()
+        self._reset_session(clear_result_layout=True)
+        if self.enabled:
+            self._publish("waiting" if self.capture_supported else "unavailable",
+                          message="検出帯を変更しました。次のSPプレーから適用します")
 
     @_synchronized
     def set_enabled(self, enabled: bool):
@@ -362,6 +388,11 @@ class RandomLaneAnalysis:
 
         self.side = side
         self.chart_key = f"{title}\x1f{style}\x1f{difficulty}"
+        # Keep existing charts at the default band. Other bands need their own
+        # event sequences; returning to the default restores the original data.
+        band = self.detectors[side].band
+        if band != DEFAULT_BAND:
+            self.chart_key += f"\x1fband={band[0]}:{band[1]}"
         self.chart_meta = {"title": title, "style": style, "difficulty": difficulty, "level": level}
         self.detectors[side].reset()
 
@@ -393,7 +424,7 @@ class RandomLaneAnalysis:
                 layout=self.result_layout,
                 message=message,
             )
-        elif arrange == "RANDOM":
+        elif arrange in ("RANDOM", "R-RANDOM"):
             events = self._load_chart(self.chart_key)
             if not events:
                 self._publish(
@@ -409,7 +440,7 @@ class RandomLaneAnalysis:
                 "analyzing",
                 title=title,
                 chart=difficulty,
-                message=f"RANDOM配置を解析中（最低{MIN_ANALYSIS_EVENTS}イベント）",
+                message=f"{arrange}配置を解析中（最低{MIN_ANALYSIS_EVENTS}イベント）",
             )
         else:
             self._publish("unsupported", title=title, chart=difficulty, message=f"{arrange}は現在対象外です")
@@ -509,7 +540,7 @@ class RandomLaneAnalysis:
             self.result_layout = None
 
     def _ensure_database(self):
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.execute(
                 """CREATE TABLE IF NOT EXISTS normal_charts (
                     chart_key TEXT PRIMARY KEY,
@@ -532,7 +563,7 @@ class RandomLaneAnalysis:
                 )
 
     def _load_chart(self, chart_key):
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             row = conn.execute(
                 "SELECT note_events FROM normal_charts "
                 "WHERE chart_key=? AND data_version=?",
@@ -541,7 +572,7 @@ class RandomLaneAnalysis:
         return json.loads(row[0]) if row else None
 
     def _save_chart(self, chart_key, meta, events):
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
             conn.execute(
                 """INSERT INTO normal_charts
                    (chart_key,title,style,difficulty,level,note_events,created_at,data_version)
