@@ -68,6 +68,53 @@ class RandomLaneIntegrationTests(unittest.TestCase):
         self.assertTrue(analyzer.failed)
         self.assertIsNone(analyzer.layout)
 
+    def test_partial_colors_and_digits_follow_all_remaining_candidates(self):
+        analyzer = lane.RandomMappingAnalyzer([
+            {'event_lanes': [1, 3, 5, 7]},
+            {'event_lanes': [1]},
+            {'event_lanes': [5]},
+        ])
+        self.assertIsNone(analyzer.get_partial_layout())
+        analyzer.add([2, 3, 5, 6])
+        self.assertIsNone(analyzer.layout)
+        self.assertEqual(analyzer.get_partial_layout(), 'BWWBWWB')
+        analyzer.add([2])
+        self.assertEqual(analyzer.get_partial_layout(), 'B1WBWWB')
+        analyzer.add([3])
+        self.assertEqual(analyzer.get_partial_layout(), 'B15BWWB')
+
+    def test_single_known_lane_is_shown_without_guessing_other_colors(self):
+        analyzer = lane.RandomMappingAnalyzer([{'event_lanes': [1]}])
+        analyzer.add([4])
+        self.assertEqual(analyzer.get_partial_layout(), '???1???')
+
+    def test_partial_layout_survives_play_end_and_resets_for_next_play(self):
+        self.save_chart()
+        self.start('RANDOM')
+        self.analysis.detectors['1P'].detect = lambda image: (1, [4])
+        self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
+        self.assertEqual(self.analysis._last_state['phase'], 'partial')
+        self.assertEqual(self.analysis._last_state['layout'], '???1???')
+        self.assertEqual(self.analysis._last_state['option'], 'RANDOM')
+        self.analysis.end_play()
+        self.assertEqual(self.analysis.get_result_lane_layout(), '???1???')
+        self.start('RANDOM')
+        self.assertIsNone(self.analysis.get_result_lane_layout())
+
+    def test_contradiction_discards_previously_displayed_partial_layout(self):
+        self.save_chart()
+        self.start('RANDOM')
+        self.analysis.detectors['1P'].detect = lambda image: (1, [4])
+        self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
+        self.assertEqual(self.analysis.get_result_lane_layout(), '???1???')
+        # A second original lane cannot occupy the same position as lane 1.
+        self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
+        self.assertEqual(self.analysis._last_state['phase'], 'failed')
+        self.assertEqual(self.analysis._last_state['layout'], '')
+        self.assertIsNone(self.analysis.get_result_lane_layout())
+        self.analysis.end_play()
+        self.assertIsNone(self.analysis.get_result_lane_layout())
+
     def test_band_change_isolates_charts_and_restores_defaults(self):
         self.save_chart()
         original_key = self.analysis.chart_key

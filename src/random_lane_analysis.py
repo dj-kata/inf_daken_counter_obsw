@@ -175,6 +175,31 @@ class RandomMappingAnalyzer:
         elif len(self.candidates) == 1:
             self.layout = _layout_text(self.candidates[0])
 
+    def get_partial_layout(self):
+        """Project only facts shared by every surviving mapping, in display order.
+
+        Digits identify original lanes; W/B identify only their key color, and
+        ? means neither the lane nor its color is determined.
+        """
+        if not self.candidates:
+            return None
+        positions = [set() for _ in LANES]
+        for permutation in self.candidates:
+            for original, target in enumerate(permutation, 1):
+                positions[target - 1].add(original)
+        layout = []
+        for originals in positions:
+            if len(originals) == 1:
+                layout.append(str(next(iter(originals))))
+            elif all(lane % 2 for lane in originals):
+                layout.append("W")
+            elif all(lane % 2 == 0 for lane in originals):
+                layout.append("B")
+            else:
+                layout.append("?")
+        text = "".join(layout)
+        return text if text != "???????" else None
+
 
 class RandomLaneAnalysis:
     """Coordinates capture frames, chart persistence, and overlay state."""
@@ -279,6 +304,7 @@ class RandomLaneAnalysis:
             return
 
         self.side = side
+        self.option_name = arrange
         self.chart_key = f"{title}\x1f{style}\x1f{difficulty}"
         # Keep existing charts at the default band. Other bands need their own
         # event sequences; returning to the default restores the original data.
@@ -381,6 +407,8 @@ class RandomLaneAnalysis:
                 candidates_before,
                 len(self.analyzer.candidates),
             )
+            previous_layout = self.result_layout
+            self.result_layout = self.analyzer.get_partial_layout()
             if self.analyzer.layout:
                 self.result_layout = self.analyzer.layout
                 self.mode = None
@@ -395,7 +423,13 @@ class RandomLaneAnalysis:
                 self._publish(
                     "failed",
                     **self.chart_meta,
+                    layout=self.result_layout or "",
                     message=f"RANDOM配置を確定できませんでした（{reason}）",
+                )
+            elif self.result_layout and self.result_layout != previous_layout:
+                self._publish(
+                    "partial", **self.chart_meta, layout=self.result_layout,
+                    message="RANDOM配置の一部を特定しました",
                 )
 
     @_synchronized
@@ -414,12 +448,13 @@ class RandomLaneAnalysis:
 
     @_synchronized
     def get_result_lane_layout(self):
-        """現在のプレーで確定した配置をOneResult保存用の文字列で返す。"""
+        """現在のプレーの配置（W/B/?を含む部分配置も可）を保存用に返す。"""
         return self.result_layout
 
     def _reset_session(self, *, clear_result_layout=False):
         self.mode = None
         self.side = None
+        self.option_name = ""
         self.chart_key = None
         self.chart_meta = None
         self.recorder = None
@@ -485,6 +520,7 @@ class RandomLaneAnalysis:
                  level=None, layout="", message=""):
         payload = {
             "phase": phase,
+            "option": self.option_name,
             "side": self.side,
             "title": title or "",
             "chart": chart or difficulty or "",

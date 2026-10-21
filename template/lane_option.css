@@ -48,6 +48,10 @@
     background: #0066cc;
 }
 
+.lane-option-key-unknown {
+    background: #777;
+}
+
 /* Scale the whole group together so every key keeps identical metrics. */
 .lane-options-large .lane-option {
     font-size: 118%;

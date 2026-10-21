@@ -151,3 +151,53 @@ test('random_lane stays numeric even with the default option-name setting', () =
     assert.equal(digits(elements.get('layout').innerHTML).length, 7);
     assert.doesNotMatch(elements.get('layout').innerHTML, /lane-option-choice/);
 });
+
+
+test('partial layouts render color-only keys, known numbers, and unknown keys', () => {
+    const {context} = load();
+    const keys = html => Array.from(html.matchAll(/lane-option-key-(\w+)">([1-7]?)<\/span>/g));
+    const colors = keys(context.renderLaneOptionToken('RANDOM', 'BWWBWWB'));
+    assert.deepEqual(colors.map(key => key[1]), ['blue', 'white', 'white', 'blue', 'white', 'white', 'blue']);
+    assert.ok(colors.every(key => key[2] === ''));
+    const partial = keys(context.renderLaneOptionToken('R-RANDOM', 'B15BWWB'));
+    assert.deepEqual(partial.map(key => key[2]), ['', '1', '5', '', '', '', '']);
+    assert.equal(partial[1][1], 'red');
+    const single = keys(context.renderLaneOptionToken('RANDOM', '???1???'));
+    assert.equal(single.filter(key => key[1] === 'unknown').length, 6);
+    for (const invalid of ['???????', 'WWWWWWW', 'BBBBBBB', '11?????', '<script']) {
+        assert.equal(context.renderLaneOption('RANDOM', invalid), 'RANDOM');
+    }
+});
+
+test('partial results appear in both histories and today results', () => {
+    for (const file of ['template/history_cursong.html', 'template/v2/history_cursong.html']) {
+        const {context, elements} = load(file);
+        context.updateHistory({difficulty: 'SPA', notes: 1000, best_score: 1500,
+            best_score_opt: 'RANDOM', best_score_lane_layout: '???1???',
+            items: [{opt: 'RANDOM', lane_layout: 'BWWBWWB'}]});
+        assert.match(elements.get('#result tbody').innerHTML, /lane-option-key-blue"><\/span>/);
+    }
+    const {context, elements} = load('template/today_result.html');
+    context.updateTodayUpdates({items: [{opt: 'RANDOM', lane_layout: 'B15BWWB'}]});
+    assert.equal(digits(elements.get('results-tbody').innerHTML).map(key => key[2]).join(''), '15');
+});
+
+test('live overlay shows partial layout, falls back to option, and retains partial when idle', () => {
+    const {context, elements, properties} = load('template/random_lane.html');
+    context.window.INFDC_RANDOM_LANE_STATE = {phase: 'analyzing', option: 'R-RANDOM'};
+    context.render();
+    assert.equal(elements.get('layout').innerHTML, 'R-RANDOM');
+    context.window.INFDC_RANDOM_LANE_STATE = {phase: 'partial', option: 'R-RANDOM', layout: 'B15BWWB'};
+    context.render();
+    const partial = elements.get('layout').innerHTML;
+    assert.equal(digits(partial).map(key => key[2]).join(''), '15');
+    context.window.INFDC_RANDOM_LANE_STATE = {phase: 'waiting'};
+    context.render();
+    assert.equal(elements.get('layout').innerHTML, '');
+    properties['--show-when-idle'] = '1';
+    context.render();
+    assert.equal(elements.get('layout').innerHTML, partial.replaceAll('R-RANDOM:', 'RANDOM:'));
+    context.window.INFDC_RANDOM_LANE_STATE = {phase: 'failed', option: 'RANDOM', layout: ''};
+    context.render();
+    assert.equal(elements.get('layout').innerHTML, 'RANDOM');
+});

@@ -15,14 +15,22 @@ function renderLaneOptionToken(token, savedLayout) {
     } else if (['RANDOM', 'RAN', 'R-RANDOM', 'R-RAN'].includes(option)) {
         layout = savedLayout;
     }
-    if (typeof layout !== 'string' || !/^[1-7]{7}$/.test(layout) || new Set(layout).size !== 7) {
+    // W/B carry a known key color; ? carries no information for that position.
+    if (typeof layout !== 'string' || !/^[1-7WB?]{7}$/.test(layout) || layout === '???????') {
         return '';
     }
+    var known = Array.from(layout).filter(lane => /[1-7]/.test(lane));
+    var whites = Array.from(layout).filter(lane => lane === 'W' || /[1357]/.test(lane)).length;
+    var blues = Array.from(layout).filter(lane => lane === 'B' || /[246]/.test(lane)).length;
+    if (new Set(known).size !== known.length || whites > 4 || blues > 3) return '';
+
     var label = escapeLaneOptionText(option + ': ' + layout);
     return '<span class="lane-option" role="img" aria-label="' + label + '" title="' + label + '">' +
         Array.from(layout, function(lane) {
-            var color = lane === '1' ? 'red' : Number(lane) % 2 === 0 ? 'blue' : 'white';
-            return '<span class="lane-option-key lane-option-key-' + color + '">' + lane + '</span>';
+            var color = lane === '?' ? 'unknown' : lane === 'W' ? 'white' : lane === 'B' ? 'blue' :
+                lane === '1' ? 'red' : Number(lane) % 2 === 0 ? 'blue' : 'white';
+            var digit = /[1-7]/.test(lane) ? lane : '';
+            return '<span class="lane-option-key lane-option-key-' + color + '">' + digit + '</span>';
         }).join('') + '</span>';
 }
 
