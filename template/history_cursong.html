@@ -7,6 +7,8 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="../out/websocket.css">
+        <link rel="stylesheet" href="lane_option.css">
+        <script src="lane_option.js"></script>
         <style>
             :root {
                 --max-rows: 20;
@@ -726,7 +728,7 @@
         score_html += '<div class="best-value">' + best_score + '</div>';
         score_html += '<div class="best-right-column">';
         score_html += '<div class="best-detail">(' + (best_score_rate * 100).toFixed(2) + '%)</div>';
-        score_html += '<div class="best-option">' + best_score_opt + '</div>';
+        score_html += '<div class="best-option">' + renderLaneOption(best_score_opt, data.best_score_lane_layout) + '</div>';
         score_html += '</div>';
         score_html += '</div>';
         document.querySelector('.score-info').innerHTML = score_html;
@@ -770,13 +772,13 @@
             bp_html += '<div class="best-value"></div>';
             bp_html += '<div class="best-right-column">';
             bp_html += '<div class="best-detail">( ??? %)</div>';
-            bp_html += '<div class="best-option">' + best_bp_opt + '</div>';
+            bp_html += '<div class="best-option">' + renderLaneOption(best_bp_opt, data.best_bp_lane_layout) + '</div>';
         }else{
             bp_html += '<div class="best-item">';
             bp_html += '<div class="best-value">' + best_bp + '</div>';
             bp_html += '<div class="best-right-column">';
             bp_html += '<div class="best-detail">(' + best_bp_rate + '%)</div>';
-            bp_html += '<div class="best-option">' + best_bp_opt + '</div>';
+            bp_html += '<div class="best-option">' + renderLaneOption(best_bp_opt, data.best_bp_lane_layout) + '</div>';
         }
         bp_html += '</div>';
         bp_html += '</div>';
@@ -992,7 +994,7 @@
                 out += '<td>' + lamp_html + '</td>';
                 out += '<td>bp' + bp + '</td>';
                 out += '<td></td>';
-                out += '<td>' + opt + '</td>';
+                out += '<td>' + renderLaneOption(opt, item.lane_layout) + '</td>';
                 out += '</tr>';
             } else {
                 out += '<tr>';
@@ -1000,7 +1002,7 @@
                 out += '<td>' + lamp_html + '</td>';
                 out += '<td>' + score + '</td>';
                 out += '<td>' + rankdiff + '</td>';
-                out += '<td>' + opt + '</td>';
+                out += '<td>' + renderLaneOption(opt, item.lane_layout) + '</td>';
                 out += '</tr>';
             }
 
@@ -1022,7 +1024,7 @@
         }
     });
     </script>
-    <body>
+    <body class="lane-options-large">
         <div id="all">
             <!-- タイトルカード -->
             <div class="title-card">

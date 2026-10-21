@@ -323,6 +323,7 @@ class OneResult:
                     average_release:average_release=None,
                     bpim2:float=None,
                     image_path:str=None,
+                    lane_layout:str | None=None,
                 ):
         self.title = title
         '''曲名'''
@@ -363,6 +364,8 @@ class OneResult:
         '''BPIM2 APIから取得したBPI値。未取得または未対応の場合はNone。'''
         self.image_path = image_path
         '''保存済みリザルト画像のパス。画像本体ではなくパス文字列だけを保持する。'''
+        self.lane_layout = lane_layout
+        '''レーン配置。SPは1234567形式。将来のDPは左右を/で区切る（例: 1234567/7654321）。'''
 
     def is_updated(self) -> bool:
         """更新があるかどうかを返す
@@ -419,7 +422,7 @@ class OneResult:
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""
         if self.lamp and self.score:
-            return f"detect_mode:{self.detect_mode.name}, song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, lamp:{self.lamp.name}, bp:{self.bp}, judge:{self.judge}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, is_updated:{self.is_updated()}(pre score:{self.pre_score}, bp:{self.pre_bp}, lamp:{self.pre_lamp}), notes:{self.notes}, is_arcade:{self.is_arcade}, timestamp:{datetime.datetime.fromtimestamp(self.timestamp)}"
+            return f"detect_mode:{self.detect_mode.name}, song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, lamp:{self.lamp.name}, bp:{self.bp}, judge:{self.judge}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, lane_layout:{getattr(self, 'lane_layout', None)}, is_updated:{self.is_updated()}(pre score:{self.pre_score}, bp:{self.pre_bp}, lamp:{self.pre_lamp}), notes:{self.notes}, is_arcade:{self.is_arcade}, timestamp:{datetime.datetime.fromtimestamp(self.timestamp)}"
         else:
             return "not a result data!"
 

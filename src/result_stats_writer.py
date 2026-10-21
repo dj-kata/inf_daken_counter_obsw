@@ -82,6 +82,7 @@ class ResultStatsWriter:
         sp12_hard:clear_lamp=None,
         songinfo=None,
         enable_katate_difficulty_display=False,
+        lane_layout=None,
         position=(600, 405),  # (x, y) 座標で指定
         box_width=790,     # ボックス幅（Noneで画像幅）
         box_height=430,
@@ -97,6 +98,7 @@ class ResultStatsWriter:
         """
         # 画像を開く
         max_score = max_notes * 2
+        lane_layout_text = str(lane_layout).strip() if lane_layout else ""
         
         # RGBA変換（透明度サポート）
         if img.mode != 'RGBA':
@@ -124,7 +126,7 @@ class ResultStatsWriter:
         panel_left = x - padding_x
         panel_top = y - 12
         panel_right = panel_left + box_width
-        panel_bottom = y + box_height
+        panel_bottom = y + box_height + (50 if lane_layout_text else 0)
 
         # 背景ボックスを描画（半透明、透明度を指定可能）
         self._draw_rounded_rectangle(
@@ -180,6 +182,10 @@ class ResultStatsWriter:
         self._draw_metric(draw, content_x, y, col_w, "RATE", f"{rate:.2f}%", (255, 245, 90))
         self._draw_metric(draw, content_x + col_w + col_gap, y, col_w, bpi_label, bpi_text, (255, 245, 90))
         y += row_h + 3
+
+        if lane_layout_text:
+            self._draw_lane_layout(draw, content_x, y, content_w, lane_layout_text)
+            y += row_h
 
         arena_text = self._format_arena_average_text(bpi_arena_averages, bpi_arena_average_text)
         if arena_text:
@@ -268,6 +274,64 @@ class ResultStatsWriter:
         value_text = self._truncate_text(draw, value, self.main_font if not compact else self.sub_font, width - label_w)
         self._draw_text_with_glow(draw, (value_x, y), value_text, self.main_font if not compact else self.sub_font,
                                   fill=value_fill, glow_color=(25, 45, 25))
+
+    def _draw_lane_layout(self, draw, x, y, width, layout):
+        """HTMLのレーン表示と同じ配色で配置を描画する。"""
+        label = "LANE"
+        label_bbox = draw.textbbox((0, 0), label, font=self.label_font)
+        measured_label_w = label_bbox[2] - label_bbox[0]
+        label_w = max(92, measured_label_w + 18)
+        draw.text((x, y + 6), label, font=self.label_font, fill=(170, 190, 205))
+
+        cursor_x = x + label_w
+        max_x = x + width
+        key_w = 34
+        key_h = 40
+        key_gap = 2
+        group_gap = 12
+
+        for character in layout:
+            if character == "/":
+                slash_bbox = draw.textbbox((0, 0), character, font=self.sub_font)
+                slash_w = slash_bbox[2] - slash_bbox[0]
+                if cursor_x + slash_w + group_gap > max_x:
+                    break
+                self._draw_text_with_glow(
+                    draw,
+                    (cursor_x + group_gap // 2, y + 3),
+                    character,
+                    self.sub_font,
+                    fill=(210, 220, 230),
+                    glow_color=(20, 20, 20),
+                )
+                cursor_x += slash_w + group_gap
+                continue
+
+            if character not in "1234567" or cursor_x + key_w > max_x:
+                break
+            if character == "1":
+                background = (255, 255, 255)
+                foreground = (208, 0, 0)
+            elif int(character) % 2 == 0:
+                background = (0, 102, 204)
+                foreground = (255, 255, 0)
+            else:
+                background = (255, 255, 255)
+                foreground = (0, 0, 0)
+
+            draw.rectangle(
+                (cursor_x, y, cursor_x + key_w, y + key_h),
+                fill=background,
+                outline=(0, 0, 0),
+                width=2,
+            )
+            number_bbox = draw.textbbox((0, 0), character, font=self.main_font)
+            number_w = number_bbox[2] - number_bbox[0]
+            number_h = number_bbox[3] - number_bbox[1]
+            number_x = cursor_x + (key_w - number_w) / 2 - number_bbox[0]
+            number_y = y + (key_h - number_h) / 2 - number_bbox[1]
+            draw.text((number_x, number_y), character, font=self.main_font, fill=foreground)
+            cursor_x += key_w + key_gap
 
     def _draw_arena_average(self, draw, x, y, width, averages, fallback_text, ex_score):
         value_x = x

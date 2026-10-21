@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>RANDOM lane</title>
+  <link rel="stylesheet" href="lane_option.css">
+  <script src="lane_option.js"></script>
+  <style>
+    :root {
+      /* 1: 最後の配置（未取得なら調整用1234567）を常時表示、0: 確定したプレー中のみ */
+      --show-when-idle: 0;
+    }
+    html, body { margin: 0; background: transparent; overflow: hidden; }
+    #layout {
+      display: flex; width: max-content; font-size: 90px;
+    }
+  </style>
+</head>
+<body>
+  <div id="layout"></div>
+  <script>
+    const lastLayoutKey = 'infdc.randomLane.lastLayout';
+    let lastLayout = '';
+    // Keep the last display available when OBS reloads the browser source, too.
+    try {
+      lastLayout = localStorage.getItem(lastLayoutKey) || '';
+    } catch (_) {
+      // Some local-file browser sources do not allow storage.
+    }
+
+    function render() {
+      const state = window.INFDC_RANDOM_LANE_STATE || {};
+      const layout = document.getElementById('layout');
+      const current = state.phase === 'confirmed'
+        ? renderLaneOptionToken('RANDOM', state.layout) : '';
+      if (current && state.layout !== lastLayout) {
+        lastLayout = state.layout;
+        try {
+          localStorage.setItem(lastLayoutKey, lastLayout);
+        } catch (_) {}
+      }
+      const showWhenIdle = getComputedStyle(document.body)
+        .getPropertyValue('--show-when-idle').trim() === '1';
+      const retained = renderLaneOptionToken('RANDOM', lastLayout);
+      layout.innerHTML = current || (showWhenIdle
+        ? retained || renderLaneOptionToken('REGULAR') : '');
+    }
+    function reloadState() {
+      const old = document.getElementById('random-lane-state');
+      if (old) old.remove();
+      const script = document.createElement('script');
+      script.id = 'random-lane-state';
+      script.src = 'random_lane_state.js?t=' + Date.now();
+      script.onload = render;
+      script.onerror = render;
+      document.head.appendChild(script);
+    }
+    render();
+    reloadState();
+    setInterval(reloadState, 250);
+  </script>
+</body>
+</html>

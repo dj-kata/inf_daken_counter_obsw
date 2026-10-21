@@ -14,14 +14,14 @@ class Config:
         self.websocket_host = "localhost"
         self.websocket_port = 4444
         self.websocket_password = ""
-        self.capture_method = "direct_window"
-        """'direct_window' = DXCAM直接取得 / 'direct_window_legacy' = 旧直接取得 / 'obs_websocket' = OBS WebSocket経由"""
+        self.capture_method = "direct_window_legacy"
+        """'direct_window' / 'direct_window_legacy' / 'obs_websocket' / 'spout'"""
         self.direct_capture_exe = "bm2dx.exe"
         """直接取得対象のプロセス名"""
         self.direct_capture_title = "beatmania IIDX INFINITAS"
         """直接取得対象のウィンドウタイトル。exe一致時のフォールバックも行う。"""
         self.direct_capture_all_monitors = False
-        """旧直接取得用。DXCAM直接取得では使用しない。"""
+        """GDI直接取得用。DXCAM直接取得では使用しない。"""
         self.autoload_offset = 4
         self.main_window_geometry = None
 
@@ -34,6 +34,9 @@ class Config:
         self.enable_judge = False # 判定部分
         self.enable_folder_updates = True # フォルダごとの更新数表示
         self.enable_music_select_score_import = True # 選曲画面から自己ベストを取り込む
+        self.enable_random_lane_analysis = False # RANDOMレーン配置認識
+        self.random_lane_detection_bands = {"1P": [55, 75], "2P": [55, 75]}
+        self.spout_sender_name = "Spout_OBS_Filter"
         
         # ウィンドウ位置設定
         self.main_window_x = 100
@@ -72,6 +75,7 @@ class Config:
         self.target_music_packs = [pack.name for pack in music_pack if pack != music_pack.unknown]
         
         # 画像保存設定
+        self.result_image_cache_limit = 0  # 0: 起動中の全画像を保持
         self.autosave_image_mode = config_autosave_image.only_updates  # 画像保存条件
         self.modify_rivalarea_mode = config_modify_rivalarea.invalid  # ライバル欄編集方法
         self.write_statistics = False  # 統計情報を書き込むか
@@ -106,6 +110,14 @@ class Config:
                     self.enable_judge = config_data.get("enable_judge", True)
                     self.enable_folder_updates = config_data.get("enable_folder_updates", False)
                     self.enable_music_select_score_import = config_data.get("enable_music_select_score_import", True)
+                    self.enable_random_lane_analysis = config_data.get("enable_random_lane_analysis", False)
+                    self.random_lane_detection_bands = self._load_random_lane_detection_bands(
+                        config_data.get("random_lane_detection_bands")
+                    )
+                    self.spout_sender_name = config_data.get(
+                        "spout_sender_name",
+                        config_data.get("random_lane_spout_sender_name", "Spout_OBS_Filter"),
+                    )
                     self.autoload_offset = config_data.get("autoload_offset", 0)
                     self.main_window_geometry = config_data.get("main_window_geometry", None)
                     
@@ -159,6 +171,7 @@ class Config:
                     # 画像保存設定
                     self.autosave_image_mode = config_autosave_image(config_data.get('autosave_image_mode', config_autosave_image.invalid.value))
                     self.modify_rivalarea_mode = config_modify_rivalarea(config_data.get('modify_rivalarea_mode', config_modify_rivalarea.invalid.value))
+                    self.result_image_cache_limit = max(0, int(config_data.get('result_image_cache_limit', 0)))
                     self.write_statistics = config_data.get('write_statistics', False)
                     self.include_legacy_v2_logs = config_data.get('include_legacy_v2_logs', False)
                     self.enable_katate_difficulty_display = config_data.get('enable_katate_difficulty_display', False)
@@ -188,6 +201,9 @@ class Config:
             "enable_judge": self.enable_judge,
             "enable_folder_updates": self.enable_folder_updates,
             "enable_music_select_score_import": self.enable_music_select_score_import,
+            "enable_random_lane_analysis": self.enable_random_lane_analysis,
+            "random_lane_detection_bands": self.random_lane_detection_bands,
+            "spout_sender_name": self.spout_sender_name,
             "autoload_offset": self.autoload_offset,
             "main_window_geometry": self.main_window_geometry,
             "obs_control_settings": self.obs_control_settings,
@@ -202,6 +218,7 @@ class Config:
             "target_music_packs": self.target_music_packs,
             "autosave_image_mode": self.autosave_image_mode.value,
             "modify_rivalarea_mode": self.modify_rivalarea_mode.value,
+            "result_image_cache_limit": self.result_image_cache_limit,
             "write_statistics": self.write_statistics,
             "include_legacy_v2_logs": self.include_legacy_v2_logs,
             "enable_katate_difficulty_display": self.enable_katate_difficulty_display,
@@ -224,10 +241,25 @@ class Config:
             logger.error(traceback.format_exc())
             print(f"設定ファイル保存エラー: {e}")
 
+    @staticmethod
+    def _load_random_lane_detection_bands(value):
+        bands = {"1P": [55, 75], "2P": [55, 75]}
+        if isinstance(value, dict):
+            for side in bands:
+                band = value.get(side)
+                if (isinstance(band, (list, tuple)) and len(band) == 2
+                        and all(type(v) is int for v in band)
+                        and 0 <= band[0] < band[1] <= 996
+                        and band[1] - band[0] <= 300):
+                    bands[side] = list(band)
+        return bands
+
     def _load_capture_method(self, config_data: dict) -> str:
-        """旧バージョン設定はOBS取得、新規設定は直接取得に寄せる。"""
+        """旧バージョン設定はOBS取得、新規設定はGDI直接取得に寄せる。"""
+        if config_data.get("random_lane_capture_backend") == "spout":
+            return "spout"
         method = config_data.get("capture_method")
-        if method in ("direct_window", "direct_window_legacy", "obs_websocket"):
+        if method in ("direct_window", "direct_window_legacy", "obs_websocket", "spout"):
             return method
 
         has_websocket_settings = any(
@@ -239,7 +271,7 @@ class Config:
         has_obs_scene_collection = bool(str(config_data.get("obs_scene_collection", "")).strip())
         if has_websocket_settings or has_obs_capture_settings or has_obs_control_settings or has_obs_scene_collection:
             return "obs_websocket"
-        return "direct_window"
+        return "direct_window_legacy"
     
     def save_window_position(self, x, y, width, height):
         """ウィンドウ位置を保存"""

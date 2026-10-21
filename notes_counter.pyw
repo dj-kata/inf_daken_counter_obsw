@@ -24,6 +24,7 @@ import copy
 import os
 import threading
 import json
+import time
 
 try:
     import keyboard
@@ -51,6 +52,7 @@ from src.obs_dialog import OBSControlDialog
 from src.main_window import MainWindowUI
 from src.storage import StorageAccessor
 from src.update import GitHubUpdater
+from src.random_lane_analysis import RandomLaneAnalysis
 
 sys.path.append('infnotebook')
 from define import define
@@ -151,6 +153,13 @@ class MainWindow(MainWindowUI):
         # 接続状態変化のシグナルを接続
         self.obs_manager.connection_changed.connect(self.on_obs_connection_changed)
 
+        self.random_lane_analysis = RandomLaneAnalysis(
+            enabled=self.config.enable_random_lane_analysis,
+            detection_bands=self.config.random_lane_detection_bands,
+        )
+        self.obs_manager.set_spout_frame_callback(self._process_random_lane_spout_frame)
+        self._next_regular_loop_at = 0.0
+
         # その他
         self.result_stats_writer = ResultStatsWriter()
         '''起動時刻を覚えておく'''
@@ -210,14 +219,15 @@ class MainWindow(MainWindowUI):
         # アプリ起動時のOBS処理
         self.execute_obs_triggers('app_start')
 
-        # メインループタイマーの設定（100ms間隔）
+        # 通常の画面認識は100ms周期。RANDOM配置認識用フレームはSpout側で受信する。
         self.main_timer = QTimer()
         self.main_timer.timeout.connect(self.main_loop)
-        self.main_timer.start(100)
+        self._update_main_timer_interval()
         
         # 表示更新タイマー（500ms間隔）
         self.display_timer = QTimer()
         self.display_timer.timeout.connect(self.update_display)
+        self.display_timer.timeout.connect(self._poll_random_lane_spout_status)
         self.display_timer.start(500)
 
         # 選曲画面BPI取得はカーソルが一定時間止まってから実行する
@@ -405,6 +415,9 @@ class MainWindow(MainWindowUI):
         self.obs_manager.set_config(self.config)
         self.result_database.config = self.config
         self.result_database.song_database.load()  # 必要に応じて再読み込み
+        self.random_lane_analysis.set_enabled(self.config.enable_random_lane_analysis)
+        self.random_lane_analysis.set_detection_bands(self.config.random_lane_detection_bands)
+        self._update_main_timer_interval()
         if hasattr(self.result_database, "restart_mobile_http_server"):
             self.result_database.restart_mobile_http_server()
 
@@ -420,6 +433,51 @@ class MainWindow(MainWindowUI):
         # OBS接続状態の再評価
         if not self.obs_manager.uses_obs_websocket() or not self.obs_manager.is_connected:
             self.obs_manager.connect()
+
+    def _random_lane_uses_spout(self) -> bool:
+        return getattr(self.config, 'capture_method', 'direct_window') == 'spout'
+
+    def _process_random_lane_spout_frame(self, frame):
+        if (
+            self.config.enable_random_lane_analysis
+            and self._random_lane_uses_spout()
+            and getattr(self, 'current_mode', None) == detect_mode.play
+        ):
+            self.random_lane_analysis.process_frame(frame)
+
+    def _update_main_timer_interval(self):
+        if self.config.enable_random_lane_analysis and self._random_lane_uses_spout():
+            spout_capture = self.obs_manager.spout_capture
+            error = spout_capture.dependency_error()
+            if error:
+                self.random_lane_analysis.set_capture_supported(False, error)
+            elif spout_capture.is_connected:
+                status = spout_capture.current_status()
+                message = status[1] if status else "Spout接続中"
+                self.random_lane_analysis.set_capture_supported(True, message)
+            else:
+                sender_name = getattr(self.config, 'spout_sender_name', 'Spout_OBS_Filter')
+                self.random_lane_analysis.set_capture_supported(
+                    False, f"Spout送信待ち: {sender_name}"
+                )
+        else:
+            self.random_lane_analysis.set_capture_supported(
+                False,
+                "RANDOM配置認識はSpout経由で利用できます",
+            )
+
+        self.main_timer.start(100)
+        self._show_random_lane_notification()
+
+    def _poll_random_lane_spout_status(self):
+        status = self.obs_manager.spout_capture.take_status()
+        if not status:
+            return
+        if not self.config.enable_random_lane_analysis or not self._random_lane_uses_spout():
+            return
+        kind, message = status
+        self.random_lane_analysis.set_capture_supported(kind == "connected", message)
+        self._show_random_lane_notification()
     
     def show_about(self):
         """バージョン情報表示"""
@@ -428,7 +486,7 @@ class MainWindow(MainWindowUI):
                          f"INFINITAS daken counter {SWVER}\n\n"
                          "author: dj-kata")
     
-    def save_image(self, skip_no_update:bool=False, detailed_result:DetailedResult=None):
+    def save_image(self, skip_no_update:bool=False, detailed_result:DetailedResult=None, cache_only:bool=False):
         """
         ゲーム画面のキャプチャ画像を保存する。リザルト画面なら曲名などをファイル名に入れる。
         """
@@ -437,6 +495,7 @@ class MainWindow(MainWindowUI):
                 self.statusBar().showMessage("保存できるゲーム画面がありません", 3000)
                 return False
 
+            skip_save = False
             date = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
             if self.screen_reader.is_result():
                 detailed_result = detailed_result if detailed_result else self.screen_reader.read_result_screen()
@@ -447,11 +506,13 @@ class MainWindow(MainWindowUI):
                 if self.result_database.results:
                     detailed_result.result = self.result_database.results[-1]
                 result = detailed_result.result
+                # 手動保存ではprocess_result_modeより先にここへ来る場合があるため、
+                # 保存処理側でも現在のプレーで確定した配置を補完する。
+                self._apply_lane_layout_to_result(result)
                 if skip_no_update and (self.config.autosave_image_mode == config_autosave_image.only_updates): # 更新している場合のみ保存
                     if not result.is_updated():
                         logger.debug(f"skipped!, pre score:{result.pre_score}, bp:{result.pre_bp}, lamp:{result.pre_lamp}")
-                        self.statusBar().showMessage(f"伸びていないのでスキップします。", 10000)
-                        return False
+                        skip_save = True
 
                 if detailed_result.result.option:
                     filename = f"inf_{detailed_result.result.title}_{get_chart_name(detailed_result.result.play_style, detailed_result.result.difficulty, detailed_result.result.option.battle)}"
@@ -497,6 +558,7 @@ class MainWindow(MainWindowUI):
                         sp12_hard=sp12_hard,
                         songinfo=detailed_result.songinfo,
                         enable_katate_difficulty_display=self.config.enable_katate_difficulty_display,
+                        lane_layout=getattr(result, "lane_layout", None),
                     )
                 if self.config.modify_rivalarea_mode == config_modify_rivalarea.mosaic: # モザイク処理する場合
                     screen = mosaic_rival_area(screen, detailed_result.result_side)
@@ -506,6 +568,18 @@ class MainWindow(MainWindowUI):
                     screen = cut_rival_area(screen, detailed_result.result_side)
 
                     filename += f"_cut{detailed_result.result_side.name[1:]}"
+
+            if self.screen_reader.is_result() and detailed_result and detailed_result.result:
+                try:
+                    self.result_database.cache_result_image(detailed_result.result, screen)
+                except Exception:
+                    # 一時保存に失敗しても、従来のファイル保存は続行する。
+                    logger.error(f"リザルト画像の一時保存エラー: {traceback.format_exc()}")
+            if cache_only:
+                return False
+            if skip_save:
+                self.statusBar().showMessage("伸びていないのでスキップします。", 10000)
+                return False
 
             # 画像を保存
             filename += '.png'
@@ -558,7 +632,7 @@ class MainWindow(MainWindowUI):
             # 例: 自動制御を一時停止など
 
     def main_loop(self):
-        """メインループ - 100ms毎に呼ばれる"""
+        """画面取得ループ。通常認識は100msごとに実行する。"""
         try:
             if not self.obs_manager.is_capture_ready():
                 return
@@ -568,6 +642,12 @@ class MainWindow(MainWindowUI):
                 return
 
             self.screen_reader.update_screen(self.obs_manager.screen)
+
+            now = time.monotonic()
+            regular_loop_due = now >= self._next_regular_loop_at
+            if not regular_loop_due:
+                return
+            self._next_regular_loop_at = now + 0.1
 
             # 現在のゲーム画面状態を判定
             new_mode = self.detect_current_mode()
@@ -588,9 +668,17 @@ class MainWindow(MainWindowUI):
                 self.process_result_mode()
             elif self.current_mode == detect_mode.option:
                 self.process_option_mode()
+
+            self._show_random_lane_notification()
         
         except Exception as e:
             logger.error(f"メインループエラー: {traceback.format_exc()}")
+
+    def _show_random_lane_notification(self):
+        message = self.random_lane_analysis.take_notification()
+        if message:
+            self.random_lane_label.setText(message)
+            self.statusBar().showMessage(message, 5000)
     
     def detect_current_mode(self) -> detect_mode:
         """現在のゲーム画面状態を判定"""
@@ -658,12 +746,31 @@ class MainWindow(MainWindowUI):
             self.execute_obs_triggers(trigger)
 
 
-        if trigger == 'play_start': # プレー画面の先頭で実行
+        if new_mode == detect_mode.play and old_mode != detect_mode.play: # プレー画面の先頭で実行
             self.last_play_mode = self.screen_reader.detect_playside()
+            song = self.song_database.search(
+                title=self.screen_reader.last_select_title,
+                play_style=self.screen_reader.last_select_style,
+                difficulty=self.screen_reader.last_select_difficulty,
+            )
+            self.random_lane_analysis.start_play(
+                title=self.screen_reader.last_select_title,
+                style=(self.screen_reader.last_select_style.name
+                       if self.screen_reader.last_select_style else None),
+                difficulty=(self.screen_reader.last_select_difficulty.name.upper()
+                            if self.screen_reader.last_select_difficulty else None),
+                level=getattr(song, 'level', None),
+                option=self.current_option,
+                play_mode=self.last_play_mode.name if self.last_play_mode else None,
+            )
+
+        if old_mode == detect_mode.play and new_mode != detect_mode.play:
+            self.random_lane_analysis.end_play()
 
         if trigger == 'play_end': # プレー画面の終わりに実行
             if self.current_judge and  self.current_judge.notes > 0:
                 result = self.screen_reader.read_play_screen(self.current_judge)
+                self._apply_lane_layout_to_result(result)
                 self.result_database.add(result)
                 self.result_database.save()
                 self.result_database.broadcast_graph_data(self.start_time_with_offset)
@@ -956,6 +1063,7 @@ class MainWindow(MainWindowUI):
             if not detailed_result or not detailed_result.result:
                 return False
             result = detailed_result.result
+            self._apply_lane_layout_to_result(result)
             if result.option is None or not result.option.valid:
                 logger.warning(f"result skipped until option is recognized: {result}")
                 return False
@@ -979,12 +1087,14 @@ class MainWindow(MainWindowUI):
                         self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
                         self.fetch_bpim2_async(detailed_result)
 
-                        # 画像の保存
-                        if self.config.autosave_image_mode is not config_autosave_image.invalid:
-                            detailed_result.result = result # best_bpなどはaddで付与されるので渡しておく
-                            if self.save_image(skip_no_update=self.config.autosave_image_mode==config_autosave_image.only_updates, detailed_result=detailed_result):
-                                # 曲名の更新
-                                self.last_saved_song = get_title_with_chart(result.title, result.play_style, result.difficulty)
+                        # 全リザルトを一時保持し、条件に合うものだけファイルに保存する。
+                        detailed_result.result = result # best_bpなどはaddで付与されるので渡しておく
+                        if self.save_image(
+                            skip_no_update=self.config.autosave_image_mode == config_autosave_image.only_updates,
+                            detailed_result=detailed_result,
+                            cache_only=self.config.autosave_image_mode == config_autosave_image.invalid,
+                        ):
+                            self.last_saved_song = get_title_with_chart(result.title, result.play_style, result.difficulty)
 
                     # xml更新
                     self.result_database.broadcast_history_cursong_data(
@@ -1001,6 +1111,13 @@ class MainWindow(MainWindowUI):
             # logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
             pass
 
+    def _apply_lane_layout_to_result(self, result):
+        if result is None:
+            return
+        lane_layout = self.random_lane_analysis.get_result_lane_layout()
+        if lane_layout:
+            result.lane_layout = lane_layout
+
     def process_option_mode(self):
         """オプション画面での処理"""
         self.current_option = self.screen_reader.read_option_screen()
@@ -1008,6 +1125,8 @@ class MainWindow(MainWindowUI):
     
     def closeEvent(self, event):
         """アプリ終了時に実行する処理"""
+        self.random_lane_analysis.set_enabled(False)
+
         # アプリ終了時のOBS処理
         self.execute_obs_triggers('app_end')
 

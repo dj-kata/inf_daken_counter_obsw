@@ -227,25 +227,70 @@ class ConfigDialog(QDialog):
         self.capture_method_direct_radio = QRadioButton(self.ui.feature.capture_method_direct)
         self.capture_method_direct_legacy_radio = QRadioButton(self.ui.feature.capture_method_direct_legacy)
         self.capture_method_obs_radio = QRadioButton(self.ui.feature.capture_method_obs)
+        self.capture_method_spout_radio = QRadioButton(self.ui.feature.capture_method_spout)
         self.capture_method_group.addButton(self.capture_method_direct_radio, 0)
         self.capture_method_group.addButton(self.capture_method_direct_legacy_radio, 1)
         self.capture_method_group.addButton(self.capture_method_obs_radio, 2)
+        self.capture_method_group.addButton(self.capture_method_spout_radio, 3)
 
-        capture_method_layout = QHBoxLayout()
-        capture_method_layout.addWidget(self.capture_method_direct_radio)
-        capture_method_layout.addWidget(self.capture_method_direct_legacy_radio)
-        capture_method_layout.addWidget(self.capture_method_obs_radio)
-        capture_method_layout.addStretch()
+        capture_method_layout = QGridLayout()
+        capture_method_layout.addWidget(self.capture_method_direct_radio, 0, 0)
+        capture_method_layout.addWidget(self.capture_method_direct_legacy_radio, 0, 1)
+        capture_method_layout.addWidget(self.capture_method_obs_radio, 1, 0)
+        capture_method_layout.addWidget(self.capture_method_spout_radio, 1, 1)
         game_capture_layout.addLayout(capture_method_layout)
+
+        spout_capture_form = QFormLayout()
+        self.spout_sender_edit = QLineEdit()
+        self.spout_sender_edit.setPlaceholderText("Spout_OBS_Filter")
+        spout_capture_form.addRow(self.ui.feature.spout_sender, self.spout_sender_edit)
+        game_capture_layout.addLayout(spout_capture_form)
 
         self.direct_capture_all_monitors_check = QCheckBox(self.ui.feature.direct_capture_all_monitors)
         self.direct_capture_all_monitors_check.setToolTip(self.ui.feature.direct_capture_all_monitors_tip)
         self.direct_capture_all_monitors_check.setVisible(False)
         game_capture_layout.addWidget(self.direct_capture_all_monitors_check)
         self.capture_method_group.idClicked.connect(self._update_direct_capture_option_enabled)
+        self.capture_method_group.idClicked.connect(self._update_spout_capture_option_enabled)
 
         self.enable_music_select_score_import_check = QCheckBox(self.ui.feature.enable_music_select_score_import)
         game_capture_layout.addWidget(self.enable_music_select_score_import_check)
+
+        self.enable_random_lane_analysis_check = QCheckBox(
+            self.ui.feature.enable_random_lane_analysis
+        )
+        self.enable_random_lane_analysis_check.setToolTip(
+            self.ui.feature.enable_random_lane_analysis_tip
+        )
+        game_capture_layout.addWidget(self.enable_random_lane_analysis_check)
+
+        band_form = QFormLayout()
+        self.random_lane_band_controls = {}
+        for side in ('1P', '2P'):
+            row = QHBoxLayout()
+            top_spin = QSpinBox()
+            top_spin.setRange(0, 995)
+            height_spin = QSpinBox()
+            height_spin.setRange(1, 300)
+            top_spin.setSuffix(' px')
+            height_spin.setSuffix(' px')
+            # ROI starts at Y=84 in a 1080px frame. Keep the band inside it.
+            top_spin.valueChanged.connect(
+                lambda top, height=height_spin: height.setMaximum(min(300, 996 - top))
+            )
+            row.addWidget(QLabel(self.ui.feature.random_lane_band_top))
+            row.addWidget(top_spin)
+            row.addWidget(QLabel(self.ui.feature.random_lane_band_height))
+            row.addWidget(height_spin)
+            band_form.addRow(f'{side}:', row)
+            self.random_lane_band_controls[side] = (top_spin, height_spin)
+        game_capture_layout.addLayout(band_form)
+        band_tip = QLabel(self.ui.feature.random_lane_band_tip)
+        band_tip.setWordWrap(True)
+        game_capture_layout.addWidget(band_tip)
+        self.enable_random_lane_analysis_check.toggled.connect(
+            self._update_random_lane_band_enabled
+        )
 
         layout.addWidget(game_capture_group)
         
@@ -346,6 +391,22 @@ class ConfigDialog(QDialog):
         is_legacy_direct = self.capture_method_group.checkedId() == 1
         self.direct_capture_all_monitors_check.setVisible(is_legacy_direct)
         self.direct_capture_all_monitors_check.setEnabled(is_legacy_direct)
+
+    def _update_spout_capture_option_enabled(self, *_args):
+        spout_enabled = self.capture_method_group.checkedId() == 3
+        self.spout_sender_edit.setEnabled(spout_enabled)
+        if hasattr(self, 'enable_random_lane_analysis_check'):
+            self.enable_random_lane_analysis_check.setEnabled(spout_enabled)
+            if not spout_enabled:
+                self.enable_random_lane_analysis_check.setChecked(False)
+        self._update_random_lane_band_enabled()
+
+    def _update_random_lane_band_enabled(self, *_args):
+        spout_enabled = self.capture_method_group.checkedId() == 3
+        if hasattr(self, 'random_lane_band_controls'):
+            for controls in self.random_lane_band_controls.values():
+                for control in controls:
+                    control.setEnabled(spout_enabled and self.enable_random_lane_analysis_check.isChecked())
 
     def on_browse_clicked(self):
         """フォルダ参照ボタン押下時の処理"""
@@ -476,6 +537,15 @@ class ConfigDialog(QDialog):
         
         self.write_statistics_check = QCheckBox(self.ui.image_save.write_statistics)
         other_layout.addWidget(self.write_statistics_check)
+
+        cache_layout = QHBoxLayout()
+        cache_layout.addWidget(QLabel(self.ui.image_save.cache_limit))
+        self.result_image_cache_limit_spin = QSpinBox()
+        self.result_image_cache_limit_spin.setRange(0, 10000)
+        self.result_image_cache_limit_spin.setSpecialValueText(self.ui.image_save.cache_all)
+        self.result_image_cache_limit_spin.setToolTip(self.ui.image_save.cache_help)
+        cache_layout.addWidget(self.result_image_cache_limit_spin)
+        other_layout.addLayout(cache_layout)
         
         layout.addWidget(other_group)
         layout.addStretch()
@@ -790,13 +860,26 @@ class ConfigDialog(QDialog):
         self.enable_judge_check.setChecked(self.config.enable_judge)
         self.enable_folder_updates_check.setChecked(self.config.enable_folder_updates)
         self.enable_music_select_score_import_check.setChecked(self.config.enable_music_select_score_import)
-        capture_method = getattr(self.config, 'capture_method', 'direct_window')
+        self.enable_random_lane_analysis_check.setChecked(
+            bool(getattr(self.config, 'enable_random_lane_analysis', False))
+        )
+        for side, (top_spin, height_spin) in self.random_lane_band_controls.items():
+            top, bottom = self.config.random_lane_detection_bands[side]
+            top_spin.setValue(top)
+            height_spin.setValue(bottom - top)
+        capture_method = getattr(self.config, 'capture_method', 'direct_window_legacy')
         if capture_method == 'obs_websocket':
             self.capture_method_obs_radio.setChecked(True)
+        elif capture_method == 'spout':
+            self.capture_method_spout_radio.setChecked(True)
         elif capture_method == 'direct_window_legacy':
             self.capture_method_direct_legacy_radio.setChecked(True)
         else:
             self.capture_method_direct_radio.setChecked(True)
+        self.spout_sender_edit.setText(
+            str(getattr(self.config, 'spout_sender_name', 'Spout_OBS_Filter'))
+        )
+        self._update_spout_capture_option_enabled()
         self.direct_capture_all_monitors_check.setChecked(
             bool(getattr(self.config, 'direct_capture_all_monitors', False))
         )
@@ -826,6 +909,7 @@ class ConfigDialog(QDialog):
         #             self.music_pack_checkboxes[pack_name].setChecked(True)
         
         # 画像保存設定
+        self.result_image_cache_limit_spin.setValue(self.config.result_image_cache_limit)
         if hasattr(self.config, 'autosave_image_mode'):
             button = self.autosave_button_group.button(self.config.autosave_image_mode.value)
             if button:
@@ -893,14 +977,21 @@ class ConfigDialog(QDialog):
         self.config.enable_judge = self.enable_judge_check.isChecked()
         self.config.enable_folder_updates = self.enable_folder_updates_check.isChecked()
         self.config.enable_music_select_score_import = self.enable_music_select_score_import_check.isChecked()
+        self.config.enable_random_lane_analysis = self.enable_random_lane_analysis_check.isChecked()
+        self.config.random_lane_detection_bands = {
+            side: [top.value(), top.value() + height.value()]
+            for side, (top, height) in self.random_lane_band_controls.items()
+        }
+        self.config.spout_sender_name = self.spout_sender_edit.text().strip() or 'Spout_OBS_Filter'
         capture_method_by_id = {
             0: 'direct_window',
             1: 'direct_window_legacy',
             2: 'obs_websocket',
+            3: 'spout',
         }
         self.config.capture_method = capture_method_by_id.get(
             self.capture_method_group.checkedId(),
-            'direct_window',
+            'direct_window_legacy',
         )
         self.config.direct_capture_all_monitors = self.direct_capture_all_monitors_check.isChecked()
         self.config.autoload_offset = self.autoload_offset_spin.value()
@@ -940,6 +1031,9 @@ class ConfigDialog(QDialog):
         self.config.autosave_image_mode = config_autosave_image(self.autosave_button_group.checkedId())
         self.config.modify_rivalarea_mode = config_modify_rivalarea(self.rivalarea_button_group.checkedId())
         self.config.write_statistics = self.write_statistics_check.isChecked()
+        self.config.result_image_cache_limit = self.result_image_cache_limit_spin.value()
+        if self.result_database:
+            self.result_database.trim_result_image_cache()
         self.config.include_legacy_v2_logs = self.include_legacy_v2_logs_check.isChecked()
         self.config.enable_katate_difficulty_display = self.enable_katate_difficulty_display_check.isChecked()
         self.config.enable_katate_tweet_grouping = self.enable_katate_tweet_grouping_check.isChecked()

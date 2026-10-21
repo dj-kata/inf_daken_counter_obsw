@@ -7,6 +7,8 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="../../out/websocket.css">
+        <link rel="stylesheet" href="../lane_option.css">
+        <script src="../lane_option.js"></script>
         <style>
             body { 
             background-color: rgba(0, 0, 0, 0.85);
@@ -401,14 +403,14 @@
                         out += '<td>'+lamp+'</td>';
                         out += '<td>bp'+bp+'</td>';
                         out += '<td></td>';
-                        out += '<td><font color="#aaffaa">'+opt+'</font></td>';
+                        out += '<td><font color="#aaffaa">'+renderLaneOption(opt, item.lane_layout)+'</font></td>';
                         out += '</tr>'
                     }else{
                         out += '<tr><td><font color="#ffffaa">'+date+'</font></td>';
                         out += '<td>'+lamp+'</td>';
                         out += '<td>'+score+'</td>';
                         out += '<td>' + rankdiff + '</td>';
-                        out += '<td><font color="#aaffaa">'+opt+'</font></td>';
+                        out += '<td><font color="#aaffaa">'+renderLaneOption(opt, item.lane_layout)+'</font></td>';
                         out += '</tr>'
                     }
                 });
@@ -420,7 +422,7 @@
                 best_html += "<td>best(score)</td>";
                 best_html += "<td>"+best_score+"</td>";
                 best_html += "<td>("+best_rankdiff+")</td>";
-                best_html += "<td>"+best_score_opt+"</td></tr>";
+                best_html += "<td>"+renderLaneOption(best_score_opt, data.best_score_lane_layout)+"</td></tr>";
                 // bpi(ある場合のみ)
                 if (best_bpi != "??"){
                     best_html += "<tr>";
@@ -434,7 +436,7 @@
                 best_html += "<td>best(bp)</td>";
                 best_html += "<td>"+best_bp+"</td>";
                 best_html += "<td>("+best_bp_rate+"%)</td>";
-                best_html += "<td>"+best_bp_opt+"</td></tr>";
+                best_html += "<td>"+renderLaneOption(best_bp_opt, data.best_bp_lane_layout)+"</td></tr>";
                 document.querySelector('#best tbody').innerHTML = best_html;
                 document.querySelector('#result tbody').innerHTML = out;
                 updateSp12Display();
@@ -452,7 +454,7 @@
 
 </script>
 </head>
-<body>
+<body class="lane-options-large">
   <div id="all">
     <table id="title">
       <tbody>

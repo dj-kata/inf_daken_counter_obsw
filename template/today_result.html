@@ -7,6 +7,8 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=RocknRoll+One&display=swap" rel="stylesheet">
         <link rel="stylesheet" href="../out/websocket.css">
+        <link rel="stylesheet" href="lane_option.css">
+        <script src="lane_option.js"></script>
         <style>
             :root {
                 --skip-no-update: 0; /* 更新のない行を飛ばす */
@@ -353,7 +355,7 @@
 
         </style>
     </head>
-    <body>
+    <body class="lane-options-large">
         <script>
         // WebSocketポート番号取得
         function getWebSocketPort() {
@@ -503,7 +505,7 @@
             return shortLabels[normalized] || normalized;
         }
 
-        function renderOptionToken(token) {
+        function renderOptionToken(token, savedLayout) {
             var normalized = String(token || '').trim();
             if (!normalized) return '';
 
@@ -512,16 +514,18 @@
                     .split(/\s*\/\s*/)
                     .map(function(part) {
                         var text = normalizeOptionKeyword(part);
-                        return '<span class="option-part ' + getOptionClass(text) + '">' + escapeHtml(getOptionDisplayText(text)) + '</span>';
+                        var original = '<span class="option-part ' + getOptionClass(text) + '">' + escapeHtml(getOptionDisplayText(text)) + '</span>';
+                        return renderLaneOptionChoice(text, null, original);
                     })
                     .join('<span class="option-separator"> / </span>');
             }
 
             var optionText = normalizeOptionKeyword(normalized);
-            return '<span class="option-part ' + getOptionClass(optionText) + '">' + escapeHtml(getOptionDisplayText(optionText)) + '</span>';
+            var original = '<span class="option-part ' + getOptionClass(optionText) + '">' + escapeHtml(getOptionDisplayText(optionText)) + '</span>';
+            return renderLaneOptionChoice(optionText, savedLayout, original);
         }
 
-        function renderOptionText(opt) {
+        function renderOptionText(opt, savedLayout) {
             var tokens = String(opt || '')
                 .split(',')
                 .map(function(token) {return token.trim(); })
@@ -531,7 +535,7 @@
                 return '';
             }
 
-            return '<span class="option-text">' + tokens.map(renderOptionToken).join('<span class="option-separator">, </span>') + '</span>';
+            return '<span class="option-text">' + tokens.map(function(token) { return renderOptionToken(token, savedLayout); }).join('<span class="option-separator">, </span>') + '</span>';
         }
 
         function formatDelta(delta, is_bp) {
@@ -819,7 +823,7 @@
                 out += '<td class="col-bpi ' + bpi_class + '">' + escapeHtml(bpi_display) + '</td>';
                 
                 // オプション
-                out += '<td class="col-option">' + renderOptionText(opt) + '</td>';
+                out += '<td class="col-option">' + renderOptionText(opt, item.lane_layout) + '</td>';
                 
                 out += '</tr>';
 

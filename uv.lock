@@ -567,6 +567,7 @@ dependencies = [
     { name = "opencv-python" },
     { name = "pillow" },
     { name = "pyside6" },
+    { name = "spoutgl", marker = "sys_platform == 'win32'" },
     { name = "websockets" },
 ]
 
@@ -583,6 +584,7 @@ requires-dist = [
     { name = "opencv-python", specifier = ">=4.13.0.90" },
     { name = "pillow", specifier = ">=12.1.0" },
     { name = "pyside6", specifier = ">=6.10.1" },
+    { name = "spoutgl", marker = "sys_platform == 'win32'", specifier = ">=0.1.1" },
     { name = "websockets", specifier = ">=16.0" },
 ]
 
@@ -3941,6 +3943,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/7b/ae/2d9c981590ed9999a0d91755b47fc74f74de286b0f5cee14c9269041e6c4/soupsieve-2.8.3.tar.gz", hash = "sha256:3267f1eeea4251fb42728b6dfb746edc9acaffc4a45b27e19450b676586e8349", size = 118627, upload-time = "2026-01-20T04:27:02.457Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/46/2c/1462b1d0a634697ae9e55b3cecdcb64788e8b7d63f54d923fcd0bb140aed/soupsieve-2.8.3-py3-none-any.whl", hash = "sha256:ed64f2ba4eebeab06cc4962affce381647455978ffc1e36bb79a545b91f45a95", size = 37016, upload-time = "2026-01-20T04:27:01.012Z" },
+]
+
+[[package]]
+name = "spoutgl"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/9a/cb/2286d3aea56ea4ae2f45c523e67c2ef99d87dc08adc6ae9a83e0d49a2d36/spoutgl-0.1.1.tar.gz", hash = "sha256:89e5269b061a2be40dad87c39625c98b6f57660084f26d93647a328e7299c55c", size = 8497, upload-time = "2025-03-22T03:46:24.842Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c9/6a/28a2b33bbe5d24e3a7315a02759c09908fc46a7f70b0b3a7162047592509/spoutgl-0.1.1-cp311-cp311-win32.whl", hash = "sha256:594397fe3f85a5c572abddda4de28a9a150df7dca3d7c2c77a015cfe2b813b11", size = 286628, upload-time = "2025-03-22T03:46:08.077Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/26/988546a1044ebd10863c7cf1cd02813e3e27504183480a5ddb2b62962f62/spoutgl-0.1.1-cp311-cp311-win_amd64.whl", hash = "sha256:af1361212350de19de4d9e81b1abf73f5485f7ded46a65c9de8c54b1e9d4e4ab", size = 333041, upload-time = "2025-03-22T03:46:09.755Z" },
+    { url = "https://files.pythonhosted.org/packages/67/4e/18db64d579ca4a19b521d515a6f77cd92ead8b587999d6dcd837978d6b5a/spoutgl-0.1.1-cp312-cp312-win32.whl", hash = "sha256:bef71bef1ad79785c9429cc0a134ac0adb02b015c348f46c6ac2e7e59edc8e6e", size = 285481, upload-time = "2025-03-22T03:46:11.172Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/fa/f6ae088c481ea50f88a4cbab25169eeacb60b8b2434c98029ad5efa7d9a4/spoutgl-0.1.1-cp312-cp312-win_amd64.whl", hash = "sha256:e45b7102ab91ba8a1740c2e9b7ca8ff54796cf9354215e6be4050d1c683d1f1d", size = 333833, upload-time = "2025-03-22T03:46:12.226Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/89/b2e54e07ca7973b2d27ebce2e2343d54e0bd34b9b1ef9963fc73e95d2bda/spoutgl-0.1.1-cp313-cp313-win32.whl", hash = "sha256:a99323be6df9d0b7c245a783409b1ccec64bac99cc5b26752f3174dd1fabe7d0", size = 285592, upload-time = "2025-03-22T03:46:13.483Z" },
+    { url = "https://files.pythonhosted.org/packages/80/22/0ad70c6843a04d49a8dafff0ab1fb69e43f581c6179a9987d9bfc62d91a0/spoutgl-0.1.1-cp313-cp313-win_amd64.whl", hash = "sha256:29ae2e4316c31872b6f05421581ce8a61241e7d01e1363103515e1661ad24857", size = 333859, upload-time = "2025-03-22T03:46:14.904Z" },
 ]
 
 [[package]]

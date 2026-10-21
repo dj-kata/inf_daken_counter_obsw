@@ -88,6 +88,7 @@ build_exe_options = {
         "ctypes",
         "ctypes.wintypes",
         "dxcam",
+        "SpoutGL",
         "comtypes",
         "tkinter",      # GUIに必要
         "winsound",     # サウンド再生に必要
@@ -109,6 +110,8 @@ build_exe_options = {
         "src.obs_dialog",
         "src.direct_window_capture",
         "src.dxcam_window_capture",
+        "src.random_lane_analysis",
+        "src.spout_capture",
         "src.mobile_http_server",
         # ctypes関連（Windows APIアクセスに必要）
         "ctypes",

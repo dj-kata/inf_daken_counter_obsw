@@ -16,11 +16,12 @@ import traceback
 import functools
 import csv
 import urllib.parse
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from pathlib import Path
 from typing import Dict, List
 import copy
 import threading
+import tempfile
 from io import BytesIO
 
 from PIL import Image
@@ -134,6 +135,10 @@ class ResultDatabase:
         self.mobile_http_server = None
         self._mobile_http_server_signature = None
         self._mobile_api_lock = threading.RLock()
+        # 一時画像のパスはresultsと分離し、playlogには永続化しない。
+        self._result_image_cache_dir = tempfile.TemporaryDirectory(prefix="infdc-results-")
+        self._result_image_cache = OrderedDict()
+        self._result_image_cache_lock = threading.RLock()
         self.app_start_time = int(datetime.datetime.now().timestamp())
 
         # configが渡された場合のみWebSocketサーバーを起動
@@ -254,6 +259,9 @@ class ResultDatabase:
                 self.mobile_http_server = None
         if self.ws_loop:
             self.ws_loop.call_soon_threadsafe(self.ws_loop.stop)
+        with self._result_image_cache_lock:
+            self._result_image_cache.clear()
+            self._result_image_cache_dir.cleanup()
         logger.info("サーバーを停止しました")
 
     def update_websocket_port(self, port: int):
@@ -413,6 +421,8 @@ class ResultDatabase:
             result.bpim2 = getattr(previous, "bpim2", None)
         if getattr(result, "average_release", None) is None:
             result.average_release = getattr(previous, "average_release", None)
+        if getattr(result, "lane_layout", None) is None:
+            result.lane_layout = getattr(previous, "lane_layout", None)
         self.results[index] = result
 
     def add(self, result: OneResult) -> bool:
@@ -491,6 +501,9 @@ class ResultDatabase:
         try:
             with bz2.BZ2File("playlog.infdc", "rb", compresslevel=9) as f:
                 self.results = pickle.load(f)
+            for result in self.results:
+                if not hasattr(result, "lane_layout"):
+                    result.lane_layout = None
         except Exception:
             logger.error(traceback.format_exc())
 
@@ -933,6 +946,7 @@ class ResultDatabase:
                 "pre_lamp": r.pre_lamp.value if r.pre_lamp is not None else 0,
                 "pre_lamp_text": self._lamp_text(r.pre_lamp),
                 "opt": r.option.__str__() if r.option else "",
+                "lane_layout": getattr(r, "lane_layout", None),
                 "battle": r.option.battle if r.option else 0,
                 "playspeed": r.playspeed if r.playspeed else 1.0,
                 "score_rate": r.score / r.notes / 2 if r.notes else 0,
@@ -1135,9 +1149,11 @@ class ResultDatabase:
         )
         best_score = 0
         best_score_opt = None
+        best_score_lane_layout = None
         detail = None
         best_bp = 99999999
         best_bp_opt = None
+        best_bp_lane_layout = None
         best_lamp = 0
         best_lamp_opt = None
         notes = None  # バグってノーツ数が入っていない場合があるので別処理にする
@@ -1169,6 +1185,7 @@ class ResultDatabase:
             if result_score and result_score > best_score:
                 best_score = result_score
                 best_score_opt = r.result.option
+                best_score_lane_layout = getattr(r.result, "lane_layout", None)
                 detail = r
             elif result_score and result_score == best_score and detail:
                 current_has_averages = bool(getattr(detail.result, "bpim2_arena_averages", None))
@@ -1188,6 +1205,7 @@ class ResultDatabase:
                     ):
                         best_bp = r.result.judge.pr + r.result.judge.bd
                         best_bp_opt = r.result.option
+                        best_bp_lane_layout = getattr(r.result, "lane_layout", None)
                 else:
                     if (
                         not r.result.dead
@@ -1195,10 +1213,12 @@ class ResultDatabase:
                     ):
                         best_bp = r.result.judge.pr + r.result.judge.bd
                         best_bp_opt = r.result.option
+                        best_bp_lane_layout = getattr(r.result, "lane_layout", None)
             else:  # 選曲画面からの取得
                 if r.result.bp is not None and r.result.bp < best_bp:
                     best_bp = r.result.bp
                     best_bp_opt = r.result.option
+                    best_bp_lane_layout = getattr(r.result, "lane_layout", None)
 
         if not notes and songinfo and getattr(songinfo, "notes", None):
             notes = _to_int_or_none(songinfo.notes)
@@ -1271,8 +1291,10 @@ class ResultDatabase:
             "best_lamp_opt": best_lamp_opt.__str__() if best_lamp_opt else "",
             "best_bp": best_bp,
             "best_bp_opt": best_bp_opt.__str__() if best_bp_opt else "",
+            "best_bp_lane_layout": best_bp_lane_layout,
             "best_score": best_score,
             "best_score_opt": best_score_opt.__str__() if best_score_opt else "",
+            "best_score_lane_layout": best_score_lane_layout,
             "battle": bool(battle),
         }
 
@@ -1340,6 +1362,7 @@ class ResultDatabase:
                 else 0,
                 "pre_bp": r.result.pre_bp if r.result.pre_bp is not None else 0,
                 "opt": r.result.option.__str__() if r.result.option else "",
+                "lane_layout": getattr(r.result, "lane_layout", None),
             }
             image_url = self._mobile_result_image_url(r.result)
             if image_url:
@@ -1702,7 +1725,42 @@ class ResultDatabase:
     def _mobile_katate_band_for_best(best: OneBestData):
         return _get_katate_band(getattr(best, "songinfo", None))
 
+    def trim_result_image_cache(self):
+        """設定枚数を超えた古い一時画像を破棄する。0は全件保持。"""
+        limit = max(0, int(getattr(self.config, "result_image_cache_limit", 0)))
+        with self._result_image_cache_lock:
+            while limit and len(self._result_image_cache) > limit:
+                _, path = self._result_image_cache.popitem(last=False)
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    logger.warning(f"一時画像の削除失敗: {path}", exc_info=True)
+
+    def cache_result_image(self, result: OneResult, image: Image.Image):
+        """加工済み画像を専用一時フォルダに、この起動中だけ保持する。"""
+        timestamp = int(result.timestamp)
+        path = Path(self._result_image_cache_dir.name) / f"{timestamp}.png"
+        with self._result_image_cache_lock:
+            image.save(path, format="PNG", compress_level=1)
+            self._result_image_cache[timestamp] = path
+            self.trim_result_image_cache()
+
+    def _cached_result_image(self, result: OneResult) -> Path | None:
+        with self._result_image_cache_lock:
+            path = self._result_image_cache.get(int(result.timestamp))
+            return path if path is not None and path.is_file() else None
+
+    def get_mobile_result_image_data(self, timestamp: int) -> bytes | None:
+        with self._result_image_cache_lock:
+            path = self._result_image_cache.get(int(timestamp))
+            try:
+                return path.read_bytes() if path is not None else None
+            except OSError:
+                return None
+
     def _mobile_result_image_url(self, result: OneResult) -> str:
+        if self._cached_result_image(result) is not None:
+            return f"/api/result-images/{int(result.timestamp)}"
         image_path = getattr(result, "image_path", None)
         if not image_path:
             return ""
@@ -1849,7 +1907,7 @@ class ResultDatabase:
             "katate": katate_folders,
             "special": [
                 {"id": "history", "label": "PLAY HISTORY", "count": result_count, "count_label": f"{result_count} plays"},
-                {"id": "saved-images", "label": "SAVED IMAGES", "count": saved_image_count, "count_label": f"{saved_image_count} images"},
+                {"id": "saved-images", "label": "RESULT IMAGES", "count": saved_image_count, "count_label": f"{saved_image_count} images"},
                 {"id": "receipt", "label": "RECEIPT", "count": today_notes, "count_label": f"{today_notes:,} notes"},
                 {"id": "daily", "label": "DAILY LOG", "count": daily_count, "count_label": f"{daily_count} days"},
                 {"id": "current", "label": "CURRENT SONG", "count": len(current.get("items", [])), "count_label": "live"},
@@ -1888,15 +1946,8 @@ class ResultDatabase:
         for index, result in enumerate(self.results):
             if result.detect_mode != detect_mode.result:
                 continue
-            image_path = getattr(result, "image_path", None)
-            if not image_path:
-                continue
-            try:
-                path = Path(image_path)
-                if path.exists() and path.is_file():
-                    items.append((index, result))
-            except Exception:
-                continue
+            if self._mobile_result_image_url(result):
+                items.append((index, result))
         return items
 
     def _mobile_result_by_image_id(self, image_id: str) -> OneResult | None:
@@ -1911,16 +1962,7 @@ class ResultDatabase:
         result = self.results[index]
         if result.timestamp != timestamp or result.detect_mode != detect_mode.result:
             return None
-        image_path = getattr(result, "image_path", None)
-        if not image_path:
-            return None
-        try:
-            path = Path(image_path)
-            if path.exists() and path.is_file():
-                return result
-        except Exception:
-            return None
-        return None
+        return result if self._mobile_result_image_url(result) else None
 
     def get_mobile_saved_images_data(self) -> dict:
         items = []
@@ -1929,7 +1971,7 @@ class ResultDatabase:
             item["image_id"] = _mobile_result_image_id(index, result)
             items.append(item)
         return {
-            "folder": {"id": "saved-images", "label": "SAVED IMAGES"},
+            "folder": {"id": "saved-images", "label": "RESULT IMAGES"},
             "items": items,
             "notes": sum(_to_int_or_none(item.get("notes")) or 0 for item in items),
         }
@@ -1957,12 +1999,14 @@ class ResultDatabase:
         images = []
         for i, result in enumerate(results):
             try:
-                with Image.open(getattr(result, "image_path")) as image:
-                    logger.info(
-                        f"投稿用画像読み込み: index={i}, path={getattr(result, 'image_path', '')}, "
-                        f"size={image.width}x{image.height}, mode={image.mode}"
-                    )
-                    images.append(image.convert("RGB"))
+                with self._result_image_cache_lock:
+                    source = self._cached_result_image(result) or getattr(result, "image_path", None)
+                    with Image.open(source) as image:
+                        logger.info(
+                            f"投稿用画像読み込み: index={i}, path={source}, "
+                            f"size={image.width}x{image.height}, mode={image.mode}"
+                        )
+                        images.append(image.convert("RGB"))
             except Exception as e:
                 logger.error(f"投稿用画像の読み込み失敗: {getattr(result, 'image_path', '')} {e}\n{traceback.format_exc()}")
         if not images:
