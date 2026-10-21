@@ -21,6 +21,7 @@ config.json
 runtime_state.json
 random_lane.sqlite3
 template/random_lane_state.js
+template/random_lane_state.js.tmp
 pic/*
 qt.conf
 *.pkl
