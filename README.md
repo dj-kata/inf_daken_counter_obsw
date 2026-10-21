@@ -70,6 +70,23 @@ REGULARまたはMIRRORで譜面データを登録すると、同じ譜面のRAND
 検出帯の変更は次のプレーから適用され、変更後の帯でREGULARまたはMIRRORの登録が必要です。
 初期値に戻すと、従来の譜面データを再び使えます。
 
+### 履歴・本日結果のレーン番号表示
+
+`history_cursong.html`と`today_result.html`は、初期状態では従来のオプション名を表示します。
+OBSのブラウザソースのカスタムCSSで、次の設定を加えるとレーン番号表示になります。
+
+```css
+body {
+    --show-lane-numbers: 1;
+}
+```
+
+`whole_layout.html`を使う場合は、そのブラウザソースに同じ設定を指定してください。
+埋め込まれた履歴・本日結果の両方に反映されます。`0`でオプション名表示に戻ります。
+REGULAR／MIRRORは固定配置、RANDOM／R-RANDOMは保存された配置を表示し、配置不明時はオプション名を表示します。
+`template/v2/history_cursong.html`も同じ設定に対応しています。
+番号表示専用の`random_lane.html`は、この設定にかかわらず番号を表示します。
+
 ## HTTPサーバからのリザルト画像投稿
 
 HTTPサーバの「RESULT IMAGES」やプレー履歴から、ファイル保存していないリザルトも投稿用画像に選べます。

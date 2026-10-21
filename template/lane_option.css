@@ -1,25 +1,35 @@
-/* Seven lane numbers, sized to the surrounding option text (no scratch). */
+:root {
+    /* 0: 従来のオプション名、1: 配置が分かる場合はレーン番号 */
+    --show-lane-numbers: 0;
+}
+
+/* Seven lane numbers share one font and one line box, regardless of color. */
 .lane-option {
     display: inline-flex;
-    gap: .04em;
-    height: 1.1em;
-    width: 4.44em;
+    gap: .08em;
+    height: 1.26em;
     vertical-align: middle;
-    font-family: Arial, sans-serif;
+    font-family: Consolas, "DejaVu Sans Mono", monospace;
+    font-variant-numeric: lining-nums tabular-nums;
     font-weight: 700;
     font-style: normal;
-    line-height: 1.1;
+    line-height: 1;
     letter-spacing: normal;
     text-shadow: none;
     white-space: nowrap;
 }
 
 .lane-option-key {
-    display: block;
-    flex: 0 0 .6em;
-    height: 1.1em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    flex: 0 0 .72em;
+    height: 100%;
+    padding: .12em .06em;
+    font: inherit;
     text-align: center;
-    /* Draw inside the rectangle so its size and the row height stay unchanged. */
+    /* The border stays inside the rectangle. */
     box-shadow: inset 0 0 0 max(1px, .025em) #000;
 }
 
@@ -38,14 +48,23 @@
     background: #0066cc;
 }
 
-/* Enlarge the digits in result views while keeping the same inline height. */
+/* Scale the whole group together so every key keeps identical metrics. */
 .lane-options-large .lane-option {
-    gap: .09em;
-    width: 5.5em;
+    font-size: 118%;
 }
 
-.lane-options-large .lane-option-key {
-    font-size: 118%;
-    height: 100%;
-    line-height: .9322;
+.lane-option-choice {
+    white-space: nowrap;
+}
+
+.lane-option-numbers {
+    display: none;
+}
+
+.lane-numbers-enabled .lane-option-original {
+    display: none;
+}
+
+.lane-numbers-enabled .lane-option-numbers {
+    display: inline;
 }

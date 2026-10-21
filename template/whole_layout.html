@@ -38,6 +38,8 @@
             --scale-method: fit;       /* fit | fill | exact */
             --websocket-host: "";
             --websocket-port: 8767;
+            /* 0: オプション名、1: 履歴・本日結果をレーン番号で表示 */
+            --show-lane-numbers: 0;
 
             --color-bg: #000;
             --primary-color: #00bbbb;
@@ -542,6 +544,11 @@
                 url.searchParams.delete('websocket_host');
             }
             url.searchParams.set('websocket_port', String(getWebSocketPort()));
+            if (/\/(history_cursong|today_result)\.html$/.test(url.pathname)) {
+                const showLanes = getComputedStyle(document.body || document.documentElement)
+                    .getPropertyValue('--show-lane-numbers').trim();
+                url.searchParams.set('show_lane_numbers', showLanes === '1' ? '1' : '0');
+            }
             return url.href;
         }
 

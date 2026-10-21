@@ -514,18 +514,15 @@
                     .split(/\s*\/\s*/)
                     .map(function(part) {
                         var text = normalizeOptionKeyword(part);
-                        var laneImage = renderLaneOptionToken(text, null);
-                        if (laneImage) return laneImage;
-                        return '<span class="option-part ' + getOptionClass(text) + '">' + escapeHtml(getOptionDisplayText(text)) + '</span>';
+                        var original = '<span class="option-part ' + getOptionClass(text) + '">' + escapeHtml(getOptionDisplayText(text)) + '</span>';
+                        return renderLaneOptionChoice(text, null, original);
                     })
                     .join('<span class="option-separator"> / </span>');
             }
 
-            var laneImage = renderLaneOptionToken(normalized, savedLayout);
-            if (laneImage) return laneImage;
-
             var optionText = normalizeOptionKeyword(normalized);
-            return '<span class="option-part ' + getOptionClass(optionText) + '">' + escapeHtml(getOptionDisplayText(optionText)) + '</span>';
+            var original = '<span class="option-part ' + getOptionClass(optionText) + '">' + escapeHtml(getOptionDisplayText(optionText)) + '</span>';
+            return renderLaneOptionChoice(optionText, savedLayout, original);
         }
 
         function renderOptionText(opt, savedLayout) {

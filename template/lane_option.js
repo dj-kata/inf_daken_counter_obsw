@@ -26,12 +26,31 @@ function renderLaneOptionToken(token, savedLayout) {
         }).join('') + '</span>';
 }
 
+function renderLaneOptionChoice(token, savedLayout, originalHtml) {
+    var numbers = renderLaneOptionToken(token, savedLayout);
+    if (!numbers) return originalHtml;
+    return '<span class="lane-option-choice"><span class="lane-option-original">' + originalHtml +
+        '</span><span class="lane-option-numbers">' + numbers + '</span></span>';
+}
+
+function syncLaneOptionDisplay() {
+    // URL settings are supplied by whole_layout.html; standalone views use CSS.
+    var params = new URLSearchParams(window.location.search);
+    var setting = params.has('show_lane_numbers') ? params.get('show_lane_numbers') :
+        getComputedStyle(document.body || document.documentElement)
+            .getPropertyValue('--show-lane-numbers').trim();
+    document.documentElement.classList.toggle('lane-numbers-enabled', setting === '1');
+}
+
+document.addEventListener('DOMContentLoaded', syncLaneOptionDisplay);
+setInterval(syncLaneOptionDisplay, 1000);
+
 function renderLaneOption(opt, savedLayout) {
     // A single saved SP layout cannot describe both sides of a DP option.
     var text = String(opt || '');
     var layout = text.includes('/') ? null : savedLayout;
     return text.split(/(\s*[,/]\s*)/).map(function(part, index) {
         return index % 2 ? escapeLaneOptionText(part) :
-            renderLaneOptionToken(part, layout) || escapeLaneOptionText(part);
+            renderLaneOptionChoice(part, layout, escapeLaneOptionText(part));
     }).join('');
 }
