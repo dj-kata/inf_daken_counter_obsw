@@ -1726,11 +1726,13 @@ class ResultDatabase:
         return _get_katate_band(getattr(best, "songinfo", None))
 
     def trim_result_image_cache(self):
-        """設定枚数を超えた古い一時画像を破棄する。0は全件保持。"""
+        """無効なら一時画像を全破棄。有効なら0は全件保持、それ以外は上限を適用。"""
         enabled = bool(getattr(self.config, "result_image_cache_enabled", True))
         limit = max(0, int(getattr(self.config, "result_image_cache_limit", 0)))
         with self._result_image_cache_lock:
-            while self._result_image_cache and (not enabled or (limit and len(self._result_image_cache) > limit)):
+            while self._result_image_cache and (
+                not enabled or (limit and len(self._result_image_cache) > limit)
+            ):
                 _, path = self._result_image_cache.popitem(last=False)
                 try:
                     path.unlink(missing_ok=True)
