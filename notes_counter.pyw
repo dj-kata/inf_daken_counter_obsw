@@ -156,6 +156,7 @@ class MainWindow(MainWindowUI):
         self.random_lane_analysis = RandomLaneAnalysis(
             enabled=self.config.enable_random_lane_analysis,
             detection_bands=self.config.random_lane_detection_bands,
+            template_folder=self.config.random_lane_template_folder,
         )
         self.obs_manager.set_spout_frame_callback(self._process_random_lane_spout_frame)
         self._next_regular_loop_at = 0.0
@@ -417,6 +418,7 @@ class MainWindow(MainWindowUI):
         self.result_database.song_database.load()  # 必要に応じて再読み込み
         self.random_lane_analysis.set_enabled(self.config.enable_random_lane_analysis)
         self.random_lane_analysis.set_detection_bands(self.config.random_lane_detection_bands)
+        self.random_lane_analysis.set_template_folder(self.config.random_lane_template_folder)
         self._update_main_timer_interval()
         if hasattr(self.result_database, "restart_mobile_http_server"):
             self.result_database.restart_mobile_http_server()
@@ -760,7 +762,6 @@ class MainWindow(MainWindowUI):
                 difficulty=(self.screen_reader.last_select_difficulty.name.upper()
                             if self.screen_reader.last_select_difficulty else None),
                 level=getattr(song, 'level', None),
-                option=self.current_option,
                 play_mode=self.last_play_mode.name if self.last_play_mode else None,
             )
 

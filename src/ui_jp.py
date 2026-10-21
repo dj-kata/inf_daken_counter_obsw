@@ -57,7 +57,9 @@ class UIText:
     
     class tab:
         """設定ダイアログのタブ"""
-        feature = '機能設定'
+        feature = '基本設定'
+        additional = '追加設定'
+        random_lane = 'RANDOMレーン認識'
         music_pack = '楽曲パック'
         image_save = '画像保存'
         data_import = 'データ登録'
@@ -70,7 +72,7 @@ class UIText:
         capture_method_direct = '直接取得(DXCAM)'
         capture_method_direct_legacy = '直接取得(GDI)'
         capture_method_obs = 'OBS WebSocket経由'
-        capture_method_spout = 'Spout経由'
+        capture_method_spout = 'Spout経由（推奨・OBS設定が必要）'
         spout_sender = 'Spout送信名:'
         direct_capture_all_monitors = '自動判定せずに常に全モニターを対象にする'
         direct_capture_all_monitors_tip = 'GDI方式の直接取得で使います。OFFの場合は、対象ウィンドウの位置から必要なときだけ自動で全モニターを対象にします。'
@@ -80,14 +82,20 @@ class UIText:
         enable_folder_updates = 'フォルダごとの更新数を表示'
         enable_music_select_score_import = '選曲画面から自己ベストを登録する'
         enable_random_lane_analysis = 'RANDOMレーン配置を認識する（SP・Spout専用）'
-        enable_random_lane_analysis_tip = 'Spout経由でREGULARまたはMIRROR配置のノーツイベントを正規化して記録し、同じ譜面のRANDOM・R-RANDOM配置を解析します。最初にオプション画面を開いてからプレーしてください。'
+        enable_random_lane_analysis_tip = 'Spout経由で、プレー画面のテンプレートから配置オプションを認識し、GET READY消失後に記録・解析します。REGULARまたはMIRRORで登録後、同じ譜面のRANDOM・R-RANDOM配置を解析できます。'
+        random_lane_template_folder = '配置認識テンプレートフォルダ:'
+        random_lane_template_tip = '元ツールで作成したtemplatesフォルダを指定してください。SCRATCH.png、GET_READY.png、OP_CURRENT_SCORE.png、Op.MIRROR.png、Op.RANDOM.png、Op.R-.png、Op.S-.pngを使用します。'
+        random_lane_band_edit = 'デフォルト設定を変更する'
+        random_lane_band_edit_tip = 'チェックすると検出帯を編集できます。保存済みの値はチェック状態にかかわらず維持され、設定画面を開くたびに編集がロックされます。'
         random_lane_band_top = '検出帯上端（ROI内Y）'
         random_lane_band_height = '高さ'
         random_lane_band_tip = '1920×1080映像用。初期値は上端55・高さ20px。高さは1～300px。広げすぎると近接ノーツがつながる場合があります。変更は次のプレーから適用され、変更後の検出帯でREGULARまたはMIRRORの再登録が必要です。'
         
         other_group = 'その他'
         image_save_path = '画像保存先:'
-        autoload_offset = '自動読み込みオフセット:'
+        autoload_offset = '本日の成果に含めるオフセット:'
+        autoload_offset_unit = '時間'
+        autoload_offset_help = '起動時刻のN時間前以降のリザルトを、本日の成果として読み込みます。\n例：4時間に設定して20:00に起動すると、16:00以降のリザルトが対象になります。'
         websocket_port = 'データ表示用port:'
         mobile_score_server_group = 'スマホ連携(HTTPサーバ)設定'
         mobile_score_server_enabled = 'スマホ用スコア閲覧サーバを起動する'
@@ -105,6 +113,7 @@ class UIText:
     
     class image_save:
         """画像保存設定タブ"""
+        output_group = '保存先・読み込み・データ配信'
         cache_limit = '起動中に一時保持するリザルト画像の上限:'
         cache_all = '全件保持'
         cache_help = '0は全件保持。上限を超えた古い一時画像は破棄します。ファイル保存済みの画像は引き続き投稿できます。再起動で一時画像は利用できなくなります。'
@@ -245,7 +254,7 @@ class UIText:
         scene_collection_label = 'シーンコレクション:'
         scene_collection_not_set = '(未設定)'
         target_source_group = '監視画像'
-        monitor_capture_hint = '一般設定の「ゲーム画面取得」を使用します。'
+        monitor_capture_hint = '基本設定の「ゲーム画面取得」を使用します。'
         monitor_obs_source = 'OBSソース「{}」'
         monitor_spout_source = 'Spout経由（{}）'
         target_source_not_set = '未設定'

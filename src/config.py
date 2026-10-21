@@ -35,6 +35,7 @@ class Config:
         self.enable_judge = False # 判定部分
         self.enable_folder_updates = True # フォルダごとの更新数表示
         self.enable_music_select_score_import = True # 選曲画面から自己ベストを取り込む
+        self.random_lane_template_folder = ""
         self.enable_random_lane_analysis = False # RANDOMレーン配置認識
         self.random_lane_detection_bands = {"1P": [55, 75], "2P": [55, 75]}
         self.spout_sender_name = "Spout_OBS_Filter"
@@ -112,6 +113,7 @@ class Config:
                     self.enable_judge = config_data.get("enable_judge", True)
                     self.enable_folder_updates = config_data.get("enable_folder_updates", False)
                     self.enable_music_select_score_import = config_data.get("enable_music_select_score_import", True)
+                    self.random_lane_template_folder = config_data.get("random_lane_template_folder", "")
                     self.enable_random_lane_analysis = config_data.get("enable_random_lane_analysis", False)
                     self.random_lane_detection_bands = self._load_random_lane_detection_bands(
                         config_data.get("random_lane_detection_bands")
@@ -205,6 +207,7 @@ class Config:
             "enable_folder_updates": self.enable_folder_updates,
             "enable_music_select_score_import": self.enable_music_select_score_import,
             "enable_random_lane_analysis": self.enable_random_lane_analysis,
+            "random_lane_template_folder": self.random_lane_template_folder,
             "random_lane_detection_bands": self.random_lane_detection_bands,
             "spout_sender_name": self.spout_sender_name,
             "autoload_offset": self.autoload_offset,

@@ -18,6 +18,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from src.random_lane_templates import PlayStartRecognizer
 from src.logger import get_logger
 
 logger = get_logger(__name__)
@@ -44,7 +45,7 @@ COLOR_RANGES = (
 MIN_ACTIVE_PIXELS = 8
 MIN_ACTIVE_RATIO = 0.035
 # Event detection now follows upstream rising edges without frame merging.
-CHART_DATA_VERSION = 5
+CHART_DATA_VERSION = 6
 WHITE_LANE_MARGIN = 0.15
 BLACK_LANE_MARGIN = 0.08
 MORPH_KERNEL = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 1))
@@ -205,7 +206,7 @@ class RandomLaneAnalysis:
     """Coordinates capture frames, chart persistence, and overlay state."""
 
     def __init__(self, enabled=False, db_path="random_lane.sqlite3", state_path="template/random_lane_state.js",
-                 detection_bands=None):
+                 detection_bands=None, template_folder=""):
         self._lock = threading.RLock()
         self.enabled = None
         self.db_path = Path(db_path)
@@ -225,8 +226,30 @@ class RandomLaneAnalysis:
         self._notification = None
         self._last_state = None
         self.capture_supported = True
+        self.template_folder = None
+        self.template_recognizer = None
+        self.template_error = None
+        self.set_template_folder(template_folder)
         self.set_detection_bands(detection_bands)
         self.set_enabled(enabled)
+
+    @_synchronized
+    def set_template_folder(self, folder):
+        folder = str(folder or "").strip()
+        self.template_folder = folder
+        self.template_recognizer = None
+        self.template_error = None
+        self._reset_session(clear_result_layout=True)
+        try:
+            if not folder:
+                raise ValueError("RANDOM配置認識のテンプレートフォルダを設定してください")
+            self.template_recognizer = PlayStartRecognizer(folder)
+        except (OSError, ValueError, cv2.error) as exc:
+            self.template_error = f"RANDOM配置認識のテンプレートを利用できません: {exc}"
+            logger.warning(self.template_error)
+        if self.enabled:
+            self._publish("unavailable" if self.template_error else "waiting",
+                          message=self.template_error or "次のSPプレーを待っています")
 
     @_synchronized
     def set_detection_bands(self, bands=None):
@@ -260,7 +283,8 @@ class RandomLaneAnalysis:
         self._reset_session(clear_result_layout=True)
         if enabled:
             self._ensure_database()
-            self._publish("waiting", message="次のSPプレーを待っています")
+            self._publish("unavailable" if self.template_error else "waiting",
+                          message=self.template_error or "次のSPプレーを待っています")
         else:
             self._publish("disabled", message="RANDOM配置認識は無効です")
 
@@ -274,10 +298,11 @@ class RandomLaneAnalysis:
                 message=message or "RANDOM配置認識用の映像入力を利用できません",
             )
         elif self.enabled and self._last_state and self._last_state.get("phase") == "unavailable":
-            self._publish("waiting", message=message or "次のSPプレーを待っています")
+            self._publish("unavailable" if self.template_error else "waiting",
+                          message=self.template_error or message or "次のSPプレーを待っています")
 
     @_synchronized
-    def start_play(self, *, title, style, difficulty, level, option, play_mode):
+    def start_play(self, *, title, style, difficulty, level, play_mode):
         self._reset_session(clear_result_layout=True)
         if not self.enabled:
             return
@@ -292,19 +317,11 @@ class RandomLaneAnalysis:
         if side is None:
             self._publish("unsupported", title=title, message="DPは現在対象外です")
             return
-        if option is None or not getattr(option, "valid", False):
-            self._publish("unsupported", title=title, message="オプション画面を一度開いて配置を認識させてください")
-            return
-
-        arrange = (getattr(option, "arrange", None) or "REGULAR").upper()
-        if arrange in ("OFF", "NORMAL"):
-            arrange = "REGULAR"
-        if getattr(option, "special", False):
-            self._publish("unsupported", title=title, message=f"{arrange}は現在対象外です")
+        if self.template_error or self.template_recognizer is None:
+            self._publish("unavailable", message=self.template_error or "テンプレート未設定です")
             return
 
         self.side = side
-        self.option_name = arrange
         self.chart_key = f"{title}\x1f{style}\x1f{difficulty}"
         # Keep existing charts at the default band. Other bands need their own
         # event sequences; returning to the default restores the original data.
@@ -314,6 +331,19 @@ class RandomLaneAnalysis:
         self.chart_meta = {"title": title, "style": style, "difficulty": difficulty, "level": level}
         self.detectors[side].reset()
 
+        self.template_recognizer.reset()
+        self.mode = "prepare"
+        self._publish("preparing", title=title, chart=difficulty,
+                      message="テンプレートでオプションとGET READYを確認中")
+
+    def _start_arrangement(self, arrange):
+        self.mode = None
+        self.option_name = arrange
+        title = self.chart_meta["title"]
+        difficulty = self.chart_meta["difficulty"]
+        self.detectors[self.side].reset()
+        logger.info("GET READY消失後にレーン解析開始: side=%s option=%s chart=%s",
+                    self.side, arrange, self.chart_key)
         if arrange in ("REGULAR", "MIRROR"):
             self.result_layout = (
                 REGULAR_LAYOUT if arrange == "REGULAR" else MIRROR_LAYOUT
@@ -365,11 +395,18 @@ class RandomLaneAnalysis:
 
     @_synchronized
     def process_frame(self, image):
-        if not self.enabled or self.mode not in ("record", "analyze") or self.side is None:
+        if not self.enabled or self.mode not in ("prepare", "record", "analyze") or self.side is None:
             return
         rgb = np.asarray(image)
         if rgb.ndim != 3 or rgb.shape[2] < 3:
             return
+        if self.mode == "prepare":
+            arrange = self.template_recognizer.observe(rgb[:, :, :3], self.side)
+            if arrange is None:
+                return
+            self._start_arrangement(arrange)
+            if self.mode not in ("record", "analyze"):
+                return
         event_no, lanes = self.detectors[self.side].detect(rgb[:, :, :3])
         if not lanes:
             return

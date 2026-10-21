@@ -4,7 +4,6 @@ import ast
 import itertools
 from pathlib import Path
 import tempfile
-from types import SimpleNamespace
 import unittest
 
 import cv2
@@ -28,11 +27,14 @@ class RandomLaneIntegrationTests(unittest.TestCase):
         ]
 
     def start(self, arrange='REGULAR', side='1P'):
+        from unittest.mock import Mock
+        self.analysis.template_error = None
+        self.analysis.template_recognizer = Mock()
         self.analysis.start_play(
             title='test song', style='sp', difficulty='ANOTHER', level=12,
-            option=SimpleNamespace(valid=True, special=False, arrange=arrange),
             play_mode=f'sp_{side.lower()}',
         )
+        self.analysis._start_arrangement(arrange)
 
     def save_chart(self):
         self.start()
@@ -211,7 +213,7 @@ class RandomLaneIntegrationTests(unittest.TestCase):
         self.save_chart()
         key = self.analysis.chart_key
         with sqlite3.connect(self.analysis.db_path) as conn:
-            conn.execute('UPDATE normal_charts SET data_version=4 WHERE chart_key=?', (key,))
+            conn.execute('UPDATE normal_charts SET data_version=5 WHERE chart_key=?', (key,))
         self.assertIsNone(self.analysis._load_chart(key))
         self.start('MIRROR')
         self.assertEqual(self.analysis.mode, 'record')

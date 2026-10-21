@@ -111,6 +111,7 @@ build_exe_options = {
         "src.direct_window_capture",
         "src.dxcam_window_capture",
         "src.random_lane_analysis",
+        "src.random_lane_templates",
         "src.spout_capture",
         "src.mobile_http_server",
         # ctypes関連（Windows APIアクセスに必要）
