@@ -77,7 +77,7 @@ class UIText:
         tweet_group = 'Tweet Function'
         enable_autotweet = 'Enable auto-tweet on exit'
         enable_judge = 'Include judge data'
-        enable_folder_updates = 'Show folder update count(coming soon)'
+        enable_folder_updates = 'Show folder update count'
         enable_music_select_score_import = 'Register best scores from song selection screen'
         enable_random_lane_analysis = 'Detect RANDOM lane mapping (SP, Spout only)'
         enable_random_lane_analysis_tip = 'Via Spout, normalizes and records note events from a REGULAR or MIRROR play, then analyzes RANDOM or R-RANDOM mapping for the same chart. Open the options screen before playing.'
@@ -89,6 +89,7 @@ class UIText:
         image_save_path = 'Image save path:'
         autoload_offset = 'Auto-load offset:'
         websocket_port = 'Data display port:'
+        mobile_score_server_group = 'Mobile Integration (HTTP Server)'
         mobile_score_server_enabled = 'Start mobile score viewer server'
         mobile_score_server_port = 'Mobile HTTP port:'
         mobile_score_server_interface = 'Mobile viewer NIC:'
@@ -234,6 +235,8 @@ class UIText:
         connected = 'Connected'
 
         # 制御設定ダイアログ関連
+        websocket_enabled = 'Enable OBS WebSocket integration'
+        websocket_disabled = 'OBS WebSocket integration: OFF'
         websocket_group = 'OBS WebSocket Connect Settings'
         websocket_host = 'host:'
         websocket_port = 'port:'

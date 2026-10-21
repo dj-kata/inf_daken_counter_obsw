@@ -77,7 +77,7 @@ class UIText:
         tweet_group = 'ツイート機能'
         enable_autotweet = '終了時の自動ツイートを有効にする'
         enable_judge = '判定部分を含める'
-        enable_folder_updates = 'フォルダごとの更新数を表示(開発中)'
+        enable_folder_updates = 'フォルダごとの更新数を表示'
         enable_music_select_score_import = '選曲画面から自己ベストを登録する'
         enable_random_lane_analysis = 'RANDOMレーン配置を認識する（SP・Spout専用）'
         enable_random_lane_analysis_tip = 'Spout経由でREGULARまたはMIRROR配置のノーツイベントを正規化して記録し、同じ譜面のRANDOM・R-RANDOM配置を解析します。最初にオプション画面を開いてからプレーしてください。'
@@ -89,6 +89,7 @@ class UIText:
         image_save_path = '画像保存先:'
         autoload_offset = '自動読み込みオフセット:'
         websocket_port = 'データ表示用port:'
+        mobile_score_server_group = 'スマホ連携(HTTPサーバ)設定'
         mobile_score_server_enabled = 'スマホ用スコア閲覧サーバを起動する'
         mobile_score_server_port = 'スマホ用HTTP port:'
         mobile_score_server_interface = 'スマホ用表示NIC:'
@@ -234,6 +235,8 @@ class UIText:
         connected = '接続中'
 
         # 制御設定ダイアログ関連
+        websocket_enabled = 'OBS WebSocket連携を有効にする'
+        websocket_disabled = 'OBS WebSocket連携: OFF'
         websocket_group = 'OBS WebSocket接続設定'
         websocket_host = 'ホスト:'
         websocket_port = 'ポート:'

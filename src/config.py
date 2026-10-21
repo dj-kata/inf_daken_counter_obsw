@@ -14,6 +14,7 @@ class Config:
         self.websocket_host = "localhost"
         self.websocket_port = 4444
         self.websocket_password = ""
+        self.obs_websocket_enabled = True
         self.capture_method = "direct_window_legacy"
         """'direct_window' / 'direct_window_legacy' / 'obs_websocket' / 'spout'"""
         self.direct_capture_exe = "bm2dx.exe"
@@ -101,6 +102,7 @@ class Config:
                     self.websocket_host = config_data.get("websocket_host", "localhost")
                     self.websocket_port = config_data.get("websocket_port", 4444)
                     self.websocket_password = config_data.get("websocket_password", "")
+                    self.obs_websocket_enabled = config_data.get("obs_websocket_enabled", True)
                     self.capture_method = self._load_capture_method(config_data)
                     self.direct_capture_exe = config_data.get("direct_capture_exe", "bm2dx.exe")
                     self.direct_capture_title = config_data.get("direct_capture_title", "beatmania IIDX INFINITAS")
@@ -192,6 +194,7 @@ class Config:
             "websocket_host": self.websocket_host,
             "websocket_port": self.websocket_port,
             "websocket_password": self.websocket_password,
+            "obs_websocket_enabled": self.obs_websocket_enabled,
             "capture_method": self.capture_method,
             "direct_capture_exe": self.direct_capture_exe,
             "direct_capture_title": self.direct_capture_title,

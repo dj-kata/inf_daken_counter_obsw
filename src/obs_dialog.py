@@ -6,7 +6,7 @@ OBS制御設定ダイアログ(PySide6版・改良版)
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTableWidget,
                                QTableWidgetItem, QPushButton, QLabel, QComboBox,
                                QGroupBox, QHeaderView, QMessageBox, QFormLayout,
-                               QLineEdit, QSpinBox)
+                               QLineEdit, QSpinBox, QCheckBox)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from src.logger import get_logger
@@ -74,6 +74,9 @@ class OBSControlDialog(QDialog):
         layout = QVBoxLayout()
         self.setLayout(layout)
         
+        self.obs_websocket_enabled_check = QCheckBox(self.ui.obs.websocket_enabled)
+        layout.addWidget(self.obs_websocket_enabled_check)
+
         # WebSocket接続設定グループ
         websocket_group = QGroupBox(self.ui.obs.websocket_group)
         websocket_layout = QFormLayout()
@@ -588,6 +591,8 @@ class OBSControlDialog(QDialog):
         """設定を読み込んでテーブルに表示"""
         self.settings_table.setRowCount(0)
         
+        self.obs_websocket_enabled_check.setChecked(self.config.obs_websocket_enabled)
+
         # WebSocket設定を読み込む
         self.websocket_host_edit.setText(self.config.websocket_host)
         self.websocket_port_spin.setValue(self.config.websocket_port)
@@ -672,6 +677,8 @@ class OBSControlDialog(QDialog):
     
     def accept(self):
         """OKボタン"""
+        self.config.obs_websocket_enabled = self.obs_websocket_enabled_check.isChecked()
+
         # WebSocket設定を保存
         self.config.websocket_host = self.websocket_host_edit.text()
         self.config.websocket_port = self.websocket_port_spin.value()

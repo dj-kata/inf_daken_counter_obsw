@@ -224,18 +224,18 @@ class ConfigDialog(QDialog):
         game_capture_group.setLayout(game_capture_layout)
 
         self.capture_method_group = QButtonGroup()
-        self.capture_method_direct_radio = QRadioButton(self.ui.feature.capture_method_direct)
         self.capture_method_direct_legacy_radio = QRadioButton(self.ui.feature.capture_method_direct_legacy)
+        self.capture_method_direct_radio = QRadioButton(self.ui.feature.capture_method_direct)
         self.capture_method_obs_radio = QRadioButton(self.ui.feature.capture_method_obs)
         self.capture_method_spout_radio = QRadioButton(self.ui.feature.capture_method_spout)
-        self.capture_method_group.addButton(self.capture_method_direct_radio, 0)
         self.capture_method_group.addButton(self.capture_method_direct_legacy_radio, 1)
+        self.capture_method_group.addButton(self.capture_method_direct_radio, 0)
         self.capture_method_group.addButton(self.capture_method_obs_radio, 2)
         self.capture_method_group.addButton(self.capture_method_spout_radio, 3)
 
         capture_method_layout = QGridLayout()
-        capture_method_layout.addWidget(self.capture_method_direct_radio, 0, 0)
-        capture_method_layout.addWidget(self.capture_method_direct_legacy_radio, 0, 1)
+        capture_method_layout.addWidget(self.capture_method_direct_legacy_radio, 0, 0)
+        capture_method_layout.addWidget(self.capture_method_direct_radio, 0, 1)
         capture_method_layout.addWidget(self.capture_method_obs_radio, 1, 0)
         capture_method_layout.addWidget(self.capture_method_spout_radio, 1, 1)
         game_capture_layout.addLayout(capture_method_layout)
@@ -310,6 +310,31 @@ class ConfigDialog(QDialog):
         
         layout.addWidget(tweet_group)
         
+        # スマホ連携設定
+        mobile_group = QGroupBox(self.ui.feature.mobile_score_server_group)
+        mobile_layout = QFormLayout()
+        mobile_group.setLayout(mobile_layout)
+        mobile_validator = QIntValidator(1000, 65535, self)
+        self.mobile_score_server_enabled_check = QCheckBox(
+            self.ui.feature.mobile_score_server_enabled
+        )
+        mobile_layout.addRow(self.mobile_score_server_enabled_check)
+
+        self.mobile_score_server_port_edit = QLineEdit()
+        self.mobile_score_server_port_edit.setValidator(mobile_validator)
+        mobile_layout.addRow(
+            self.ui.feature.mobile_score_server_port,
+            self.mobile_score_server_port_edit,
+        )
+
+        self.mobile_score_server_interface_combo = QComboBox()
+        mobile_layout.addRow(
+            self.ui.feature.mobile_score_server_interface,
+            self.mobile_score_server_interface_combo,
+        )
+
+        layout.addWidget(mobile_group)
+
         # その他の設定
         other_group = QGroupBox(self.ui.feature.other_group)
         other_layout = QFormLayout()
@@ -334,24 +359,6 @@ class ConfigDialog(QDialog):
         validator = QIntValidator(1000,65535)
         self.websocket_data_port.setValidator(validator)
         other_layout.addRow(self.ui.feature.websocket_port, self.websocket_data_port)
-
-        self.mobile_score_server_enabled_check = QCheckBox(
-            self.ui.feature.mobile_score_server_enabled
-        )
-        other_layout.addRow(self.mobile_score_server_enabled_check)
-
-        self.mobile_score_server_port_edit = QLineEdit()
-        self.mobile_score_server_port_edit.setValidator(validator)
-        other_layout.addRow(
-            self.ui.feature.mobile_score_server_port,
-            self.mobile_score_server_port_edit,
-        )
-
-        self.mobile_score_server_interface_combo = QComboBox()
-        other_layout.addRow(
-            self.ui.feature.mobile_score_server_interface,
-            self.mobile_score_server_interface_combo,
-        )
 
         # 最前面表示 
         self.keep_on_top_check = QCheckBox(self.ui.feature.keep_on_top)

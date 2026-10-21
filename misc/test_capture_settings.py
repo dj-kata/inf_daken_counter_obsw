@@ -35,6 +35,32 @@ class CaptureSettingsTests(unittest.TestCase):
         self.assertEqual(self.config.capture_method, 'direct_window_legacy')
         self.assertEqual(self.config._load_capture_method({}), 'direct_window_legacy')
 
+    def test_obs_integration_toggle_is_saved_without_clearing_credentials(self):
+        self.config.websocket_password = 'saved password'
+        self.config.obs_control_settings = [{'timing': 'app_start', 'action': 'switch_scene', 'scene': 'Game'}]
+        dialog = self.dialog('direct_window_legacy')
+        self.assertTrue(dialog.obs_websocket_enabled_check.isChecked())
+        self.assertIs(dialog.layout().itemAt(0).widget(), dialog.obs_websocket_enabled_check)
+        dialog.obs_websocket_enabled_check.setChecked(False)
+        dialog.accept()
+        saved = Config(self.config.config_file)
+        self.assertFalse(saved.obs_websocket_enabled)
+        self.assertEqual(saved.websocket_password, 'saved password')
+        self.assertEqual(saved.obs_control_settings, self.config.obs_control_settings)
+        dialog = self.dialog('direct_window_legacy')
+        self.assertFalse(dialog.obs_websocket_enabled_check.isChecked())
+        dialog.obs_websocket_enabled_check.setChecked(True)
+        dialog.accept()
+        self.assertTrue(Config(self.config.config_file).obs_websocket_enabled)
+
+    def test_old_config_keeps_obs_integration_enabled(self):
+        import json
+        Path(self.config.config_file).write_text(
+            json.dumps({'capture_method': 'obs_websocket', 'websocket_password': 'saved password'}),
+            encoding='utf-8',
+        )
+        self.assertTrue(Config(self.config.config_file).obs_websocket_enabled)
+
     def test_existing_capture_methods_and_old_settings_are_preserved(self):
         for method in ('direct_window', 'direct_window_legacy', 'obs_websocket', 'spout'):
             with self.subTest(method=method):
