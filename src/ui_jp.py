@@ -103,6 +103,12 @@ class UIText:
         mobile_score_server_interface = 'スマホ用表示NIC:'
         mobile_score_server_interface_auto = '自動選択'
         mobile_score_server_interface_missing = '現在未検出'
+        cache_enabled = 'リザルト画像を起動中に一時保存する'
+        cache_limit = '保持件数:'
+        cache_all = '全件'
+        cache_100 = '100件'
+        cache_custom = '件数を指定'
+        cache_help = '上限を超えた古い一時画像は破棄します。無効にして保存すると一時画像はすべて破棄されます。再起動後は利用できません。通常保存した画像ファイルは引き続き投稿できます。'
         keep_on_top = '常に最前面表示する'
     
     class music_pack:
@@ -114,9 +120,6 @@ class UIText:
     class image_save:
         """画像保存設定タブ"""
         output_group = '保存先・読み込み・データ配信'
-        cache_limit = '起動中に一時保持するリザルト画像の上限:'
-        cache_all = '全件保持'
-        cache_help = '0は全件保持。上限を超えた古い一時画像は破棄します。ファイル保存済みの画像は引き続き投稿できます。再起動で一時画像は利用できなくなります。'
         condition_group = '画像保存条件'
         always = '常に保存'
         only_updates = '更新時のみ保存'

@@ -103,6 +103,12 @@ class UIText:
         mobile_score_server_interface = 'Mobile viewer NIC:'
         mobile_score_server_interface_auto = 'Auto select'
         mobile_score_server_interface_missing = 'Currently not detected'
+        cache_enabled = 'Keep temporary result images during this session'
+        cache_limit = 'Images to keep:'
+        cache_all = 'All'
+        cache_100 = '100 images'
+        cache_custom = 'Custom count'
+        cache_help = 'Older temporary images exceeding the limit are discarded. Saving with this feature disabled clears temporary images. They are unavailable after restart. Permanently saved image files remain available for posting.'
         keep_on_top = 'Always on Top'
     
     class music_pack:
@@ -114,9 +120,6 @@ class UIText:
     class image_save:
         """Image save settings tab"""
         output_group = 'Save Location, Loading and Data Display'
-        cache_limit = 'Temporary result images to keep:'
-        cache_all = 'Keep all'
-        cache_help = '0 keeps all images. Older images exceeding the limit are discarded. Saved files remain available for posting. Temporary images are unavailable after restart.'
         condition_group = 'Image Save Condition'
         always = 'Always save'
         only_updates = 'Save on update only'

@@ -329,10 +329,41 @@ class ConfigDialog(QDialog):
             self.mobile_score_server_interface_combo,
         )
 
+        self.result_image_cache_enabled_check = QCheckBox(self.ui.feature.cache_enabled)
+        mobile_layout.addRow(self.result_image_cache_enabled_check)
+        self.result_image_cache_group = QButtonGroup(self)
+        self.result_image_cache_all_radio = QRadioButton(self.ui.feature.cache_all)
+        self.result_image_cache_100_radio = QRadioButton(self.ui.feature.cache_100)
+        self.result_image_cache_custom_radio = QRadioButton(self.ui.feature.cache_custom)
+        self.result_image_cache_group.addButton(self.result_image_cache_all_radio, 0)
+        self.result_image_cache_group.addButton(self.result_image_cache_100_radio, 1)
+        self.result_image_cache_group.addButton(self.result_image_cache_custom_radio, 2)
+        cache_choices = QHBoxLayout()
+        cache_choices.addWidget(self.result_image_cache_all_radio)
+        cache_choices.addWidget(self.result_image_cache_100_radio)
+        cache_choices.addWidget(self.result_image_cache_custom_radio)
+        self.result_image_cache_limit_spin = QSpinBox()
+        self.result_image_cache_limit_spin.setRange(1, 2147483647)
+        cache_choices.addWidget(self.result_image_cache_limit_spin)
+        mobile_layout.addRow(self.ui.feature.cache_limit, cache_choices)
+        cache_help = QLabel(self.ui.feature.cache_help)
+        cache_help.setWordWrap(True)
+        mobile_layout.addRow(cache_help)
+        self.result_image_cache_enabled_check.toggled.connect(self._update_result_image_cache_enabled)
+        self.result_image_cache_custom_radio.toggled.connect(self._update_result_image_cache_enabled)
+
         layout.addWidget(mobile_group)
 
         layout.addStretch()
         return widget
+
+    def _update_result_image_cache_enabled(self, *_args):
+        enabled = self.result_image_cache_enabled_check.isChecked()
+        for button in self.result_image_cache_group.buttons():
+            button.setEnabled(enabled)
+        self.result_image_cache_limit_spin.setEnabled(
+            enabled and self.result_image_cache_custom_radio.isChecked()
+        )
 
     def create_random_lane_tab(self):
         """RANDOMレーン認識の設定タブ。"""
@@ -618,15 +649,6 @@ class ConfigDialog(QDialog):
         self.write_statistics_check = QCheckBox(self.ui.image_save.write_statistics)
         other_layout.addWidget(self.write_statistics_check)
 
-        cache_layout = QHBoxLayout()
-        cache_layout.addWidget(QLabel(self.ui.image_save.cache_limit))
-        self.result_image_cache_limit_spin = QSpinBox()
-        self.result_image_cache_limit_spin.setRange(0, 10000)
-        self.result_image_cache_limit_spin.setSpecialValueText(self.ui.image_save.cache_all)
-        self.result_image_cache_limit_spin.setToolTip(self.ui.image_save.cache_help)
-        cache_layout.addWidget(self.result_image_cache_limit_spin)
-        other_layout.addLayout(cache_layout)
-        
         layout.addWidget(other_group)
         layout.addStretch()
         
@@ -991,7 +1013,12 @@ class ConfigDialog(QDialog):
         #             self.music_pack_checkboxes[pack_name].setChecked(True)
         
         # 画像保存設定
-        self.result_image_cache_limit_spin.setValue(self.config.result_image_cache_limit)
+        self.result_image_cache_enabled_check.setChecked(self.config.result_image_cache_enabled)
+        limit = self.config.result_image_cache_limit
+        self.result_image_cache_limit_spin.setValue(limit if limit > 0 else 100)
+        choice = 0 if limit == 0 else 1 if limit == 100 else 2
+        self.result_image_cache_group.button(choice).setChecked(True)
+        self._update_result_image_cache_enabled()
         if hasattr(self.config, 'autosave_image_mode'):
             button = self.autosave_button_group.button(self.config.autosave_image_mode.value)
             if button:
@@ -1114,7 +1141,11 @@ class ConfigDialog(QDialog):
         self.config.autosave_image_mode = config_autosave_image(self.autosave_button_group.checkedId())
         self.config.modify_rivalarea_mode = config_modify_rivalarea(self.rivalarea_button_group.checkedId())
         self.config.write_statistics = self.write_statistics_check.isChecked()
-        self.config.result_image_cache_limit = self.result_image_cache_limit_spin.value()
+        self.config.result_image_cache_enabled = self.result_image_cache_enabled_check.isChecked()
+        choice = self.result_image_cache_group.checkedId()
+        self.config.result_image_cache_limit = (
+            0 if choice == 0 else 100 if choice == 1 else self.result_image_cache_limit_spin.value()
+        )
         if self.result_database:
             self.result_database.trim_result_image_cache()
         self.config.include_legacy_v2_logs = self.include_legacy_v2_logs_check.isChecked()

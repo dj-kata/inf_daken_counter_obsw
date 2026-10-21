@@ -90,6 +90,26 @@ class ResultImageCacheTests(unittest.TestCase):
         self.assertEqual(list(self.db._result_image_cache), [3, 4])
         self.assertEqual([r.timestamp for _, r in self.db._mobile_saved_image_results()], [3, 4])
 
+    def test_disabling_clears_temporary_images_and_prevents_new_writes(self):
+        first = self.result(100)
+        self.db.cache_result_image(first, self.image)
+        temporary = self.db._cached_result_image(first)
+        saved = self.root / 'saved.png'
+        self.image.save(saved)
+        first.image_path = str(saved)
+        self.db.config.result_image_cache_enabled = False
+        self.db.trim_result_image_cache()
+        self.assertFalse(temporary.exists())
+        self.assertTrue(saved.exists())
+        self.assertEqual(self.db.get_mobile_result_image_path(100), saved)
+        image = Mock()
+        self.db.cache_result_image(self.result(200), image)
+        image.save.assert_not_called()
+        self.assertEqual(len(self.db._result_image_cache), 0)
+        self.db.config.result_image_cache_enabled = True
+        self.db.cache_result_image(self.result(300), self.image)
+        self.assertIsNotNone(self.db.get_mobile_result_image_data(300))
+
     def test_new_session_does_not_reuse_temporary_images_and_shutdown_deletes_them(self):
         result = self.result(100)
         self.db.cache_result_image(result, self.image)
@@ -205,11 +225,69 @@ class ResultImageCacheTests(unittest.TestCase):
         path = self.root / 'config.json'
         path.write_text('{}', encoding='utf-8')
         config = Config(config_file=str(path))
+        self.assertTrue(config.result_image_cache_enabled)
         self.assertEqual(config.result_image_cache_limit, 0)
         config.result_image_cache_limit = 100
+        config.result_image_cache_enabled = False
         config.save_config()
+        self.assertFalse(Config(config_file=str(path)).result_image_cache_enabled)
         self.assertEqual(Config(config_file=str(path)).result_image_cache_limit, 100)
         self.assertEqual(json.loads(path.read_text())['result_image_cache_limit'], 100)
+
+
+class ResultImageCacheSettingsTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def test_choices_location_enable_state_and_round_trip_in_both_languages(self):
+        from PySide6.QtWidgets import QTabWidget
+        from src.config_dialog import ConfigDialog
+        for language in ('ja', 'en'):
+            for limit, expected in ((0, 0), (100, 1), (37, 2)):
+                with self.subTest(language=language, limit=limit), tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory)/'config.json'
+                    # Old settings without the new flag remain enabled.
+                    path.write_text(json.dumps({'result_image_cache_limit': limit}), encoding='utf-8')
+                    config = Config(str(path))
+                    config.language = language
+                    database = Mock()
+                    dialog = ConfigDialog(config, result_database=database)
+                    self.addCleanup(dialog.deleteLater)
+                    tabs = dialog.findChild(QTabWidget)
+                    additional = tabs.widget(1).widget()
+                    self.assertTrue(additional.isAncestorOf(dialog.result_image_cache_enabled_check))
+                    self.assertTrue(additional.isAncestorOf(dialog.result_image_cache_limit_spin))
+                    self.assertTrue(dialog.result_image_cache_enabled_check.isChecked())
+                    self.assertEqual(dialog.result_image_cache_group.checkedId(), expected)
+                    self.assertEqual(dialog.result_image_cache_limit_spin.isEnabled(), expected == 2)
+                    dialog.result_image_cache_custom_radio.setChecked(True)
+                    self.assertTrue(dialog.result_image_cache_limit_spin.isEnabled())
+                    dialog.result_image_cache_limit_spin.setValue(55)
+                    dialog.result_image_cache_enabled_check.setChecked(False)
+                    self.assertTrue(all(not b.isEnabled() for b in dialog.result_image_cache_group.buttons()))
+                    self.assertFalse(dialog.result_image_cache_limit_spin.isEnabled())
+                    dialog.accept()
+                    database.trim_result_image_cache.assert_called_once()
+                    saved = Config(str(path))
+                    self.assertFalse(saved.result_image_cache_enabled)
+                    self.assertEqual(saved.result_image_cache_limit, 55)
+                    reopened = ConfigDialog(saved)
+                    self.addCleanup(reopened.deleteLater)
+                    self.assertFalse(reopened.result_image_cache_enabled_check.isChecked())
+                    self.assertEqual(reopened.result_image_cache_group.checkedId(), 2)
+                    self.assertEqual(reopened.result_image_cache_limit_spin.value(), 55)
+                    reopened.result_image_cache_enabled_check.setChecked(True)
+                    reopened.result_image_cache_100_radio.setChecked(True)
+                    self.assertFalse(reopened.result_image_cache_limit_spin.isEnabled())
+                    reopened.accept()
+                    self.assertEqual(Config(str(path)).result_image_cache_limit, 100)
+                    reopened.result_image_cache_all_radio.setChecked(True)
+                    reopened.accept()
+                    final = Config(str(path))
+                    self.assertTrue(final.result_image_cache_enabled)
+                    self.assertEqual(final.result_image_cache_limit, 0)
 
 
 if __name__ == '__main__':
