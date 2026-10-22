@@ -182,11 +182,11 @@ test('partial results appear in both histories and today results', () => {
     assert.equal(digits(elements.get('results-tbody').innerHTML).map(key => key[2]).join(''), '15');
 });
 
-test('live overlay shows partial layout, falls back to option, and retains partial when idle', () => {
+test('live overlay shows partial layout, hides unknown layouts, and retains partial when idle', () => {
     const {context, elements, properties} = load('template/random_lane.html');
     context.window.INFDC_RANDOM_LANE_STATE = {phase: 'analyzing', option: 'R-RANDOM'};
     context.render();
-    assert.equal(elements.get('layout').innerHTML, 'R-RANDOM');
+    assert.equal(elements.get('layout').innerHTML, '');
     context.window.INFDC_RANDOM_LANE_STATE = {phase: 'partial', option: 'R-RANDOM', layout: 'B15BWWB'};
     context.render();
     const partial = elements.get('layout').innerHTML;
@@ -199,5 +199,10 @@ test('live overlay shows partial layout, falls back to option, and retains parti
     assert.equal(elements.get('layout').innerHTML, partial.replaceAll('R-RANDOM:', 'RANDOM:'));
     context.window.INFDC_RANDOM_LANE_STATE = {phase: 'failed', option: 'RANDOM', layout: ''};
     context.render();
-    assert.equal(elements.get('layout').innerHTML, 'RANDOM');
+    assert.equal(elements.get('layout').innerHTML, '');
+    for (const layout of [undefined, '', '???????']) {
+        context.window.INFDC_RANDOM_LANE_STATE = {phase: 'analyzing', option: 'RANDOM', layout};
+        context.render();
+        assert.equal(elements.get('layout').innerHTML, '');
+    }
 });

@@ -7,7 +7,7 @@
   <script src="lane_option.js"></script>
   <style>
     :root {
-      /* 1: 最後の配置（未取得なら調整用1234567）を常時表示、0: プレー中の配置・部分配置・オプション名を表示 */
+      /* 1: 最後の配置（未取得なら調整用1234567）を常時表示、0: プレー中の配置・部分配置のみ表示 */
       --show-when-idle: 0;
     }
     html, body { margin: 0; background: transparent; overflow: hidden; }
@@ -44,7 +44,7 @@
         .getPropertyValue('--show-when-idle').trim() === '1';
       const retained = renderLaneOptionToken('RANDOM', lastLayout);
       layout.innerHTML = active
-        ? current || escapeLaneOptionText(state.option || 'RANDOM')
+        ? current
         : showWhenIdle ? retained || renderLaneOptionToken('REGULAR') : '';
     }
     function reloadState() {
