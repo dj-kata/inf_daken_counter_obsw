@@ -30,7 +30,7 @@ WindowsではPythonのパスを `.codex-venv\Scripts\python.exe` に読み替え
 
 ## GitHub Pagesへ公開する
 
-`.github/workflows/docs.yml` は、説明書用ブランチ・masterへの対象ファイルのpushやPRでビルドを検証します。
+`.github/workflows/docs.yml` は、説明書用ブランチ・mainへの対象ファイルのpushやPRでビルドを検証します。
 この時点では自動公開しません。公開時には次の操作を行います。
 
 1. 内容を確認し、説明書の変更を既定ブランチへマージします。

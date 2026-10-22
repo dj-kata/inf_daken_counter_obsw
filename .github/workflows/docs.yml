@@ -10,7 +10,7 @@ on:
       - 'misc/test_import_release_notes.py'
       - '.github/workflows/docs.yml'
   push:
-    branches: [master, docs/image-save-manual]
+    branches: [main, docs/image-save-manual]
     paths:
       - 'docs/**'
       - 'mkdocs.yml'

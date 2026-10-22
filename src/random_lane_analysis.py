@@ -18,6 +18,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from src.random_lane_templates import PlayStartRecognizer
 from src.logger import get_logger
 
 logger = get_logger(__name__)
@@ -43,17 +44,8 @@ COLOR_RANGES = (
 )
 MIN_ACTIVE_PIXELS = 8
 MIN_ACTIVE_RATIO = 0.035
-ARM_CLEAR_FRAMES = 10
-# The INFINITAS play-start animation crosses the detector band twice.
-START_ACTIVITY_WAIT_SECONDS = 2.0
-START_ACTIVITY_GAP_SECONDS = 0.5
-START_ACTIVITY_BURSTS = 2
-EVENT_MERGE_FRAMES = 1
-MIN_NORMAL_EVENTS = 64
-MIN_ANALYSIS_EVENTS = 24
-MIN_ANALYSIS_MATCH_RATIO = 0.80
-MIN_ANALYSIS_SCORE_MARGIN = 3
-CHART_DATA_VERSION = 4
+# Event detection now follows upstream rising edges without frame merging.
+CHART_DATA_VERSION = 6
 WHITE_LANE_MARGIN = 0.15
 BLACK_LANE_MARGIN = 0.08
 MORPH_KERNEL = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 1))
@@ -73,24 +65,10 @@ class NoteDetector:
         self.band = tuple(map(int, band))
         self.last_lane_state = [False] * 7
         self.event_counter = 0
-        self.armed = False
-        self.clear_frame_count = 0
-        self.start_activity_bursts = 0
-        self.last_start_activity_at = None
-        self.prearm_started_at = time.monotonic()
-        self.pending_lanes = set()
-        self.pending_frames = 0
 
     def reset(self):
         self.last_lane_state = [False] * 7
         self.event_counter = 0
-        self.armed = False
-        self.clear_frame_count = 0
-        self.start_activity_bursts = 0
-        self.last_start_activity_at = None
-        self.prearm_started_at = time.monotonic()
-        self.pending_lanes = set()
-        self.pending_frames = 0
 
     def detect(self, rgb_image):
         x, y, width, height = self.roi
@@ -121,78 +99,16 @@ class NoteDetector:
             ratio = pixels / max(1, lane_mask.shape[0] * lane_mask.shape[1])
             lane_state.append(pixels >= MIN_ACTIVE_PIXELS and ratio >= MIN_ACTIVE_RATIO)
 
-        if not self.armed:
-            now = time.monotonic()
-            self.last_lane_state = lane_state
-            if any(lane_state):
-                if (
-                    self.last_start_activity_at is None
-                    or now - self.last_start_activity_at >= START_ACTIVITY_GAP_SECONDS
-                ):
-                    self.start_activity_bursts += 1
-                    logger.info(
-                        "プレー開始演出を検出: %d/%d",
-                        min(self.start_activity_bursts, START_ACTIVITY_BURSTS),
-                        START_ACTIVITY_BURSTS,
-                    )
-                self.last_start_activity_at = now
-                self.clear_frame_count = 0
-            else:
-                self.clear_frame_count += 1
-                start_sequence_finished = self.start_activity_bursts >= START_ACTIVITY_BURSTS
-                no_activity_timeout = (
-                    self.start_activity_bursts == 0
-                    and now - self.prearm_started_at >= START_ACTIVITY_WAIT_SECONDS
-                )
-                partial_activity_timeout = (
-                    self.start_activity_bursts == 1
-                    and self.last_start_activity_at is not None
-                    and now - self.last_start_activity_at >= START_ACTIVITY_WAIT_SECONDS
-                )
-                if (
-                    self.clear_frame_count >= ARM_CLEAR_FRAMES
-                    and (start_sequence_finished or no_activity_timeout or partial_activity_timeout)
-                ):
-                    self.armed = True
-                    if start_sequence_finished:
-                        logger.info(
-                            "レーン検出開始: プレー開始演出%d回の後、"
-                            "%dフレーム連続で検出帯が空",
-                            self.start_activity_bursts,
-                            ARM_CLEAR_FRAMES,
-                        )
-                    else:
-                        logger.info(
-                            "レーン検出開始: 開始演出の追加検出を%.1f秒間待った後、"
-                            "%dフレーム連続で検出帯が空",
-                            START_ACTIVITY_WAIT_SECONDS,
-                            ARM_CLEAR_FRAMES,
-                        )
-            return None, []
-
         rising_lanes = [
             index + 1
             for index, (old, new) in enumerate(zip(self.last_lane_state, lane_state))
             if new and not old
         ]
         self.last_lane_state = lane_state
-
-        if self.pending_lanes:
-            self.pending_lanes.update(rising_lanes)
-            self.pending_frames -= 1
-            if self.pending_frames > 0:
-                return None, []
-            merged_lanes = sorted(self.pending_lanes)
-            self.pending_lanes = set()
-            self.pending_frames = 0
-            self.event_counter += 1
-            return self.event_counter, merged_lanes
-
         if not rising_lanes:
             return None, []
-        self.pending_lanes = set(rising_lanes)
-        self.pending_frames = EVENT_MERGE_FRAMES
-        return None, []
+        self.event_counter += 1
+        return self.event_counter, rising_lanes
 
 
 class NormalChartRecorder:
@@ -206,11 +122,7 @@ class NormalChartRecorder:
             return False
         self.events.append({"event_no": len(self.events) + 1, "event_lanes": list(lanes)})
         self.seen_lanes.update(lanes)
-        return (
-            len(self.events) >= MIN_NORMAL_EVENTS
-            and self.seen_lanes == set(LANES)
-            and self._identity_is_unique()
-        )
+        return self.seen_lanes == set(LANES) and self._identity_is_unique()
 
     def _identity_is_unique(self) -> bool:
         for permutation in itertools.permutations(LANES):
@@ -228,67 +140,73 @@ class NormalChartRecorder:
 class RandomMappingAnalyzer:
     def __init__(self, normal_events):
         self.normal_events = normal_events
-        self._permutations = list(itertools.permutations(LANES))
-        self._scores = [0] * len(self._permutations)
-        self.candidates = list(self._permutations)
+        self.candidates = list(itertools.permutations(LANES))
         self.pair_index = 0
         self.layout = None
         self.failed = False
         self.failure_reason = None
-        self.best_score = 0
-        self.second_score = 0
-        self.score_margin = 0
-        self.match_ratio = 0.0
 
     def add(self, random_lanes):
-        if self.failed or self.layout:
+        if self.failed or self.layout or self.pair_index >= len(self.normal_events):
+            self.failed = self.layout is None
+            if self.failed and self.failure_reason is None:
+                self.failure_reason = "正規譜面データの末尾までに配置を確定できませんでした"
             return
-        if self.pair_index >= len(self.normal_events):
-            self._fail_at_end()
-            return
-
+        event_no = self.pair_index + 1
         normal_lanes = set(self.normal_events[self.pair_index]["event_lanes"])
         random_lanes = set(map(int, random_lanes))
-        if len(normal_lanes) == len(random_lanes):
-            for index, permutation in enumerate(self._permutations):
-                if {permutation[lane - 1] for lane in normal_lanes} == random_lanes:
-                    self._scores[index] += 1
-
+        if len(normal_lanes) != len(random_lanes):
+            self.candidates = []
+            self.failure_reason = (
+                f"イベント{event_no}: 正規{sorted(normal_lanes)} / RANDOM{sorted(random_lanes)}"
+            )
+        else:
+            self.candidates = [
+                permutation
+                for permutation in self.candidates
+                if {permutation[lane - 1] for lane in normal_lanes} == random_lanes
+            ]
+            if not self.candidates:
+                self.failure_reason = (
+                    f"イベント{event_no}: 正規{sorted(normal_lanes)} / RANDOM{sorted(random_lanes)}"
+                )
         self.pair_index += 1
-        self.best_score = max(self._scores)
-        self.candidates = [
-            permutation
-            for permutation, score in zip(self._permutations, self._scores)
-            if score == self.best_score
-        ]
-        lower_scores = [score for score in self._scores if score < self.best_score]
-        self.second_score = max(lower_scores) if lower_scores else self.best_score
-        self.score_margin = self.best_score - self.second_score if len(self.candidates) == 1 else 0
-        self.match_ratio = self.best_score / self.pair_index
-
-        if (
-            self.pair_index >= MIN_ANALYSIS_EVENTS
-            and len(self.candidates) == 1
-            and self.match_ratio >= MIN_ANALYSIS_MATCH_RATIO
-            and self.score_margin >= MIN_ANALYSIS_SCORE_MARGIN
-        ):
+        if not self.candidates:
+            self.failed = True
+        elif len(self.candidates) == 1:
             self.layout = _layout_text(self.candidates[0])
-        elif self.pair_index >= len(self.normal_events):
-            self._fail_at_end()
 
-    def _fail_at_end(self):
-        self.failed = True
-        self.failure_reason = (
-            f"{self.pair_index}イベントで確定条件に到達せず"
-            f"（最良一致{self.best_score}、候補{len(self.candidates)}、差{self.score_margin}）"
-        )
+    def get_partial_layout(self):
+        """Project only facts shared by every surviving mapping, in display order.
+
+        Digits identify original lanes; W/B identify only their key color, and
+        ? means neither the lane nor its color is determined.
+        """
+        if not self.candidates:
+            return None
+        positions = [set() for _ in LANES]
+        for permutation in self.candidates:
+            for original, target in enumerate(permutation, 1):
+                positions[target - 1].add(original)
+        layout = []
+        for originals in positions:
+            if len(originals) == 1:
+                layout.append(str(next(iter(originals))))
+            elif all(lane % 2 for lane in originals):
+                layout.append("W")
+            elif all(lane % 2 == 0 for lane in originals):
+                layout.append("B")
+            else:
+                layout.append("?")
+        text = "".join(layout)
+        return text if text != "???????" else None
 
 
 class RandomLaneAnalysis:
     """Coordinates capture frames, chart persistence, and overlay state."""
 
     def __init__(self, enabled=False, db_path="random_lane.sqlite3", state_path="template/random_lane_state.js",
-                 detection_bands=None):
+                 detection_bands=None, template_folder=""):
         self._lock = threading.RLock()
         self.enabled = None
         self.db_path = Path(db_path)
@@ -308,8 +226,30 @@ class RandomLaneAnalysis:
         self._notification = None
         self._last_state = None
         self.capture_supported = True
+        self.template_folder = None
+        self.template_recognizer = None
+        self.template_error = None
+        self.set_template_folder(template_folder)
         self.set_detection_bands(detection_bands)
         self.set_enabled(enabled)
+
+    @_synchronized
+    def set_template_folder(self, folder):
+        folder = str(folder or "").strip()
+        self.template_folder = folder
+        self.template_recognizer = None
+        self.template_error = None
+        self._reset_session(clear_result_layout=True)
+        try:
+            if not folder:
+                raise ValueError("RANDOM配置認識のテンプレートフォルダを設定してください")
+            self.template_recognizer = PlayStartRecognizer(folder)
+        except (OSError, ValueError, cv2.error) as exc:
+            self.template_error = f"RANDOM配置認識のテンプレートを利用できません: {exc}"
+            logger.warning(self.template_error)
+        if self.enabled:
+            self._publish("unavailable" if self.template_error else "waiting",
+                          message=self.template_error or "次のSPプレーを待っています")
 
     @_synchronized
     def set_detection_bands(self, bands=None):
@@ -343,7 +283,8 @@ class RandomLaneAnalysis:
         self._reset_session(clear_result_layout=True)
         if enabled:
             self._ensure_database()
-            self._publish("waiting", message="次のSPプレーを待っています")
+            self._publish("unavailable" if self.template_error else "waiting",
+                          message=self.template_error or "次のSPプレーを待っています")
         else:
             self._publish("disabled", message="RANDOM配置認識は無効です")
 
@@ -357,10 +298,11 @@ class RandomLaneAnalysis:
                 message=message or "RANDOM配置認識用の映像入力を利用できません",
             )
         elif self.enabled and self._last_state and self._last_state.get("phase") == "unavailable":
-            self._publish("waiting", message=message or "次のSPプレーを待っています")
+            self._publish("unavailable" if self.template_error else "waiting",
+                          message=self.template_error or message or "次のSPプレーを待っています")
 
     @_synchronized
-    def start_play(self, *, title, style, difficulty, level, option, play_mode):
+    def start_play(self, *, title, style, difficulty, level, play_mode):
         self._reset_session(clear_result_layout=True)
         if not self.enabled:
             return
@@ -375,15 +317,8 @@ class RandomLaneAnalysis:
         if side is None:
             self._publish("unsupported", title=title, message="DPは現在対象外です")
             return
-        if option is None or not getattr(option, "valid", False):
-            self._publish("unsupported", title=title, message="オプション画面を一度開いて配置を認識させてください")
-            return
-
-        arrange = (getattr(option, "arrange", None) or "REGULAR").upper()
-        if arrange in ("OFF", "NORMAL"):
-            arrange = "REGULAR"
-        if getattr(option, "special", False):
-            self._publish("unsupported", title=title, message=f"{arrange}は現在対象外です")
+        if self.template_error or self.template_recognizer is None:
+            self._publish("unavailable", message=self.template_error or "テンプレート未設定です")
             return
 
         self.side = side
@@ -396,6 +331,19 @@ class RandomLaneAnalysis:
         self.chart_meta = {"title": title, "style": style, "difficulty": difficulty, "level": level}
         self.detectors[side].reset()
 
+        self.template_recognizer.reset()
+        self.mode = "prepare"
+        self._publish("preparing", title=title, chart=difficulty,
+                      message="テンプレートでオプションとGET READYを確認中")
+
+    def _start_arrangement(self, arrange):
+        self.mode = None
+        self.option_name = arrange
+        title = self.chart_meta["title"]
+        difficulty = self.chart_meta["difficulty"]
+        self.detectors[self.side].reset()
+        logger.info("GET READY消失後にレーン解析開始: side=%s option=%s chart=%s",
+                    self.side, arrange, self.chart_key)
         if arrange in ("REGULAR", "MIRROR"):
             self.result_layout = (
                 REGULAR_LAYOUT if arrange == "REGULAR" else MIRROR_LAYOUT
@@ -413,9 +361,9 @@ class RandomLaneAnalysis:
             self.recorder = NormalChartRecorder()
             self.record_mirror = arrange == "MIRROR"
             message = (
-                f"MIRROR譜面を正規配置へ変換して記録中（最低{MIN_NORMAL_EVENTS}イベント）"
+                "MIRROR譜面を正規配置へ変換して記録中"
                 if self.record_mirror
-                else f"正規譜面データを記録中（最低{MIN_NORMAL_EVENTS}イベント）"
+                else "正規譜面データを記録中"
             )
             self._publish(
                 "recording",
@@ -440,18 +388,25 @@ class RandomLaneAnalysis:
                 "analyzing",
                 title=title,
                 chart=difficulty,
-                message=f"{arrange}配置を解析中（最低{MIN_ANALYSIS_EVENTS}イベント）",
+                message=f"{arrange}配置を解析中",
             )
         else:
             self._publish("unsupported", title=title, chart=difficulty, message=f"{arrange}は現在対象外です")
 
     @_synchronized
     def process_frame(self, image):
-        if not self.enabled or self.mode not in ("record", "analyze") or self.side is None:
+        if not self.enabled or self.mode not in ("prepare", "record", "analyze") or self.side is None:
             return
         rgb = np.asarray(image)
         if rgb.ndim != 3 or rgb.shape[2] < 3:
             return
+        if self.mode == "prepare":
+            arrange = self.template_recognizer.observe(rgb[:, :, :3], self.side)
+            if arrange is None:
+                return
+            self._start_arrangement(arrange)
+            if self.mode not in ("record", "analyze"):
+                return
         event_no, lanes = self.detectors[self.side].detect(rgb[:, :, :3])
         if not lanes:
             return
@@ -479,19 +434,18 @@ class RandomLaneAnalysis:
                 if pair_index < len(self.analyzer.normal_events)
                 else []
             )
+            candidates_before = len(self.analyzer.candidates)
             self.analyzer.add(lanes)
             logger.info(
-                "RANDOM解析 event=%s normal=%s random=%s "
-                "leaders=%d best=%d/%d ratio=%.3f margin=%d",
+                "RANDOM解析 event=%s normal=%s random=%s candidates=%d->%d",
                 event_no,
                 normal_lanes,
                 sorted(lanes),
+                candidates_before,
                 len(self.analyzer.candidates),
-                self.analyzer.best_score,
-                self.analyzer.pair_index,
-                self.analyzer.match_ratio,
-                self.analyzer.score_margin,
             )
+            previous_layout = self.result_layout
+            self.result_layout = self.analyzer.get_partial_layout()
             if self.analyzer.layout:
                 self.result_layout = self.analyzer.layout
                 self.mode = None
@@ -506,7 +460,13 @@ class RandomLaneAnalysis:
                 self._publish(
                     "failed",
                     **self.chart_meta,
+                    layout=self.result_layout or "",
                     message=f"RANDOM配置を確定できませんでした（{reason}）",
+                )
+            elif self.result_layout and self.result_layout != previous_layout:
+                self._publish(
+                    "partial", **self.chart_meta, layout=self.result_layout,
+                    message="RANDOM配置の一部を特定しました",
                 )
 
     @_synchronized
@@ -525,12 +485,13 @@ class RandomLaneAnalysis:
 
     @_synchronized
     def get_result_lane_layout(self):
-        """現在のプレーで確定した配置をOneResult保存用の文字列で返す。"""
+        """現在のプレーの配置（W/B/?を含む部分配置も可）を保存用に返す。"""
         return self.result_layout
 
     def _reset_session(self, *, clear_result_layout=False):
         self.mode = None
         self.side = None
+        self.option_name = ""
         self.chart_key = None
         self.chart_meta = None
         self.recorder = None
@@ -596,6 +557,7 @@ class RandomLaneAnalysis:
                  level=None, layout="", message=""):
         payload = {
             "phase": phase,
+            "option": self.option_name,
             "side": self.side,
             "title": title or "",
             "chart": chart or difficulty or "",

@@ -180,7 +180,7 @@ class ConfigDialog(QDialog):
         # ダイアログ設定
         self.setWindowTitle(self.ui.window.settings_title)
         self.setMinimumWidth(600)
-        self.setMinimumHeight(500)
+        self.setMinimumHeight(700)
         
         # UI初期化
         self.init_ui()
@@ -198,10 +198,24 @@ class ConfigDialog(QDialog):
         layout.addWidget(tab_widget)
         
         # 各タブを作成(OBS WebSocketタブを削除)
-        tab_widget.addTab(self.create_feature_tab(), self.ui.tab.feature)
+        feature_scroll = QScrollArea()
+        feature_scroll.setWidgetResizable(True)
+        feature_scroll.setWidget(self.create_feature_tab())
+        tab_widget.addTab(feature_scroll, self.ui.tab.feature)
+        additional_scroll = QScrollArea()
+        additional_scroll.setWidgetResizable(True)
+        additional_scroll.setWidget(self.create_additional_tab())
+        tab_widget.addTab(additional_scroll, self.ui.tab.additional)
+        random_lane_scroll = QScrollArea()
+        random_lane_scroll.setWidgetResizable(True)
+        random_lane_scroll.setWidget(self.create_random_lane_tab())
+        tab_widget.addTab(random_lane_scroll, self.ui.tab.random_lane)
         tab_widget.addTab(self.create_difficulty_table_tab(), self.ui.tab.difficulty_table)
         # tab_widget.addTab(self.create_music_pack_tab(), self.ui.tab.music_pack)
-        tab_widget.addTab(self.create_image_save_tab(), self.ui.tab.image_save)
+        image_save_scroll = QScrollArea()
+        image_save_scroll.setWidgetResizable(True)
+        image_save_scroll.setWidget(self.create_image_save_tab())
+        tab_widget.addTab(image_save_scroll, self.ui.tab.image_save)
         tab_widget.addTab(self.create_data_import_tab(), self.ui.tab.data_import)  # 追加
         tab_widget.addTab(self.create_rival_tab(), self.ui.tab.rival)
 
@@ -214,7 +228,7 @@ class ConfigDialog(QDialog):
         layout.addWidget(button_box)
     
     def create_feature_tab(self):
-        """機能設定タブ"""
+        """基本設定タブ"""
         widget = QWidget()
         layout = QVBoxLayout()
         widget.setLayout(layout)
@@ -225,18 +239,18 @@ class ConfigDialog(QDialog):
         game_capture_group.setLayout(game_capture_layout)
 
         self.capture_method_group = QButtonGroup()
-        self.capture_method_direct_radio = QRadioButton(self.ui.feature.capture_method_direct)
         self.capture_method_direct_legacy_radio = QRadioButton(self.ui.feature.capture_method_direct_legacy)
+        self.capture_method_direct_radio = QRadioButton(self.ui.feature.capture_method_direct)
         self.capture_method_obs_radio = QRadioButton(self.ui.feature.capture_method_obs)
         self.capture_method_spout_radio = QRadioButton(self.ui.feature.capture_method_spout)
-        self.capture_method_group.addButton(self.capture_method_direct_radio, 0)
         self.capture_method_group.addButton(self.capture_method_direct_legacy_radio, 1)
+        self.capture_method_group.addButton(self.capture_method_direct_radio, 0)
         self.capture_method_group.addButton(self.capture_method_obs_radio, 2)
         self.capture_method_group.addButton(self.capture_method_spout_radio, 3)
 
         capture_method_layout = QGridLayout()
-        capture_method_layout.addWidget(self.capture_method_direct_radio, 0, 0)
-        capture_method_layout.addWidget(self.capture_method_direct_legacy_radio, 0, 1)
+        capture_method_layout.addWidget(self.capture_method_direct_legacy_radio, 0, 0)
+        capture_method_layout.addWidget(self.capture_method_direct_radio, 0, 1)
         capture_method_layout.addWidget(self.capture_method_obs_radio, 1, 0)
         capture_method_layout.addWidget(self.capture_method_spout_radio, 1, 1)
         game_capture_layout.addLayout(capture_method_layout)
@@ -257,13 +271,148 @@ class ConfigDialog(QDialog):
         self.enable_music_select_score_import_check = QCheckBox(self.ui.feature.enable_music_select_score_import)
         game_capture_layout.addWidget(self.enable_music_select_score_import_check)
 
+        layout.addWidget(game_capture_group)
+        
+        # その他の設定
+        other_group = QGroupBox(self.ui.feature.other_group)
+        other_layout = QFormLayout()
+        other_group.setLayout(other_layout)
+
+        # 最前面表示
+        self.keep_on_top_check = QCheckBox(self.ui.feature.keep_on_top)
+        other_layout.addRow(self.keep_on_top_check)
+
+        layout.addWidget(other_group)
+        layout.addStretch()
+
+        return widget
+
+    def create_additional_tab(self):
+        """ツイート機能とスマホ連携の設定。"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        # ツイート機能グループ
+        tweet_group = QGroupBox(self.ui.feature.tweet_group)
+        tweet_layout = QVBoxLayout()
+        tweet_group.setLayout(tweet_layout)
+        
+        self.enable_autotweet_check = QCheckBox(self.ui.feature.enable_autotweet)
+        tweet_layout.addWidget(self.enable_autotweet_check)
+        
+        self.enable_judge_check = QCheckBox(self.ui.feature.enable_judge)
+        tweet_layout.addWidget(self.enable_judge_check)
+        
+        self.enable_folder_updates_check = QCheckBox(self.ui.feature.enable_folder_updates)
+        tweet_layout.addWidget(self.enable_folder_updates_check)
+        
+        layout.addWidget(tweet_group)
+        
+        data_display_group = QGroupBox(self.ui.feature.data_display_group)
+        data_display_layout = QFormLayout(data_display_group)
+        self.autoload_offset_spin = QSpinBox()
+        self.autoload_offset_spin.setRange(0, 100000)
+        self.autoload_offset_spin.setToolTip(self.ui.feature.autoload_offset_help)
+        offset_layout = QHBoxLayout()
+        offset_layout.addWidget(self.autoload_offset_spin)
+        offset_layout.addWidget(QLabel(self.ui.feature.autoload_offset_unit))
+        data_display_layout.addRow(self.ui.feature.autoload_offset, offset_layout)
+        self.autoload_offset_help_label = QLabel(self.ui.feature.autoload_offset_help)
+        self.autoload_offset_help_label.setWordWrap(True)
+        data_display_layout.addRow(self.autoload_offset_help_label)
+
+        self.websocket_data_port = QLineEdit()
+        self.websocket_data_port.setValidator(QIntValidator(1000, 65535, self))
+        data_display_layout.addRow(self.ui.feature.websocket_port, self.websocket_data_port)
+        layout.addWidget(data_display_group)
+
+        # スマホ連携設定
+        mobile_group = QGroupBox(self.ui.feature.mobile_score_server_group)
+        mobile_layout = QFormLayout()
+        mobile_group.setLayout(mobile_layout)
+        mobile_validator = QIntValidator(1000, 65535, self)
+        self.mobile_score_server_enabled_check = QCheckBox(
+            self.ui.feature.mobile_score_server_enabled
+        )
+        mobile_layout.addRow(self.mobile_score_server_enabled_check)
+
+        self.mobile_score_server_port_edit = QLineEdit()
+        self.mobile_score_server_port_edit.setValidator(mobile_validator)
+        mobile_layout.addRow(
+            self.ui.feature.mobile_score_server_port,
+            self.mobile_score_server_port_edit,
+        )
+
+        self.mobile_score_server_interface_combo = QComboBox()
+        mobile_layout.addRow(
+            self.ui.feature.mobile_score_server_interface,
+            self.mobile_score_server_interface_combo,
+        )
+
+        self.result_image_cache_enabled_check = QCheckBox(self.ui.feature.cache_enabled)
+        mobile_layout.addRow(self.result_image_cache_enabled_check)
+        self.result_image_cache_group = QButtonGroup(self)
+        self.result_image_cache_all_radio = QRadioButton(self.ui.feature.cache_all)
+        self.result_image_cache_100_radio = QRadioButton(self.ui.feature.cache_100)
+        self.result_image_cache_custom_radio = QRadioButton(self.ui.feature.cache_custom)
+        self.result_image_cache_group.addButton(self.result_image_cache_all_radio, 0)
+        self.result_image_cache_group.addButton(self.result_image_cache_100_radio, 1)
+        self.result_image_cache_group.addButton(self.result_image_cache_custom_radio, 2)
+        cache_choices = QHBoxLayout()
+        cache_choices.addWidget(self.result_image_cache_all_radio)
+        cache_choices.addWidget(self.result_image_cache_100_radio)
+        cache_choices.addWidget(self.result_image_cache_custom_radio)
+        self.result_image_cache_limit_spin = QSpinBox()
+        self.result_image_cache_limit_spin.setRange(1, 2147483647)
+        cache_choices.addWidget(self.result_image_cache_limit_spin)
+        mobile_layout.addRow(self.ui.feature.cache_limit, cache_choices)
+        cache_help = QLabel(self.ui.feature.cache_help)
+        cache_help.setWordWrap(True)
+        mobile_layout.addRow(cache_help)
+        self.result_image_cache_enabled_check.toggled.connect(self._update_result_image_cache_enabled)
+        self.result_image_cache_custom_radio.toggled.connect(self._update_result_image_cache_enabled)
+
+        layout.addWidget(mobile_group)
+
+        layout.addStretch()
+        return widget
+
+    def _update_result_image_cache_enabled(self, *_args):
+        enabled = self.result_image_cache_enabled_check.isChecked()
+        for button in self.result_image_cache_group.buttons():
+            button.setEnabled(enabled)
+        self.result_image_cache_limit_spin.setEnabled(
+            enabled and self.result_image_cache_custom_radio.isChecked()
+        )
+
+    def create_random_lane_tab(self):
+        """RANDOMレーン認識の設定タブ。"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
         self.enable_random_lane_analysis_check = QCheckBox(
             self.ui.feature.enable_random_lane_analysis
         )
         self.enable_random_lane_analysis_check.setToolTip(
             self.ui.feature.enable_random_lane_analysis_tip
         )
-        game_capture_layout.addWidget(self.enable_random_lane_analysis_check)
+        layout.addWidget(self.enable_random_lane_analysis_check)
+
+        template_form = QFormLayout()
+        template_row = QHBoxLayout()
+        self.random_lane_template_folder_edit = QLineEdit()
+        self.random_lane_template_browse_button = QPushButton(self.ui.dialog.browse)
+        self.random_lane_template_browse_button.clicked.connect(self.on_random_lane_template_browse)
+        template_row.addWidget(self.random_lane_template_folder_edit)
+        template_row.addWidget(self.random_lane_template_browse_button)
+        template_form.addRow(self.ui.feature.random_lane_template_folder, template_row)
+        layout.addLayout(template_form)
+        template_tip = QLabel(self.ui.feature.random_lane_template_tip)
+        template_tip.setWordWrap(True)
+        layout.addWidget(template_tip)
+
+        self.random_lane_band_edit_check = QCheckBox(self.ui.feature.random_lane_band_edit)
+        self.random_lane_band_edit_check.setToolTip(self.ui.feature.random_lane_band_edit_tip)
+        self.random_lane_band_edit_check.toggled.connect(self._update_random_lane_band_enabled)
+        layout.addWidget(self.random_lane_band_edit_check)
 
         band_form = QFormLayout()
         self.random_lane_band_controls = {}
@@ -285,82 +434,15 @@ class ConfigDialog(QDialog):
             row.addWidget(height_spin)
             band_form.addRow(f'{side}:', row)
             self.random_lane_band_controls[side] = (top_spin, height_spin)
-        game_capture_layout.addLayout(band_form)
+        layout.addLayout(band_form)
         band_tip = QLabel(self.ui.feature.random_lane_band_tip)
         band_tip.setWordWrap(True)
-        game_capture_layout.addWidget(band_tip)
+        layout.addWidget(band_tip)
         self.enable_random_lane_analysis_check.toggled.connect(
             self._update_random_lane_band_enabled
         )
 
-        layout.addWidget(game_capture_group)
-        
-        # ツイート機能グループ
-        tweet_group = QGroupBox(self.ui.feature.tweet_group)
-        tweet_layout = QVBoxLayout()
-        tweet_group.setLayout(tweet_layout)
-        
-        self.enable_autotweet_check = QCheckBox(self.ui.feature.enable_autotweet)
-        tweet_layout.addWidget(self.enable_autotweet_check)
-        
-        self.enable_judge_check = QCheckBox(self.ui.feature.enable_judge)
-        tweet_layout.addWidget(self.enable_judge_check)
-        
-        self.enable_folder_updates_check = QCheckBox(self.ui.feature.enable_folder_updates)
-        tweet_layout.addWidget(self.enable_folder_updates_check)
-        
-        layout.addWidget(tweet_group)
-        
-        # その他の設定
-        other_group = QGroupBox(self.ui.feature.other_group)
-        other_layout = QFormLayout()
-        other_group.setLayout(other_layout)
-        
-        # 画像保存先設定の追加
-        self.image_save_path_edit = QLineEdit()
-        self.browse_button = QPushButton(self.ui.dialog.browse)
-        self.browse_button.clicked.connect(self.on_browse_clicked)
-        
-        path_layout = QHBoxLayout()
-        path_layout.addWidget(self.image_save_path_edit)
-        path_layout.addWidget(self.browse_button)
-        
-        other_layout.addRow(self.ui.feature.image_save_path, path_layout)
-        
-        self.autoload_offset_spin = QSpinBox()
-        self.autoload_offset_spin.setRange(0, 100000)
-        other_layout.addRow(self.ui.feature.autoload_offset, self.autoload_offset_spin)
-        
-        self.websocket_data_port = QLineEdit()
-        validator = QIntValidator(1000,65535)
-        self.websocket_data_port.setValidator(validator)
-        other_layout.addRow(self.ui.feature.websocket_port, self.websocket_data_port)
-
-        self.mobile_score_server_enabled_check = QCheckBox(
-            self.ui.feature.mobile_score_server_enabled
-        )
-        other_layout.addRow(self.mobile_score_server_enabled_check)
-
-        self.mobile_score_server_port_edit = QLineEdit()
-        self.mobile_score_server_port_edit.setValidator(validator)
-        other_layout.addRow(
-            self.ui.feature.mobile_score_server_port,
-            self.mobile_score_server_port_edit,
-        )
-
-        self.mobile_score_server_interface_combo = QComboBox()
-        other_layout.addRow(
-            self.ui.feature.mobile_score_server_interface,
-            self.mobile_score_server_interface_combo,
-        )
-
-        # 最前面表示 
-        self.keep_on_top_check = QCheckBox(self.ui.feature.keep_on_top)
-        other_layout.addRow(self.keep_on_top_check)
-
-        layout.addWidget(other_group)
         layout.addStretch()
-        
         return widget
 
     def create_difficulty_table_tab(self):
@@ -404,24 +486,27 @@ class ConfigDialog(QDialog):
 
     def _update_random_lane_band_enabled(self, *_args):
         spout_enabled = self.capture_method_group.checkedId() == 3
+        if hasattr(self, "random_lane_template_folder_edit"):
+            active = spout_enabled and self.enable_random_lane_analysis_check.isChecked()
+            self.random_lane_template_folder_edit.setEnabled(active)
+            self.random_lane_template_browse_button.setEnabled(active)
+            self.random_lane_band_edit_check.setEnabled(active)
         if hasattr(self, 'random_lane_band_controls'):
             for controls in self.random_lane_band_controls.values():
                 for control in controls:
-                    control.setEnabled(spout_enabled and self.enable_random_lane_analysis_check.isChecked())
+                    control.setEnabled(
+                        spout_enabled and self.enable_random_lane_analysis_check.isChecked()
+                        and self.random_lane_band_edit_check.isChecked()
+                    )
 
-    def on_browse_clicked(self):
-        """フォルダ参照ボタン押下時の処理"""
-        current_dir = self.image_save_path_edit.text()
-        if not os.path.exists(current_dir):
-            current_dir = os.path.expanduser("~")
-            
-        dir_path = QFileDialog.getExistingDirectory(
-            self, self.ui.dialog.select_image_path, current_dir
+    def on_random_lane_template_browse(self):
+        folder = QFileDialog.getExistingDirectory(
+            self, self.ui.feature.random_lane_template_folder,
+            self.random_lane_template_folder_edit.text(),
         )
-        
-        if dir_path:
-            self.image_save_path_edit.setText(dir_path)
-    
+        if folder:
+            self.random_lane_template_folder_edit.setText(folder)
+
     def create_music_pack_tab(self):
         """楽曲パック設定タブ"""
         widget = QWidget()
@@ -488,6 +573,8 @@ class ConfigDialog(QDialog):
     def create_image_save_tab(self):
         """画像保存設定タブ"""
         self.image_save_tab = ImageSaveSettings(self.ui, self)
+        self.image_save_path_edit = self.image_save_tab.image_save_path_edit
+        self.browse_button = self.image_save_tab.browse_button
         return self.image_save_tab
 
     def create_data_import_tab(self):
@@ -805,7 +892,8 @@ class ConfigDialog(QDialog):
             top, bottom = self.config.random_lane_detection_bands[side]
             top_spin.setValue(top)
             height_spin.setValue(bottom - top)
-        capture_method = getattr(self.config, 'capture_method', 'direct_window')
+        self.random_lane_band_edit_check.setChecked(False)
+        capture_method = getattr(self.config, 'capture_method', 'direct_window_legacy')
         if capture_method == 'obs_websocket':
             self.capture_method_obs_radio.setChecked(True)
         elif capture_method == 'spout':
@@ -814,6 +902,7 @@ class ConfigDialog(QDialog):
             self.capture_method_direct_legacy_radio.setChecked(True)
         else:
             self.capture_method_direct_radio.setChecked(True)
+        self.random_lane_template_folder_edit.setText(self.config.random_lane_template_folder)
         self.spout_sender_edit.setText(
             str(getattr(self.config, 'spout_sender_name', 'Spout_OBS_Filter'))
         )
@@ -836,9 +925,6 @@ class ConfigDialog(QDialog):
         if hasattr(self, 'mobile_score_server_interface_combo'):
             self._load_mobile_score_server_interfaces()
         
-        # 画像保存先 (Configクラスに image_save_path プロパティがある前提)
-        if hasattr(self.config, 'image_save_path'):
-            self.image_save_path_edit.setText(self.config.image_save_path)
         
         # # 楽曲パック設定
         # if hasattr(self.config, 'target_music_packs'):
@@ -848,6 +934,12 @@ class ConfigDialog(QDialog):
         
         # 画像保存設定
         self.image_save_tab.load_config_values(self.config)
+        self.result_image_cache_enabled_check.setChecked(self.config.result_image_cache_enabled)
+        limit = self.config.result_image_cache_limit
+        self.result_image_cache_limit_spin.setValue(limit if limit > 0 else 100)
+        choice = 0 if limit == 0 else 1 if limit == 100 else 2
+        self.result_image_cache_group.button(choice).setChecked(True)
+        self._update_result_image_cache_enabled()
 
         if hasattr(self.config, 'include_legacy_v2_logs'):
             self.include_legacy_v2_logs_check.setChecked(self.config.include_legacy_v2_logs)
@@ -909,6 +1001,7 @@ class ConfigDialog(QDialog):
             for side, (top, height) in self.random_lane_band_controls.items()
         }
         self.config.spout_sender_name = self.spout_sender_edit.text().strip() or 'Spout_OBS_Filter'
+        self.config.random_lane_template_folder = self.random_lane_template_folder_edit.text().strip()
         capture_method_by_id = {
             0: 'direct_window',
             1: 'direct_window_legacy',
@@ -917,7 +1010,7 @@ class ConfigDialog(QDialog):
         }
         self.config.capture_method = capture_method_by_id.get(
             self.capture_method_group.checkedId(),
-            'direct_window',
+            'direct_window_legacy',
         )
         self.config.direct_capture_all_monitors = self.direct_capture_all_monitors_check.isChecked()
         self.config.autoload_offset = self.autoload_offset_spin.value()
@@ -944,8 +1037,6 @@ class ConfigDialog(QDialog):
                 self.mobile_score_server_interface_combo.currentData() or ""
             )
         
-        # 画像保存先
-        self.config.image_save_path = self.image_save_path_edit.text()
         
         # # 楽曲パック設定
         # self.config.target_music_packs = [
@@ -955,6 +1046,11 @@ class ConfigDialog(QDialog):
         
         # 画像保存設定
         self.image_save_tab.apply_to_config(self.config)
+        self.config.result_image_cache_enabled = self.result_image_cache_enabled_check.isChecked()
+        choice = self.result_image_cache_group.checkedId()
+        self.config.result_image_cache_limit = (
+            0 if choice == 0 else 100 if choice == 1 else self.result_image_cache_limit_spin.value()
+        )
         if self.result_database:
             self.result_database.trim_result_image_cache()
         self.config.include_legacy_v2_logs = self.include_legacy_v2_logs_check.isChecked()

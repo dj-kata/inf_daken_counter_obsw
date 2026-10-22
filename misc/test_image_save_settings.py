@@ -38,7 +38,7 @@ class ImageSaveSettingsTests(unittest.TestCase):
         self.assertTrue(self.widget.autosave_updates_radio.isChecked())
         self.assertTrue(self.widget.rivalarea_invalid_radio.isChecked())
         self.assertFalse(self.widget.write_statistics_check.isChecked())
-        self.assertEqual(self.widget.result_image_cache_limit_spin.value(), 0)
+        self.assertEqual(self.widget.image_save_path_edit.text(), self.config.image_save_path)
         original = self.config_path.read_bytes()
         self.widget.autosave_all_radio.setChecked(True)
         self.widget.close()
@@ -48,22 +48,25 @@ class ImageSaveSettingsTests(unittest.TestCase):
     def test_settings_survive_apply_save_and_reload(self):
         for autosave in config_autosave_image:
             for rivalarea in config_modify_rivalarea:
-                for limit in (0, 100, 10000):
-                    with self.subTest(autosave=autosave, rivalarea=rivalarea, limit=limit):
+                for path in ("results", str(Path(self.temp.name) / "saved images")):
+                    with self.subTest(autosave=autosave, rivalarea=rivalarea, path=path):
                         self.widget.autosave_button_group.button(autosave.value).setChecked(True)
                         self.widget.rivalarea_button_group.button(rivalarea.value).setChecked(True)
                         self.widget.write_statistics_check.setChecked(True)
-                        self.widget.result_image_cache_limit_spin.setValue(limit)
+                        self.widget.image_save_path_edit.setText(path)
+                        self.config.result_image_cache_limit = 37
                         self.widget.apply_to_config(self.config)
                         self.config.save_config()
                         loaded = Config(str(self.config_path))
                         self.assertEqual(loaded.autosave_image_mode, autosave)
                         self.assertEqual(loaded.modify_rivalarea_mode, rivalarea)
                         self.assertTrue(loaded.write_statistics)
-                        self.assertEqual(loaded.result_image_cache_limit, limit)
+                        self.assertEqual(loaded.image_save_path, path)
+                        self.assertEqual(loaded.result_image_cache_limit, 37)
                         self.widget.load_config_values(loaded)
                         self.assertEqual(self.widget.autosave_button_group.checkedId(), autosave.value)
                         self.assertEqual(self.widget.rivalarea_button_group.checkedId(), rivalarea.value)
+                        self.assertEqual(self.widget.image_save_path_edit.text(), path)
 
     def test_capture_cli_ignores_user_config_and_produces_both_languages(self):
         root = Path(self.temp.name)

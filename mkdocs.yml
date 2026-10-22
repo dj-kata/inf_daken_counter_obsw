@@ -3,7 +3,7 @@ site_description: INFINITAS打鍵カウンタの使い方と更新情報
 site_url: https://dj-kata.github.io/inf_daken_counter_obsw/
 repo_url: https://github.com/dj-kata/inf_daken_counter_obsw
 repo_name: dj-kata/inf_daken_counter_obsw
-edit_uri: edit/master/docs/
+edit_uri: edit/main/docs/
 docs_dir: docs
 site_dir: site
 exclude_docs: |

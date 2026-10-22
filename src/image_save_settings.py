@@ -1,8 +1,10 @@
 """画像保存タブ。アプリと説明書用キャプチャで共用する。"""
 
+import os
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QButtonGroup,
-    QRadioButton, QCheckBox, QLabel, QSpinBox,
+    QRadioButton, QCheckBox, QFormLayout, QLineEdit, QPushButton, QFileDialog,
 )
 
 from src.classes import config_autosave_image, config_modify_rivalarea
@@ -13,6 +15,17 @@ class ImageSaveSettings(QWidget):
         super().__init__(parent)
         self.ui = ui
         layout = QVBoxLayout(self)
+
+        output_group = QGroupBox(self.ui.image_save.output_group)
+        output_layout = QFormLayout(output_group)
+        self.image_save_path_edit = QLineEdit()
+        self.browse_button = QPushButton(self.ui.dialog.browse)
+        self.browse_button.clicked.connect(self.on_browse_clicked)
+        path_layout = QHBoxLayout()
+        path_layout.addWidget(self.image_save_path_edit)
+        path_layout.addWidget(self.browse_button)
+        output_layout.addRow(self.ui.feature.image_save_path, path_layout)
+        layout.addWidget(output_group)
 
         # 画像保存条件グループ
         save_condition_group = QGroupBox(self.ui.image_save.condition_group)
@@ -62,21 +75,22 @@ class ImageSaveSettings(QWidget):
         self.write_statistics_check = QCheckBox(self.ui.image_save.write_statistics)
         other_layout.addWidget(self.write_statistics_check)
 
-        cache_layout = QHBoxLayout()
-        cache_layout.addWidget(QLabel(self.ui.image_save.cache_limit))
-        self.result_image_cache_limit_spin = QSpinBox()
-        self.result_image_cache_limit_spin.setRange(0, 10000)
-        self.result_image_cache_limit_spin.setSpecialValueText(self.ui.image_save.cache_all)
-        self.result_image_cache_limit_spin.setToolTip(self.ui.image_save.cache_help)
-        cache_layout.addWidget(self.result_image_cache_limit_spin)
-        other_layout.addLayout(cache_layout)
-
         layout.addWidget(other_group)
         layout.addStretch()
 
+    def on_browse_clicked(self):
+        current_dir = self.image_save_path_edit.text()
+        if not os.path.exists(current_dir):
+            current_dir = os.path.expanduser("~")
+        dir_path = QFileDialog.getExistingDirectory(
+            self, self.ui.dialog.select_image_path, current_dir
+        )
+        if dir_path:
+            self.image_save_path_edit.setText(dir_path)
+
     def load_config_values(self, config):
         """設定値を表示する。設定ファイルへの読み書きは行わない。"""
-        self.result_image_cache_limit_spin.setValue(config.result_image_cache_limit)
+        self.image_save_path_edit.setText(config.image_save_path)
         if hasattr(config, 'autosave_image_mode'):
             button = self.autosave_button_group.button(config.autosave_image_mode.value)
             if button:
@@ -95,4 +109,4 @@ class ImageSaveSettings(QWidget):
         config.autosave_image_mode = config_autosave_image(self.autosave_button_group.checkedId())
         config.modify_rivalarea_mode = config_modify_rivalarea(self.rivalarea_button_group.checkedId())
         config.write_statistics = self.write_statistics_check.isChecked()
-        config.result_image_cache_limit = self.result_image_cache_limit_spin.value()
+        config.image_save_path = self.image_save_path_edit.text()

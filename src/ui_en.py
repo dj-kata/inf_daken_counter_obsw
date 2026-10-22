@@ -57,7 +57,9 @@ class UIText:
     
     class tab:
         """Settings dialog tabs"""
-        feature = 'Features'
+        feature = 'Basic Settings'
+        additional = 'Additional Settings'
+        random_lane = 'RANDOM Lane Recognition'
         music_pack = 'Music Packs'
         image_save = 'Image Saving'
         data_import = 'Data Import'
@@ -68,32 +70,46 @@ class UIText:
         """Feature settings tab"""
         game_capture_group = 'Game Screen Capture'
         capture_method_direct = 'Direct capture (DXCAM)'
-        capture_method_direct_legacy = 'Direct capture (legacy)'
+        capture_method_direct_legacy = 'Direct capture (GDI)'
         capture_method_obs = 'via OBS WebSocket'
-        capture_method_spout = 'via Spout'
+        capture_method_spout = 'via Spout (Recommended; OBS setup required)'
         spout_sender = 'Spout sender name:'
         direct_capture_all_monitors = 'Always capture all monitors without auto-detection'
-        direct_capture_all_monitors_tip = 'Used by legacy direct capture. When off, all monitors are used automatically only if the target window needs them.'
+        direct_capture_all_monitors_tip = 'Used by GDI direct capture. When off, all monitors are used automatically only if the target window needs them.'
         tweet_group = 'Tweet Function'
         enable_autotweet = 'Enable auto-tweet on exit'
         enable_judge = 'Include judge data'
-        enable_folder_updates = 'Show folder update count(coming soon)'
+        enable_folder_updates = 'Show folder update count'
         enable_music_select_score_import = 'Register best scores from song selection screen'
         enable_random_lane_analysis = 'Detect RANDOM lane mapping (SP, Spout only)'
-        enable_random_lane_analysis_tip = 'Via Spout, normalizes and records note events from a REGULAR or MIRROR play, then analyzes RANDOM or R-RANDOM mapping for the same chart. Open the options screen before playing.'
+        enable_random_lane_analysis_tip = 'Via Spout, recognizes the arrangement from play-screen templates and starts after GET READY disappears. Record REGULAR or MIRROR first, then analyze RANDOM or R-RANDOM for the same chart.'
+        random_lane_template_folder = 'Lane recognition template folder:'
+        random_lane_template_tip = 'Select the templates folder created with the original tool. Uses SCRATCH.png, GET_READY.png, OP_CURRENT_SCORE.png, Op.MIRROR.png, Op.RANDOM.png, Op.R-.png, and Op.S-.png.'
+        random_lane_band_edit = 'Change default settings'
+        random_lane_band_edit_tip = 'Check to unlock detection band editing. Saved values are kept regardless of this checkbox, and editing is locked whenever the dialog is opened.'
         random_lane_band_top = 'Band top (Y in ROI)'
         random_lane_band_height = 'Height'
         random_lane_band_tip = 'For 1920×1080 video. Defaults: top 55, height 20px. Height: 1–300px. A tall band may merge nearby notes. Changes apply from the next play and require recording REGULAR or MIRROR again with the new band.'
         
         other_group = 'Other'
         image_save_path = 'Image save path:'
-        autoload_offset = 'Auto-load offset:'
+        autoload_offset = "Today's results offset:"
+        autoload_offset_unit = 'h'
+        autoload_offset_help = "On startup, results from N hours before launch onward are included in today's results.\nExample: With 4 hours selected, launching at 20:00 includes results from 16:00 onward."
+        data_display_group = 'Data Display'
         websocket_port = 'Data display port:'
+        mobile_score_server_group = 'Mobile Integration (HTTP Server)'
         mobile_score_server_enabled = 'Start mobile score viewer server'
         mobile_score_server_port = 'Mobile HTTP port:'
         mobile_score_server_interface = 'Mobile viewer NIC:'
         mobile_score_server_interface_auto = 'Auto select'
         mobile_score_server_interface_missing = 'Currently not detected'
+        cache_enabled = 'Keep temporary result images during this session'
+        cache_limit = 'Images to keep:'
+        cache_all = 'All'
+        cache_100 = '100 images'
+        cache_custom = 'Custom count'
+        cache_help = 'Older temporary images exceeding the limit are discarded. Saving with this feature disabled clears temporary images. They are unavailable after restart. Permanently saved image files remain available for posting.'
         keep_on_top = 'Always on Top'
     
     class music_pack:
@@ -104,9 +120,7 @@ class UIText:
     
     class image_save:
         """Image save settings tab"""
-        cache_limit = 'Temporary result images to keep:'
-        cache_all = 'Keep all'
-        cache_help = '0 keeps all images. Older images exceeding the limit are discarded. Saved files remain available for posting. Temporary images are unavailable after restart.'
+        output_group = 'Save Location'
         condition_group = 'Image Save Condition'
         always = 'Always save'
         only_updates = 'Save on update only'
@@ -234,6 +248,8 @@ class UIText:
         connected = 'Connected'
 
         # 制御設定ダイアログ関連
+        websocket_enabled = 'Enable OBS WebSocket integration'
+        websocket_disabled = 'OBS WebSocket integration: OFF'
         websocket_group = 'OBS WebSocket Connect Settings'
         websocket_host = 'host:'
         websocket_port = 'port:'
@@ -241,9 +257,12 @@ class UIText:
         scene_collection_group = 'Scene Collection Settings'
         scene_collection_label = 'Scene Collection:'
         scene_collection_not_set = '(Not Set)'
-        target_source_group = 'Monitored Sources'
+        target_source_group = 'Image for Screen Detection'
+        monitor_capture_hint = 'Uses Game Screen Capture from Basic Settings.'
+        monitor_obs_source = 'OBS source: {}'
+        monitor_spout_source = 'via Spout ({})'
         target_source_not_set = 'Not Set'
-        target_source_label = 'Current Target:'
+        target_source_label = 'Capture Source:'
         new_settings_group = 'Add New Control Setting'
         new_settings_action = 'Action:'
         new_settings_timing = 'Trigger Timing:'

@@ -110,7 +110,7 @@ class OBSWebSocketManager(QObject):
     def is_direct_capture(self) -> bool:
         return bool(
             self.config
-            and getattr(self.config, 'capture_method', 'direct_window')
+            and getattr(self.config, 'capture_method', 'direct_window_legacy')
             in ('direct_window', 'direct_window_legacy')
         )
 
@@ -121,12 +121,12 @@ class OBSWebSocketManager(QObject):
         self.spout_capture.set_frame_callback(frame_callback)
 
     def _direct_capture_class(self):
-        if self.config and getattr(self.config, 'capture_method', 'direct_window') == 'direct_window_legacy':
+        if self.config and getattr(self.config, 'capture_method', 'direct_window_legacy') == 'direct_window_legacy':
             return DirectWindowCapture
         return DxcamWindowCapture
 
     def is_obs_control_enabled(self) -> bool:
-        if not self.config:
+        if not self.config or not getattr(self.config, "obs_websocket_enabled", True):
             return False
         return bool(
             str(getattr(self.config, 'websocket_password', '')).strip()
@@ -137,8 +137,9 @@ class OBSWebSocketManager(QObject):
         """OBS WebSocket接続が必要な設定か。"""
         return bool(
             self.config
+            and getattr(self.config, "obs_websocket_enabled", True)
             and (
-                getattr(self.config, 'capture_method', 'direct_window') == 'obs_websocket'
+                getattr(self.config, 'capture_method', 'direct_window_legacy') == 'obs_websocket'
                 or self.is_obs_control_enabled()
             )
         )
@@ -164,7 +165,11 @@ class OBSWebSocketManager(QObject):
                     pass
                 self.client = None
             self.is_connected = False
-            capture_mode = "Spout取得モード" if self.is_spout_capture() else "直接取得モード"
+            capture_mode = self.ui.obs.websocket_disabled
+            if self.is_spout_capture():
+                capture_mode = "Spout取得モード"
+            elif self.is_direct_capture():
+                capture_mode = "直接取得モード"
             self._emit_status(capture_mode, False)
             return False
 
@@ -411,6 +416,8 @@ class OBSWebSocketManager(QObject):
             if not self.is_connected:
                 return f'{direct_status} / OBS制御: <span style="color:#d93025;">未接続</span>', False
             return f'{direct_status} / OBS制御: <span style="color:#188038;">接続中</span> ({self.config.websocket_host}:{self.config.websocket_port})', direct_ready
+        elif not getattr(self.config, "obs_websocket_enabled", True):
+            return self.ui.obs.websocket_disabled, False
         elif not OBSWS_AVAILABLE:
             return "obsws_python がインストールされていません", False
         elif not self.is_connected:
