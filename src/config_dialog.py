@@ -306,6 +306,24 @@ class ConfigDialog(QDialog):
         
         layout.addWidget(tweet_group)
         
+        data_display_group = QGroupBox(self.ui.feature.data_display_group)
+        data_display_layout = QFormLayout(data_display_group)
+        self.autoload_offset_spin = QSpinBox()
+        self.autoload_offset_spin.setRange(0, 100000)
+        self.autoload_offset_spin.setToolTip(self.ui.feature.autoload_offset_help)
+        offset_layout = QHBoxLayout()
+        offset_layout.addWidget(self.autoload_offset_spin)
+        offset_layout.addWidget(QLabel(self.ui.feature.autoload_offset_unit))
+        data_display_layout.addRow(self.ui.feature.autoload_offset, offset_layout)
+        self.autoload_offset_help_label = QLabel(self.ui.feature.autoload_offset_help)
+        self.autoload_offset_help_label.setWordWrap(True)
+        data_display_layout.addRow(self.autoload_offset_help_label)
+
+        self.websocket_data_port = QLineEdit()
+        self.websocket_data_port.setValidator(QIntValidator(1000, 65535, self))
+        data_display_layout.addRow(self.ui.feature.websocket_port, self.websocket_data_port)
+        layout.addWidget(data_display_group)
+
         # スマホ連携設定
         mobile_group = QGroupBox(self.ui.feature.mobile_score_server_group)
         mobile_layout = QFormLayout()
@@ -582,22 +600,6 @@ class ConfigDialog(QDialog):
         path_layout.addWidget(self.browse_button)
 
         output_layout.addRow(self.ui.feature.image_save_path, path_layout)
-
-        self.autoload_offset_spin = QSpinBox()
-        self.autoload_offset_spin.setRange(0, 100000)
-        self.autoload_offset_spin.setToolTip(self.ui.feature.autoload_offset_help)
-        offset_layout = QHBoxLayout()
-        offset_layout.addWidget(self.autoload_offset_spin)
-        offset_layout.addWidget(QLabel(self.ui.feature.autoload_offset_unit))
-        output_layout.addRow(self.ui.feature.autoload_offset, offset_layout)
-        self.autoload_offset_help_label = QLabel(self.ui.feature.autoload_offset_help)
-        self.autoload_offset_help_label.setWordWrap(True)
-        output_layout.addRow(self.autoload_offset_help_label)
-
-        self.websocket_data_port = QLineEdit()
-        validator = QIntValidator(1000,65535)
-        self.websocket_data_port.setValidator(validator)
-        output_layout.addRow(self.ui.feature.websocket_port, self.websocket_data_port)
 
         layout.addWidget(output_group)
 

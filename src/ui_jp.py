@@ -96,6 +96,7 @@ class UIText:
         autoload_offset = '本日の成果に含めるオフセット:'
         autoload_offset_unit = '時間'
         autoload_offset_help = '起動時刻のN時間前以降のリザルトを、本日の成果として読み込みます。\n例：4時間に設定して20:00に起動すると、16:00以降のリザルトが対象になります。'
+        data_display_group = 'データ表示設定'
         websocket_port = 'データ表示用port:'
         mobile_score_server_group = 'スマホ連携(HTTPサーバ)設定'
         mobile_score_server_enabled = 'スマホ用スコア閲覧サーバを起動する'
@@ -119,7 +120,7 @@ class UIText:
     
     class image_save:
         """画像保存設定タブ"""
-        output_group = '保存先・読み込み・データ配信'
+        output_group = '保存先'
         condition_group = '画像保存条件'
         always = '常に保存'
         only_updates = '更新時のみ保存'

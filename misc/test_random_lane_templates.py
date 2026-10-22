@@ -255,12 +255,13 @@ class TemplateSettingsDialogTests(unittest.TestCase):
                 image = tabs.widget(image_index).widget()
                 self.assertTrue(basic.isAncestorOf(dialog.keep_on_top_check))
                 for control in (dialog.enable_autotweet_check, dialog.enable_judge_check,
-                                dialog.enable_folder_updates_check, dialog.mobile_score_server_enabled_check,
+                                dialog.enable_folder_updates_check, dialog.websocket_data_port,
+                                dialog.autoload_offset_spin, dialog.autoload_offset_help_label,
+                                dialog.mobile_score_server_enabled_check,
                                 dialog.mobile_score_server_port_edit, dialog.mobile_score_server_interface_combo):
                     self.assertTrue(additional.isAncestorOf(control))
-                for control in (dialog.image_save_path_edit, dialog.autoload_offset_spin,
-                                dialog.websocket_data_port, dialog.autoload_offset_help_label):
-                    self.assertTrue(image.isAncestorOf(control))
+                self.assertTrue(image.isAncestorOf(dialog.image_save_path_edit))
+                self.assertIs(dialog.autoload_offset_spin.parentWidget(), dialog.websocket_data_port.parentWidget())
                 self.assertEqual(dialog.autoload_offset_spin.suffix(), '')
                 self.assertEqual(dialog.autoload_offset_spin.text(), '4')
                 self.assertIn('20:00', dialog.autoload_offset_help_label.text())

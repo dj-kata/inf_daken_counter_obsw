@@ -96,6 +96,7 @@ class UIText:
         autoload_offset = "Today's results offset:"
         autoload_offset_unit = 'h'
         autoload_offset_help = "On startup, results from N hours before launch onward are included in today's results.\nExample: With 4 hours selected, launching at 20:00 includes results from 16:00 onward."
+        data_display_group = 'Data Display'
         websocket_port = 'Data display port:'
         mobile_score_server_group = 'Mobile Integration (HTTP Server)'
         mobile_score_server_enabled = 'Start mobile score viewer server'
@@ -119,7 +120,7 @@ class UIText:
     
     class image_save:
         """Image save settings tab"""
-        output_group = 'Save Location, Loading and Data Display'
+        output_group = 'Save Location'
         condition_group = 'Image Save Condition'
         always = 'Always save'
         only_updates = 'Save on update only'
