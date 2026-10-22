@@ -3,10 +3,19 @@
 beatmania IIDX INFINITASのプレー画面から、打鍵数やスコアを記録するツールです。
 SP・DPに対応し、OBSへの情報表示やスマホでのスコア確認にも使えます。
 
+リザルト画像の自動保存、プレーログ・月間ノーツ数の記録、配信向けHTMLビュー、
+OBSの自動制御、スコアビューワでのライバル比較、自己ベストCSVの出力を利用できます。
+
 ## 打鍵カウンタの導入方法
 
 - [通常の手順](install.md) — 初めて使う場合のダウンロード・起動・画面取得の確認
 - [打鍵カウンタv2から移行する場合に必要な手順](migration-v2.md) — 設定・プレーログの引き継ぎとHTMLの入れ替え
+- [ゲーム画面の取得](capture.md) — 直接取得・Spout・OBS WebSocketの使い分けと設定
+
+## 設定項目を調べる
+
+[設定画面で設定できること](settings.md)で、基本設定の各タブと初期値を確認できます。
+画像保存、スマホ連携、ライバル登録など、目的ごとの手順にも移動できます。
 
 ## OBS向けHTMLビューの利用方法
 
@@ -30,3 +39,16 @@ SP・DPに対応し、OBSへの情報表示やスマホでのスコア確認に�
 - [バージョンごとの更新情報](releases.md)
 
 不具合や要望は[GitHub Issues](https://github.com/dj-kata/inf_daken_counter_obsw/issues)へお寄せください。
+
+## 利用・クレジット
+
+非営利・営利を問わず配信などに利用できます。ライセンスは
+[Apache License 2.0](https://github.com/dj-kata/inf_daken_counter_obsw/blob/main/LICENSE)です。
+配信でのクレジット表記は必須ではありません。記載する場合は、次を使えます。
+
+```text
+INFINITAS打鍵カウンタ
+https://github.com/dj-kata/inf_daken_counter_obsw
+```
+
+作者の連絡先は [X（@cold_planet_）](https://x.com/cold_planet_) です。バグ報告はGitHub Issuesを利用してください。

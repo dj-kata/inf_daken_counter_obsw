@@ -87,6 +87,35 @@ class ImageSaveSettingsTests(unittest.TestCase):
         self.assertEqual(sentinel.read_bytes(), original)
         self.assertFalse((root / "results").exists())
 
+    def test_settings_capture_ignores_user_data_and_captures_every_tab(self):
+        root = Path(self.temp.name)
+        config_path = root / "config.json"
+        log_path = root / "playlog.infdc"
+        config_bytes = b'{"language":"en","image_save_path":"user-results"}'
+        log_bytes = b'user play history must stay unchanged'
+        config_path.write_bytes(config_bytes)
+        log_path.write_bytes(log_bytes)
+        sections = ("basic", "additional", "random-lane", "difficulty", "image-save",
+                    "data-import", "rival")
+        for language in ("ja", "en"):
+            result = subprocess.run(
+                [sys.executable, "-B", str(ROOT / "misc" / "capture_manual.py"),
+                 "--offscreen", "--section", "settings", "--language", language,
+                 "--output-dir", str(root / "images")],
+                cwd=root, capture_output=True, text=True, timeout=60,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(len(result.stdout.splitlines()), len(sections))
+            for section in sections:
+                image = QImage(str(root / "images" / f"settings-{section}-{language}.png"))
+                self.assertFalse(image.isNull(), section)
+                self.assertGreaterEqual(image.width(), 1000)
+                self.assertGreaterEqual(image.height(), 900)
+        self.assertEqual(config_path.read_bytes(), config_bytes)
+        self.assertEqual(log_path.read_bytes(), log_bytes)
+        self.assertFalse((root / "user-results").exists())
+        self.assertFalse((root / "out").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

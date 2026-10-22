@@ -34,6 +34,8 @@ nav:
   - 打鍵カウンタの導入方法:
       - 通常の手順: install.md
       - v2から移行する場合: migration-v2.md
+      - ゲーム画面の取得（直接取得・Spout・OBS）: capture.md
+  - 設定画面で設定できること: settings.md
   - OBS向けHTMLビューの利用方法: obs-views.md
   - その他の機能:
       - スコアビューワ: score-viewer.md

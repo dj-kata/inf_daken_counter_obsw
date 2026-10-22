@@ -27,14 +27,16 @@ PCやアプリを起動し直した後も、その前に記録した結果を表
 「基本設定」→「難易度表」の「片手難易度を表示する」で、SP☆11・☆12の片手難易度を表示できます。
 「ツイートのレベル別集計を片手難易度ごとに分ける」で、成果の投稿時の集計も切り替えられます。
 
-## RANDOMレーン配置を認識する
+## RANDOMレーン配置を認識する {#random-lane}
 
 SP・Spout経由の1920×1080映像で利用できます。
+Spoutの準備は[ゲーム画面の取得](capture.md#spout)を参照してください。
 ゲーム映像をSpoutで送信し、「基本設定」→「基本設定」で「Spout経由」を選びます。
 「Spout送信名」を送信側と一致させ、「RANDOMレーン認識」タブで「RANDOMレーン配置を認識する」を有効にしてください。
 初期の送信名は `Spout_OBS_Filter` です。
 
 「配置認識テンプレートフォルダ」にRandomLaneAnalysis_OCRで作成した `templates` フォルダを指定します。
+元ツールは [RandomLaneAnalysis_OCR](https://github.com/yuki-RAI01/RandomLaneAnalysis_OCR) です。先に元ツールでテンプレート登録を済ませてください。
 `SCRATCH.png`、`GET_READY.png`、`OP_CURRENT_SCORE.png`、`Op.MIRROR.png`、`Op.RANDOM.png`、`Op.R-.png`、`Op.S-.png` が必要です。
 プレー画面の配置オプションとGET READYの表示・消失を認識してから記録・解析を開始します。テンプレート不足・未認識の場合は記録しません。
 REGULARまたはMIRRORで譜面を登録します。旧方式の登録データは再登録が必要です。

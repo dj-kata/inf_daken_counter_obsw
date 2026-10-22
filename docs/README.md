@@ -4,6 +4,8 @@
 - [通常の導入手順](install.md)
 - [v2からの移行](migration-v2.md)
 - [OBS向けHTMLビュー](obs-views.md)
+- [設定画面で設定できること](settings.md)
+- [ゲーム画面の取得](capture.md)
 - [更新情報](releases.md)
 
 ## サイトをプレビューする
@@ -34,12 +36,36 @@ WindowsではPythonのパスを `.codex-venv\Scripts\python.exe` に読み替え
 この時点では自動公開しません。公開時には次の操作を行います。
 
 1. 内容を確認し、説明書の変更を既定ブランチへマージします。
-2. GitHubリポジトリの Settings → Pages → Source を **GitHub Actions** に設定します。
-3. Actions → Documentation → Run workflow で既定ブランチを選び、`deploy` を有効にして実行します。
+2. Settings → Actions → General の **Actions permissions** で、GitHub公式のActionを許可します（後述）。
+3. GitHubリポジトリの Settings → Pages → Source を **GitHub Actions** に設定します。
+4. Actions → Documentation → Run workflow で既定ブランチを選び、`deploy` を有効にして実行します。
 
 公開URLは `https://dj-kata.github.io/inf_daken_counter_obsw/` を想定しています。
 手動の公開処理は既定ブランチからのみ実行できます。通常のpush・PRはビルドと成果物の作成だけです。
 既存のPages公開元が設定されている場合は、切り替え前に確認してください。
+
+### Documentationが起動直後に失敗する場合
+
+2026-10-22のコミット `620c0bf` の実行は、ジョブが作成される前の `startup_failure` でした。
+[該当する実行](https://github.com/dj-kata/inf_daken_counter_obsw/actions/runs/39728136116)のAnnotationsには、
+dj-kata所有のActionだけを許可するポリシーによって、次のGitHub公式Actionが拒否されたことが表示されています。
+
+- `actions/checkout@v4`
+- `actions/setup-python@v5`
+- `actions/upload-pages-artifact@v3`
+- `actions/deploy-pages@v4`
+
+このエラーはMarkdownやMkDocsのビルドエラーではなく、リポジトリの管理設定で解消します。
+
+1. [Settings → Actions → General](https://github.com/dj-kata/inf_daken_counter_obsw/settings/actions) を開きます。
+2. Actions permissionsで **Allow dj-kata, and select non-dj-kata, actions and reusable workflows** を選びます。
+3. **Allow actions created by GitHub** を有効にして保存します。これにより、上記のActionと、その内部で使うGitHub公式Actionを許可できます。
+4. 失敗した実行で **Re-run all jobs** を選ぶか、Documentationを手動実行して、buildジョブが成功することを確認します。
+5. 公開する場合はPagesのSourceを確認し、既定ブランチから `deploy` を有効にしてDocumentationを実行します。
+
+Actionを許可しただけではサイトは公開されません。通常のpush・PRではビルドと成果物作成までです。
+また、ワークフローの `pages: write` や `contents: read` を変更しても、この起動拒否は解消しません。
+許可ポリシーの説明は[GitHub公式ドキュメント](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-select-actions-and-reusable-workflows-to-run)を参照してください。
 
 ## リリース情報を取り込む
 
@@ -100,6 +126,15 @@ Linuxで画面を表示せず確認する場合:
 
 出力先は `docs/images/image-save-ja.png` です。同名ファイルは上書きします。
 `--language en` で英語版、`--output-dir <フォルダ>` で別の出力先を指定できます。
+基本設定の全7タブを撮影する場合は、次を実行します。
+
+```bash
+.codex-venv/bin/python misc/capture_manual.py --offscreen --section settings
+```
+
+出力先は `docs/images/settings-<タブ名>-ja.png` です。こちらも `--language en` と `--output-dir` に対応します。
+初期設定の表示なので、SpoutやRANDOMレーン認識など、初期状態で無効な項目は無効のまま撮影します。
+全タブの撮影には、開発環境の `infnotebook/` とOCRリソースも必要です。ダイアログの依存先を読み込む際に参照しますが、画面取得は開始しません。
 画像はアプリと共用するGUI部品から生成し、初期値は新規の一時設定ファイルから読み込みます。
 アプリ本体、OBS接続、ゲーム画面取得、HTTPサーバは起動しません。
 利用者の設定やプレー履歴は読み書きしません。通常のモジュールログは `log/` に出力されます。
@@ -130,3 +165,25 @@ OSやQtのバージョンによる差は残るため、Windowsでの見た目を
 初期表示、適用前に設定が変わらないこと、設定の保存と復元、日本語・英語の画像生成、
 撮影時に既存の `config.json` を変更しないことを確認します。
 Windows上でのアプリ全体の操作や、実際のリザルト画像保存は別途確認してください。
+
+## Wikiからの移行記録
+
+2026-10-22時点のWiki（コミット `6bd6078`）を参照し、次の情報をHTMLサイト内へ移しています。
+Wiki自体の編集・削除は行いません。
+
+| Wikiの原稿 | サイト内の移行先 |
+| --- | --- |
+| [Home](https://github.com/dj-kata/inf_daken_counter_obsw/wiki) | [トップ](index.md)：機能の概要・クレジット・ライセンス・連絡先 |
+| [打鍵カウンタの設定方法](https://github.com/dj-kata/inf_daken_counter_obsw/wiki/打鍵カウンタの設定方法) | [導入](install.md)・[画面取得とSpout](capture.md)・[OBS制御](obs-control.md)・[スマホ連携](mobile.md) |
+| [各ビューのHTMLについて](https://github.com/dj-kata/inf_daken_counter_obsw/wiki/各ビューのHTMLについて) | [HTMLビュー](obs-views.md)：表示例・目安サイズ・CSS・別PCでの接続 |
+| [設定画面で設定できること](https://github.com/dj-kata/inf_daken_counter_obsw/wiki/設定画面で設定できること) | [設定画面](settings.md)：全7タブ・初期値・各機能の操作ページへのリンク |
+
+説明は現行の `src/config.py`・UI・テンプレートと照合しています。
+Wikiの `today_results.html` は現行の `today_result.html` に、CSS例の `root:` は `:root` に修正しています。
+レーン番号の設定は `body` に指定します。RANDOM配置ビューの生成ファイルと、WebSocket接続先設定の違いも補足しています。
+`whole_layout.html` の `--skip-no-update` は現行の親ページで子ビューに渡されないため、設定例には含めていません。
+
+設定画面の画像は現行コードから再撮影しています。SpoutのOBS側設定とビューの表示例はWikiの画像を
+`docs/images/wiki/` にコピーし、元URLを `sources.json` に記録しています。
+ビューの画像はWiki掲載時点の表示例で、現行版で撮り直したものではありません。
+サイトのビルド中には、Wikiや画像をネットワーク取得しません。

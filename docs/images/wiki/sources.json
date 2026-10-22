@@ -1,0 +1,62 @@
+{
+  "spout-filter": {
+    "file": "spout-filter.png",
+    "url": "https://github.com/user-attachments/assets/69a6cf39-c1b3-4cb6-8e7d-dfa7c83b66e3",
+    "bytes": 11916
+  },
+  "spout-sender": {
+    "file": "spout-sender.png",
+    "url": "https://github.com/user-attachments/assets/3028452f-44ae-45c5-90f3-1996ecab8568",
+    "bytes": 11753
+  },
+  "view-whole-layout": {
+    "file": "view-whole-layout.png",
+    "url": "https://github.com/user-attachments/assets/b2f7c015-c2e2-49ad-a081-0230b25dd4d7",
+    "bytes": 139322
+  },
+  "view-history": {
+    "file": "view-history.png",
+    "url": "https://github.com/user-attachments/assets/e7c118af-0b2e-4b74-ba8e-b6229d15db76",
+    "bytes": 253233
+  },
+  "view-rival": {
+    "file": "view-rival.png",
+    "url": "https://github.com/user-attachments/assets/6bc01812-acb6-4f03-8f30-d06a0af47ccd",
+    "bytes": 107357
+  },
+  "view-today-result": {
+    "file": "view-today-result.png",
+    "url": "https://github.com/user-attachments/assets/dcc092de-e36a-4bd6-a38e-3ab6168ce351",
+    "bytes": 371039
+  },
+  "view-today-stats": {
+    "file": "view-today-stats.png",
+    "url": "https://github.com/user-attachments/assets/e2bc6f53-25d8-4ef8-a1fc-c46618653530",
+    "bytes": 1320567
+  },
+  "view-stats-receipt": {
+    "file": "view-stats-receipt.png",
+    "url": "https://github.com/user-attachments/assets/db242eab-f756-4084-b87a-78c5256efca4",
+    "bytes": 1032205
+  },
+  "view-receipt": {
+    "file": "view-receipt.png",
+    "url": "https://github.com/user-attachments/assets/ce40c142-e9e5-4055-80a0-46ff3431d92f",
+    "bytes": 341887
+  },
+  "view-graph": {
+    "file": "view-graph.png",
+    "url": "https://github.com/user-attachments/assets/af418b49-6299-4272-886c-6d6025a00f5b",
+    "bytes": 57338
+  },
+  "view-random-lane": {
+    "file": "view-random-lane.png",
+    "url": "https://github.com/user-attachments/assets/443e0c8c-c969-4d2d-9f2b-eb8349cdb2a5",
+    "bytes": 15383
+  },
+  "result-statistics": {
+    "file": "result-statistics.png",
+    "url": "https://github.com/user-attachments/assets/ac7a109f-a884-4879-83b0-def541c358bd",
+    "bytes": 1198934
+  }
+}
