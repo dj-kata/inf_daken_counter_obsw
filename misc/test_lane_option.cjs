@@ -206,3 +206,16 @@ test('live overlay shows partial layout, hides unknown layouts, and retains part
         assert.equal(elements.get('layout').innerHTML, '');
     }
 });
+
+test('idle preview without a saved layout shows seven empty gray keys', () => {
+    const {context, elements, properties} = load('template/random_lane.html');
+    context.window.INFDC_RANDOM_LANE_STATE = {phase: 'waiting'};
+    context.render();
+    assert.equal(elements.get('layout').innerHTML, '');
+    properties['--show-when-idle'] = '1';
+    context.render();
+    const preview = elements.get('layout').innerHTML;
+    assert.equal((preview.match(/lane-option-key-unknown"><\/span>/g) || []).length, 7);
+    assert.equal(digits(preview).length, 0);
+    assert.doesNotMatch(preview, /REGULAR|RANDOM|1234567/);
+});

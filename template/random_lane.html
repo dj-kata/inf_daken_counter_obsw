@@ -7,7 +7,7 @@
   <script src="lane_option.js"></script>
   <style>
     :root {
-      /* 1: 最後の配置（未取得なら調整用1234567）を常時表示、0: プレー中の配置・部分配置のみ表示 */
+      /* 1: 最後の配置（未取得なら灰色の枠7つ）を常時表示、0: プレー中の配置・部分配置のみ表示 */
       --show-when-idle: 0;
     }
     html, body { margin: 0; background: transparent; overflow: hidden; }
@@ -20,6 +20,8 @@
   <div id="layout"></div>
   <script>
     const lastLayoutKey = 'infdc.randomLane.lastLayout';
+    const emptyLayout = '<span class="lane-option" role="img" aria-label="レーン配置未取得">' +
+      '<span class="lane-option-key lane-option-key-unknown"></span>'.repeat(7) + '</span>';
     let lastLayout = '';
     // Keep the last display available when OBS reloads the browser source, too.
     try {
@@ -45,7 +47,7 @@
       const retained = renderLaneOptionToken('RANDOM', lastLayout);
       layout.innerHTML = active
         ? current
-        : showWhenIdle ? retained || renderLaneOptionToken('REGULAR') : '';
+        : showWhenIdle ? retained || emptyLayout : '';
     }
     function reloadState() {
       const old = document.getElementById('random-lane-state');
