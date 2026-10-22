@@ -141,7 +141,7 @@ Apache License 2.0に準じるものとします。
 クレジット表記等も特に必要ないですが、書いてもらえたら喜びます。
 
 # 謝辞
-以下のOSSの機能を一部使わせてもらっています。
+下記OSSの機能を一部使わせてもらっています。  
 - https://github.com/kaktuswald/inf-notebook/branches (曲名認識、リザルト情報取得)
 - https://github.com/yuki-RAI01/RandomLaneAnalysis_OCR (レーン配置情報取得)
 
