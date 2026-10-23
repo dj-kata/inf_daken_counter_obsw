@@ -98,6 +98,8 @@ REGULAR／MIRRORは固定配置、RANDOM／R-RANDOMは保存された配置を�
 `template/v2/history_cursong.html`も同じ設定に対応しています。
 配置の一部だけ分かった場合も、確定した数字と白鍵・青鍵の色を表示します。数字不明の鍵盤は文字なし、色も不明の鍵盤は灰色です。何も分からない場合はオプション名を表示します。部分配置もリザルトへ保存されます。
 番号表示専用の`random_lane.html`は、この設定にかかわらず配置・部分配置を表示します。
+配置状態は履歴・グラフと同じWebSocketサーバーから受信します。表示用JSファイルの書き出し・定期読込は行いません。
+接続先は他のビューと同じ`out/websocket.css`またはURLの`websocket_host`・`websocket_port`で指定でき、再接続時は最新状態を受信します。
 
 ## HTTPサーバからのリザルト画像投稿
 
@@ -129,6 +131,12 @@ cp -a $(inf-notebook-binary-dir)/resources inf_daken_counter_obsw/
 
 make
 ```
+
+ビルドと動作確認用ディレクトリへの同期は `make build-sync` でまとめて実行できます。
+配布用ファイルの準備後、ZIP作成と `/mnt/d/bin/YouTubeLive` への `rsync -av` を並列実行します。
+同期先は `make build-sync SYNC_DEST=/path/to/destination` で変更できます。
+ZIPが不要な場合は `make sync` でビルド・準備・同期だけを実行できます。
+従来の `make` はZIP作成のみです。
 
 DB更新時、片手難易度表は通常ネットワーク取得せず `misc/katate_difficulty.csv` があればそれを使います。Google SheetsからCSVを手動ダウンロードして以下のどちらかで更新できます。
 

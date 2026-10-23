@@ -99,7 +99,7 @@ class TemplateRecognitionTests(unittest.TestCase):
         self.assertEqual(self.recognizer.observe(plain, '2P'), 'REGULAR')
 
     def analysis(self):
-        analysis = RandomLaneAnalysis(True, self.root/'charts.sqlite3', self.root/'state.js',
+        analysis = RandomLaneAnalysis(True, self.root/'charts.sqlite3',
                                       template_folder=str(self.folder))
         analysis.start_play(title='TITANS RETURN', style='sp', difficulty='LEGGENDARIA',
                             level=12, play_mode='sp_2p_r')

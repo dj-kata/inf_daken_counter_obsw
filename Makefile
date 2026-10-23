@@ -3,17 +3,31 @@ main_file_name=notes_counter
 project_name=inf_daken_counter
 target=$(project_name)/.built  # timestampファイルにすることで連続でmakeできないように対策
 target_zip=$(project_name).zip
+prepared=$(project_name)/.prepared
 srcs=$(wildcard *.py) $(wildcard *.pyw) $(wildcard src/*.py) $(wildcard misc/*.py)
 html_files=$(wildcard template/*.html)
 version=$(shell head -n1 version.txt)
 ZIP ?= 7z a -tzip -mx=1 -mmt=on
+SYNC_DEST ?= /mnt/d/bin/YouTubeLive
+
+.PHONY: all top build-sync sync dist clean test
 
 all: $(target_zip)
 top: $(target)
 
-$(target_zip): $(target) $(html_files) version.txt
-	@rm -rf $(project_name)/tmp
+# 共通の準備が完了してから、ZIP作成と同期を並列実行する。
+build-sync:
+	+$(MAKE) -j2 $(target_zip) sync
+
+sync: $(prepared)
+	rsync -av $(project_name) "$(SYNC_DEST)"
+
+$(target_zip): $(prepared)
 	@rm -rf $(target_zip)
+	$(ZIP) $(target_zip) $(project_name)
+
+$(prepared): $(target) $(html_files) version.txt songinfo.infdc
+	@rm -rf $(project_name)/tmp
 	@cp version.txt $(project_name)
 	@cp -a template $(project_name)
 	@mkdir -p $(project_name)/infnotebook
@@ -21,7 +35,7 @@ $(target_zip): $(target) $(html_files) version.txt
 	@cp songinfo.infdc $(project_name)
 	@rm -rf $(project_name)/log
 	@rm -rf $(project_name)/*.json
-	$(ZIP) $(target_zip) $(project_name)
+	@touch $(prepared)
 
 $(target): $(srcs)
 	@rm -rf $(project_name)

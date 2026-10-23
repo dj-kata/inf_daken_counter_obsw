@@ -40,6 +40,7 @@ class DataWebSocketServer:
         self.today_updates_data = None
         self.history_cursong_data = None
         self.today_stats_data = None
+        self.random_lane_data = None
         
     async def register_client(self, websocket):
         """クライアントを登録し、最新データを送信"""
@@ -50,6 +51,11 @@ class DataWebSocketServer:
 
     async def send_latest_data(self, websocket):
         """指定クライアントへ最新データをまとめて送信"""
+        if self.random_lane_data is not None:
+            await websocket.send(json.dumps({
+                'type': 'random_lane',
+                'data': self.random_lane_data
+            }))
         if self.graph_data:
             await websocket.send(json.dumps({
                 'type': 'graph',
@@ -214,6 +220,23 @@ class DataWebSocketServer:
             asyncio.run_coroutine_threadsafe(
                 self.broadcast_graph_data(data),
                 self.loop
+            )
+
+    async def broadcast_random_lane_data(self, data: dict):
+        """最新の配置認識状態を保持し、接続中のブラウザへ配信する。"""
+        self.random_lane_data = data
+        if self.clients:
+            message = json.dumps({'type': 'random_lane', 'data': data})
+            await asyncio.gather(
+                *[client.send(message) for client in self.clients],
+                return_exceptions=True
+            )
+
+    def update_random_lane_data(self, data: dict):
+        """Spout受信スレッドから配信ループへ状態を渡す。"""
+        if self.loop:
+            asyncio.run_coroutine_threadsafe(
+                self.broadcast_random_lane_data(data), self.loop
             )
     
     def update_option_data(self, data: dict):

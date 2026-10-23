@@ -276,6 +276,11 @@ class ResultDatabase:
         """グラフデータをWebSocketで配信"""
         return self.get_graph_data(start_time)
 
+    @_ws_broadcast("update_random_lane_data")
+    def broadcast_random_lane_data(self, data: dict):
+        """RANDOM配置の状態を既存のWebSocketサーバーへ渡す。"""
+        return data
+
     @_ws_broadcast("update_option_data")
     def broadcast_option_data(self, option: CurrentOption):
         """グラフデータをWebSocketで配信"""

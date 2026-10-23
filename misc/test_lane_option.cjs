@@ -14,6 +14,8 @@ function load(file, search = '') {
     const classes = new Set();
     const properties = {'--show-lane-numbers': '0', '--show-when-idle': '0'};
     const events = {};
+    const sockets = [];
+    const timeouts = [];
     const element = selector => {
         if (!elements.has(selector)) elements.set(selector, {
             innerHTML: '', style: {}, classList: {add() {}, remove() {}}
@@ -21,7 +23,12 @@ function load(file, search = '') {
         return elements.get(selector);
     };
     const context = {
-        URLSearchParams, URL, Date, console: {log() {}},
+        URLSearchParams, URL, Date, console: {log() {}, error() {}},
+        WebSocket: class {
+            constructor(url) { this.url = url; sockets.push(this); }
+            close() { this.onclose?.(); }
+        },
+        setTimeout(callback) { timeouts.push(callback); return timeouts.length; },
         setInterval() {},
         window: {location: {search, hostname: '', href: 'file:///overlay/whole_layout.html'}, addEventListener() {}},
         localStorage: {getItem() { return null; }, setItem() {}},
@@ -45,7 +52,7 @@ function load(file, search = '') {
         }
     }
     events.DOMContentLoaded();
-    return {context, classes, properties, elements};
+    return {context, classes, properties, elements, sockets, timeouts};
 }
 
 const digits = html => Array.from(html.matchAll(/lane-option-key-(\w+)">(\d)<\/span>/g));
@@ -150,6 +157,26 @@ test('random_lane stays numeric even with the default option-name setting', () =
     context.render();
     assert.equal(digits(elements.get('layout').innerHTML).length, 7);
     assert.doesNotMatch(elements.get('layout').innerHTML, /lane-option-choice/);
+});
+
+test('random lane receives WebSocket state and reconnects using configured address', () => {
+    const {elements, sockets, timeouts} = load('template/random_lane.html',
+        '?websocket_host=192.0.2.10&websocket_port=9876');
+    assert.equal(sockets[0].url, 'ws://192.0.2.10:9876');
+    sockets[0].onmessage({data: JSON.stringify({type: 'random_lane',
+        data: {phase: 'confirmed', option: 'RANDOM', layout: '3172654'}})});
+    assert.equal(digits(elements.get('layout').innerHTML).map(key => key[2]).join(''), '3172654');
+    sockets[0].onmessage({data: JSON.stringify({type: 'graph', data: {}})});
+    assert.equal(digits(elements.get('layout').innerHTML).length, 7);
+    sockets[0].onmessage({data: 'invalid json'});
+    sockets[0].close();
+    sockets[0].close();
+    assert.equal(timeouts.length, 1);
+    timeouts[0]();
+    assert.equal(sockets.length, 2);
+    sockets[1].onmessage({data: JSON.stringify({type: 'random_lane',
+        data: {phase: 'partial', option: 'RANDOM', layout: '???1???'}})});
+    assert.equal(digits(elements.get('layout').innerHTML).map(key => key[2]).join(''), '1');
 });
 
 

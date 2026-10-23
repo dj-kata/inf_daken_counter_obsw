@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>RANDOM lane</title>
+  <link rel="stylesheet" href="../out/websocket.css">
   <link rel="stylesheet" href="lane_option.css">
   <script src="lane_option.js"></script>
   <style>
@@ -49,19 +50,71 @@
         ? current
         : showWhenIdle ? retained || emptyLayout : '';
     }
-    function reloadState() {
-      const old = document.getElementById('random-lane-state');
-      if (old) old.remove();
-      const script = document.createElement('script');
-      script.id = 'random-lane-state';
-      script.src = 'random_lane_state.js?t=' + Date.now();
-      script.onload = render;
-      script.onerror = render;
-      document.head.appendChild(script);
+    function getWebSocketPort() {
+        const queryPort = parseInt(new URLSearchParams(window.location.search).get('websocket_port'), 10);
+        if (Number.isFinite(queryPort)) {
+            return queryPort;
+        }
+
+        const port = getComputedStyle(document.documentElement)
+            .getPropertyValue('--websocket-port').trim();
+        return parseInt(port) || 8767;
+    }
+
+    function getWebSocketHost() {
+        const queryHost = (new URLSearchParams(window.location.search).get('websocket_host') || '').trim().replace(/['"]/g, '');
+        if (queryHost) {
+            return queryHost;
+        }
+
+        const host = getComputedStyle(document.documentElement)
+            .getPropertyValue('--websocket-host').trim().replace(/['"]/g, '');
+        if (host) {
+            return host;
+        }
+
+        const locationHost = window.location.hostname;
+        if (!locationHost || locationHost.toLowerCase() === 'absolute') {
+            return '127.0.0.1';
+        }
+
+        return locationHost;
+    }
+
+    function getWebSocketUrl() {
+        return `ws://${getWebSocketHost()}:${getWebSocketPort()}`;
+    }
+    let ws = null;
+    let reconnectTimer = null;
+    let activeWebSocketUrl = '';
+    function connectWebSocket() {
+      activeWebSocketUrl = getWebSocketUrl();
+      ws = new WebSocket(activeWebSocketUrl);
+      ws.onmessage = function(event) {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === 'random_lane') {
+            window.INFDC_RANDOM_LANE_STATE = message.data;
+            render();
+          }
+        } catch (error) {
+          console.error('RANDOM配置の受信エラー:', error);
+        }
+      };
+      ws.onclose = function() {
+        if (reconnectTimer === null) {
+          reconnectTimer = setTimeout(function() {
+            reconnectTimer = null;
+            connectWebSocket();
+          }, 3000);
+        }
+      };
     }
     render();
-    reloadState();
-    setInterval(reloadState, 250);
+    connectWebSocket();
+    setInterval(function() {
+      if (activeWebSocketUrl !== getWebSocketUrl() && ws) ws.close();
+    }, 1000);
   </script>
 </body>
 </html>

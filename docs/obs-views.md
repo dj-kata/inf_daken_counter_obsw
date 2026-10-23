@@ -217,8 +217,9 @@ body {
 
 初期値 `0` はプレー中の配置・部分配置を表示し、`1` は最後の配置を常時表示します。
 未取得のまま常時表示を有効にした場合は、灰色の枠7つを表示します。
-このビューは `template/random_lane_state.js` を読むため、**アプリが更新しているフォルダ内のHTML** を指定してください。
-コピーしたフォルダや別PCにこのHTMLだけ置いても配置は更新されません。
+このビューは履歴・グラフと同じWebSocketサーバーから配置状態を受信します。`random_lane_state.js` は使用しません。
+接続先は他のビューと同じ `out/websocket.css`、またはURLの `websocket_host`・`websocket_port` で指定できます。切断時は自動再接続し、最新状態を受信します。
+別PCから利用する場合は、`websocket_host` にアプリを実行しているPCのアドレスを指定してください。HTMLと併せて `lane_option.js`・`lane_option.css` も必要です。
 
 ## 履歴・本日結果をレーン番号で表示する {#lane-numbers}
 

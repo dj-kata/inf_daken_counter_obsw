@@ -154,6 +154,7 @@ class MainWindow(MainWindowUI):
         self.obs_manager.connection_changed.connect(self.on_obs_connection_changed)
 
         self.random_lane_analysis = RandomLaneAnalysis(
+            state_callback=self.result_database.broadcast_random_lane_data,
             enabled=self.config.enable_random_lane_analysis,
             detection_bands=self.config.random_lane_detection_bands,
             template_folder=self.config.random_lane_template_folder,
