@@ -10,6 +10,9 @@ from pathlib import Path
 # PySide6のパスを取得
 try:
     import PySide6
+    # cx_Freeze's Qt hook resolves PySide6.QtCore as a package attribute.
+    # Load it before scanning PIL.ImageQt, which can trigger that hook first.
+    import PySide6.QtCore
     pyside6_path = Path(PySide6.__file__).parent
     
     # PySide6のプラグインディレクトリを含める
