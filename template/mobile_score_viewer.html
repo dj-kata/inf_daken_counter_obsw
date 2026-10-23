@@ -1052,7 +1052,7 @@
       if (button) button.textContent = `CREATE POST IMAGE (${count})`;
       if (state.listVariant === "saved-images") {
         setStats([["IMAGES", state.allItems.length], ["SELECTED", count], ["NOTES", fmt(state.savedImagesNotes || 0)]]);
-      } else if (state.view === "receipt" && state.receiptImageSelection) {
+      } else if (state.receiptImageSelection && (state.view === "receipt" || state.view.startsWith("receipt-section:"))) {
         setStats([["IMAGES", document.querySelectorAll("[data-image-id]").length], ["SELECTED", count], ["", ""]]);
       }
     }
@@ -1235,7 +1235,7 @@
     }
 
     function renderReceiptSectionFull(sectionId, data) {
-      clearSelectionMode();
+      if (!state.receiptImageSelection) clearSelectionMode();
       state.receiptData = data;
       const config = receiptSectionConfig(sectionId, data);
       if (!config) {
@@ -1246,11 +1246,15 @@
       state.listVariant = "receipt-section";
       setTitle(config.title);
       setStats([["ITEMS", config.rows.length], ["RANGE", data.range_text || "-"], ["", ""]]);
-      $("content").innerHTML = config.groupKind
+      const section = config.groupKind
         ? receiptGroupedSection(sectionId, config.title, config.rows, config.groupKind, { [sectionId]: true })
         : receiptSection(sectionId, config.title, config.count, config.rows, config.rowRenderer, { [sectionId]: true });
-      document.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
+      $("content").innerHTML = `${loadReceiptCombinedImagesEnabled() ? `<section class="receipt-actions"><button id="selectReceiptImagesBtn" class="secondary-btn" type="button">${state.receiptImageSelection ? "Cancel Selection" : "Select Images"}</button></section>` : ""}
+        ${section}
+        ${loadReceiptCombinedImagesEnabled() ? '<div id="selectionAction" class="selection-action" hidden><button id="combineImagesBtn" type="button">CREATE POST IMAGE</button></div>' : ""}`;
+      bindReceiptImageSelection(() => renderReceiptSectionFull(sectionId, state.receiptData || data));
       bindImageButtons($("content"));
+      updateSelectionAction();
     }
 
     function renderFolderList(data) {
@@ -1315,11 +1319,18 @@
         state.receiptData = latest;
         openReceiptSummaryImage(latest);
       });
+      bindReceiptImageSelection(() => renderReceipt(state.receiptData || data));
+      document.querySelectorAll("[data-receipt-full]").forEach((button) => button.addEventListener("click", () => openReceiptSectionFull(button.dataset.receiptFull, true)));
+      bindImageButtons($("content"));
+      updateSelectionAction();
+    }
+
+    function bindReceiptImageSelection(render) {
       $("selectReceiptImagesBtn")?.addEventListener("click", () => {
         state.receiptImageSelection = !state.receiptImageSelection;
         document.body.classList.toggle("selection-mode", state.receiptImageSelection);
         if (!state.receiptImageSelection) state.selectedImageIds.clear();
-        renderReceipt(state.receiptData || data);
+        render();
       });
       $("combineImagesBtn")?.addEventListener("click", openCombinedResultImage);
       if (state.receiptImageSelection) {
@@ -1329,14 +1340,11 @@
           const imageId = button.dataset.imageId;
           if (state.selectedImageIds.has(imageId)) state.selectedImageIds.delete(imageId);
           else state.selectedImageIds.add(imageId);
-          renderReceipt(state.receiptData || data);
+          render();
         }));
       } else {
         document.querySelectorAll("[data-chart]").forEach((button) => button.addEventListener("click", () => openChart(button.dataset.chart, true)));
       }
-      document.querySelectorAll("[data-receipt-full]").forEach((button) => button.addEventListener("click", () => openReceiptSectionFull(button.dataset.receiptFull, true)));
-      bindImageButtons($("content"));
-      updateSelectionAction();
     }
 
     const SUMMARY_LEVEL_SETTINGS_KEY = "infMobileSummaryLevelStats";

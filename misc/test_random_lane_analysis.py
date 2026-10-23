@@ -2,9 +2,11 @@
 
 import ast
 import itertools
+import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import cv2
 import numpy as np
@@ -116,6 +118,54 @@ class RandomLaneIntegrationTests(unittest.TestCase):
         self.assertIsNone(self.analysis.get_result_lane_layout())
         self.analysis.end_play()
         self.assertIsNone(self.analysis.get_result_lane_layout())
+
+    def read_state(self):
+        text = self.analysis.state_path.read_text(encoding='utf-8')
+        return json.loads(text.split(' = ', 1)[1].rstrip(';\n'))
+
+    def test_locked_overlay_on_second_play_does_not_interrupt_analysis(self):
+        self.save_chart()
+        for play in range(2):
+            with self.subTest(play=play):
+                events = iter([[n] for n in (4, 1, 7, 2, 6, 3)])
+                self.analysis.detectors['1P'].detect = lambda image: (1, next(events))
+                frame = np.zeros((1, 1, 3), dtype=np.uint8)
+                with patch.object(Path, 'replace', side_effect=PermissionError('WinError 5')):
+                    self.start('RANDOM')
+                    self.assertEqual(self.analysis.mode, 'analyze')
+                    for _ in range(6):
+                        self.analysis.process_frame(frame)
+                self.assertEqual(self.analysis._last_state['phase'], 'confirmed')
+                self.assertEqual(self.analysis.get_result_lane_layout(),
+                                 lane._layout_text((4, 1, 7, 2, 6, 3, 5)))
+                self.assertTrue(self.analysis._state_write_pending)
+                # A confirmed play no longer detects notes, but must still retry
+                # the overlay write and publish the newest (confirmed) state.
+                self.analysis.process_frame(frame)
+                self.assertEqual(self.read_state(), self.analysis._last_state)
+                self.assertFalse(self.analysis._state_write_pending)
+                self.analysis.end_play()
+
+    def test_locked_overlay_recovers_on_ui_poll_after_play_end(self):
+        self.start('MIRROR')
+        with patch.object(Path, 'replace', side_effect=PermissionError('WinError 5')):
+            self.analysis.end_play()
+        self.assertTrue(self.analysis._state_write_pending)
+        self.analysis.take_notification()
+        self.assertEqual(self.read_state()['phase'], 'waiting')
+        self.assertFalse(self.analysis._state_write_pending)
+
+    def test_state_write_failure_is_retried_without_repeating_warnings(self):
+        self.start('RANDOM')
+        frame = np.zeros((1, 1, 3), dtype=np.uint8)
+        with patch.object(Path, 'write_text', side_effect=OSError('disk unavailable')), \
+                patch.object(lane.logger, 'warning') as warning:
+            self.analysis._publish('partial', layout='???1???')
+            for _ in range(3):
+                self.analysis.process_frame(frame)
+            warning.assert_called_once()
+        self.analysis.take_notification()
+        self.assertEqual(self.read_state()['layout'], '???1???')
 
     def test_band_change_isolates_charts_and_restores_defaults(self):
         self.save_chart()

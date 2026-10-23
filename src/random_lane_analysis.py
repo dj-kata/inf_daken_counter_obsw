@@ -225,6 +225,8 @@ class RandomLaneAnalysis:
         self.result_layout = None
         self._notification = None
         self._last_state = None
+        self._state_write_pending = False
+        self._state_write_error = False
         self.capture_supported = True
         self.template_folder = None
         self.template_recognizer = None
@@ -395,6 +397,7 @@ class RandomLaneAnalysis:
 
     @_synchronized
     def process_frame(self, image):
+        self._flush_state()
         if not self.enabled or self.mode not in ("prepare", "record", "analyze") or self.side is None:
             return
         rgb = np.asarray(image)
@@ -479,6 +482,7 @@ class RandomLaneAnalysis:
 
     @_synchronized
     def take_notification(self):
+        self._flush_state()
         notification = self._notification
         self._notification = None
         return notification
@@ -567,12 +571,29 @@ class RandomLaneAnalysis:
         }
         self._last_state = payload
         self._notification = message
-        self.state_path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.state_path.with_suffix(self.state_path.suffix + ".tmp")
-        temporary.write_text(
-            "window.INFDC_RANDOM_LANE_STATE = "
-            + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-            + ";\n",
-            encoding="utf-8",
-        )
-        temporary.replace(self.state_path)
+        self._state_write_pending = True
+        self._flush_state()
+
+    def _flush_state(self):
+        if not self._state_write_pending:
+            return
+        try:
+            self.state_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = self.state_path.with_suffix(self.state_path.suffix + ".tmp")
+            temporary.write_text(
+                "window.INFDC_RANDOM_LANE_STATE = "
+                + json.dumps(self._last_state, ensure_ascii=False, separators=(",", ":"))
+                + ";\n",
+                encoding="utf-8",
+            )
+            temporary.replace(self.state_path)
+        except OSError:
+            # OBS may briefly hold the destination open on Windows. Keep the
+            # newest state for a later frame/UI poll without interrupting Spout.
+            if not self._state_write_error:
+                logger.warning("RANDOM配置表示の更新を再試行します: %s", self.state_path,
+                               exc_info=True)
+            self._state_write_error = True
+            return
+        self._state_write_pending = False
+        self._state_write_error = False
