@@ -39,9 +39,13 @@ Plugins = lib/PySide6/plugins
         f.write(qt_conf_content)
     include_files.append(("qt.conf", "qt.conf"))
 
-except ImportError:
-    include_files = []
-    print("Warning: PySide6 not found. Build may not work correctly.")
+except ImportError as exc:
+    raise RuntimeError(
+        "PySide6/QtCore could not be loaded. Check the original ImportError "
+        "below. If PySide6 DLLs are missing, repair the environment with: "
+        "uv sync --reinstall-package pyside6-essentials "
+        "--reinstall-package pyside6-addons"
+    ) from exc
 
 # infnotebook関連のファイルがあれば含める
 if os.path.exists("infnotebook"):
