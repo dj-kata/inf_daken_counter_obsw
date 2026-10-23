@@ -15,6 +15,8 @@ from src.logger import get_logger
 logger = get_logger(__name__)
 
 TARGET_SIZE = (1920, 1080)
+RETRY_INTERVAL = 2.0
+FRAME_TIMEOUT = 5.0
 GL_TEXTURE_2D = 0x0DE1
 GL_RGBA = 0x1908
 GL_UNSIGNED_BYTE = 0x1401
@@ -135,6 +137,24 @@ class SpoutCapture:
             logger.info(message)
 
     def _run(self):
+        while not self._stop_event.is_set():
+            try:
+                self._receive()
+            except Exception as exc:
+                if not self._stop_event.is_set():
+                    self._emit_status(
+                        "error", f"Spout受信エラー: {exc}（{RETRY_INTERVAL:g}秒後に再試行）"
+                    )
+                    logger.debug("Spout受信エラー詳細", exc_info=True)
+            finally:
+                with self._lock:
+                    self._connected = False
+                    self._latest_frame = None
+            if self._stop_event.wait(RETRY_INTERVAL):
+                break
+
+    def _receive(self):
+        """Run one receiver session; release GL resources before retrying."""
         context = None
         texture = ctypes.c_uint()
         gl = None
@@ -205,6 +225,7 @@ class SpoutCapture:
                 texture_size = None
                 connected = False
                 next_sender_check = 0.0
+                last_frame_at = time.monotonic()
                 self._emit_status("waiting", f"Spout送信待ち: {self._sender_name}")
 
                 while not self._stop_event.is_set():
@@ -220,6 +241,7 @@ class SpoutCapture:
                             if not connected:
                                 self._latest_frame = None
                         if connected:
+                            last_frame_at = time.monotonic()
                             self._emit_status(
                                 "connected",
                                 f"Spout接続: {self._sender_name}",
@@ -240,12 +262,15 @@ class SpoutCapture:
                                     "waiting",
                                     f"Spout送信待ち: {self._sender_name}（検出: {detected}）",
                                 )
-                        time.sleep(0.05)
+                        self._stop_event.wait(0.05)
                         continue
+
+                    if time.monotonic() - last_frame_at >= FRAME_TIMEOUT:
+                        raise TimeoutError(f"接続中に{FRAME_TIMEOUT:g}秒間フレームを取得できませんでした")
 
                     size = (width, height)
                     if width <= 0 or height <= 0:
-                        time.sleep(0.01)
+                        self._stop_event.wait(0.01)
                         continue
 
                     if bool(receiver.isUpdated()) or texture_size != size:
@@ -282,15 +307,11 @@ class SpoutCapture:
                         with self._lock:
                             self._latest_frame = rgb
                             frame_callback = self.frame_callback
+                        last_frame_at = time.monotonic()
                         if frame_callback is not None:
                             frame_callback(rgb)
 
                     receiver.waitFrameSync(self._sender_name, 16)
-        except Exception as exc:
-            with self._lock:
-                self._connected = False
-                self._latest_frame = None
-            self._emit_status("error", f"Spout受信エラー: {exc}")
         finally:
             if gl is not None and texture.value:
                 try:
