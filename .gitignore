@@ -32,3 +32,4 @@ results/*
 site/
 .codex-venv/
 to_bin
+.venv/
