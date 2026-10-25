@@ -60,12 +60,24 @@ class UIText:
         feature = '基本設定'
         additional = '追加設定'
         random_lane = 'RANDOMレーン認識'
+        overlay = 'オーバーレイ'
         music_pack = '楽曲パック'
         image_save = '画像保存'
         data_import = 'データ登録'
         rival = 'ライバル'
         difficulty_table = '難易度表'
     
+    class overlay:
+        load_error = 'ログのオーバーレイを起動できません。ログファイルとQt WebEngineの同梱状態を確認してください。'
+        enable = 'ゲーム画面へのオーバーレイを有効にする'
+        items = '表示する項目'
+        random_lane = 'ランダム配置（プレー画面）'
+        song_history = '単曲ログ（リザルト画面）'
+        today_results = '本日のプレーログ（選曲画面）'
+        log_format = 'ログの表示設定（選曲・リザルト共通）'
+        show_lane_numbers = '配置が分かる場合はレーン番号で表示する'
+        help = 'クリックを透過する最前面ウィンドウでゲーム画面に重ねます。ランダム配置にはRANDOMレーン認識の有効化が必要です。ログは既存HTMLと同じ情報を表示し、表示領域に収まるよう縮小します。設定は保存後すぐに反映されます。'
+
     class feature:
         """機能設定タブ"""
         game_capture_group = 'ゲーム画面取得'

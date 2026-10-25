@@ -15,7 +15,7 @@ dependencies = [
     "obsws-python>=1.8.0",
     "opencv-python>=4.13.0.90",
     "pillow>=12.1.0",
-    "pyside6>=6.10.1",
+    "pyside6>=6.10.2",
     "spoutgl>=0.1.1; sys_platform == 'win32'",
     "websockets>=16.0",
 ]

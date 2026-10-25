@@ -76,7 +76,7 @@ def capture_settings(output_dir, language="ja"):
     app = setup_application()
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    sections = ("basic", "additional", "random-lane", "difficulty", "image-save",
+    sections = ("basic", "additional", "random-lane", "overlay", "difficulty", "image-save",
                 "data-import", "rival")
     outputs = []
     with tempfile.TemporaryDirectory(prefix="infdc-manual-") as temp_dir:

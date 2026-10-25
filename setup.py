@@ -13,6 +13,8 @@ try:
     # cx_Freeze's Qt hook resolves PySide6.QtCore as a package attribute.
     # Load it before scanning PIL.ImageQt, which can trigger that hook first.
     import PySide6.QtCore
+    from src.webengine_runtime import validate_webengine_version
+    validate_webengine_version(PySide6.QtCore.QLibraryInfo.version().toString())
     pyside6_path = Path(PySide6.__file__).parent
     
     # PySide6のプラグインディレクトリを含める
@@ -33,6 +35,9 @@ try:
 Prefix = .
 Binaries = .
 Plugins = lib/PySide6/plugins
+LibraryExecutables = lib/PySide6
+Data = lib/PySide6
+Translations = lib/PySide6/translations
 """
     # Qt.confを一時的に作成
     with open("qt.conf", "w") as f:
@@ -69,6 +74,8 @@ build_exe_options = {
         "PySide6.QtCore",
         "PySide6.QtGui", 
         "PySide6.QtWidgets",
+        "PySide6.QtWebEngineCore",
+        "PySide6.QtWebEngineWidgets",
         "obsws_python",  # OBS WebSocket連携に必要
         "websocket",     # obsws_pythonの依存関係（websocket-client）
         "http",
@@ -121,6 +128,8 @@ build_exe_options = {
         "src.random_lane_templates",
         "src.spout_capture",
         "src.mobile_http_server",
+        "src.game_overlay",
+        "src.webengine_runtime",
         # ctypes関連（Windows APIアクセスに必要）
         "ctypes",
         "ctypes.wintypes",
@@ -158,15 +167,8 @@ build_exe_options = {
         "setuptools",
         "pip",
         # PySide6の不要なモジュール
-        "PySide6.QtNetwork",
-        "PySide6.QtOpenGL",
-        "PySide6.QtPrintSupport",
-        "PySide6.QtQml",
-        "PySide6.QtQuick",
         "PySide6.QtSql",
         "PySide6.QtTest",
-        "PySide6.QtWebEngineCore",
-        "PySide6.QtWebEngineWidgets",
         "PySide6.Qt3DCore",
         "PySide6.Qt3DRender",
         "PySide6.QtCharts",

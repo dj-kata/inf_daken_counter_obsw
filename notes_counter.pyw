@@ -53,6 +53,7 @@ from src.main_window import MainWindowUI
 from src.storage import StorageAccessor
 from src.update import GitHubUpdater
 from src.random_lane_analysis import RandomLaneAnalysis
+from src.game_overlay import GameOverlay
 
 sys.path.append('infnotebook')
 from define import define
@@ -203,6 +204,10 @@ class MainWindow(MainWindowUI):
 
         # UI初期化
         self.init_ui()
+        self.game_overlay = GameOverlay(
+            self.config,
+            error_callback=lambda: self.statusBar().showMessage(self.ui.overlay.load_error, 10000),
+        )
         # 最前面表示
         self.setWindowFlag(Qt.WindowStaysOnTopHint, self.config.keep_on_top)
         
@@ -230,6 +235,7 @@ class MainWindow(MainWindowUI):
         self.display_timer = QTimer()
         self.display_timer.timeout.connect(self.update_display)
         self.display_timer.timeout.connect(self._poll_random_lane_spout_status)
+        self.display_timer.timeout.connect(self.update_game_overlay)
         self.display_timer.start(500)
 
         # 選曲画面BPI取得はカーソルが一定時間止まってから実行する
@@ -420,6 +426,7 @@ class MainWindow(MainWindowUI):
         self.random_lane_analysis.set_enabled(self.config.enable_random_lane_analysis)
         self.random_lane_analysis.set_detection_bands(self.config.random_lane_detection_bands)
         self.random_lane_analysis.set_template_folder(self.config.random_lane_template_folder)
+        self.game_overlay.set_config(self.config)
         self._update_main_timer_interval()
         if hasattr(self.result_database, "restart_mobile_http_server"):
             self.result_database.restart_mobile_http_server()
@@ -436,6 +443,17 @@ class MainWindow(MainWindowUI):
         # OBS接続状態の再評価
         if not self.obs_manager.uses_obs_websocket() or not self.obs_manager.is_connected:
             self.obs_manager.connect()
+
+        self.update_game_overlay()
+
+    def update_game_overlay(self):
+        server = self.result_database.ws_server
+        self.game_overlay.update(
+            self.current_mode,
+            (server.random_lane_data or {}) if server else {},
+            server.port if server else self.config.websocket_data_port,
+            capture_ready=self.obs_manager.is_capture_ready() and self.obs_manager.screen is not None,
+        )
 
     def _random_lane_uses_spout(self) -> bool:
         return getattr(self.config, 'capture_method', 'direct_window') == 'spout'
@@ -673,6 +691,7 @@ class MainWindow(MainWindowUI):
                 self.process_option_mode()
 
             self._show_random_lane_notification()
+            self.update_game_overlay()
         
         except Exception as e:
             logger.error(f"メインループエラー: {traceback.format_exc()}")
@@ -1128,6 +1147,7 @@ class MainWindow(MainWindowUI):
     def closeEvent(self, event):
         """アプリ終了時に実行する処理"""
         self.random_lane_analysis.set_enabled(False)
+        self.game_overlay.close()
 
         # アプリ終了時のOBS処理
         self.execute_obs_triggers('app_end')
@@ -1351,6 +1371,8 @@ def main():
     threading.Thread(target=check_resource, daemon=True).start()
     # check_resource()
 
+    # WebEngine is loaded lazily when a log overlay is first displayed.
+    QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
     app = QApplication(sys.argv)
     app.setStyle("Fusion")  # モダンなスタイルを適用
     

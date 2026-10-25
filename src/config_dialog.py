@@ -210,6 +210,7 @@ class ConfigDialog(QDialog):
         random_lane_scroll.setWidgetResizable(True)
         random_lane_scroll.setWidget(self.create_random_lane_tab())
         tab_widget.addTab(random_lane_scroll, self.ui.tab.random_lane)
+        tab_widget.addTab(self.create_overlay_tab(), self.ui.tab.overlay)
         tab_widget.addTab(self.create_difficulty_table_tab(), self.ui.tab.difficulty_table)
         # tab_widget.addTab(self.create_music_pack_tab(), self.ui.tab.music_pack)
         image_save_scroll = QScrollArea()
@@ -383,6 +384,32 @@ class ConfigDialog(QDialog):
         self.result_image_cache_limit_spin.setEnabled(
             enabled and self.result_image_cache_custom_radio.isChecked()
         )
+
+    def create_overlay_tab(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        self.enable_game_overlay_check = QCheckBox(self.ui.overlay.enable)
+        layout.addWidget(self.enable_game_overlay_check)
+        self.overlay_items_group = QGroupBox(self.ui.overlay.items)
+        items_layout = QVBoxLayout(self.overlay_items_group)
+        self.overlay_item_checks = {}
+        for key in ('random_lane', 'song_history', 'today_results'):
+            check = QCheckBox(getattr(self.ui.overlay, key))
+            self.overlay_item_checks[key] = check
+            items_layout.addWidget(check)
+        layout.addWidget(self.overlay_items_group)
+        self.overlay_log_format_group = QGroupBox(self.ui.overlay.log_format)
+        format_layout = QVBoxLayout(self.overlay_log_format_group)
+        self.overlay_show_lane_numbers_check = QCheckBox(self.ui.overlay.show_lane_numbers)
+        format_layout.addWidget(self.overlay_show_lane_numbers_check)
+        layout.addWidget(self.overlay_log_format_group)
+        help_label = QLabel(self.ui.overlay.help)
+        help_label.setWordWrap(True)
+        layout.addWidget(help_label)
+        self.enable_game_overlay_check.toggled.connect(self.overlay_items_group.setEnabled)
+        self.enable_game_overlay_check.toggled.connect(self.overlay_log_format_group.setEnabled)
+        layout.addStretch()
+        return widget
 
     def create_random_lane_tab(self):
         """RANDOMレーン認識の設定タブ。"""
@@ -885,6 +912,12 @@ class ConfigDialog(QDialog):
         self.enable_judge_check.setChecked(self.config.enable_judge)
         self.enable_folder_updates_check.setChecked(self.config.enable_folder_updates)
         self.enable_music_select_score_import_check.setChecked(self.config.enable_music_select_score_import)
+        self.enable_game_overlay_check.setChecked(self.config.enable_game_overlay)
+        self.overlay_items_group.setEnabled(self.config.enable_game_overlay)
+        self.overlay_log_format_group.setEnabled(self.config.enable_game_overlay)
+        self.overlay_show_lane_numbers_check.setChecked(self.config.overlay_show_lane_numbers)
+        for key, check in self.overlay_item_checks.items():
+            check.setChecked(getattr(self.config, 'overlay_' + key))
         self.enable_random_lane_analysis_check.setChecked(
             bool(getattr(self.config, 'enable_random_lane_analysis', False))
         )
@@ -995,6 +1028,10 @@ class ConfigDialog(QDialog):
         self.config.enable_judge = self.enable_judge_check.isChecked()
         self.config.enable_folder_updates = self.enable_folder_updates_check.isChecked()
         self.config.enable_music_select_score_import = self.enable_music_select_score_import_check.isChecked()
+        self.config.enable_game_overlay = self.enable_game_overlay_check.isChecked()
+        self.config.overlay_show_lane_numbers = self.overlay_show_lane_numbers_check.isChecked()
+        for key, check in self.overlay_item_checks.items():
+            setattr(self.config, 'overlay_' + key, check.isChecked())
         self.config.enable_random_lane_analysis = self.enable_random_lane_analysis_check.isChecked()
         self.config.random_lane_detection_bands = {
             side: [top.value(), top.value() + height.value()]

@@ -106,6 +106,13 @@ class DirectWindowCapture:
         if self.is_waiting_for_target():
             self.last_error = ""
 
+    def get_target_bbox(self) -> tuple[int, int, int, int] | None:
+        """Return client bounds in desktop pixels without capturing an image."""
+        if sys.platform != "win32":
+            return None
+        hwnd = self._ensure_window()
+        return self._client_screen_bbox(hwnd) if hwnd else None
+
     def read_frame(self) -> Image.Image | None:
         self.read_attempt_count += 1
         if self.read_attempt_count <= 3:

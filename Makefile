@@ -5,7 +5,7 @@ target=$(project_name)/.built  # timestampファイルにすることで連続�
 target_zip=$(project_name).zip
 prepared=$(project_name)/.prepared
 srcs=$(wildcard *.py) $(wildcard *.pyw) $(wildcard src/*.py) $(wildcard misc/*.py)
-html_files=$(wildcard template/*.html)
+html_files=$(wildcard template/*.html) $(wildcard template/*.css) $(wildcard template/*.js)
 version=$(shell head -n1 version.txt)
 ZIP ?= 7z a -tzip -mx=1 -mmt=on
 SYNC_DEST ?= /mnt/d/bin/YouTubeLive
@@ -37,7 +37,7 @@ $(prepared): $(target) $(html_files) version.txt songinfo.infdc
 	@rm -rf $(project_name)/*.json
 	@touch $(prepared)
 
-$(target): $(srcs)
+$(target): $(srcs) pyproject.toml uv.lock
 	@rm -rf $(project_name)
 	@$(wuv) run setup.py build
 	@cp songinfo.infdc $(project_name)
@@ -48,8 +48,6 @@ $(target): $(srcs)
 # 	@rm -rf $(project_name)/share/tcl8.6/msgs
 # 	@rm -rf $(project_name)/share/tk8.6/msgs
 # 	@rm -rf $(project_name)/share/tcl8.6/encoding  # ASCIIとUTF-8以外不要なら
-# 	# Qt DLL
-	@rm -f $(project_name)/lib/PySide6/Qt6WebEngine*.dll 2>/dev/null || true
 
 # 	# Python関連
 # 	@find $(project_name) -name "*.pyc" -delete

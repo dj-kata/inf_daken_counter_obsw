@@ -60,12 +60,24 @@ class UIText:
         feature = 'Basic Settings'
         additional = 'Additional Settings'
         random_lane = 'RANDOM Lane Recognition'
+        overlay = 'Overlay'
         music_pack = 'Music Packs'
         image_save = 'Image Saving'
         data_import = 'Data Import'
         rival = 'Rival'
         difficulty_table = 'Difficulty Tables'
     
+    class overlay:
+        load_error = 'Could not start the log overlay. Check the application log and bundled Qt WebEngine files.'
+        enable = 'Enable game overlay'
+        items = 'Items to display'
+        random_lane = 'RANDOM mapping (play screen)'
+        song_history = 'Song history (result screen)'
+        today_results = "Today's play log (song selection)"
+        log_format = 'Log format (song selection and results)'
+        show_lane_numbers = 'Show lane numbers when the mapping is known'
+        help = 'Displays a topmost, click-through window over the game. RANDOM mapping requires lane recognition to be enabled. Logs show the same information as the existing HTML views, scaled to fit. Saved settings apply immediately.'
+
     class feature:
         """Feature settings tab"""
         game_capture_group = 'Game Screen Capture'

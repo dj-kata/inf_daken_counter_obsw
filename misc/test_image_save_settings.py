@@ -95,7 +95,7 @@ class ImageSaveSettingsTests(unittest.TestCase):
         log_bytes = b'user play history must stay unchanged'
         config_path.write_bytes(config_bytes)
         log_path.write_bytes(log_bytes)
-        sections = ("basic", "additional", "random-lane", "difficulty", "image-save",
+        sections = ("basic", "additional", "random-lane", "overlay", "difficulty", "image-save",
                     "data-import", "rival")
         for language in ("ja", "en"):
             result = subprocess.run(
