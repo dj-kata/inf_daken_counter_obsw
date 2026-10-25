@@ -55,10 +55,24 @@ class UIText:
         browse = '参照...'
         select_image_path = '画像保存先フォルダを選択'
     
+    class voice:
+        enable = "音声案内を有効にする"
+        test = "テスト"
+        items = "案内する項目・VOICEVOX設定"
+        startup = "打鍵カウンタ起動時"
+        lane_status = "レーン配置表示関連"
+        chart_info = "譜面情報（ガチ割れ・逆割れ・2356・Xバス）"
+        personal_best = "自己ベスト時"
+        shutdown = "打鍵カウンタ終了時"
+        url = "VOICEVOX接続先URL:"
+        speaker = "話者スタイルID:"
+        help = "VOICEVOXを起動してから使用してください。音声は日本語でPCの既定の出力先に再生します。譜面情報とレーン配置の案内にはRANDOMレーン認識の有効化が必要です。設定は保存後すぐに反映され、起動時の案内は次回起動時から有効です。"
+
     class tab:
         """設定ダイアログのタブ"""
         feature = '基本設定'
         additional = '追加設定'
+        voice_guidance = '音声案内'
         random_lane = 'RANDOMレーン認識'
         overlay = 'オーバーレイ'
         music_pack = '楽曲パック'

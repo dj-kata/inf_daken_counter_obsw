@@ -9,13 +9,14 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
                                QLabel, QDialogButtonBox, QRadioButton,
                                QButtonGroup, QScrollArea, QGridLayout, QProgressBar,
                                QComboBox)
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from PySide6.QtGui import QIntValidator
 import os
 import datetime
 
 from src.image_save_settings import ImageSaveSettings
 from src.config import Config
+from src.voice_guidance import start_voice_preview
 from src.classes import music_pack
 from src.logger import get_logger
 from src.result import OneResult, PlayOption
@@ -210,6 +211,7 @@ class ConfigDialog(QDialog):
         random_lane_scroll.setWidgetResizable(True)
         random_lane_scroll.setWidget(self.create_random_lane_tab())
         tab_widget.addTab(random_lane_scroll, self.ui.tab.random_lane)
+        tab_widget.addTab(self.create_voice_guidance_tab(), self.ui.tab.voice_guidance)
         tab_widget.addTab(self.create_overlay_tab(), self.ui.tab.overlay)
         tab_widget.addTab(self.create_difficulty_table_tab(), self.ui.tab.difficulty_table)
         # tab_widget.addTab(self.create_music_pack_tab(), self.ui.tab.music_pack)
@@ -228,6 +230,55 @@ class ConfigDialog(QDialog):
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
     
+    def create_voice_guidance_tab(self):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        enable_row = QHBoxLayout()
+        self.enable_voice_guidance_check = QCheckBox(self.ui.voice.enable)
+        enable_row.addWidget(self.enable_voice_guidance_check)
+        self.voice_test_button = QPushButton(self.ui.voice.test)
+        self.voice_test_button.clicked.connect(self.on_voice_test)
+        enable_row.addWidget(self.voice_test_button)
+        enable_row.addStretch()
+        layout.addLayout(enable_row)
+        self.voice_test_timer = QTimer(self)
+        self.voice_test_timer.setInterval(100)
+        self.voice_test_timer.timeout.connect(self._poll_voice_test)
+        self.voice_options = QGroupBox(self.ui.voice.items)
+        options_layout = QVBoxLayout(self.voice_options)
+        self.voice_item_checks = {}
+        for key in ('startup', 'lane_status', 'chart_info', 'personal_best', 'shutdown'):
+            check = QCheckBox(getattr(self.ui.voice, key))
+            self.voice_item_checks[key] = check
+            options_layout.addWidget(check)
+        form = QFormLayout()
+        self.voicevox_url_edit = QLineEdit()
+        self.voicevox_speaker_spin = QSpinBox()
+        self.voicevox_speaker_spin.setRange(0, 2147483647)
+        form.addRow(self.ui.voice.url, self.voicevox_url_edit)
+        form.addRow(self.ui.voice.speaker, self.voicevox_speaker_spin)
+        options_layout.addLayout(form)
+        layout.addWidget(self.voice_options)
+        help_label = QLabel(self.ui.voice.help)
+        help_label.setWordWrap(True)
+        layout.addWidget(help_label)
+        layout.addStretch()
+        self.enable_voice_guidance_check.toggled.connect(self.voice_options.setEnabled)
+        return widget
+
+    def on_voice_test(self):
+        if self.voice_test_timer.isActive():
+            return
+        url = self.voicevox_url_edit.text().strip().rstrip('/') or 'http://127.0.0.1:50021'
+        self.voice_test_worker = start_voice_preview(url, self.voicevox_speaker_spin.value())
+        self.voice_test_button.setEnabled(False)
+        self.voice_test_timer.start()
+
+    def _poll_voice_test(self):
+        if not self.voice_test_worker.is_alive():
+            self.voice_test_timer.stop()
+            self.voice_test_button.setEnabled(True)
+
     def create_feature_tab(self):
         """基本設定タブ"""
         widget = QWidget()
@@ -906,6 +957,12 @@ class ConfigDialog(QDialog):
 
     def load_config_values(self):
         """設定値を読み込んでUIに反映"""
+        self.enable_voice_guidance_check.setChecked(self.config.enable_voice_guidance)
+        self.voice_options.setEnabled(self.config.enable_voice_guidance)
+        for key, check in self.voice_item_checks.items():
+            check.setChecked(getattr(self.config, 'voice_' + key))
+        self.voicevox_url_edit.setText(self.config.voicevox_url)
+        self.voicevox_speaker_spin.setValue(self.config.voicevox_speaker_id)
         # 機能設定
         self.keep_on_top_check.setChecked(self.config.keep_on_top)
         self.enable_autotweet_check.setChecked(self.config.enable_autotweet)
@@ -1022,6 +1079,11 @@ class ConfigDialog(QDialog):
         """OKボタン押下時の処理"""
         # UIから設定値を取得してConfigに保存
         
+        self.config.enable_voice_guidance = self.enable_voice_guidance_check.isChecked()
+        for key, check in self.voice_item_checks.items():
+            setattr(self.config, 'voice_' + key, check.isChecked())
+        self.config.voicevox_url = self.voicevox_url_edit.text().strip().rstrip('/') or 'http://127.0.0.1:50021'
+        self.config.voicevox_speaker_id = self.voicevox_speaker_spin.value()
         # 機能設定
         self.config.keep_on_top = self.keep_on_top_check.isChecked()
         self.config.enable_autotweet = self.enable_autotweet_check.isChecked()

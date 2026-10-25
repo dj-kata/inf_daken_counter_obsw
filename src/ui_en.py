@@ -55,10 +55,24 @@ class UIText:
         browse = 'Browse...'
         select_image_path = 'Select path for saving images'
     
+    class voice:
+        enable = "Enable voice guidance"
+        test = "Test"
+        items = "Announcements and VOICEVOX settings"
+        startup = "Counter startup"
+        lane_status = "Lane recognition status"
+        chart_info = "Chart information (split / reverse split / 2356 / bass lane)"
+        personal_best = "Personal best updates"
+        shutdown = "Counter shutdown"
+        url = "VOICEVOX engine URL:"
+        speaker = "Speaker style ID:"
+        help = "Start VOICEVOX before use. Japanese announcements play through the default PC audio output. Lane and chart announcements require RANDOM lane recognition. Saved settings apply immediately; the startup announcement applies from the next launch."
+
     class tab:
         """Settings dialog tabs"""
         feature = 'Basic Settings'
         additional = 'Additional Settings'
+        voice_guidance = 'Voice Guidance'
         random_lane = 'RANDOM Lane Recognition'
         overlay = 'Overlay'
         music_pack = 'Music Packs'

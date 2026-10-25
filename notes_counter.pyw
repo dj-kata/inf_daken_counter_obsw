@@ -53,6 +53,7 @@ from src.main_window import MainWindowUI
 from src.storage import StorageAccessor
 from src.update import GitHubUpdater
 from src.random_lane_analysis import RandomLaneAnalysis
+from src.voice_guidance import VoiceGuidance
 from src.game_overlay import GameOverlay
 
 sys.path.append('infnotebook')
@@ -154,8 +155,10 @@ class MainWindow(MainWindowUI):
         # 接続状態変化のシグナルを接続
         self.obs_manager.connection_changed.connect(self.on_obs_connection_changed)
 
+        self.voice_guidance = VoiceGuidance(self.config)
+        self._closing = False
         self.random_lane_analysis = RandomLaneAnalysis(
-            state_callback=self.result_database.broadcast_random_lane_data,
+            state_callback=self._on_random_lane_state,
             enabled=self.config.enable_random_lane_analysis,
             detection_bands=self.config.random_lane_detection_bands,
             template_folder=self.config.random_lane_template_folder,
@@ -251,6 +254,7 @@ class MainWindow(MainWindowUI):
             self.rival_manager.load_cache()
             self.rival_manager.start_fetch(self.config.rivals)
 
+        self.voice_guidance.announce("startup", "打鍵カウンタを起動しました")
         logger.info("アプリケーション起動完了")
 
     def start_songinfo_update(self):
@@ -420,6 +424,7 @@ class MainWindow(MainWindowUI):
     def update_all_configs(self):
         """全てのクラスに設定を反映"""
         self.config.load_config()  # 最新の設定を読み込み
+        self.voice_guidance.set_config(self.config)
         self.obs_manager.set_config(self.config)
         self.result_database.config = self.config
         self.result_database.song_database.load()  # 必要に応じて再読み込み
@@ -454,6 +459,10 @@ class MainWindow(MainWindowUI):
             server.port if server else self.config.websocket_data_port,
             capture_ready=self.obs_manager.is_capture_ready() and self.obs_manager.screen is not None,
         )
+
+    def _on_random_lane_state(self, state):
+        self.result_database.broadcast_random_lane_data(state)
+        self.voice_guidance.lane_state(state)
 
     def _random_lane_uses_spout(self) -> bool:
         return getattr(self.config, 'capture_method', 'direct_window') == 'spout'
@@ -1102,6 +1111,7 @@ class MainWindow(MainWindowUI):
                     # リザルトを保存
                     if self.result_database.add(result):
                         self.result_database.save()
+                        self.voice_guidance.personal_best(result)
                         if self.score_viewer:
                             self.score_viewer.refresh_data()
                         self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
@@ -1146,6 +1156,14 @@ class MainWindow(MainWindowUI):
     
     def closeEvent(self, event):
         """アプリ終了時に実行する処理"""
+        if self._closing:
+            if self.voice_guidance.is_finished():
+                event.accept()
+            else:
+                event.ignore()
+            return
+        self._closing = True
+        self.voice_guidance.shutdown()
         self.random_lane_analysis.set_enabled(False)
         self.game_overlay.close()
 
@@ -1186,7 +1204,18 @@ class MainWindow(MainWindowUI):
             self.result_database.shutdown_servers()
 
         logger.info("アプリケーション終了")
-        event.accept()
+        if self.voice_guidance.is_finished():
+            event.accept()
+        else:
+            event.ignore()
+            self.voice_close_timer = QTimer(self)
+            self.voice_close_timer.timeout.connect(self._finish_voice_shutdown)
+            self.voice_close_timer.start(100)
+
+    def _finish_voice_shutdown(self):
+        if self.voice_guidance.is_finished():
+            self.voice_close_timer.stop()
+            self.close()
 
     def tweet(self):
         '''成果ツイート'''

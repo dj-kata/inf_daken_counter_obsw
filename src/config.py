@@ -3,6 +3,7 @@ import os
 import traceback
 from src.logger import get_logger
 logger = get_logger(__name__)
+from src.voice_guidance import VOICE_DEFAULTS
 from src.classes import config_autosave_image, config_modify_rivalarea, music_pack
 
 class Config:
@@ -95,6 +96,9 @@ class Config:
         self.rivals = []  # [{"name": "...", "url": "..."}]
         self.csv_export_path = ''  # inf_score.csvの出力先 (空=ルート直下)
 
+        for key, default in VOICE_DEFAULTS.items():
+            setattr(self, key, default)
+
         self.load_config()
         self.save_config()
     
@@ -104,6 +108,8 @@ class Config:
             try:
                 with open(self.config_file, 'r', encoding='utf-8') as f:
                     config_data = json.load(f)
+                    for key, default in VOICE_DEFAULTS.items():
+                        setattr(self, key, config_data.get(key, default))
                     self.oraja_path = config_data.get("oraja_path", "")
                     self.player_path = config_data.get("player_path", "")
                     self.websocket_host = config_data.get("websocket_host", "localhost")
@@ -203,6 +209,7 @@ class Config:
     def save_config(self):
         """設定ファイルに設定を保存する"""
         config_data = {
+            **{key: getattr(self, key) for key in VOICE_DEFAULTS},
             "oraja_path": self.oraja_path,
             "player_path": self.player_path,
             "websocket_host": self.websocket_host,
