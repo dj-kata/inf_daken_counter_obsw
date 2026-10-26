@@ -21,6 +21,7 @@ VOICE_DEFAULTS = {
     'voice_chart_info': True,
     'voice_personal_best': True,
     'voice_result_saved': True,
+    'voice_errors': True,
     'voice_shutdown': True,
     'voicevox_url': 'http://127.0.0.1:50021',
     'voicevox_speaker_id': 1,
@@ -37,15 +38,20 @@ LAMP_ANNOUNCEMENTS = {
     clear_lamp.fc: '初フルコン',
 }
 
+OBS_CONTROL_WARNING = 'OBSに接続できません。OBSの起動とOBS制御設定を確認してください'
+SPOUT_WARNING = 'Spoutの映像を受信できません。OBSの起動とSpout送信設定を確認してください'
+
 VOICE_TEST_MESSAGES = (
     '打鍵カウンタを起動しました',
     '正規かミラーでプレイしてください',
     '正規譜面を取得中',
+    '正規譜面を登録完了しました',
     'ガチ割れ', '逆割れ', 'にーさんごーろく',
     *(f'{lane}バス' for lane in range(1, 8)),
     *LAMP_ANNOUNCEMENTS.values(),
     'スコア更新', 'ミスカウント更新',
     'リザルトを保存しました',
+    OBS_CONTROL_WARNING, SPOUT_WARNING,
     '打鍵カウンタを終了しました',
 )
 
@@ -120,6 +126,7 @@ class VoiceGuidance:
         self._generation = 0
         self._closing = False
         self._announced = set()
+        self._active_obs_errors = set()
         self._connection_thread = None
         self.set_config(config)
         self._worker = threading.Thread(target=self._run, name='voice-guidance', daemon=True)
@@ -179,6 +186,8 @@ class VoiceGuidance:
                 messages.append(('lane_status', '正規かミラーでプレイしてください'))
             elif phase == 'recording':
                 messages.append(('lane_status', '正規譜面を取得中'))
+            elif phase == 'registered':
+                messages.append(('lane_status', '正規譜面を登録完了しました'))
             if phase in ('partial', 'confirmed', 'ready', 'recording', 'registered'):
                 messages.extend(
                     ('chart_info', text)
@@ -188,6 +197,23 @@ class VoiceGuidance:
                 if text not in self._announced:
                     self._announced.add(text)
                     self.announce(category, text)
+
+    def obs_status(self, *, startup, obs_control_enabled, obs_connected,
+                   spout_enabled, spout_connected):
+        with self._lock:
+            if not self._settings['enable_voice_guidance'] or not self._settings['voice_errors']:
+                self._active_obs_errors.clear()
+                return
+            errors = set()
+            if obs_control_enabled and not obs_connected:
+                errors.add('obs_control')
+                if startup and 'obs_control' not in self._active_obs_errors:
+                    self.announce('errors', OBS_CONTROL_WARNING)
+            if spout_enabled and not spout_connected:
+                errors.add('spout')
+                if 'spout' not in self._active_obs_errors:
+                    self.announce('errors', SPOUT_WARNING)
+            self._active_obs_errors = errors
 
     def personal_best(self, result):
         for text in personal_best_announcements(result):

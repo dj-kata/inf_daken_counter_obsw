@@ -14,7 +14,7 @@ from src.config import Config
 from src.classes import clear_lamp, config_autosave_image
 from src.voice_guidance import (VOICE_DEFAULTS, VOICE_TEST_MESSAGES, VoiceGuidance,
                                 chart_announcements, personal_best_announcements,
-                                start_voice_preview, synthesize)
+                                start_voice_preview, synthesize, OBS_CONTROL_WARNING, SPOUT_WARNING)
 
 
 def personal_best_result(**changes):
@@ -124,6 +124,46 @@ class PersonalBestResultIntegrationTests(unittest.TestCase):
         self.window.voice_guidance.announce.assert_called_once_with('result_saved', 'リザルトを保存しました')
 
 
+class OBSErrorIntegrationTests(unittest.TestCase):
+    def setUp(self):
+        tree = ast.parse(Path('notes_counter.pyw').read_text(encoding='utf-8'))
+        window = next(node for node in tree.body if isinstance(node, ast.ClassDef)
+                      and node.name == 'MainWindow')
+        methods = [node for node in window.body if isinstance(node, ast.FunctionDef)
+                   and node.name in ('_update_voice_obs_errors', 'check_obs_configuration')]
+        self.namespace = dict(QMessageBox=Mock(), logger=Mock())
+        exec(compile(ast.Module(body=methods, type_ignores=[]), 'notes_counter.pyw', 'exec'), self.namespace)
+        self.window = Mock()
+        self.window._closing = False
+        self.window._voice_obs_startup_checked = True
+
+    def test_spout_is_checked_even_with_random_analysis_and_websocket_disabled(self):
+        manager = self.window.obs_manager
+        manager.is_spout_capture.return_value = True
+        manager.is_obs_control_enabled.return_value = False
+        manager.is_connected = False
+        manager.is_capture_ready.return_value = False
+        self.namespace['_update_voice_obs_errors'](self.window)
+        self.window.voice_guidance.obs_status.assert_called_once_with(
+            startup=False, obs_control_enabled=False, obs_connected=False,
+            spout_enabled=True, spout_connected=False)
+
+    def test_startup_check_runs_before_websocket_early_return(self):
+        self.window._voice_obs_startup_checked = False
+        self.window.obs_manager.uses_obs_websocket.return_value = False
+        self.namespace['check_obs_configuration'](self.window)
+        self.assertTrue(self.window._voice_obs_startup_checked)
+        self.window._update_voice_obs_errors.assert_called_once_with(startup=True)
+
+    def test_no_announcements_before_startup_check_or_during_shutdown(self):
+        self.window._voice_obs_startup_checked = False
+        self.namespace['_update_voice_obs_errors'](self.window)
+        self.window._voice_obs_startup_checked = True
+        self.window._closing = True
+        self.namespace['_update_voice_obs_errors'](self.window)
+        self.window.voice_guidance.obs_status.assert_not_called()
+
+
 class ChartAnnouncementTests(unittest.TestCase):
     def test_split_and_reverse_for_both_sides(self):
         for layout, side, expected in (
@@ -165,7 +205,7 @@ class VoiceWorkerTests(unittest.TestCase):
 
     def test_connection_probe_detects_failure_then_recovers_without_announcements(self):
         self.config.voicevox_url = 'http://localhost:50022/'
-        for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'shutdown'):
+        for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'errors', 'shutdown'):
             setattr(self.config, 'voice_' + category, False)
         self.voice.set_config(self.config)
         response = Mock()
@@ -249,6 +289,60 @@ class VoiceWorkerTests(unittest.TestCase):
         self.assertEqual(self.play.call_count, 6)
         self.assertEqual(self.synthesis.call_count, 4)  # WAVs are reused.
 
+    def test_registration_complete_uses_lane_category_once_per_play(self):
+        self.voice.lane_state({'phase': 'preparing'})
+        self.voice.lane_state({'phase': 'registered'})
+        self.voice.lane_state({'phase': 'registered'})
+        self.flush()
+        self.synthesis.assert_called_once_with('正規譜面を登録完了しました', 'http://127.0.0.1:50021', 1)
+        self.config.voice_lane_status = False
+        self.voice.set_config(self.config)
+        self.voice.lane_state({'phase': 'preparing'})
+        self.voice.lane_state({'phase': 'registered'})
+        self.flush()
+        self.assertEqual(self.play.call_count, 1)
+
+    def test_obs_errors_are_independent_and_not_repeated_until_spout_recovers(self):
+        status = dict(startup=True, obs_control_enabled=True, obs_connected=False,
+                      spout_enabled=True, spout_connected=False)
+        self.voice.obs_status(**status)
+        status['startup'] = False
+        self.voice.obs_status(**status)
+        self.voice.obs_status(**status)
+        self.flush()
+        self.assertEqual([call.args[0] for call in self.synthesis.call_args_list],
+                         [OBS_CONTROL_WARNING, SPOUT_WARNING])
+        status.update(obs_connected=True, spout_connected=True)
+        self.voice.obs_status(**status)
+        status.update(obs_connected=False, spout_connected=False)
+        self.voice.obs_status(**status)
+        self.flush()
+        self.assertEqual(self.play.call_count, 3)  # Spout can warn again; OBS control is startup-only.
+
+    def test_spout_does_not_require_obs_websocket_or_lane_analysis(self):
+        self.voice.obs_status(startup=True, obs_control_enabled=False, obs_connected=False,
+                              spout_enabled=True, spout_connected=True)
+        self.flush()
+        self.synthesis.assert_not_called()
+        self.voice.obs_status(startup=False, obs_control_enabled=False, obs_connected=False,
+                              spout_enabled=True, spout_connected=False)
+        self.flush()
+        self.synthesis.assert_called_once_with(SPOUT_WARNING, 'http://127.0.0.1:50021', 1)
+
+    def test_disabled_error_category_suppresses_obs_and_spout_announcements(self):
+        self.config.voice_errors = False
+        self.voice.set_config(self.config)
+        status = dict(startup=True, obs_control_enabled=True, obs_connected=False,
+                      spout_enabled=True, spout_connected=False)
+        self.voice.obs_status(**status)
+        self.flush()
+        self.synthesis.assert_not_called()
+        self.config.voice_errors = True
+        self.voice.set_config(self.config)
+        self.voice.obs_status(**status)
+        self.flush()
+        self.assertEqual(self.play.call_count, 2)
+
     def test_engine_failure_does_not_stop_later_announcements(self):
         self.synthesis.side_effect = [OSError('engine unavailable'), b'wav', b'wav']
         with patch('src.voice_guidance.logger') as logger:
@@ -259,7 +353,7 @@ class VoiceWorkerTests(unittest.TestCase):
         self.play.assert_called_once_with(b'wav', '', 100, 0)
 
     def test_each_category_can_be_disabled_independently(self):
-        for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'shutdown'):
+        for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'errors', 'shutdown'):
             with self.subTest(category=category):
                 setattr(self.config, 'voice_' + category, False)
                 self.voice.set_config(self.config)
@@ -380,12 +474,13 @@ class VoiceSettingsTests(unittest.TestCase):
                 Path(self.path).write_text('{}')
             config = Config(self.path)
             self.assertFalse(config.enable_voice_guidance)
-            for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'shutdown'):
+            for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'errors', 'shutdown'):
                 self.assertTrue(getattr(config, 'voice_' + category))
         config.enable_voice_guidance = True
         config.voice_chart_info = False
         config.voice_personal_best = False
         config.voice_result_saved = False
+        config.voice_errors = False
         config.voicevox_url = 'http://localhost:50022'
         config.voicevox_speaker_id = 8
         config.voice_output_device = 'headphones'
@@ -416,11 +511,13 @@ class VoiceSettingsTests(unittest.TestCase):
             dialog.enable_voice_guidance_check.setChecked(True)
             self.assertTrue(dialog.voice_options.isEnabled())
             dialog.voice_item_checks['lane_status'].setChecked(False)
-            self.assertEqual(list(dialog.voice_item_checks)[-3:], ['personal_best', 'result_saved', 'shutdown'])
+            self.assertEqual(list(dialog.voice_item_checks)[-4:], ['personal_best', 'result_saved', 'errors', 'shutdown'])
             self.assertTrue(dialog.voice_item_checks['personal_best'].isChecked())
             dialog.voice_item_checks['personal_best'].setChecked(False)
             self.assertTrue(dialog.voice_item_checks['result_saved'].isChecked())
             dialog.voice_item_checks['result_saved'].setChecked(False)
+            self.assertTrue(dialog.voice_item_checks['errors'].isChecked())
+            dialog.voice_item_checks['errors'].setChecked(False)
             dialog.voicevox_speaker_spin.setValue(8)
             dialog.voice_volume_spin.setValue(35)
             dialog.voice_pan_spin.setValue(-60)
@@ -436,6 +533,7 @@ class VoiceSettingsTests(unittest.TestCase):
             self.assertFalse(saved.voice_lane_status)
             self.assertFalse(saved.voice_personal_best)
             self.assertFalse(saved.voice_result_saved)
+            self.assertFalse(saved.voice_errors)
             self.assertEqual(saved.voicevox_speaker_id, 8)
             self.assertEqual(saved.voice_output_device, 'headphones')
             self.assertEqual(saved.voice_volume, 35)
@@ -444,6 +542,7 @@ class VoiceSettingsTests(unittest.TestCase):
             # Keep the next language's initial state at the default for this item.
             saved.voice_personal_best = True
             saved.voice_result_saved = True
+            saved.voice_errors = True
             saved.save_config()
 
     def test_preview_uses_unsaved_settings_when_guidance_disabled(self):

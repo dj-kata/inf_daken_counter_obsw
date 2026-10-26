@@ -68,6 +68,7 @@ class UIText:
         chart_info = "譜面情報（ガチ割れ・逆割れ・2356・Xバス）"
         personal_best = "自己ベスト時"
         result_saved = "リザルト保存時"
+        errors = "エラー通知"
         shutdown = "打鍵カウンタ終了時"
         url = "VOICEVOX接続先URL:"
         speaker = "話者スタイルID:"

@@ -157,6 +157,7 @@ class MainWindow(MainWindowUI):
 
         self.voice_guidance = VoiceGuidance(self.config)
         self._closing = False
+        self._voice_obs_startup_checked = False
         self.random_lane_analysis = RandomLaneAnalysis(
             state_callback=self._on_random_lane_state,
             enabled=self.config.enable_random_lane_analysis,
@@ -238,6 +239,7 @@ class MainWindow(MainWindowUI):
         self.display_timer = QTimer()
         self.display_timer.timeout.connect(self.update_display)
         self.display_timer.timeout.connect(self.update_voice_warning)
+        self.display_timer.timeout.connect(self._update_voice_obs_errors)
         self.display_timer.timeout.connect(self._poll_random_lane_spout_status)
         self.display_timer.timeout.connect(self.update_game_overlay)
         self.display_timer.start(500)
@@ -309,6 +311,8 @@ class MainWindow(MainWindowUI):
     
     def check_obs_configuration(self):
         """OBS設定をチェックし、問題があれば警告ダイアログを表示"""
+        self._voice_obs_startup_checked = True
+        self._update_voice_obs_errors(startup=True)
         if not self.obs_manager.uses_obs_websocket():
             return
 
@@ -466,6 +470,18 @@ class MainWindow(MainWindowUI):
     def _on_random_lane_state(self, state):
         self.result_database.broadcast_random_lane_data(state)
         self.voice_guidance.lane_state(state)
+
+    def _update_voice_obs_errors(self, startup=False):
+        if not self._voice_obs_startup_checked or self._closing:
+            return
+        spout_enabled = self.obs_manager.is_spout_capture()
+        self.voice_guidance.obs_status(
+            startup=startup,
+            obs_control_enabled=self.obs_manager.is_obs_control_enabled(),
+            obs_connected=self.obs_manager.is_connected,
+            spout_enabled=spout_enabled,
+            spout_connected=not spout_enabled or self.obs_manager.is_capture_ready(),
+        )
 
     def _random_lane_uses_spout(self) -> bool:
         return getattr(self.config, 'capture_method', 'direct_window') == 'spout'

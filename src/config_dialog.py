@@ -271,7 +271,7 @@ class ConfigDialog(QDialog):
         self.voice_options = QGroupBox(self.ui.voice.items)
         options_layout = QVBoxLayout(self.voice_options)
         self.voice_item_checks = {}
-        for key in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'shutdown'):
+        for key in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'errors', 'shutdown'):
             check = QCheckBox(getattr(self.ui.voice, key))
             self.voice_item_checks[key] = check
             options_layout.addWidget(check)
