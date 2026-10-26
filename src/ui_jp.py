@@ -345,6 +345,7 @@ class UIText:
         mobile_score_url_unavailable = 'IPアドレスを取得できません'
         save_image = '画像保存 (F6)'
         status_ready = '準備完了'
+        voicevox_unavailable = '音声案内が有効ですが、VOICEVOXに接続できません。VOICEVOXを起動し、音声案内の接続先設定を確認してください。'
 
     class manual_music_select_import:
         '''選曲画面からの手動登録'''

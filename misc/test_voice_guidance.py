@@ -163,6 +163,59 @@ class VoiceWorkerTests(unittest.TestCase):
     def flush(self):
         self.voice._queue.join()
 
+    def test_connection_probe_detects_failure_then_recovers_without_announcements(self):
+        self.config.voicevox_url = 'http://localhost:50022/'
+        for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'shutdown'):
+            setattr(self.config, 'voice_' + category, False)
+        self.voice.set_config(self.config)
+        response = Mock()
+        response.read.return_value = b'"0.26.0"'
+        with patch('src.voice_guidance.urlopen') as request, \
+                patch('src.voice_guidance.time.monotonic', return_value=0) as now:
+            request.side_effect = OSError('not running')
+            self.voice.poll_connection()
+            self.voice._connection_thread.join(3)
+            self.assertFalse(self.voice.poll_connection())
+            request.assert_called_once_with('http://localhost:50022/version', timeout=2)
+            request.side_effect = None
+            request.return_value.__enter__.return_value = response
+            now.return_value = 5
+            self.voice.poll_connection()
+            self.voice._connection_thread.join(3)
+            self.assertTrue(self.voice.poll_connection())
+            self.assertEqual(request.call_count, 2)
+        self.synthesis.assert_not_called()
+
+    def test_disabled_guidance_does_not_probe_or_report_unavailable(self):
+        self.config.enable_voice_guidance = False
+        self.voice.set_config(self.config)
+        with patch('src.voice_guidance.urlopen') as request:
+            self.assertIsNone(self.voice.poll_connection())
+            request.assert_not_called()
+        self.voice.shutdown()
+        self.assertIsNone(self.voice.poll_connection())
+
+    def test_inflight_probe_does_not_block_or_overwrite_new_settings(self):
+        entered = threading.Event()
+        release = threading.Event()
+
+        def slow_request(*args, **kwargs):
+            entered.set()
+            release.wait(3)
+            raise OSError('old URL unavailable')
+
+        with patch('src.voice_guidance.urlopen', side_effect=slow_request) as request:
+            self.voice.poll_connection()
+            self.assertTrue(entered.wait(3))
+            self.assertIsNone(self.voice.poll_connection())
+            request.assert_called_once()
+            self.config.enable_voice_guidance = False
+            self.voice.set_config(self.config)
+            release.set()
+            self.voice._connection_thread.join(3)
+        self.assertIsNone(self.voice.poll_connection())
+        self.assertIsNone(self.voice._connection_available)
+
     def test_master_and_category_switches(self):
         self.config.enable_voice_guidance = False
         self.voice.set_config(self.config)
@@ -460,6 +513,37 @@ class VoicePreviewTests(unittest.TestCase):
             self.assertFalse(worker.is_alive())
             logger.exception.assert_called_once()
             play.assert_not_called()
+
+
+class VoiceWarningUITests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from PySide6.QtWidgets import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def test_warning_visibility_and_localized_message(self):
+        from src.main_window import MainWindowUI
+
+        with tempfile.TemporaryDirectory() as directory:
+            for language in ('ja', 'en'):
+                config = Config(str(Path(directory) / 'config.json'))
+                config.language = language
+                config.enable_voice_guidance = True
+                window = MainWindowUI(config)
+                window.voice_guidance = Mock()
+                window.save_image = lambda: None
+                with patch.object(window, 'create_menu_bar'), patch.object(window, 'restore_window_geometry'):
+                    window.init_ui()
+                self.addCleanup(window.deleteLater)
+                self.assertEqual(window.voice_warning_label.text(), window.ui.main.voicevox_unavailable)
+                for available, hidden in ((None, True), (False, False), (True, True)):
+                    window.voice_guidance.poll_connection.return_value = available
+                    window.update_voice_warning()
+                    self.assertEqual(window.voice_warning_label.isHidden(), hidden)
+                window.voice_guidance.poll_connection.return_value = False
+                config.enable_voice_guidance = False
+                window.update_voice_warning()
+                self.assertTrue(window.voice_warning_label.isHidden())
 
 
 if __name__ == '__main__':

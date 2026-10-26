@@ -237,6 +237,7 @@ class MainWindow(MainWindowUI):
         # 表示更新タイマー（500ms間隔）
         self.display_timer = QTimer()
         self.display_timer.timeout.connect(self.update_display)
+        self.display_timer.timeout.connect(self.update_voice_warning)
         self.display_timer.timeout.connect(self._poll_random_lane_spout_status)
         self.display_timer.timeout.connect(self.update_game_overlay)
         self.display_timer.start(500)
@@ -255,6 +256,7 @@ class MainWindow(MainWindowUI):
             self.rival_manager.start_fetch(self.config.rivals)
 
         self.voice_guidance.announce("startup", "打鍵カウンタを起動しました")
+        self.update_voice_warning()
         logger.info("アプリケーション起動完了")
 
     def start_songinfo_update(self):
@@ -425,6 +427,7 @@ class MainWindow(MainWindowUI):
         """全てのクラスに設定を反映"""
         self.config.load_config()  # 最新の設定を読み込み
         self.voice_guidance.set_config(self.config)
+        self.update_voice_warning()
         self.obs_manager.set_config(self.config)
         self.result_database.config = self.config
         self.result_database.song_database.load()  # 必要に応じて再読み込み

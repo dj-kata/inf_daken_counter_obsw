@@ -75,6 +75,12 @@ class MainWindowUI(QMainWindow):
         obs_layout.addWidget(self.obs_status_label)
         obs_group.setLayout(obs_layout)
         main_layout.addWidget(obs_group)
+
+        self.voice_warning_label = QLabel(self.ui.main.voicevox_unavailable)
+        self.voice_warning_label.setWordWrap(True)
+        self.voice_warning_label.setStyleSheet("color: red; font-weight: bold;")
+        self.voice_warning_label.hide()
+        main_layout.addWidget(self.voice_warning_label)
         
         # 状態情報グループ
         status_group = QGroupBox(self.ui.main.other_info)
@@ -264,6 +270,10 @@ class MainWindowUI(QMainWindow):
             except Exception as e:
                 logger.error(f"グローバルホットキー解除エラー: {e}")
     
+    def update_voice_warning(self):
+        unavailable = self.voice_guidance.poll_connection() is False
+        self.voice_warning_label.setVisible(self.config.enable_voice_guidance and unavailable)
+
     def update_display(self):
         """表示更新"""
         # ゲーム画面取得状態

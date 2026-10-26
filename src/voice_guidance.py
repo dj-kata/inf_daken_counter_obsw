@@ -4,6 +4,7 @@ import json
 import queue
 import random
 import threading
+import time
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -119,6 +120,7 @@ class VoiceGuidance:
         self._generation = 0
         self._closing = False
         self._announced = set()
+        self._connection_thread = None
         self.set_config(config)
         self._worker = threading.Thread(target=self._run, name='voice-guidance', daemon=True)
         self._worker.start()
@@ -127,6 +129,35 @@ class VoiceGuidance:
         with self._lock:
             self._settings = {key: getattr(config, key, default) for key, default in VOICE_DEFAULTS.items()}
             self._generation += 1
+            self._connection_available = None
+            self._next_connection_check = 0
+
+    def poll_connection(self):
+        """Return the last probe result and schedule at most one background probe."""
+        with self._lock:
+            if self._closing or not self._settings['enable_voice_guidance']:
+                return None
+            if (time.monotonic() >= self._next_connection_check
+                    and (self._connection_thread is None or not self._connection_thread.is_alive())):
+                self._next_connection_check = time.monotonic() + 5
+                self._connection_thread = threading.Thread(
+                    target=self._check_connection,
+                    args=(self._generation, self._settings['voicevox_url'].rstrip('/')),
+                    name='voicevox-connection', daemon=True,
+                )
+                self._connection_thread.start()
+            return self._connection_available
+
+    def _check_connection(self, generation, url):
+        try:
+            with urlopen(f'{url}/version', timeout=2) as response:
+                version = json.load(response)
+            available = isinstance(version, str) and bool(version)
+        except Exception:
+            available = False
+        with self._lock:
+            if generation == self._generation and not self._closing:
+                self._connection_available = available
 
     def announce(self, category, text):
         with self._lock:

@@ -344,6 +344,7 @@ class UIText:
         mobile_score_url_unavailable = 'Could not detect IP address'
         save_image = 'Save Image (F6)'
         status_ready = 'Ready'
+        voicevox_unavailable = 'Voice guidance is enabled, but VOICEVOX is unavailable. Start VOICEVOX and check the engine URL in Voice Guidance settings.'
 
     class manual_music_select_import:
         '''Manual import from song selection screen'''
