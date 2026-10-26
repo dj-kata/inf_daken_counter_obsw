@@ -18,6 +18,7 @@ VOICE_DEFAULTS = {
     'enable_voice_guidance': False,
     'voice_startup': True,
     'voice_lane_status': True,
+    'voice_missing_chart': True,
     'voice_chart_info': True,
     'voice_personal_best': True,
     'voice_result_saved': True,
@@ -40,10 +41,11 @@ LAMP_ANNOUNCEMENTS = {
 
 OBS_CONTROL_WARNING = 'OBSに接続できません。OBSの起動とOBS制御設定を確認してください'
 SPOUT_WARNING = 'Spoutの映像を受信できません。OBSの起動とSpout送信設定を確認してください'
+MISSING_CHART_MESSAGE = '正規譜面が登録されていません。レーン表示をスキップします。'
 
 VOICE_TEST_MESSAGES = (
     '打鍵カウンタを起動しました',
-    '正規かミラーでプレイしてください',
+    MISSING_CHART_MESSAGE,
     '正規譜面を取得中',
     '正規譜面を登録完了しました',
     'ガチ割れ', '逆割れ', 'にーさんごーろく',
@@ -183,7 +185,7 @@ class VoiceGuidance:
                 self._announced.clear()
             messages = []
             if phase == 'needs_normal':
-                messages.append(('lane_status', '正規かミラーでプレイしてください'))
+                messages.append(('missing_chart', MISSING_CHART_MESSAGE))
             elif phase == 'recording':
                 messages.append(('lane_status', '正規譜面を取得中'))
             elif phase == 'registered':

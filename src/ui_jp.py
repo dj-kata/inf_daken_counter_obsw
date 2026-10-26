@@ -65,6 +65,7 @@ class UIText:
         pan_tip = "0で中央、-100で左のみ、100で右のみから再生します。"
         startup = "打鍵カウンタ起動時"
         lane_status = "レーン配置表示関連"
+        missing_chart = "正規譜面未登録時（レーン表示のスキップ）"
         chart_info = "譜面情報（ガチ割れ・逆割れ・2356・Xバス）"
         personal_best = "自己ベスト時"
         result_saved = "リザルト保存時"

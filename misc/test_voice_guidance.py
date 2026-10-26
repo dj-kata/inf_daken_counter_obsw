@@ -205,7 +205,7 @@ class VoiceWorkerTests(unittest.TestCase):
 
     def test_connection_probe_detects_failure_then_recovers_without_announcements(self):
         self.config.voicevox_url = 'http://localhost:50022/'
-        for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'errors', 'shutdown'):
+        for category in ('startup', 'lane_status', 'missing_chart', 'chart_info', 'personal_best', 'result_saved', 'errors', 'shutdown'):
             setattr(self.config, 'voice_' + category, False)
         self.voice.set_config(self.config)
         response = Mock()
@@ -281,7 +281,7 @@ class VoiceWorkerTests(unittest.TestCase):
         self.voice.lane_state({'phase': 'confirmed', 'side': '1P', 'layout': '2716354'})
         self.flush()
         self.assertEqual([call.args[0] for call in self.synthesis.call_args_list], [
-            '正規かミラーでプレイしてください', '正規譜面を取得中', 'にーさんごーろく', '3バス',
+            '正規譜面が登録されていません。レーン表示をスキップします。', '正規譜面を取得中', 'にーさんごーろく', '3バス',
         ])
         self.voice.lane_state({'phase': 'preparing'})
         self.voice.lane_state({'phase': 'confirmed', 'side': '1P', 'layout': '2716354'})
@@ -301,6 +301,27 @@ class VoiceWorkerTests(unittest.TestCase):
         self.voice.lane_state({'phase': 'registered'})
         self.flush()
         self.assertEqual(self.play.call_count, 1)
+
+    def test_missing_chart_switch_is_independent_of_lane_status(self):
+        self.config.voice_missing_chart = False
+        self.voice.set_config(self.config)
+        self.voice.lane_state({'phase': 'preparing'})
+        self.voice.lane_state({'phase': 'needs_normal'})
+        self.voice.lane_state({'phase': 'recording'})
+        self.flush()
+        self.synthesis.assert_called_once_with('正規譜面を取得中', 'http://127.0.0.1:50021', 1)
+        self.synthesis.reset_mock()
+        self.config.voice_missing_chart = True
+        self.config.voice_lane_status = False
+        self.voice.set_config(self.config)
+        self.voice.lane_state({'phase': 'preparing'})
+        self.voice.lane_state({'phase': 'recording'})
+        self.voice.lane_state({'phase': 'registered'})
+        self.voice.lane_state({'phase': 'needs_normal'})
+        self.flush()
+        self.synthesis.assert_called_once_with(
+            '正規譜面が登録されていません。レーン表示をスキップします。',
+            'http://127.0.0.1:50021', 1)
 
     def test_obs_errors_are_independent_and_not_repeated_until_spout_recovers(self):
         status = dict(startup=True, obs_control_enabled=True, obs_connected=False,
@@ -353,7 +374,7 @@ class VoiceWorkerTests(unittest.TestCase):
         self.play.assert_called_once_with(b'wav', '', 100, 0)
 
     def test_each_category_can_be_disabled_independently(self):
-        for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'errors', 'shutdown'):
+        for category in ('startup', 'lane_status', 'missing_chart', 'chart_info', 'personal_best', 'result_saved', 'errors', 'shutdown'):
             with self.subTest(category=category):
                 setattr(self.config, 'voice_' + category, False)
                 self.voice.set_config(self.config)
@@ -474,10 +495,11 @@ class VoiceSettingsTests(unittest.TestCase):
                 Path(self.path).write_text('{}')
             config = Config(self.path)
             self.assertFalse(config.enable_voice_guidance)
-            for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'errors', 'shutdown'):
+            for category in ('startup', 'lane_status', 'missing_chart', 'chart_info', 'personal_best', 'result_saved', 'errors', 'shutdown'):
                 self.assertTrue(getattr(config, 'voice_' + category))
         config.enable_voice_guidance = True
         config.voice_chart_info = False
+        config.voice_missing_chart = False
         config.voice_personal_best = False
         config.voice_result_saved = False
         config.voice_errors = False
@@ -511,6 +533,8 @@ class VoiceSettingsTests(unittest.TestCase):
             dialog.enable_voice_guidance_check.setChecked(True)
             self.assertTrue(dialog.voice_options.isEnabled())
             dialog.voice_item_checks['lane_status'].setChecked(False)
+            self.assertTrue(dialog.voice_item_checks['missing_chart'].isChecked())
+            dialog.voice_item_checks['missing_chart'].setChecked(False)
             self.assertEqual(list(dialog.voice_item_checks)[-4:], ['personal_best', 'result_saved', 'errors', 'shutdown'])
             self.assertTrue(dialog.voice_item_checks['personal_best'].isChecked())
             dialog.voice_item_checks['personal_best'].setChecked(False)
@@ -531,6 +555,7 @@ class VoiceSettingsTests(unittest.TestCase):
             saved = Config(self.path)
             self.assertTrue(saved.enable_voice_guidance)
             self.assertFalse(saved.voice_lane_status)
+            self.assertFalse(saved.voice_missing_chart)
             self.assertFalse(saved.voice_personal_best)
             self.assertFalse(saved.voice_result_saved)
             self.assertFalse(saved.voice_errors)
@@ -541,6 +566,7 @@ class VoiceSettingsTests(unittest.TestCase):
             self.assertEqual(saved.voicevox_url, 'http://localhost:50022')
             # Keep the next language's initial state at the default for this item.
             saved.voice_personal_best = True
+            saved.voice_missing_chart = True
             saved.voice_result_saved = True
             saved.voice_errors = True
             saved.save_config()

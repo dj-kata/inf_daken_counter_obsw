@@ -65,6 +65,7 @@ class UIText:
         pan_tip = "0: center, -100: left only, 100: right only."
         startup = "Counter startup"
         lane_status = "Lane recognition status"
+        missing_chart = "Normal chart not registered (lane display skipped)"
         chart_info = "Chart information (split / reverse split / 2356 / bass lane)"
         personal_best = "Personal best updates"
         result_saved = "Result saved"
