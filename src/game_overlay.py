@@ -37,9 +37,9 @@ def install_qt_diagnostics():
     previous = qInstallMessageHandler(handler)
     _qt_message_handler = handler
 
-# Match the supplied RandomLaneAnalysis_OCR/config/iidx_overlay_config.json.
-# Coordinates are relative to a 1920x1080 game client, not the counter window.
-RANDOM_PROFILES = {'1P': (160, 532, .74), '2P': (1413, 655, .74)}
+# Fit beside the scratch on the keyboard panel, below the note field even
+# without LIFT. Coordinates are relative to a 1920x1080 game client.
+RANDOM_PROFILES = {'1P': (170, 755, .70), '2P': (1421, 755, .70)}
 # Keep a small inset inside the marked safe areas of the 1920x1080 screens.
 LOG_RECTS = {
     'song_history': (565, 360, 780, 585),

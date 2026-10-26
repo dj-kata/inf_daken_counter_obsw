@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QApplication, QTabWidget
 
 from src.classes import detect_mode
 from src.config import Config
-from src.game_overlay import (GameOverlay, LOG_RECTS, RandomLaneOverlay, lane_colors,
+from src.game_overlay import (GameOverlay, LOG_RECTS, RANDOM_PROFILES, RandomLaneOverlay, lane_colors,
                               scaled_rect, valid_lane_layout, visible_overlay)
 
 
@@ -134,6 +134,24 @@ class GameOverlayTests(unittest.TestCase):
                 self.assertLessEqual(x + width, safe[2])
                 self.assertLessEqual(y + height, safe[3])
 
+    def test_random_panels_stay_beside_scratch_below_note_field(self):
+        # Full HD keyboard interiors measured from both 1P layouts and 2P.
+        # These remain below the note field even when LIFT is disabled.
+        safe_areas = {'1P': (168, 730, 507, 826), '2P': (1413, 730, 1752, 826)}
+        for side, (x, y, scale) in RANDOM_PROFILES.items():
+            for bbox in ((0, 0, 1920, 1080), (0, 0, 2560, 1440),
+                         (-2560, -1440, 0, 0)):
+                with self.subTest(side=side, bbox=bbox):
+                    left, top, right, bottom = safe_areas[side]
+                    safe_x, safe_y, safe_w, safe_h = scaled_rect(
+                        (left, top, right - left, bottom - top), bbox)
+                    px, py, width, height = scaled_rect(
+                        (x, y, 470 * scale, 96 * scale), bbox)
+                    self.assertGreaterEqual(px, safe_x)
+                    self.assertGreaterEqual(py, safe_y)
+                    self.assertLessEqual(px + width, safe_x + safe_w)
+                    self.assertLessEqual(py + height, safe_y + safe_h)
+
     def test_native_panel_draws_colors_without_accepting_input(self):
         window = RandomLaneOverlay()
         self.addCleanup(window.close)
@@ -155,6 +173,7 @@ class GameOverlayTests(unittest.TestCase):
                 patch('src.game_overlay.HtmlLogOverlay') as html_class:
             manager.update(detect_mode.play, self.state, 9876)
             self.assertTrue(manager.random_window.isVisible())
+            self.assertEqual(manager.random_window._desktop_rect, (170, 755, 329, 67))
             html_class.assert_not_called()
             manager.update(detect_mode.result, self.state, 9876)
             self.assertFalse(manager.random_window.isVisible())
