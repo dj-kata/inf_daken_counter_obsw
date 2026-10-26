@@ -67,7 +67,10 @@ class UIText:
         shutdown = "Counter shutdown"
         url = "VOICEVOX engine URL:"
         speaker = "Speaker style ID:"
-        help = "Start VOICEVOX before use. Japanese announcements play through the default PC audio output. Lane and chart announcements require RANDOM lane recognition. Saved settings apply immediately; the startup announcement applies from the next launch."
+        output_device = "Output device:"
+        system_default = "System default"
+        output_unavailable = "Saved device (disconnected)"
+        help = "Start VOICEVOX before use. Japanese announcements play through the selected output device. Reopen settings after connecting or disconnecting devices. Lane and chart announcements require RANDOM lane recognition. Saved settings apply immediately; the startup announcement applies from the next launch."
 
     class tab:
         """Settings dialog tabs"""

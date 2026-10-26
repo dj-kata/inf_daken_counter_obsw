@@ -17,6 +17,7 @@ import datetime
 from src.image_save_settings import ImageSaveSettings
 from src.config import Config
 from src.voice_guidance import start_voice_preview
+from src.voice_audio import audio_output_devices
 from src.classes import music_pack
 from src.logger import get_logger
 from src.result import OneResult, PlayOption
@@ -255,8 +256,13 @@ class ConfigDialog(QDialog):
         self.voicevox_url_edit = QLineEdit()
         self.voicevox_speaker_spin = QSpinBox()
         self.voicevox_speaker_spin.setRange(0, 2147483647)
+        self.voice_output_combo = QComboBox()
+        self.voice_output_combo.addItem(self.ui.voice.system_default, '')
+        for device_id, name in audio_output_devices():
+            self.voice_output_combo.addItem(name, device_id)
         form.addRow(self.ui.voice.url, self.voicevox_url_edit)
         form.addRow(self.ui.voice.speaker, self.voicevox_speaker_spin)
+        form.addRow(self.ui.voice.output_device, self.voice_output_combo)
         options_layout.addLayout(form)
         layout.addWidget(self.voice_options)
         help_label = QLabel(self.ui.voice.help)
@@ -270,7 +276,9 @@ class ConfigDialog(QDialog):
         if self.voice_test_timer.isActive():
             return
         url = self.voicevox_url_edit.text().strip().rstrip('/') or 'http://127.0.0.1:50021'
-        self.voice_test_worker = start_voice_preview(url, self.voicevox_speaker_spin.value())
+        self.voice_test_worker = start_voice_preview(
+            url, self.voicevox_speaker_spin.value(), self.voice_output_combo.currentData(),
+        )
         self.voice_test_button.setEnabled(False)
         self.voice_test_timer.start()
 
@@ -963,6 +971,12 @@ class ConfigDialog(QDialog):
             check.setChecked(getattr(self.config, 'voice_' + key))
         self.voicevox_url_edit.setText(self.config.voicevox_url)
         self.voicevox_speaker_spin.setValue(self.config.voicevox_speaker_id)
+        device_id = self.config.voice_output_device
+        device_index = self.voice_output_combo.findData(device_id)
+        if device_index < 0:
+            self.voice_output_combo.addItem(self.ui.voice.output_unavailable, device_id)
+            device_index = self.voice_output_combo.count() - 1
+        self.voice_output_combo.setCurrentIndex(device_index)
         # 機能設定
         self.keep_on_top_check.setChecked(self.config.keep_on_top)
         self.enable_autotweet_check.setChecked(self.config.enable_autotweet)
@@ -1084,6 +1098,7 @@ class ConfigDialog(QDialog):
             setattr(self.config, 'voice_' + key, check.isChecked())
         self.config.voicevox_url = self.voicevox_url_edit.text().strip().rstrip('/') or 'http://127.0.0.1:50021'
         self.config.voicevox_speaker_id = self.voicevox_speaker_spin.value()
+        self.config.voice_output_device = self.voice_output_combo.currentData()
         # 機能設定
         self.config.keep_on_top = self.keep_on_top_check.isChecked()
         self.config.enable_autotweet = self.enable_autotweet_check.isChecked()

@@ -74,6 +74,7 @@ build_exe_options = {
         "PySide6.QtCore",
         "PySide6.QtGui", 
         "PySide6.QtWidgets",
+        "PySide6.QtMultimedia",
         "PySide6.QtWebEngineCore",
         "PySide6.QtWebEngineWidgets",
         "obsws_python",  # OBS WebSocket連携に必要

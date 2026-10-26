@@ -1,4 +1,4 @@
-"""Queued VOICEVOX synthesis and Windows audio playback."""
+"""Queued VOICEVOX synthesis and audio playback."""
 
 import json
 import queue
@@ -9,6 +9,7 @@ from urllib.request import Request, urlopen
 
 from src.classes import clear_lamp
 from src.logger import get_logger
+from src.voice_audio import play_wav
 
 logger = get_logger(__name__)
 
@@ -22,6 +23,7 @@ VOICE_DEFAULTS = {
     'voice_shutdown': True,
     'voicevox_url': 'http://127.0.0.1:50021',
     'voicevox_speaker_id': 1,
+    'voice_output_device': '',
 }
 
 LAMP_ANNOUNCEMENTS = {
@@ -93,18 +95,13 @@ def synthesize(text, url, speaker):
         return response.read()
 
 
-def play_wav(wav):
-    import winsound
-    winsound.PlaySound(wav, winsound.SND_MEMORY)
-
-
-def start_voice_preview(url, speaker):
+def start_voice_preview(url, speaker, device_id=''):
     """Preview one random announcement without changing saved settings."""
     text = random.choice(VOICE_TEST_MESSAGES)
 
     def run():
         try:
-            play_wav(synthesize(text, url, speaker))
+            play_wav(synthesize(text, url, speaker), device_id)
         except Exception:
             logger.exception('VOICEVOXテスト再生に失敗しました（エンジンの起動と設定を確認してください）')
 
@@ -204,7 +201,7 @@ class VoiceGuidance:
                 with self._lock:
                     if generation != self._generation:
                         continue
-                play_wav(cache[key])
+                play_wav(cache[key], settings['voice_output_device'])
             except Exception:
                 logger.exception('VOICEVOX音声案内に失敗しました（エンジンの起動と設定を確認してください）')
             finally:

@@ -203,7 +203,7 @@ class VoiceWorkerTests(unittest.TestCase):
             self.voice.announce('chart_info', '2バス')
             self.flush()
             logger.exception.assert_called_once()
-        self.play.assert_called_once_with(b'wav')
+        self.play.assert_called_once_with(b'wav', '')
 
     def test_each_category_can_be_disabled_independently(self):
         for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'shutdown'):
@@ -226,6 +226,13 @@ class VoiceWorkerTests(unittest.TestCase):
         self.voice.personal_best(personal_best_result())
         self.flush()
         self.synthesis.assert_not_called()
+
+    def test_selected_output_is_passed_to_playback(self):
+        self.config.voice_output_device = 'headphones'
+        self.voice.set_config(self.config)
+        self.voice.announce('startup', 'start')
+        self.flush()
+        self.play.assert_called_once_with(b'wav', 'headphones')
 
     def test_chart_switch_suppresses_all_chart_details(self):
         self.config.voice_chart_info = False
@@ -306,6 +313,11 @@ class VoiceSettingsTests(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.path = str(Path(directory.name) / 'config.json')
+        devices = patch('src.config_dialog.audio_output_devices', return_value=[
+            ('speakers', 'Speakers'), ('headphones', 'Headphones'),
+        ])
+        devices.start()
+        self.addCleanup(devices.stop)
 
     def test_defaults_for_new_and_existing_config_and_roundtrip(self):
         for existing in (False, True):
@@ -321,6 +333,7 @@ class VoiceSettingsTests(unittest.TestCase):
         config.voice_result_saved = False
         config.voicevox_url = 'http://localhost:50022'
         config.voicevox_speaker_id = 8
+        config.voice_output_device = 'headphones'
         config.save_config()
         saved = Config(self.path)
         for key in VOICE_DEFAULTS:
@@ -349,6 +362,7 @@ class VoiceSettingsTests(unittest.TestCase):
             self.assertTrue(dialog.voice_item_checks['result_saved'].isChecked())
             dialog.voice_item_checks['result_saved'].setChecked(False)
             dialog.voicevox_speaker_spin.setValue(8)
+            dialog.voice_output_combo.setCurrentIndex(dialog.voice_output_combo.findData('headphones'))
             dialog.voicevox_url_edit.setText('http://localhost:50022/')
             original = Path(self.path).read_bytes()
             dialog.reject()
@@ -361,6 +375,7 @@ class VoiceSettingsTests(unittest.TestCase):
             self.assertFalse(saved.voice_personal_best)
             self.assertFalse(saved.voice_result_saved)
             self.assertEqual(saved.voicevox_speaker_id, 8)
+            self.assertEqual(saved.voice_output_device, 'headphones')
             self.assertEqual(saved.voicevox_url, 'http://localhost:50022')
             # Keep the next language's initial state at the default for this item.
             saved.voice_personal_best = True
@@ -378,6 +393,7 @@ class VoiceSettingsTests(unittest.TestCase):
         original = Path(self.path).read_bytes()
         dialog.voicevox_url_edit.setText(' http://localhost:50022/ ')
         dialog.voicevox_speaker_spin.setValue(8)
+        dialog.voice_output_combo.setCurrentIndex(dialog.voice_output_combo.findData('headphones'))
         self.assertFalse(dialog.enable_voice_guidance_check.isChecked())
         self.assertTrue(dialog.voice_test_button.isEnabled())
         row = dialog.enable_voice_guidance_check.parentWidget().layout().itemAt(0).layout()
@@ -385,7 +401,7 @@ class VoiceSettingsTests(unittest.TestCase):
         with patch('src.config_dialog.start_voice_preview') as preview:
             preview.return_value.is_alive.return_value = True
             dialog.voice_test_button.click()
-            preview.assert_called_once_with('http://localhost:50022', 8)
+            preview.assert_called_once_with('http://localhost:50022', 8, 'headphones')
             self.assertFalse(dialog.voice_test_button.isEnabled())
             dialog._poll_voice_test()
             self.assertFalse(dialog.voice_test_button.isEnabled())
@@ -395,18 +411,32 @@ class VoiceSettingsTests(unittest.TestCase):
         self.assertEqual(Path(self.path).read_bytes(), original)
         self.assertEqual(config.voicevox_speaker_id, 1)
 
+    def test_unavailable_output_is_preserved_in_dialog_and_saved_config(self):
+        from PySide6.QtWidgets import QApplication
+        from src.config_dialog import ConfigDialog
+
+        app = QApplication.instance() or QApplication([])
+        config = Config(self.path)
+        config.voice_output_device = 'disconnected'
+        dialog = ConfigDialog(config)
+        self.addCleanup(dialog.deleteLater)
+        self.assertEqual(dialog.voice_output_combo.currentData(), 'disconnected')
+        self.assertEqual(dialog.voice_output_combo.currentText(), dialog.ui.voice.output_unavailable)
+        dialog.accept()
+        self.assertEqual(Config(self.path).voice_output_device, 'disconnected')
+
 
 class VoicePreviewTests(unittest.TestCase):
     def test_random_message_is_synthesized_and_played(self):
         with (patch('src.voice_guidance.random.choice', return_value='にーさんごーろく') as choose,
               patch('src.voice_guidance.synthesize', return_value=b'wav') as synthesis,
               patch('src.voice_guidance.play_wav') as play):
-            worker = start_voice_preview('http://localhost:50022', 8)
+            worker = start_voice_preview('http://localhost:50022', 8, 'headphones')
             worker.join(3)
             self.assertFalse(worker.is_alive())
             choose.assert_called_once_with(VOICE_TEST_MESSAGES)
             synthesis.assert_called_once_with('にーさんごーろく', 'http://localhost:50022', 8)
-            play.assert_called_once_with(b'wav')
+            play.assert_called_once_with(b'wav', 'headphones')
 
     def test_preview_failure_is_logged_and_worker_finishes(self):
         with (patch('src.voice_guidance.synthesize', side_effect=OSError('unavailable')),
