@@ -1112,6 +1112,7 @@ class MainWindow(MainWindowUI):
                     if self.result_database.add(result):
                         self.result_database.save()
                         self.voice_guidance.personal_best(result)
+                        self.voice_guidance.announce('result_saved', 'リザルトを保存しました')
                         if self.score_viewer:
                             self.score_viewer.refresh_data()
                         self.result_database.broadcast_today_updates_data(self.start_time_with_offset)

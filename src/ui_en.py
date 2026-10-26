@@ -63,6 +63,7 @@ class UIText:
         lane_status = "Lane recognition status"
         chart_info = "Chart information (split / reverse split / 2356 / bass lane)"
         personal_best = "Personal best updates"
+        result_saved = "Result saved"
         shutdown = "Counter shutdown"
         url = "VOICEVOX engine URL:"
         speaker = "Speaker style ID:"

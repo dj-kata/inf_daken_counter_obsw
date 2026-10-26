@@ -18,6 +18,7 @@ VOICE_DEFAULTS = {
     'voice_lane_status': True,
     'voice_chart_info': True,
     'voice_personal_best': True,
+    'voice_result_saved': True,
     'voice_shutdown': True,
     'voicevox_url': 'http://127.0.0.1:50021',
     'voicevox_speaker_id': 1,
@@ -39,6 +40,7 @@ VOICE_TEST_MESSAGES = (
     *(f'{lane}バス' for lane in range(1, 8)),
     *LAMP_ANNOUNCEMENTS.values(),
     'スコア更新', 'ミスカウント更新',
+    'リザルトを保存しました',
     '打鍵カウンタを終了しました',
 )
 

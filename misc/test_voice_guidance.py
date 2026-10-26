@@ -97,15 +97,31 @@ class PersonalBestResultIntegrationTests(unittest.TestCase):
         self.process(self.window)
         self.window.result_database.save.assert_called_once()
         self.window.voice_guidance.personal_best.assert_called_once_with(self.result)
+        self.window.voice_guidance.announce.assert_called_once_with('result_saved', 'リザルトを保存しました')
 
     def test_rejected_or_unstable_result_is_not_announced(self):
         self.window.result_database.add.return_value = False
         self.process(self.window)
         self.window.voice_guidance.personal_best.assert_not_called()
+        self.window.voice_guidance.announce.assert_not_called()
         self.window._result_screen_handled = False
         self.window.result_pre = None
         self.process(self.window)
         self.window.voice_guidance.personal_best.assert_not_called()
+        self.window.voice_guidance.announce.assert_not_called()
+
+    def test_save_failure_does_not_announce_success(self):
+        self.window.result_database.save.side_effect = OSError('save failed')
+        self.process(self.window)
+        self.window.voice_guidance.announce.assert_not_called()
+
+    def test_result_without_personal_best_update_still_announces_saved(self):
+        self.result.lamp = self.result.pre_lamp
+        self.result.score = self.result.pre_score
+        self.result.bp = self.result.pre_bp
+        self.assertEqual(personal_best_announcements(self.result), [])
+        self.process(self.window)
+        self.window.voice_guidance.announce.assert_called_once_with('result_saved', 'リザルトを保存しました')
 
 
 class ChartAnnouncementTests(unittest.TestCase):
@@ -190,7 +206,7 @@ class VoiceWorkerTests(unittest.TestCase):
         self.play.assert_called_once_with(b'wav')
 
     def test_each_category_can_be_disabled_independently(self):
-        for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'shutdown'):
+        for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'shutdown'):
             with self.subTest(category=category):
                 setattr(self.config, 'voice_' + category, False)
                 self.voice.set_config(self.config)
@@ -297,11 +313,12 @@ class VoiceSettingsTests(unittest.TestCase):
                 Path(self.path).write_text('{}')
             config = Config(self.path)
             self.assertFalse(config.enable_voice_guidance)
-            for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'shutdown'):
+            for category in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'shutdown'):
                 self.assertTrue(getattr(config, 'voice_' + category))
         config.enable_voice_guidance = True
         config.voice_chart_info = False
         config.voice_personal_best = False
+        config.voice_result_saved = False
         config.voicevox_url = 'http://localhost:50022'
         config.voicevox_speaker_id = 8
         config.save_config()
@@ -326,9 +343,11 @@ class VoiceSettingsTests(unittest.TestCase):
             dialog.enable_voice_guidance_check.setChecked(True)
             self.assertTrue(dialog.voice_options.isEnabled())
             dialog.voice_item_checks['lane_status'].setChecked(False)
-            self.assertEqual(list(dialog.voice_item_checks)[-2:], ['personal_best', 'shutdown'])
+            self.assertEqual(list(dialog.voice_item_checks)[-3:], ['personal_best', 'result_saved', 'shutdown'])
             self.assertTrue(dialog.voice_item_checks['personal_best'].isChecked())
             dialog.voice_item_checks['personal_best'].setChecked(False)
+            self.assertTrue(dialog.voice_item_checks['result_saved'].isChecked())
+            dialog.voice_item_checks['result_saved'].setChecked(False)
             dialog.voicevox_speaker_spin.setValue(8)
             dialog.voicevox_url_edit.setText('http://localhost:50022/')
             original = Path(self.path).read_bytes()
@@ -340,10 +359,12 @@ class VoiceSettingsTests(unittest.TestCase):
             self.assertTrue(saved.enable_voice_guidance)
             self.assertFalse(saved.voice_lane_status)
             self.assertFalse(saved.voice_personal_best)
+            self.assertFalse(saved.voice_result_saved)
             self.assertEqual(saved.voicevox_speaker_id, 8)
             self.assertEqual(saved.voicevox_url, 'http://localhost:50022')
             # Keep the next language's initial state at the default for this item.
             saved.voice_personal_best = True
+            saved.voice_result_saved = True
             saved.save_config()
 
     def test_preview_uses_unsaved_settings_when_guidance_disabled(self):
