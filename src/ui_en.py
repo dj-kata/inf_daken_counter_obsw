@@ -58,7 +58,11 @@ class UIText:
     class voice:
         enable = "Enable voice guidance"
         test = "Test"
-        items = "Announcements and VOICEVOX settings"
+        basic = "Basic Settings"
+        items = "Announcements"
+        volume = "Volume:"
+        pan = "Balance (-100 left / +100 right):"
+        pan_tip = "0: center, -100: left only, 100: right only."
         startup = "Counter startup"
         lane_status = "Lane recognition status"
         chart_info = "Chart information (split / reverse split / 2356 / bass lane)"

@@ -234,6 +234,9 @@ class ConfigDialog(QDialog):
     def create_voice_guidance_tab(self):
         widget = QWidget()
         layout = QVBoxLayout(widget)
+        self.voice_basic_group = QGroupBox(self.ui.voice.basic)
+        basic_layout = QVBoxLayout(self.voice_basic_group)
+        layout.addWidget(self.voice_basic_group)
         enable_row = QHBoxLayout()
         self.enable_voice_guidance_check = QCheckBox(self.ui.voice.enable)
         enable_row.addWidget(self.enable_voice_guidance_check)
@@ -241,17 +244,10 @@ class ConfigDialog(QDialog):
         self.voice_test_button.clicked.connect(self.on_voice_test)
         enable_row.addWidget(self.voice_test_button)
         enable_row.addStretch()
-        layout.addLayout(enable_row)
+        basic_layout.addLayout(enable_row)
         self.voice_test_timer = QTimer(self)
         self.voice_test_timer.setInterval(100)
         self.voice_test_timer.timeout.connect(self._poll_voice_test)
-        self.voice_options = QGroupBox(self.ui.voice.items)
-        options_layout = QVBoxLayout(self.voice_options)
-        self.voice_item_checks = {}
-        for key in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'shutdown'):
-            check = QCheckBox(getattr(self.ui.voice, key))
-            self.voice_item_checks[key] = check
-            options_layout.addWidget(check)
         form = QFormLayout()
         self.voicevox_url_edit = QLineEdit()
         self.voicevox_speaker_spin = QSpinBox()
@@ -260,10 +256,25 @@ class ConfigDialog(QDialog):
         self.voice_output_combo.addItem(self.ui.voice.system_default, '')
         for device_id, name in audio_output_devices():
             self.voice_output_combo.addItem(name, device_id)
+        self.voice_volume_spin = QSpinBox()
+        self.voice_volume_spin.setRange(0, 100)
+        self.voice_volume_spin.setSuffix('%')
+        self.voice_pan_spin = QSpinBox()
+        self.voice_pan_spin.setRange(-100, 100)
+        self.voice_pan_spin.setToolTip(self.ui.voice.pan_tip)
         form.addRow(self.ui.voice.url, self.voicevox_url_edit)
         form.addRow(self.ui.voice.speaker, self.voicevox_speaker_spin)
         form.addRow(self.ui.voice.output_device, self.voice_output_combo)
-        options_layout.addLayout(form)
+        form.addRow(self.ui.voice.volume, self.voice_volume_spin)
+        form.addRow(self.ui.voice.pan, self.voice_pan_spin)
+        basic_layout.addLayout(form)
+        self.voice_options = QGroupBox(self.ui.voice.items)
+        options_layout = QVBoxLayout(self.voice_options)
+        self.voice_item_checks = {}
+        for key in ('startup', 'lane_status', 'chart_info', 'personal_best', 'result_saved', 'shutdown'):
+            check = QCheckBox(getattr(self.ui.voice, key))
+            self.voice_item_checks[key] = check
+            options_layout.addWidget(check)
         layout.addWidget(self.voice_options)
         help_label = QLabel(self.ui.voice.help)
         help_label.setWordWrap(True)
@@ -278,6 +289,7 @@ class ConfigDialog(QDialog):
         url = self.voicevox_url_edit.text().strip().rstrip('/') or 'http://127.0.0.1:50021'
         self.voice_test_worker = start_voice_preview(
             url, self.voicevox_speaker_spin.value(), self.voice_output_combo.currentData(),
+            self.voice_volume_spin.value(), self.voice_pan_spin.value(),
         )
         self.voice_test_button.setEnabled(False)
         self.voice_test_timer.start()
@@ -977,6 +989,8 @@ class ConfigDialog(QDialog):
             self.voice_output_combo.addItem(self.ui.voice.output_unavailable, device_id)
             device_index = self.voice_output_combo.count() - 1
         self.voice_output_combo.setCurrentIndex(device_index)
+        self.voice_volume_spin.setValue(self.config.voice_volume)
+        self.voice_pan_spin.setValue(self.config.voice_pan)
         # 機能設定
         self.keep_on_top_check.setChecked(self.config.keep_on_top)
         self.enable_autotweet_check.setChecked(self.config.enable_autotweet)
@@ -1099,6 +1113,8 @@ class ConfigDialog(QDialog):
         self.config.voicevox_url = self.voicevox_url_edit.text().strip().rstrip('/') or 'http://127.0.0.1:50021'
         self.config.voicevox_speaker_id = self.voicevox_speaker_spin.value()
         self.config.voice_output_device = self.voice_output_combo.currentData()
+        self.config.voice_volume = self.voice_volume_spin.value()
+        self.config.voice_pan = self.voice_pan_spin.value()
         # 機能設定
         self.config.keep_on_top = self.keep_on_top_check.isChecked()
         self.config.enable_autotweet = self.enable_autotweet_check.isChecked()

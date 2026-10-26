@@ -58,7 +58,11 @@ class UIText:
     class voice:
         enable = "音声案内を有効にする"
         test = "テスト"
-        items = "案内する項目・VOICEVOX設定"
+        basic = "基本設定"
+        items = "案内する項目"
+        volume = "音量:"
+        pan = "定位（左 -100 ～ 右 +100）:"
+        pan_tip = "0で中央、-100で左のみ、100で右のみから再生します。"
         startup = "打鍵カウンタ起動時"
         lane_status = "レーン配置表示関連"
         chart_info = "譜面情報（ガチ割れ・逆割れ・2356・Xバス）"

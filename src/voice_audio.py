@@ -3,6 +3,7 @@
 from io import BytesIO
 import wave
 
+import numpy as np
 from PySide6.QtCore import QBuffer, QEventLoop, QIODevice, QThread, QTimer
 from PySide6.QtMultimedia import QAudioFormat, QAudioSink, QMediaDevices, QtAudio
 
@@ -41,12 +42,40 @@ def wav_pcm(wav):
         return source.readframes(source.getnframes()), audio_format
 
 
+def apply_pan(pcm, audio_format, pan):
+    """Apply a linear stereo balance; expand mono to stereo when panned."""
+    pan = max(-100, min(100, pan)) / 100
+    if not pan or not pcm:
+        return pcm, audio_format
+    channels = audio_format.channelCount()
+    if channels not in (1, 2):
+        raise ValueError('定位はモノラルまたはステレオ音声に対応しています')
+    dtype = {
+        QAudioFormat.SampleFormat.UInt8: np.dtype('u1'),
+        QAudioFormat.SampleFormat.Int16: np.dtype('<i2'),
+        QAudioFormat.SampleFormat.Int32: np.dtype('<i4'),
+    }[audio_format.sampleFormat()]
+    samples = np.frombuffer(pcm, dtype=dtype).reshape(-1, channels).astype(np.float64)
+    offset = 128 if dtype == np.dtype('u1') else 0
+    samples -= offset
+    if channels == 1:
+        samples = np.repeat(samples, 2, axis=1)
+    samples *= [1 - max(0, pan), 1 + min(0, pan)]
+    limits = np.iinfo(dtype)
+    result = np.clip(np.rint(samples + offset), limits.min, limits.max).astype(dtype)
+    output_format = QAudioFormat(audio_format)
+    output_format.setChannelCount(2)
+    return result.tobytes(), output_format
+
+
 class _PlaybackThread(QThread):
     """Own the sink and its event loop on a Qt thread, never on the GUI thread."""
-    def __init__(self, wav, device_id):
+    def __init__(self, wav, device_id, volume, pan):
         super().__init__()
         self.wav = wav
         self.device_id = device_id
+        self.volume = volume
+        self.pan = pan
         self.failure = None
 
     def run(self):
@@ -55,6 +84,7 @@ class _PlaybackThread(QThread):
         state_timer = None
         try:
             pcm, audio_format = wav_pcm(self.wav)
+            pcm, audio_format = apply_pan(pcm, audio_format, self.pan)
             if not pcm:
                 return
             device = resolve_audio_device(self.device_id)
@@ -65,6 +95,7 @@ class _PlaybackThread(QThread):
             buffer.setData(pcm)
             buffer.open(QIODevice.OpenModeFlag.ReadOnly)
             sink = QAudioSink(device, audio_format)
+            sink.setVolume(max(0, min(100, self.volume)) / 100)
 
             def check_state():
                 if sink.state() in (QtAudio.State.IdleState, QtAudio.State.StoppedState):
@@ -100,8 +131,8 @@ class _PlaybackThread(QThread):
                 sink.stop()
 
 
-def play_wav(wav, device_id=''):
-    worker = _PlaybackThread(wav, device_id)
+def play_wav(wav, device_id='', volume=100, pan=0):
+    worker = _PlaybackThread(wav, device_id, volume, pan)
     worker.start()
     worker.wait()
     if worker.failure is not None:

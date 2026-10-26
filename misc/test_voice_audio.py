@@ -4,6 +4,7 @@ from io import BytesIO
 import unittest
 from unittest.mock import Mock, patch
 import wave
+import numpy as np
 
 from PySide6.QtCore import QObject, QTimer
 from PySide6.QtWidgets import QApplication
@@ -50,6 +51,9 @@ class FakeSink(QObject):
 
     def error(self):
         return self._error
+
+    def setVolume(self, volume):
+        self.volume = volume
 
     def stop(self):
         self.stopped = True
@@ -110,13 +114,41 @@ class VoiceAudioTests(unittest.TestCase):
         with patch.object(audio, 'resolve_audio_device', return_value=device) as resolve, \
                 patch.object(audio, 'QAudioSink', side_effect=create_sink):
             if error == QtAudio.Error.NoError:
-                audio.play_wav(wav_data(), 'chosen-id')
+                audio.play_wav(wav_data(), 'chosen-id', 35)
             else:
                 with self.assertRaisesRegex(RuntimeError, '音声再生に失敗'):
                     audio.play_wav(wav_data(), 'chosen-id')
             resolve.assert_called_once_with('chosen-id')
         self.assertEqual(sinks[0].played, b'\0' * 480)
         self.assertTrue(sinks[0].stopped)
+        self.assertEqual(sinks[0].volume, 0.35 if error == QtAudio.Error.NoError else 1)
+
+    def test_mono_pan_routes_left_and_right_and_preserves_center(self):
+        pcm, fmt = audio.wav_pcm(wav_data())
+        pcm = np.array([1000, -1000, 32767, -32768], dtype='<i2').tobytes()
+        unchanged, center = audio.apply_pan(pcm, fmt, 0)
+        self.assertEqual(unchanged, pcm)
+        self.assertEqual(center.channelCount(), 1)
+        for pan, expected in (
+            (-100, [[1000, 0], [-1000, 0], [32767, 0], [-32768, 0]]),
+            (100, [[0, 1000], [0, -1000], [0, 32767], [0, -32768]]),
+            (50, [[500, 1000], [-500, -1000], [16384, 32767], [-16384, -32768]]),
+        ):
+            result, panned = audio.apply_pan(pcm, fmt, pan)
+            self.assertEqual(np.frombuffer(result, dtype='<i2').reshape(-1, 2).tolist(), expected)
+            self.assertEqual(panned.channelCount(), 2)
+            self.assertEqual(panned.sampleRate(), 24000)
+        self.assertEqual(fmt.channelCount(), 1)
+
+    def test_stereo_and_unsigned_pan_keep_silence_correct(self):
+        _, fmt = audio.wav_pcm(wav_data())
+        fmt.setChannelCount(2)
+        pcm = np.array([[100, -200], [-300, 400]], dtype='<i2').tobytes()
+        result, _ = audio.apply_pan(pcm, fmt, -100)
+        self.assertEqual(np.frombuffer(result, dtype='<i2').tolist(), [100, 0, -300, 0])
+        fmt.setSampleFormat(QAudioFormat.SampleFormat.UInt8)
+        result, _ = audio.apply_pan(bytes([128, 128, 255, 0]), fmt, 100)
+        self.assertEqual(list(result), [128, 128, 128, 0])
 
     def test_unsupported_format_does_not_start_sink(self):
         device = Mock()

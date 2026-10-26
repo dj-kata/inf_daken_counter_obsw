@@ -24,6 +24,8 @@ VOICE_DEFAULTS = {
     'voicevox_url': 'http://127.0.0.1:50021',
     'voicevox_speaker_id': 1,
     'voice_output_device': '',
+    'voice_volume': 100,
+    'voice_pan': 0,
 }
 
 LAMP_ANNOUNCEMENTS = {
@@ -95,13 +97,13 @@ def synthesize(text, url, speaker):
         return response.read()
 
 
-def start_voice_preview(url, speaker, device_id=''):
+def start_voice_preview(url, speaker, device_id='', volume=100, pan=0):
     """Preview one random announcement without changing saved settings."""
     text = random.choice(VOICE_TEST_MESSAGES)
 
     def run():
         try:
-            play_wav(synthesize(text, url, speaker), device_id)
+            play_wav(synthesize(text, url, speaker), device_id, volume, pan)
         except Exception:
             logger.exception('VOICEVOXテスト再生に失敗しました（エンジンの起動と設定を確認してください）')
 
@@ -201,7 +203,8 @@ class VoiceGuidance:
                 with self._lock:
                     if generation != self._generation:
                         continue
-                play_wav(cache[key], settings['voice_output_device'])
+                play_wav(cache[key], settings['voice_output_device'],
+                         settings['voice_volume'], settings['voice_pan'])
             except Exception:
                 logger.exception('VOICEVOX音声案内に失敗しました（エンジンの起動と設定を確認してください）')
             finally:
