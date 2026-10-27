@@ -44,6 +44,7 @@ class GitHubUpdater:
         self.progress_var = None
         self.status_var = None
         self.progress_bar = None
+        self.update_pending = False
 
     def ico_path(self, relative_path):
         try:
@@ -179,55 +180,60 @@ class GitHubUpdater:
             if item.name not in ['temp_update', 'backup'] and item.is_file():
                 shutil.copy2(item, self.backup_dir)
 
-    def copy_and_skip_errors(self, src, dst):
-        # コピー先ディレクトリを作成
-        os.makedirs(dst, exist_ok=True)
+    def create_restart_script(self):
+        """終了後に全ファイルを更新する。失敗時は再起動せず展開元を残す。"""
+        if not sys.platform.startswith('win'):
+            raise RuntimeError('自動更新はWindowsでのみ利用できます')
+        source = self.temp_dir / self.zipfile_basename
+        for required in (self.main_exe_name, 'version.txt', 'lib'):
+            if not (source / required).exists():
+                raise RuntimeError(f'更新用ZIPに必要なファイルがありません: {required}')
 
-        for root, dirs, files in os.walk(src):
-            # 相対パスを計算して、コピー先の階層を再現
-            rel_path = os.path.relpath(root, src)
-            dest_dir = os.path.join(dst, rel_path)
-            os.makedirs(dest_dir, exist_ok=True)
+        def batch_value(value):
+            value = str(value)
+            if any(char in value for char in ('"', '\r', '\n')):
+                raise ValueError('更新先のパスに使用できない文字があります')
+            return value.replace('%', '%%')
 
-            for file in files:
-                src_file = os.path.join(root, file)
-                dst_file = os.path.join(dest_dir, file)
-            
-                try:
-                    # copy2 はメタデータ（作成日時など）も保持して上書きコピー
-                    shutil.copy2(src_file, dst_file)
-                except (PermissionError, OSError):
-                    # 実行中のファイルなどでアクセス拒否された場合はここに来る
-                    logger.error(f"スキップ（使用中）: {file}")
-                    continue 
+        script_path = self.base_dir / "restart_update.bat"
+        script_content = f"""@echo off
+chcp 65001 >nul
+setlocal DisableDelayedExpansion
+set "UPDATE_SOURCE={batch_value(source)}"
+set "UPDATE_DEST={batch_value(self.base_dir)}"
+set "UPDATE_EXE={batch_value(self.main_exe_name)}"
+set "UPDATE_LOG=%UPDATE_DEST%\\update_install.log"
+set /a WAIT_COUNT=0
+:wait_exit
+tasklist /FI "PID eq {os.getpid()}" /NH | findstr /R /C:" {os.getpid()} " >nul
+if errorlevel 1 goto install
+set /a WAIT_COUNT+=1
+if %WAIT_COUNT% GEQ 60 goto wait_failed
+ping -n 2 127.0.0.1 >nul
+goto wait_exit
 
-    def create_restart_script(self, old_exe_path):
-        logger.info('')
-        """再起動用スクリプト作成"""
-        if sys.platform.startswith('win'):
-            script_path = self.base_dir / "restart_update.bat"
-            script_content = f"""@echo off
-timeout /t 2 /nobreak >nul
-:: 2. もし古いプロセスが残っていたら強制終了（念のため）
-taskkill /f /im "{self.main_exe_name}" >nul 2>&1
-
-:retry_del
-timeout /t 1 /nobreak >nul
-if exist "{old_exe_path}" (
-    del /f /q "{old_exe_path}" >nul 2>&1
-    if exist "{old_exe_path}" (
-        echo 削除再試行中...
-        goto retry_del
-    )
-)
-
-start "" "{self.main_exe_name}"
+:install
+robocopy "%UPDATE_SOURCE%" "%UPDATE_DEST%" /E /COPY:DAT /IS /IT /R:5 /W:2 /XF version.txt /LOG:"%UPDATE_LOG%"
+if errorlevel 8 goto failed
+copy /Y "%UPDATE_SOURCE%\\version.txt" "%UPDATE_DEST%\\version.txt" >>"%UPDATE_LOG%" 2>&1
+if errorlevel 1 goto failed
+start "" /D "%UPDATE_DEST%" "%UPDATE_DEST%\\%UPDATE_EXE%"
+if errorlevel 1 goto failed
+endlocal
 del "%~f0"
+exit /b 0
+
+:wait_failed
+echo アプリの終了待ちがタイムアウトしました。>"%UPDATE_LOG%"
+:failed
+echo 更新に失敗しました。アプリは再起動しません。
+echo "%UPDATE_LOG%" を確認してください。
+echo アプリをすべて終了して、最新版ZIPを手動で展開してください。
+pause
+exit /b 1
 """
-            with open(script_path, 'w', encoding='shift_jis') as f:
-                f.write(script_content)
-            os.chmod(script_path, 0o755)
-        
+        with open(script_path, 'w', encoding='utf-8', newline='\r\n') as f:
+            f.write(script_content)
         logger.info(f"path:{script_path}")
         return script_path
     
@@ -252,7 +258,7 @@ del "%~f0"
         Args:
             zip_path (str): path of zipfile
         """
-        shutil.unpack_archive(zip_path, 'tmp')
+        shutil.unpack_archive(zip_path, self.temp_dir)
 
     def check_and_update(self):
         """
@@ -292,30 +298,21 @@ del "%~f0"
                             logger.info('download')
                             self.download_file(download_url, zip_path)
                             self.extract_zip_file(zip_path)
-                            logger.info('replace')
-                            old_exe_name = f"old_{self.main_exe_name}"
-                            # 実行中のmain fileをリネーム(できるらしい)
-                            os.rename(self.main_exe_name, old_exe_name)
-                            self.copy_and_skip_errors(self.temp_dir/self.zipfile_basename, Path('.'))
-                            
-                            # 更新完了後にメインプログラムを再起動するためのバッチファイルを作成
-                            self.create_restart_script(old_exe_name)
-
-                            self.update_status("更新完了！プログラムを再起動します...", 100)
-                            #self.root.after(2000, self.restart_program)
+                            self.create_restart_script()
+                            self.update_status("更新準備完了。アプリを終了して更新します...", 100)
                             self.restart_program()
                             
                         except Exception as e:
                             logger.error(traceback.format_exc())
                             error_msg = f"更新エラー: {e}"
-                            self.root.after(0, lambda: messagebox.showerror("エラー", error_msg))
+                            self.root.after(0, lambda msg=error_msg: messagebox.showerror("エラー", msg))
                             self.root.after(0, self.cancel_update)
                     
                     thread = threading.Thread(target=update_thread, daemon=True)
                     thread.start()
                     
                     self.root.mainloop()
-                    return True
+                    return self.update_pending
                 else:
                     # 更新しない場合はGUIを閉じる
                     if self.root:
@@ -332,27 +329,19 @@ del "%~f0"
             return False
     
     def restart_program(self):
-        """プログラム再起動"""
-        logger.info('retart program')
-        script_path = self.base_dir / ("restart_update.bat" if sys.platform.startswith('win') 
-                                     else "restart_update.sh")
-        if script_path.exists():
-            if sys.platform.startswith('win'):
-                subprocess.Popen(
-                    ["cmd", "/c", str(script_path)],
-                    shell=True,
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    close_fds=True,
-                    creationflags=subprocess.CREATE_NEW_CONSOLE # 新しいウィンドウで開く（デバッグに便利）
-                    )
-            else:
-                subprocess.Popen(['/bin/bash', str(script_path)])
-            
-            # if self.root:
-                # self.root.destroy()
-            sys.exit(0)
+        """更新を外部プロセスに引き継ぎ、メインスレッドに終了を依頼する。"""
+        script_path = self.base_dir / "restart_update.bat"
+        if not script_path.is_file():
+            raise RuntimeError('更新用スクリプトが見つかりません')
+        subprocess.Popen(
+            ["cmd.exe", "/d", "/c", str(script_path)],
+            cwd=self.base_dir,
+            close_fds=True,
+            creationflags=subprocess.CREATE_NEW_CONSOLE,
+        )
+        self.update_pending = True
+        # sys.exit() in the download worker only exits that thread, leaving DLLs loaded.
+        self.root.after(0, self.root.destroy)
 
 
 def main():
