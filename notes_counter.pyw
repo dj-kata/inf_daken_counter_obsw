@@ -1443,6 +1443,7 @@ if __name__ == "__main__":
     )
     
     # メインプログラムから呼び出す場合
-    updater.check_and_update()
+    if updater.check_and_update():
+        sys.exit(0)
     
     main()
