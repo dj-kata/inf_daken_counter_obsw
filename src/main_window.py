@@ -217,7 +217,7 @@ class MainWindowUI(QMainWindow):
     
     def restore_window_geometry(self):
         """ウィンドウ位置とサイズを復元"""
-        self.setMinimumSize(450, 380)
+        self.setMinimumSize(450, 310)
         if self.config.main_window_geometry:
             import base64
             from PySide6.QtCore import QByteArray
@@ -226,7 +226,7 @@ class MainWindowUI(QMainWindow):
             geometry = QByteArray(geometry_bytes)
             self.restoreGeometry(geometry)
         else:
-            self.setGeometry(100, 100, 450, 380)
+            self.setGeometry(100, 100, 450, 310)
     
     def save_window_geometry(self):
         """ジオメトリを保存"""
