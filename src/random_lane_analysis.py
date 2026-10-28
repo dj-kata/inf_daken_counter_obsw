@@ -445,7 +445,9 @@ class RandomLaneAnalysis:
                 len(self.analyzer.candidates),
             )
             previous_layout = self.result_layout
-            self.result_layout = self.analyzer.get_partial_layout()
+            partial_layout = self.analyzer.get_partial_layout()
+            if partial_layout:
+                self.result_layout = partial_layout
             if self.analyzer.layout:
                 self.result_layout = self.analyzer.layout
                 self.mode = None
@@ -461,7 +463,7 @@ class RandomLaneAnalysis:
                     "failed",
                     **self.chart_meta,
                     layout=self.result_layout or "",
-                    message=f"RANDOM配置を確定できませんでした（{reason}）",
+                    message=f"RANDOM配置を確定できませんでした（特定済みの部分は保持: {reason}）",
                 )
             elif self.result_layout and self.result_layout != previous_layout:
                 self._publish(

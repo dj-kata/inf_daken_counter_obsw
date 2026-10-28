@@ -221,6 +221,33 @@ class ResultImageCacheTests(unittest.TestCase):
             self.assertTrue(self.save_image_method()(window, detailed_result=detail))
         self.assertTrue(Path(result.image_path).is_file())
 
+    def test_statistics_failure_falls_back_to_image_without_statistics(self):
+        result, window, detail = self.save_fixture()
+        result.notes = None
+        detail.songinfo = None
+        detail.level = 12
+        detail.bpi_detail = SimpleNamespace(
+            value=None, label='BPI', arena_average_text=None, arena_averages=None
+        )
+        window.config.write_statistics = True
+        window.config.enable_katate_difficulty_display = False
+        window.result_stats_writer = SimpleNamespace(
+            write_statistics=Mock(side_effect=TypeError('notes unavailable'))
+        )
+        with patch.object(self.db, 'save'):
+            self.assertTrue(self.save_image_method()(window, detailed_result=detail))
+        with Image.open(result.image_path) as saved:
+            self.assertEqual(saved.getpixel((0, 0)), self.image.getpixel((0, 0)))
+
+    def test_result_read_error_still_saves_with_generic_filename(self):
+        _, window, _ = self.save_fixture()
+        window.screen_reader.read_result_screen = Mock(
+            side_effect=TypeError('result recognition failed')
+        )
+        self.assertTrue(self.save_image_method()(window))
+        saved = list(Path(window.config.image_save_path).glob('inf_*.png'))
+        self.assertEqual(len(saved), 1)
+
     def test_configuration_default_and_round_trip(self):
         path = self.root / 'config.json'
         path.write_text('{}', encoding='utf-8')

@@ -42,6 +42,8 @@ Spoutの準備は[ゲーム画面の取得](capture.md#spout)を参照してく�
 REGULARまたはMIRRORで譜面を登録します。旧方式の登録データは再登録が必要です。
 同じ譜面をRANDOM・R-RANDOMでプレーすると配置を解析できます。
 配信に表示する場合は[HTMLビュー](obs-views.md)の `random_lane.html` を使います。
+ゲーム画面へ直接表示する場合は[オーバーレイ](settings.md#overlay)、
+ガチ割れ・逆割れ・2356・Xバスなどを読み上げる場合は[音声案内](settings.md#voice-guidance)を設定してください。
 
 「RANDOMレーン認識」タブの「デフォルト設定を変更する」にチェックすると、検出帯の上端と高さを1P・2P別に設定できます。
 初期値は上端55・高さ20pxです。

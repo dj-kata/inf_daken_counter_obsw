@@ -126,7 +126,7 @@ Linuxで画面を表示せず確認する場合:
 
 出力先は `docs/images/image-save-ja.png` です。同名ファイルは上書きします。
 `--language en` で英語版、`--output-dir <フォルダ>` で別の出力先を指定できます。
-基本設定の全7タブを撮影する場合は、次を実行します。
+基本設定の全9タブ（音声案内・オーバーレイを含む）を撮影する場合は、次を実行します。
 
 ```bash
 .codex-venv/bin/python misc/capture_manual.py --offscreen --section settings
@@ -142,6 +142,8 @@ Linuxで画面を表示せず確認する場合:
 撮影時はFusionスタイルを使い、利用可能ならNoto Sans CJK JP、Yu Gothic、Meiryoの順でフォントを選びます。
 OSやQtのバージョンによる差は残るため、Windowsでの見た目を確認したい場合はWindowsで再撮影してください。
 掲載画像の生成環境はLinux・画面なしです。
+音声案内・オーバーレイの画像は、撮影環境の音声デバイス検出が待ち状態になるため、
+撮影時のみデバイス一覧を空にして生成しました。「システムの既定」と設定の初期値を表示しています。
 
 ## Codexに更新を依頼するとき
 
@@ -176,7 +178,7 @@ Wiki自体の編集・削除は行いません。
 | [Home](https://github.com/dj-kata/inf_daken_counter_obsw/wiki) | [トップ](index.md)：機能の概要・クレジット・ライセンス・連絡先 |
 | [打鍵カウンタの設定方法](https://github.com/dj-kata/inf_daken_counter_obsw/wiki/打鍵カウンタの設定方法) | [導入](install.md)・[画面取得とSpout](capture.md)・[OBS制御](obs-control.md)・[スマホ連携](mobile.md) |
 | [各ビューのHTMLについて](https://github.com/dj-kata/inf_daken_counter_obsw/wiki/各ビューのHTMLについて) | [HTMLビュー](obs-views.md)：表示例・目安サイズ・CSS・別PCでの接続 |
-| [設定画面で設定できること](https://github.com/dj-kata/inf_daken_counter_obsw/wiki/設定画面で設定できること) | [設定画面](settings.md)：全7タブ・初期値・各機能の操作ページへのリンク |
+| [設定画面で設定できること](https://github.com/dj-kata/inf_daken_counter_obsw/wiki/設定画面で設定できること) | [設定画面](settings.md)：各タブ・初期値・各機能の操作ページへのリンク |
 
 説明は現行の `src/config.py`・UI・テンプレートと照合しています。
 Wikiの `today_results.html` は現行の `today_result.html` に、CSS例の `root:` は `:root` に修正しています。

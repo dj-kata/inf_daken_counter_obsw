@@ -540,87 +540,114 @@ class MainWindow(MainWindowUI):
         ゲーム画面のキャプチャ画像を保存する。リザルト画面なら曲名などをファイル名に入れる。
         """
         try:
-            if getattr(self.screen_reader.screen, 'original', None) is None:
+            original_screen = getattr(self.screen_reader.screen, 'original', None)
+            if original_screen is None:
                 self.statusBar().showMessage("保存できるゲーム画面がありません", 3000)
                 return False
 
             skip_save = False
             date = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-            if self.screen_reader.is_result():
-                detailed_result = detailed_result if detailed_result else self.screen_reader.read_result_screen()
-                if not detailed_result:
-                    self.statusBar().showMessage("リザルト画面を読み取れませんでした", 3000)
-                    return False
-                # TODO ここで最後に追加したresultを使うほうがよい、自己べ情報が上書きされるため
-                if self.result_database.results:
-                    detailed_result.result = self.result_database.results[-1]
-                result = detailed_result.result
-                # 手動保存ではprocess_result_modeより先にここへ来る場合があるため、
-                # 保存処理側でも現在のプレーで確定した配置を補完する。
-                self._apply_lane_layout_to_result(result)
-                if skip_no_update and (self.config.autosave_image_mode == config_autosave_image.only_updates): # 更新している場合のみ保存
-                    if not result.is_updated():
-                        logger.debug(f"skipped!, pre score:{result.pre_score}, bp:{result.pre_bp}, lamp:{result.pre_lamp}")
-                        skip_save = True
+            filename = f"inf_{date}"
+            is_result_screen = self.screen_reader.is_result()
+            result = None
+            if is_result_screen:
+                if detailed_result is None:
+                    try:
+                        detailed_result = self.screen_reader.read_result_screen()
+                    except Exception:
+                        detailed_result = None
+                        logger.error(
+                            f"リザルト画面の読み取りエラー。"
+                            f"元画像を汎用ファイル名で保存します: {traceback.format_exc()}"
+                        )
+                if detailed_result and detailed_result.result:
+                    result = detailed_result.result
+                    try:
+                        # 手動保存ではprocess_result_modeより先にここへ来る場合があるため、
+                        # 保存処理側でも現在のプレーで確定した配置を補完する。
+                        self._apply_lane_layout_to_result(result)
+                        if skip_no_update and (self.config.autosave_image_mode == config_autosave_image.only_updates): # 更新している場合のみ保存
+                            if not result.is_updated():
+                                logger.debug(f"skipped!, pre score:{result.pre_score}, bp:{result.pre_bp}, lamp:{result.pre_lamp}")
+                                skip_save = True
 
-                if detailed_result.result.option:
-                    filename = f"inf_{detailed_result.result.title}_{get_chart_name(detailed_result.result.play_style, detailed_result.result.difficulty, detailed_result.result.option.battle)}"
+                        if result.option:
+                            result_filename = f"inf_{result.title}_{get_chart_name(result.play_style, result.difficulty, result.option.battle)}"
+                        else:
+                            result_filename = f"inf_{result.title}_{get_chart_name(result.play_style, result.difficulty)}"
+                        result_filename += f"_{result.lamp.name}"
+                        result_filename += f"_ex{result.score}"
+                        result_filename += f"_bp{result.judge.bd + result.judge.pr}"
+                        if result.playspeed:
+                            result_filename += f"_x{result.playspeed}" # 速度変更時
+                        filename = f'{result_filename}_{date}'
+                    except Exception:
+                        logger.error(
+                            f"リザルト画像のファイル名生成エラー。"
+                            f"汎用ファイル名で保存します: {traceback.format_exc()}"
+                        )
                 else:
-                    filename = f"inf_{detailed_result.result.title}_{get_chart_name(detailed_result.result.play_style, detailed_result.result.difficulty)}"
-                filename += f"_{detailed_result.result.lamp.name}"
-                filename += f"_ex{detailed_result.result.score}"
-                filename += f"_bp{result.judge.bd + result.judge.pr}"
-                if detailed_result.result.playspeed:
-                    filename += f"_x{detailed_result.result.playspeed}" # 速度変更時
-                filename += f'_{date}'
-            else:
-                filename = f"inf_{date}"
+                    logger.warning(
+                        "リザルト画面の詳細を読み取れないため、"
+                        "元画像を汎用ファイル名で保存します"
+                    )
 
             # 保存対象となる画像データ
-            screen = self.screen_reader.screen.original
+            screen = original_screen
 
             # モザイク処理
-            if self.screen_reader.is_result(): # リザルト
+            if is_result_screen and detailed_result and result: # リザルト
                 if self.config.write_statistics:
-                    # 統計情報ウィンドウを追加
-                    sp12_clear = None
-                    sp12_hard = None
-                    if detailed_result.songinfo:
-                        sp12_clear = detailed_result.songinfo.sp12_clear
-                        sp12_hard = detailed_result.songinfo.sp12_hard
-                    bpi_detail = detailed_result.bpi_detail
-                    screen = self.result_stats_writer.write_statistics(
-                        screen,
-                        title=result.title,
-                        level=detailed_result.level,
-                        play_style=result.play_style,
-                        difficulty=result.difficulty,
-                        ex_score=result.score,
-                        bp=result.judge.bd + result.judge.pr,
-                        max_notes=detailed_result.result.notes,
-                        lamp=result.lamp,
-                        bpi=bpi_detail.value,
-                        bpi_label=bpi_detail.label,
-                        bpi_arena_average_text=bpi_detail.arena_average_text,
-                        bpi_arena_averages=bpi_detail.arena_averages,
-                        sp12_clear=sp12_clear,
-                        sp12_hard=sp12_hard,
-                        songinfo=detailed_result.songinfo,
-                        enable_katate_difficulty_display=self.config.enable_katate_difficulty_display,
-                        lane_layout=getattr(result, "lane_layout", None),
-                    )
-                if self.config.modify_rivalarea_mode == config_modify_rivalarea.mosaic: # モザイク処理する場合
-                    screen = mosaic_rival_area(screen, detailed_result.result_side)
-                    screen = mosaic_other_rival_names(screen, detailed_result.result_side)
-                elif self.config.modify_rivalarea_mode == config_modify_rivalarea.cut: # カットする場合
-                    screen = mosaic_other_rival_names(screen, detailed_result.result_side)
-                    screen = cut_rival_area(screen, detailed_result.result_side)
-
-                    filename += f"_cut{detailed_result.result_side.name[1:]}"
-
-            if self.screen_reader.is_result() and detailed_result and detailed_result.result:
+                    try:
+                        # 統計情報ウィンドウを追加
+                        sp12_clear = None
+                        sp12_hard = None
+                        if detailed_result.songinfo:
+                            sp12_clear = detailed_result.songinfo.sp12_clear
+                            sp12_hard = detailed_result.songinfo.sp12_hard
+                        bpi_detail = detailed_result.bpi_detail
+                        screen = self.result_stats_writer.write_statistics(
+                            screen,
+                            title=result.title,
+                            level=detailed_result.level,
+                            play_style=result.play_style,
+                            difficulty=result.difficulty,
+                            ex_score=result.score,
+                            bp=result.judge.bd + result.judge.pr,
+                            max_notes=result.notes,
+                            lamp=result.lamp,
+                            bpi=bpi_detail.value,
+                            bpi_label=bpi_detail.label,
+                            bpi_arena_average_text=bpi_detail.arena_average_text,
+                            bpi_arena_averages=bpi_detail.arena_averages,
+                            sp12_clear=sp12_clear,
+                            sp12_hard=sp12_hard,
+                            songinfo=detailed_result.songinfo,
+                            enable_katate_difficulty_display=self.config.enable_katate_difficulty_display,
+                            lane_layout=getattr(result, "lane_layout", None),
+                        )
+                    except Exception:
+                        logger.error(
+                            f"リザルト統計の描画エラー。"
+                            f"統計情報なしで保存します: {traceback.format_exc()}"
+                        )
                 try:
-                    self.result_database.cache_result_image(detailed_result.result, screen)
+                    if self.config.modify_rivalarea_mode == config_modify_rivalarea.mosaic: # モザイク処理する場合
+                        screen = mosaic_rival_area(screen, detailed_result.result_side)
+                        screen = mosaic_other_rival_names(screen, detailed_result.result_side)
+                    elif self.config.modify_rivalarea_mode == config_modify_rivalarea.cut: # カットする場合
+                        screen = mosaic_other_rival_names(screen, detailed_result.result_side)
+                        screen = cut_rival_area(screen, detailed_result.result_side)
+                        filename += f"_cut{detailed_result.result_side.name[1:]}"
+                except Exception:
+                    logger.error(
+                        f"リザルト画像の加工エラー。"
+                        f"加工前の画像を保存します: {traceback.format_exc()}"
+                    )
+
+            if is_result_screen and detailed_result and result:
+                try:
+                    self.result_database.cache_result_image(result, screen)
                 except Exception:
                     # 一時保存に失敗しても、従来のファイル保存は続行する。
                     logger.error(f"リザルト画像の一時保存エラー: {traceback.format_exc()}")
@@ -637,9 +664,13 @@ class MainWindow(MainWindowUI):
             full_path = Path(self.config.image_save_path) / filename
             logger.info(f"autosaved! dst = {full_path}")
             screen.save(full_path)
-            if self.screen_reader.is_result() and detailed_result and detailed_result.result:
-                detailed_result.result.image_path = str(full_path)
-                self.result_database.save()
+            if is_result_screen and detailed_result and result:
+                try:
+                    result.image_path = str(full_path)
+                    self.result_database.save()
+                except Exception:
+                    # 画像ファイルは保存済みなので、DB更新失敗と分けて扱う。
+                    logger.error(f"保存画像パスのDB更新エラー: {traceback.format_exc()}")
             self.statusBar().showMessage(f"保存しました -> {filename}", 10000)
             return True
             

@@ -104,7 +104,7 @@ class RandomLaneIntegrationTests(unittest.TestCase):
         self.start('RANDOM')
         self.assertIsNone(self.analysis.get_result_lane_layout())
 
-    def test_contradiction_discards_previously_displayed_partial_layout(self):
+    def test_contradiction_preserves_previously_displayed_partial_layout(self):
         self.save_chart()
         self.start('RANDOM')
         self.analysis.detectors['1P'].detect = lambda image: (1, [4])
@@ -113,10 +113,10 @@ class RandomLaneIntegrationTests(unittest.TestCase):
         # A second original lane cannot occupy the same position as lane 1.
         self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
         self.assertEqual(self.analysis._last_state['phase'], 'failed')
-        self.assertEqual(self.analysis._last_state['layout'], '')
-        self.assertIsNone(self.analysis.get_result_lane_layout())
+        self.assertEqual(self.analysis._last_state['layout'], '???1???')
+        self.assertEqual(self.analysis.get_result_lane_layout(), '???1???')
         self.analysis.end_play()
-        self.assertIsNone(self.analysis.get_result_lane_layout())
+        self.assertEqual(self.analysis.get_result_lane_layout(), '???1???')
 
     def test_repeated_plays_publish_states_without_writing_display_files(self):
         self.save_chart()
