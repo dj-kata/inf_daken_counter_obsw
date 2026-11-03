@@ -1143,13 +1143,14 @@ class MainWindow(MainWindowUI):
             if not detailed_result or not detailed_result.result:
                 return False
             result = detailed_result.result
-            self._apply_lane_layout_to_result(result)
             if result.option is None or not result.option.valid:
                 logger.warning(f"result skipped until option is recognized: {result}")
                 return False
             result.timestamp = self.result_timestamp
             if result and result.chart_id:
                 if result == self.result_pre:
+                    self._reconcile_lane_chart_with_result(detailed_result)
+                    self._apply_lane_layout_to_result(result)
                     # DBxの場合の処理
                     if result.option.battle and result.lamp == clear_lamp.assist:
                         if result.judge.cb == 0:
@@ -1192,6 +1193,24 @@ class MainWindow(MainWindowUI):
         except Exception:
             # logger.error(f"リザルト処理エラー: {traceback.format_exc()}")
             pass
+
+    def _reconcile_lane_chart_with_result(self, detailed_result):
+        """リザルトの曲情報を今回と次回のレーン解析対象へ反映する。"""
+        result = detailed_result.result if detailed_result else None
+        if not result or not result.title or not result.play_style or not result.difficulty:
+            return False
+
+        # クイックリスタートでは選曲画面を通らないため、次のプレー開始時は
+        # 直前のリザルトで確認できた曲・譜面を引き継ぐ。
+        self.screen_reader.last_select_title = result.title
+        self.screen_reader.last_select_style = result.play_style
+        self.screen_reader.last_select_difficulty = result.difficulty
+        return self.random_lane_analysis.correct_result_chart(
+            title=result.title,
+            style=result.play_style.name,
+            difficulty=result.difficulty.name.upper(),
+            level=getattr(detailed_result, "level", None),
+        )
 
     def _apply_lane_layout_to_result(self, result):
         if result is None:

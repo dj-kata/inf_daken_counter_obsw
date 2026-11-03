@@ -4,7 +4,7 @@
 
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                                QLabel, QGroupBox, QGridLayout, QPushButton,
-                               QMessageBox)
+                               QMessageBox, QSizePolicy)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QActionGroup
 from html import escape
@@ -74,6 +74,7 @@ class MainWindowUI(QMainWindow):
         self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")
         obs_layout.addWidget(self.obs_status_label)
         obs_group.setLayout(obs_layout)
+        obs_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         main_layout.addWidget(obs_group)
 
         self.voice_warning_label = QLabel(self.ui.main.voicevox_unavailable)
@@ -120,22 +121,30 @@ class MainWindowUI(QMainWindow):
         self.mobile_score_url_label.setTextFormat(Qt.RichText)
         self.mobile_score_url_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
         status_layout.addWidget(self.mobile_score_url_label, 6, 1)
+
+        status_row_height = self.fontMetrics().height() + 8
+        for row in range(7):
+            status_layout.setRowMinimumHeight(row, status_row_height)
         
         status_group.setLayout(status_layout)
+        status_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         main_layout.addWidget(status_group)
+
+        # 拡大時の余白は保存ボタンより上へ集める
+        main_layout.addStretch()
         
         # 画像保存ボタン
         save_button_layout = QHBoxLayout()
         self.save_image_button = QPushButton(self.ui.main.save_image)
+        self.save_image_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.save_image_button.clicked.connect(self.save_image)
         save_button_layout.addWidget(self.save_image_button)
         main_layout.addLayout(save_button_layout)
-        
-        # ストレッチでスペースを埋める
-        main_layout.addStretch()
-        
+
         # ステータスバー
-        self.statusBar().showMessage(self.ui.main.status_ready)
+        status_bar = self.statusBar()
+        status_bar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        status_bar.showMessage(self.ui.main.status_ready)
     
     def create_menu_bar(self):
         """メニューバー作成"""
@@ -217,7 +226,7 @@ class MainWindowUI(QMainWindow):
     
     def restore_window_geometry(self):
         """ウィンドウ位置とサイズを復元"""
-        self.setMinimumSize(450, 310)
+        self.setMinimumSize(450, 380)
         if self.config.main_window_geometry:
             import base64
             from PySide6.QtCore import QByteArray
@@ -226,7 +235,7 @@ class MainWindowUI(QMainWindow):
             geometry = QByteArray(geometry_bytes)
             self.restoreGeometry(geometry)
         else:
-            self.setGeometry(100, 100, 450, 310)
+            self.setGeometry(100, 100, 450, 380)
     
     def save_window_geometry(self):
         """ジオメトリを保存"""

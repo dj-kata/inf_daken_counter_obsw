@@ -128,10 +128,7 @@ class OBSWebSocketManager(QObject):
     def is_obs_control_enabled(self) -> bool:
         if not self.config or not getattr(self.config, "obs_websocket_enabled", True):
             return False
-        return bool(
-            str(getattr(self.config, 'websocket_password', '')).strip()
-            and getattr(self.config, 'obs_control_settings', [])
-        )
+        return bool(getattr(self.config, 'obs_control_settings', []))
 
     def uses_obs_websocket(self) -> bool:
         """OBS WebSocket接続が必要な設定か。"""

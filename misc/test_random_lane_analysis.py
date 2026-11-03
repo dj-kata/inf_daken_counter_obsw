@@ -4,6 +4,7 @@ import ast
 import itertools
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
 
@@ -11,6 +12,7 @@ import cv2
 import numpy as np
 
 from src.config import Config
+from src.classes import difficulty, play_style
 from src import random_lane_analysis as lane
 
 
@@ -27,12 +29,12 @@ class RandomLaneIntegrationTests(unittest.TestCase):
             for i in range(7)
         ]
 
-    def start(self, arrange='REGULAR', side='1P'):
+    def start(self, arrange='REGULAR', side='1P', title='test song'):
         from unittest.mock import Mock
         self.analysis.template_error = None
         self.analysis.template_recognizer = Mock()
         self.analysis.start_play(
-            title='test song', style='sp', difficulty='ANOTHER', level=12,
+            title=title, style='sp', difficulty='ANOTHER', level=12,
             play_mode=f'sp_{side.lower()}',
         )
         self.analysis._start_arrangement(arrange)
@@ -220,6 +222,50 @@ class RandomLaneIntegrationTests(unittest.TestCase):
                 self.analysis.end_play()
                 self.assertEqual(self.analysis.get_result_lane_layout(), lane._layout_text(permutation))
 
+    def test_result_title_correction_moves_newly_registered_normal_chart(self):
+        self.start('REGULAR')
+        wrong_key = self.analysis.chart_key
+        events = iter([[n] for n in lane.LANES])
+        self.analysis.detectors['1P'].detect = lambda image: (1, next(events))
+        for _ in lane.LANES:
+            self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
+        self.assertEqual(self.analysis._last_state['phase'], 'registered')
+        recorded_events = self.analysis._load_chart(wrong_key)
+        self.analysis.end_play()
+
+        self.assertTrue(self.analysis.correct_result_chart(
+            title='correct song', style='sp', difficulty='ANOTHER', level=12,
+        ))
+        correct_key = 'correct song\x1fsp\x1fANOTHER'
+        self.assertIsNone(self.analysis._load_chart(wrong_key))
+        self.assertEqual(self.analysis._load_chart(correct_key), recorded_events)
+        self.assertEqual(self.analysis.get_result_lane_layout(), lane.REGULAR_LAYOUT)
+
+    def test_result_correction_reanalyzes_random_events_for_correct_chart(self):
+        # The misidentified chart fails immediately, but event capture continues
+        # so the result-side correction can still analyze the actual chart.
+        wrong_events = [{'event_no': 1, 'event_lanes': [1, 2]}] + self.events[1:]
+        self.analysis._save_chart('wrong song\x1fsp\x1fANOTHER', {
+            'title': 'wrong song', 'style': 'sp', 'difficulty': 'ANOTHER', 'level': 12,
+        }, wrong_events)
+        self.analysis._save_chart('correct song\x1fsp\x1fANOTHER', {
+            'title': 'correct song', 'style': 'sp', 'difficulty': 'ANOTHER', 'level': 12,
+        }, self.events)
+        self.start('RANDOM', title='wrong song')
+        permutation = (4, 1, 7, 2, 6, 3, 5)
+        events = iter([[n] for n in permutation])
+        self.analysis.detectors['1P'].detect = lambda image: (1, next(events))
+        for _ in lane.LANES:
+            self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
+        wrong_layout = self.analysis.get_result_lane_layout()
+        self.analysis.end_play()
+
+        self.analysis.correct_result_chart(
+            title='correct song', style='sp', difficulty='ANOTHER', level=12,
+        )
+        self.assertNotEqual(wrong_layout, lane._layout_text(permutation))
+        self.assertEqual(self.analysis.get_result_lane_layout(), lane._layout_text(permutation))
+
     def test_events_use_immediate_rising_edges_without_frame_merging(self):
         detector = lane.NoteDetector(lane.DEFAULT_ROI_1P)
         black = np.zeros((1080, 1920, 3), dtype=np.uint8)
@@ -305,6 +351,43 @@ class RandomLaneIntegrationTests(unittest.TestCase):
                 expected = upstream.detect_lanes(cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
                 self.assertEqual(ours.last_lane_state, expected)
                 self.assertEqual(actual, upstream.register_events(expected))
+
+
+class ResultChartReconciliationTests(unittest.TestCase):
+    def test_result_identity_is_retained_for_quick_restart(self):
+        tree = ast.parse(Path('notes_counter.pyw').read_text(encoding='utf-8'))
+        window = next(node for node in tree.body if isinstance(node, ast.ClassDef)
+                      and node.name == 'MainWindow')
+        method = next(node for node in window.body if isinstance(node, ast.FunctionDef)
+                      and node.name == '_reconcile_lane_chart_with_result')
+        namespace = {}
+        exec(compile(ast.Module(body=[method], type_ignores=[]),
+                     'notes_counter.pyw', 'exec'), namespace)
+        reconcile = namespace['_reconcile_lane_chart_with_result']
+        owner = SimpleNamespace(
+            screen_reader=SimpleNamespace(
+                last_select_title='wrong song',
+                last_select_style=play_style.dp,
+                last_select_difficulty=difficulty.hyper,
+            ),
+            random_lane_analysis=Mock(),
+        )
+        detail = SimpleNamespace(
+            result=SimpleNamespace(
+                title='correct song', play_style=play_style.sp,
+                difficulty=difficulty.another,
+            ),
+            level=12,
+        )
+
+        reconcile(owner, detail)
+
+        self.assertEqual(owner.screen_reader.last_select_title, 'correct song')
+        self.assertEqual(owner.screen_reader.last_select_style, play_style.sp)
+        self.assertEqual(owner.screen_reader.last_select_difficulty, difficulty.another)
+        owner.random_lane_analysis.correct_result_chart.assert_called_once_with(
+            title='correct song', style='sp', difficulty='ANOTHER', level=12,
+        )
 
 
 if __name__ == '__main__':

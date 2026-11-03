@@ -53,6 +53,12 @@ class OBSConnectionSettingsTests(unittest.TestCase):
                 self.assertTrue(self.manager.uses_obs_websocket())
                 self.assertTrue(self.manager.is_obs_control_enabled())
 
+    def test_spout_control_allows_obs_without_authentication(self):
+        self.config.capture_method = 'spout'
+        self.config.websocket_password = ''
+        self.assertTrue(self.manager.is_obs_control_enabled())
+        self.assertTrue(self.manager.uses_obs_websocket())
+
     def test_disabling_disconnects_and_stops_reconnect_without_closing_capture(self):
         self.config.obs_websocket_enabled = False
         self.manager.client = client = Mock()

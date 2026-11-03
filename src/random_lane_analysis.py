@@ -223,6 +223,7 @@ class RandomLaneAnalysis:
         self.analyzer = None
         self.record_mirror = False
         self.result_layout = None
+        self._play_context = None
         self._notification = None
         self._last_state = None
         self.capture_supported = True
@@ -304,6 +305,7 @@ class RandomLaneAnalysis:
     @_synchronized
     def start_play(self, *, title, style, difficulty, level, play_mode):
         self._reset_session(clear_result_layout=True)
+        self._play_context = None
         if not self.enabled:
             return
         if not self.capture_supported:
@@ -322,13 +324,17 @@ class RandomLaneAnalysis:
             return
 
         self.side = side
-        self.chart_key = f"{title}\x1f{style}\x1f{difficulty}"
-        # Keep existing charts at the default band. Other bands need their own
-        # event sequences; returning to the default restores the original data.
-        band = self.detectors[side].band
-        if band != DEFAULT_BAND:
-            self.chart_key += f"\x1fband={band[0]}:{band[1]}"
+        self.chart_key = self._chart_key(title, style, difficulty, side)
         self.chart_meta = {"title": title, "style": style, "difficulty": difficulty, "level": level}
+        self._play_context = {
+            "side": side,
+            "chart_key": self.chart_key,
+            "chart_meta": self.chart_meta.copy(),
+            "option": "",
+            "registered_key": None,
+            "registered_events": None,
+            "analyzed_events": [],
+        }
         self.detectors[side].reset()
 
         self.template_recognizer.reset()
@@ -339,6 +345,8 @@ class RandomLaneAnalysis:
     def _start_arrangement(self, arrange):
         self.mode = None
         self.option_name = arrange
+        if self._play_context is not None:
+            self._play_context["option"] = arrange
         title = self.chart_meta["title"]
         difficulty = self.chart_meta["difficulty"]
         self.detectors[self.side].reset()
@@ -395,7 +403,7 @@ class RandomLaneAnalysis:
 
     @_synchronized
     def process_frame(self, image):
-        if not self.enabled or self.mode not in ("prepare", "record", "analyze") or self.side is None:
+        if not self.enabled or self.mode not in ("prepare", "record", "analyze", "observe") or self.side is None:
             return
         rgb = np.asarray(image)
         if rgb.ndim != 3 or rgb.shape[2] < 3:
@@ -411,6 +419,11 @@ class RandomLaneAnalysis:
         if not lanes:
             return
 
+        if self.mode == "observe":
+            if self._play_context is not None:
+                self._play_context["analyzed_events"].append(list(lanes))
+            return
+
         if self.mode == "record":
             if self.record_mirror:
                 lanes = [8 - lane for lane in lanes]
@@ -421,6 +434,9 @@ class RandomLaneAnalysis:
 
         if self.mode == "record" and recording_complete:
             self._save_chart(self.chart_key, self.chart_meta, self.recorder.events)
+            if self._play_context is not None:
+                self._play_context["registered_key"] = self.chart_key
+                self._play_context["registered_events"] = list(self.recorder.events)
             self.mode = None
             self._publish(
                 "registered", **self.chart_meta,
@@ -428,6 +444,8 @@ class RandomLaneAnalysis:
                 message=f"正規譜面データを登録しました（{len(self.recorder.events)}イベント）",
             )
         elif self.mode == "analyze":
+            if self._play_context is not None:
+                self._play_context["analyzed_events"].append(list(lanes))
             pair_index = self.analyzer.pair_index
             normal_lanes = (
                 self.analyzer.normal_events[pair_index]["event_lanes"]
@@ -450,13 +468,13 @@ class RandomLaneAnalysis:
                 self.result_layout = partial_layout
             if self.analyzer.layout:
                 self.result_layout = self.analyzer.layout
-                self.mode = None
+                self.mode = "observe"
                 self._publish(
                     "confirmed", **self.chart_meta, layout=self.analyzer.layout,
                     message=f"RANDOM配置: {self.analyzer.layout}",
                 )
             elif self.analyzer.failed:
-                self.mode = None
+                self.mode = "observe"
                 reason = self.analyzer.failure_reason or "イベント列が一致しません"
                 logger.warning("RANDOM配置を確定できませんでした: %s", reason)
                 self._publish(
@@ -489,6 +507,71 @@ class RandomLaneAnalysis:
     def get_result_lane_layout(self):
         """現在のプレーの配置（W/B/?を含む部分配置も可）を保存用に返す。"""
         return self.result_layout
+
+    @_synchronized
+    def correct_result_chart(self, *, title, style, difficulty, level=None):
+        """リザルト認識を正として、直前プレーの譜面との対応を補正する。"""
+        context = self._play_context
+        if context is None or not title or not style or not difficulty:
+            return False
+
+        corrected_meta = {
+            "title": title,
+            "style": style,
+            "difficulty": difficulty,
+            "level": level,
+        }
+        old_meta = context["chart_meta"]
+        if all(old_meta.get(key) == corrected_meta.get(key)
+               for key in ("title", "style", "difficulty")):
+            return False
+
+        old_key = context["chart_key"]
+        corrected_key = self._chart_key(title, style, difficulty, context["side"])
+        registered_key = context.get("registered_key")
+        registered_events = context.get("registered_events")
+        if registered_key and registered_events:
+            self._reassign_chart(registered_key, corrected_key, corrected_meta, registered_events)
+            context["registered_key"] = corrected_key
+
+        option = context.get("option")
+        if option in ("REGULAR", "MIRROR"):
+            self.result_layout = REGULAR_LAYOUT if option == "REGULAR" else MIRROR_LAYOUT
+        elif option in ("RANDOM", "R-RANDOM"):
+            self._reanalyze_corrected_chart(corrected_key, context.get("analyzed_events", []))
+
+        context["chart_key"] = corrected_key
+        context["chart_meta"] = corrected_meta
+        logger.warning(
+            "リザルト認識でレーン解析対象を補正: %s -> %s",
+            old_key,
+            corrected_key,
+        )
+        self._notification = f"リザルトの曲名を優先してレーン解析対象を補正しました: {title}"
+        return True
+
+    def _chart_key(self, title, style, difficulty, side):
+        key = f"{title}\x1f{style}\x1f{difficulty}"
+        # Keep existing charts at the default band. Other bands need their own
+        # event sequences; returning to the default restores the original data.
+        band = self.detectors[side].band
+        if band != DEFAULT_BAND:
+            key += f"\x1fband={band[0]}:{band[1]}"
+        return key
+
+    def _reanalyze_corrected_chart(self, chart_key, observed_events):
+        normal_events = self._load_chart(chart_key)
+        if not normal_events:
+            self.result_layout = None
+            return
+        analyzer = RandomMappingAnalyzer(normal_events)
+        partial_layout = None
+        for lanes in observed_events:
+            analyzer.add(lanes)
+            partial_layout = analyzer.get_partial_layout() or partial_layout
+            if analyzer.layout or analyzer.failed:
+                break
+        self.result_layout = analyzer.layout or partial_layout
 
     def _reset_session(self, *, clear_result_layout=False):
         self.mode = None
@@ -554,6 +637,29 @@ class RandomLaneAnalysis:
                 ),
             )
         logger.info("RANDOM配置認識用の正規譜面を登録: %s", chart_key)
+
+    def _reassign_chart(self, old_key, new_key, meta, events):
+        with closing(sqlite3.connect(self.db_path)) as conn, conn:
+            conn.execute(
+                """INSERT INTO normal_charts
+                   (chart_key,title,style,difficulty,level,note_events,created_at,data_version)
+                   VALUES (?,?,?,?,?,?,?,?)
+                   ON CONFLICT(chart_key) DO UPDATE SET
+                       title=excluded.title,
+                       style=excluded.style,
+                       difficulty=excluded.difficulty,
+                       level=excluded.level,
+                       note_events=excluded.note_events,
+                       created_at=excluded.created_at,
+                       data_version=excluded.data_version""",
+                (
+                    new_key, meta["title"], meta["style"], meta["difficulty"], meta["level"],
+                    json.dumps(events, ensure_ascii=False), int(time.time()), CHART_DATA_VERSION,
+                ),
+            )
+            if old_key != new_key:
+                conn.execute("DELETE FROM normal_charts WHERE chart_key=?", (old_key,))
+        logger.info("RANDOM配置認識用の正規譜面を付け替え: %s -> %s", old_key, new_key)
 
     def _publish(self, phase, *, title=None, chart=None, style=None, difficulty=None,
                  level=None, layout="", message=""):

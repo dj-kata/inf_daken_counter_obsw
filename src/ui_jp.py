@@ -289,7 +289,7 @@ class UIText:
         websocket_group = 'OBS WebSocket接続設定'
         websocket_host = 'ホスト:'
         websocket_port = 'ポート:'
-        websocket_password = 'パスワード:'
+        websocket_password = 'パスワード（OBS側で認証を有効にしている場合）:'
         scene_collection_group = 'シーンコレクション設定'
         scene_collection_label = 'シーンコレクション:'
         scene_collection_not_set = '(未設定)'
