@@ -54,19 +54,35 @@
             }
             #play-counts {
                 display: flex;
-                justify-content: flex-end;
-                gap: 18px;
-                padding: 4px 24px 10px;
+                flex: 0 0 22%;
+                flex-direction: column;
+                justify-content: center;
+                gap: 6px;
+                box-sizing: border-box;
+                padding: 8px 24px;
                 color: #b9d9ff;
-                background-color: rgba(0, 0, 70, 0.95);
                 font-size: 38px;
                 line-height: 1.2;
+            }
+            #play-counts .play-count-title {
+                color: #ffccff;
+                font-size: 32px;
+                margin-bottom: 2px;
+            }
+            #play-counts span {
+                display: flex;
+                justify-content: space-between;
+                gap: 20px;
             }
             #play-counts .official {
                 color: #ffe7a3;
             }
             #play-counts strong {
                 color: #fff;
+            }
+            #best-section {
+                display: flex;
+                align-items: stretch;
             }
             table#result {
                 font-size: 96px;
@@ -97,7 +113,8 @@
             }
             table#best {
                 font-size: 80px;
-            	width:100%;
+                width:auto;
+                flex: 1 1 auto;
             }
             table#best td {
             	white-space:nowrap;
@@ -362,7 +379,7 @@
                     officialPlayCountElement.style.display = 'none';
                 } else {
                     document.querySelector('#official-play-count').textContent = Number(officialPlayCount) || 0;
-                    officialPlayCountElement.style.display = 'inline';
+                    officialPlayCountElement.style.display = 'flex';
                 }
                 (data.items || []).slice(0, 20).forEach(function(item, index){
                     var date = item.date || '';
@@ -485,14 +502,17 @@
       <tbody>
       </tbody>
     </table>
-    <div id="play-counts">
-      <span>COUNTER <strong id="counter-play-count">0</strong></span>
-      <span class="official" id="official-play-count-wrap">OFFICIAL <strong id="official-play-count">0</strong></span>
+    <div id="best-section">
+      <table id="best">
+        <tbody>
+        </tbody>
+      </table>
+      <div id="play-counts">
+        <div class="play-count-title">PLAY COUNT</div>
+        <span>INFDC <strong id="counter-play-count">0</strong></span>
+        <span class="official" id="official-play-count-wrap">CSV <strong id="official-play-count">0</strong></span>
+      </div>
     </div>
-    <table id="best">
-      <tbody>
-      </tbody>
-    </table>
     <table id="result">
       <tbody>
       </tbody>

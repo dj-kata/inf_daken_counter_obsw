@@ -343,6 +343,7 @@ class OfficialCsvCorrectionTests(unittest.TestCase):
                 pass
 
         existing = make_result()
+        existing.official_play_count = 12
         imported_result = make_result()
         imported_result.detect_mode = detect_mode.select
         imported_result.timestamp = 0
@@ -354,6 +355,7 @@ class OfficialCsvCorrectionTests(unittest.TestCase):
         second = importer.apply(OfficialCsvImportPlan(results=[imported_result]))
 
         self.assertEqual(first.imported, 1)
+        self.assertEqual(first.skipped, 0)
         self.assertEqual(second.skipped, 1)
         self.assertEqual(len(db.results), 1)
         self.assertEqual(db.results[0].official_play_count, 37)

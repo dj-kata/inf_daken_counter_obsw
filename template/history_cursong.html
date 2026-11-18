@@ -129,35 +129,38 @@
                             -1px -1px 0 #000;
             }
 
-            .title-play-counts {
-                display: flex;
-                justify-content: flex-end;
-                gap: 8px;
-                font-size: 17px;
-                white-space: nowrap;
-            }
-
             .play-count-badge {
-                display: inline-flex;
+                display: flex;
                 align-items: baseline;
-                gap: 6px;
-                padding: 3px 9px;
-                border-radius: 999px;
+                justify-content: space-between;
+                gap: 14px;
                 color: #b9d9ff;
-                background: rgba(20, 70, 145, 0.75);
-                border: 1px solid rgba(130, 190, 255, 0.55);
             }
 
             .play-count-badge.official {
                 color: #ffe7a3;
-                background: rgba(125, 78, 10, 0.72);
-                border-color: rgba(255, 205, 95, 0.6);
             }
 
             .play-count-value {
                 color: #fff;
-                font-size: 22px;
+                font-size: 30px;
                 font-weight: bold;
+            }
+
+            .play-count-card {
+                flex: 0 0 230px;
+            }
+
+            .play-count-card h2 {
+                font-size: 22px;
+                white-space: nowrap;
+            }
+
+            .play-count-list {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                font-size: 22px;
             }
             
             /* BESTセクション - 横並びレイアウト */
@@ -223,7 +226,7 @@
             .bpi-card {
                 background: linear-gradient(135deg, rgba(50, 30, 80, 0.9), rgba(30, 20, 50, 0.9));
                 border: 2px solid rgba(206, 147, 216, 0.5);
-                flex: 1.5;
+                flex: 1.15;
                 display: none; /* デフォルトで非表示 */
             }
             
@@ -744,7 +747,7 @@
             officialPlayBadge.style.display = 'none';
         } else {
             document.querySelector('.official-play-count').textContent = Number(officialPlayCount) || 0;
-            officialPlayBadge.style.display = 'inline-flex';
+            officialPlayBadge.style.display = 'flex';
         }
         
         // BEST情報
@@ -1074,10 +1077,6 @@
                     <div class="title-info">
                         <div class="title-level-difficulty"></div>
                         <div class="title-notes"></div>
-                        <div class="title-play-counts">
-                            <span class="play-count-badge counter">COUNTER <span class="play-count-value counter-play-count">0</span></span>
-                            <span class="play-count-badge official">OFFICIAL <span class="play-count-value official-play-count">0</span></span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1100,6 +1099,15 @@
                 <div class="best-card bpi-card">
                     <h2>📈 BPI INFO</h2>
                     <div class="bpi-grid bpi-info"></div>
+                </div>
+
+                <!-- プレー回数カード -->
+                <div class="best-card play-count-card">
+                    <h2>🎮 PLAY COUNT</h2>
+                    <div class="play-count-list">
+                        <div class="play-count-badge counter">INFDC <span class="play-count-value counter-play-count">0</span></div>
+                        <div class="play-count-badge official">CSV <span class="play-count-value official-play-count">0</span></div>
+                    </div>
                 </div>
             </div>
             

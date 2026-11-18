@@ -22,6 +22,20 @@ except ImportError:
 from src.game_overlay import HtmlLogOverlay, LOG_RECTS
 
 
+class HistoryTemplateLabelTests(unittest.TestCase):
+    def test_play_counts_use_infdc_and_csv_in_best_row(self):
+        template_dir = Path(__file__).resolve().parents[1] / 'template'
+        for relative_path in ('history_cursong.html', 'v2/history_cursong.html'):
+            with self.subTest(template=relative_path):
+                html = (template_dir / relative_path).read_text(encoding='utf-8')
+                self.assertIn('INFDC', html)
+                self.assertIn('CSV', html)
+                self.assertNotIn('COUNTER', html)
+                self.assertNotIn('OFFICIAL', html)
+                self.assertIn('PLAY COUNT', html)
+                self.assertIn('best-section', html)
+
+
 @unittest.skipIf(QWebEngineView is None, 'Qt WebEngine native libraries are unavailable')
 class GameOverlayHtmlTests(unittest.TestCase):
     @classmethod
@@ -109,6 +123,12 @@ class GameOverlayHtmlTests(unittest.TestCase):
         self.assertIn('1800', self.javascript('document.body.innerText'))
         self.assertEqual(self.javascript("document.querySelector('.counter-play-count').textContent"), '12')
         self.assertEqual(self.javascript("document.querySelector('.official-play-count').textContent"), '37')
+        self.assertTrue(self.javascript(
+            "document.querySelector('.play-count-badge.counter').textContent.trim().startsWith('INFDC')"
+        ))
+        self.assertTrue(self.javascript(
+            "document.querySelector('.play-count-badge.official').textContent.trim().startsWith('CSV')"
+        ))
         self.assert_fits()
         self.history['music'] = 'Updated title'
         self.connections[-1].send(json.dumps({'type': 'history_cursong', 'data': self.history}))
