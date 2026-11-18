@@ -33,6 +33,7 @@ class UIText:
         english = 'English'
         
         # ヘルプメニュー
+        manual_update = '最新版に更新(&U)...'
         about = 'バージョン情報(&A)'
         documentation = 'ドキュメント(&D)'
     
@@ -129,6 +130,8 @@ class UIText:
         random_lane_band_tip = '1920×1080映像用。初期値は上端55・高さ20px。高さは1～300px。広げすぎると近接ノーツがつながる場合があります。変更は次のプレーから適用され、変更後の検出帯でREGULARまたはMIRRORの再登録が必要です。'
         
         other_group = 'その他'
+        enable_auto_update = '起動時に自動で最新版を確認する'
+        enable_auto_update_tip = '変更は次回起動時から有効です。無効時もヘルプメニューから手動で更新できます。'
         image_save_path = '画像保存先:'
         autoload_offset = '本日の成果に含めるオフセット:'
         autoload_offset_unit = '時間'
@@ -227,6 +230,9 @@ class UIText:
         failed_reconnection_to_obs = 'OBSへの再接続に失敗しました'
         failed_reconnection_to_obs_with_error = 'OBSへの再接続に失敗しました:\n{e}'
         target_source_removed = '監視対象ソースをクリアしました'
+        checking_update = '最新版を確認しています...'
+        already_latest = '最新版を使用しています。'
+        update_check_failed = '最新版を確認できませんでした。ネットワーク接続を確認してください。'
 
         major_update = '本アプリはv3へとメジャーアップデートされました。\n\n'
         major_update += '注意\n従来のHTMLファイルは使えません。\nv3のHTMLはtemplateフォルダにあります。再設定をお願いします。\n\n'

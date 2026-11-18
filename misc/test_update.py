@@ -166,6 +166,36 @@ class UpdateTests(unittest.TestCase):
             self.assertFalse(self.updater.check_and_update())
         self.assertEqual((self.base / 'version.txt').read_bytes(), b'old')
 
+    def test_check_result_is_available_to_manual_update_ui(self):
+        self.updater.check_for_updates = Mock(return_value=(False, '3.1.2', None))
+
+        self.assertFalse(self.updater.check_and_update())
+
+        self.assertFalse(self.updater.last_update_available)
+        self.assertEqual(self.updater.last_latest_version, '3.1.2')
+
+    def test_entry_point_guards_automatic_check_with_config(self):
+        entry = SOURCE.parents[1] / 'notes_counter.pyw'
+        tree = ast.parse(entry.read_text(encoding='utf-8'))
+        auto_guard = next(
+            node for node in ast.walk(tree)
+            if isinstance(node, ast.If)
+            and isinstance(node.test, ast.Attribute)
+            and node.test.attr == 'enable_auto_update'
+        )
+        self.assertTrue(any(
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == 'check_and_update'
+            for node in ast.walk(auto_guard)
+        ))
+        updater = Mock()
+        exec(
+            compile(ast.Module(body=[auto_guard], type_ignores=[]), str(entry), 'exec'),
+            dict(app_config=SimpleNamespace(enable_auto_update=False), updater=updater, sys=sys),
+        )
+        updater.check_and_update.assert_not_called()
+
     def test_entry_point_exits_in_main_thread_after_handoff(self):
         entry = SOURCE.parents[1] / 'notes_counter.pyw'
         tree = ast.parse(entry.read_text(encoding='utf-8'))

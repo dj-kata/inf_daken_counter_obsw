@@ -223,6 +223,12 @@ class MainWindowUI(QMainWindow):
         
         # ヘルプメニュー
         help_menu = menubar.addMenu(self.ui.menu.help)
+
+        manual_update_action = QAction(self.ui.menu.manual_update, self)
+        manual_update_action.triggered.connect(self.manual_update)
+        help_menu.addAction(manual_update_action)
+
+        help_menu.addSeparator()
         
         about_action = QAction(self.ui.menu.about, self)
         about_action.triggered.connect(self.show_about)
@@ -431,6 +437,10 @@ class MainWindowUI(QMainWindow):
     
     def show_about(self):
         """バージョン情報表示（サブクラスで実装）"""
+        raise NotImplementedError
+
+    def manual_update(self):
+        """手動アップデート（サブクラスで実装）"""
         raise NotImplementedError
     
     def save_image(self):

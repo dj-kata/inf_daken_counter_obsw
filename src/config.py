@@ -31,6 +31,7 @@ class Config:
         # 基本機能
         self.keep_on_top = False # 常時最前表示
         '''常に最前表示する'''
+        self.enable_auto_update = True
 
         # ツイート機能関連
         self.enable_autotweet = False # 終了時の自動ツイート
@@ -122,6 +123,7 @@ class Config:
                     self.direct_capture_title = config_data.get("direct_capture_title", "beatmania IIDX INFINITAS")
                     self.direct_capture_all_monitors = config_data.get("direct_capture_all_monitors", False)
                     self.keep_on_top = config_data.get("keep_on_top", False)
+                    self.enable_auto_update = config_data.get("enable_auto_update", True)
                     self.enable_autotweet = config_data.get("enable_autotweet", False)
                     self.enable_judge = config_data.get("enable_judge", True)
                     self.enable_folder_updates = config_data.get("enable_folder_updates", False)
@@ -228,6 +230,7 @@ class Config:
             "direct_capture_title": self.direct_capture_title,
             "direct_capture_all_monitors": self.direct_capture_all_monitors,
             "keep_on_top": self.keep_on_top,
+            "enable_auto_update": self.enable_auto_update,
             "enable_autotweet": self.enable_autotweet,
             "enable_judge": self.enable_judge,
             "enable_folder_updates": self.enable_folder_updates,

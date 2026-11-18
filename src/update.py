@@ -45,6 +45,8 @@ class GitHubUpdater:
         self.status_var = None
         self.progress_bar = None
         self.update_pending = False
+        self.last_update_available = None
+        self.last_latest_version = None
 
     def ico_path(self, relative_path):
         try:
@@ -57,7 +59,8 @@ class GitHubUpdater:
         # self.ico=self.ico_path('icon.ico')
         ret = None
         url = f'https://github.com/{self.github_author}/{self.github_repo}/tags'
-        r = requests.get(url)
+        r = requests.get(url, timeout=15)
+        r.raise_for_status()
         soup = BeautifulSoup(r.text,features="html.parser")
         for tag in soup.find_all('a'):
             if 'releases/tag/' in tag['href']:
@@ -272,6 +275,8 @@ exit /b 1
         try:
             # アップデート確認（GUIなし）
             is_update_available, latest_version, download_url = self.check_for_updates()
+            self.last_update_available = is_update_available
+            self.last_latest_version = latest_version
             logger.info(f"available:{is_update_available}, latest:{latest_version}, url:{download_url}")
             
             if is_update_available:

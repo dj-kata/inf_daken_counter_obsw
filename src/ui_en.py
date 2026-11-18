@@ -33,6 +33,7 @@ class UIText:
         english = 'English'
         
         # Help menu
+        manual_update = 'Check for &Updates...'
         about = '&About'
         documentation = '&Documentation'
     
@@ -129,6 +130,8 @@ class UIText:
         random_lane_band_tip = 'For 1920×1080 video. Defaults: top 55, height 20px. Height: 1–300px. A tall band may merge nearby notes. Changes apply from the next play and require recording REGULAR or MIRROR again with the new band.'
         
         other_group = 'Other'
+        enable_auto_update = 'Automatically check for updates at startup'
+        enable_auto_update_tip = 'Takes effect on the next launch. You can still check manually from the Help menu when disabled.'
         image_save_path = 'Image save path:'
         autoload_offset = "Today's results offset:"
         autoload_offset_unit = 'h'
@@ -227,6 +230,9 @@ class UIText:
         failed_reconnection_to_obs = 'Failed to reconnect to OBS'
         failed_reconnection_to_obs_with_error = 'Failed to reconnect to OBS:\n{e}'
         target_source_removed = 'Monitored source cleared'
+        checking_update = 'Checking for updates...'
+        already_latest = 'You are using the latest version.'
+        update_check_failed = 'Could not check for updates. Check your network connection.'
         
         major_update = 'This app has been majorly updated to v3.\n\n'
         major_update += 'Note:\nPrevious HTML files cannot be used.\nv3 HTML files are located in the template folder. Please reconfigure them.\n\n'

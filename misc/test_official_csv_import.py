@@ -36,6 +36,12 @@ def make_result(score=1000, bp=20, lamp=clear_lamp.clear):
 
 
 class OfficialCsvParserTests(unittest.TestCase):
+    def test_import_dialog_uses_compact_size(self):
+        source = (Path(__file__).resolve().parents[1] / "notes_counter.pyw").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("self.resize(500, 360)", source)
+
     def test_parses_played_charts_and_skips_zero_scores(self):
         text = (
             "バージョン,タイトル,アーティスト,NORMAL スコア,NORMAL 最終スコア更新時刻,"

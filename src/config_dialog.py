@@ -355,6 +355,10 @@ class ConfigDialog(QDialog):
         self.keep_on_top_check = QCheckBox(self.ui.feature.keep_on_top)
         other_layout.addRow(self.keep_on_top_check)
 
+        self.enable_auto_update_check = QCheckBox(self.ui.feature.enable_auto_update)
+        self.enable_auto_update_check.setToolTip(self.ui.feature.enable_auto_update_tip)
+        other_layout.addRow(self.enable_auto_update_check)
+
         layout.addWidget(other_group)
         layout.addStretch()
 
@@ -994,6 +998,7 @@ class ConfigDialog(QDialog):
         self.voice_pan_spin.setValue(self.config.voice_pan)
         # 機能設定
         self.keep_on_top_check.setChecked(self.config.keep_on_top)
+        self.enable_auto_update_check.setChecked(self.config.enable_auto_update)
         self.enable_autotweet_check.setChecked(self.config.enable_autotweet)
         self.enable_judge_check.setChecked(self.config.enable_judge)
         self.enable_folder_updates_check.setChecked(self.config.enable_folder_updates)
@@ -1118,6 +1123,7 @@ class ConfigDialog(QDialog):
         self.config.voice_pan = self.voice_pan_spin.value()
         # 機能設定
         self.config.keep_on_top = self.keep_on_top_check.isChecked()
+        self.config.enable_auto_update = self.enable_auto_update_check.isChecked()
         self.config.enable_autotweet = self.enable_autotweet_check.isChecked()
         self.config.enable_judge = self.enable_judge_check.isChecked()
         self.config.enable_folder_updates = self.enable_folder_updates_check.isChecked()

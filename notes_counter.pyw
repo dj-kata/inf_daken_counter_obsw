@@ -80,6 +80,18 @@ try:
 except Exception:
     SWVER = "0.0.0"
 
+
+def create_updater():
+    return GitHubUpdater(
+        github_author='dj-kata',
+        github_repo='inf_daken_counter_obsw',
+        zipfile_basename='inf_daken_counter',
+        current_version=SWVER,
+        main_exe_name="notes_counter.exe",
+        updator_exe_name="notes_counter.exe",
+    )
+
+
 class MusicSelectScoreImportDialog(QDialog):
     """選曲画面から認識したスコアを確認して手動登録するダイアログ"""
 
@@ -145,7 +157,7 @@ class OfficialCsvImportDialog(QDialog):
         super().__init__(parent)
         self.ui = ui
         self.setWindowTitle(ui.official_csv_import.title)
-        self.resize(850, 560)
+        self.resize(500, 360)
 
         layout = QVBoxLayout(self)
         description = QLabel(ui.official_csv_import.description)
@@ -291,9 +303,10 @@ class MainWindow(MainWindowUI):
     manual_music_select_import_requested = Signal()
     bpim2_fetch_finished = Signal(object, object)
     
-    def __init__(self):
+    def __init__(self, config=None, updater=None):
         # 設定とデータベースの初期化
-        self.config = Config()
+        self.config = config or Config()
+        self.updater = updater or create_updater()
         super().__init__(self.config)
         self.save_image_requested.connect(self.save_image)
         self.manual_music_select_import_requested.connect(self.manual_music_select_import)
@@ -691,6 +704,27 @@ class MainWindow(MainWindowUI):
         QMessageBox.about(self, self.ui.window.about_title, 
                          f"INFINITAS daken counter {SWVER}\n\n"
                          "author: dj-kata")
+
+    def manual_update(self):
+        """ヘルプメニューから更新を確認する。"""
+        self.statusBar().showMessage(self.ui.message.checking_update)
+        QApplication.processEvents()
+        updated = self.updater.check_and_update()
+        self.statusBar().clearMessage()
+        if updated:
+            QApplication.quit()
+        elif self.updater.last_latest_version is None:
+            QMessageBox.warning(
+                self,
+                self.ui.message.warning_title,
+                self.ui.message.update_check_failed,
+            )
+        elif not self.updater.last_update_available:
+            QMessageBox.information(
+                self,
+                self.ui.message.info_title,
+                self.ui.message.already_latest,
+            )
     
     def save_image(self, skip_no_update:bool=False, detailed_result:DetailedResult=None, cache_only:bool=False):
         """
@@ -1745,7 +1779,7 @@ def check_resource():
     download_latestresource(storage_acc, musicnamechanges_filename)
     logger.debug('end')
 
-def main():
+def main(config=None, updater=None):
     """メイン関数"""
     import threading
     threading.Thread(target=check_resource, daemon=True).start()
@@ -1756,7 +1790,7 @@ def main():
     app = QApplication(sys.argv)
     app.setStyle("Fusion")  # モダンなスタイルを適用
     
-    window = MainWindow()
+    window = MainWindow(config=config, updater=updater)
     window.setWindowIcon(QIcon('src/icon.ico'))
     window.show()
     
@@ -1764,17 +1798,10 @@ def main():
 
 
 if __name__ == "__main__":
-    updater = GitHubUpdater(
-        github_author='dj-kata',
-        github_repo='inf_daken_counter_obsw',
-        zipfile_basename='inf_daken_counter',
-        current_version=SWVER,           # 現在のバージョン
-        main_exe_name="notes_counter.exe",  # メインプログラムのexe名
-        updator_exe_name="notes_counter.exe",           # アップデート用プログラムのexe名
-    )
+    app_config = Config()
+    updater = create_updater()
+    if app_config.enable_auto_update:
+        if updater.check_and_update():
+            sys.exit(0)
     
-    # メインプログラムから呼び出す場合
-    if updater.check_and_update():
-        sys.exit(0)
-    
-    main()
+    main(config=app_config, updater=updater)
