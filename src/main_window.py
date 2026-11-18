@@ -173,6 +173,10 @@ class MainWindowUI(QMainWindow):
         manual_music_select_import_action.setShortcut("F7")
         manual_music_select_import_action.triggered.connect(self.manual_music_select_import)
         file_menu.addAction(manual_music_select_import_action)
+
+        official_csv_import_action = QAction(self.ui.menu.official_csv_import, self)
+        official_csv_import_action.triggered.connect(self.official_csv_import)
+        file_menu.addAction(official_csv_import_action)
         
         file_menu.addSeparator() ##############################################
         
@@ -435,6 +439,10 @@ class MainWindowUI(QMainWindow):
 
     def manual_music_select_import(self):
         """選曲画面から手動でスコア登録（サブクラスで実装）"""
+        raise NotImplementedError
+
+    def official_csv_import(self):
+        """公式サイトCSVを登録（サブクラスで実装）"""
         raise NotImplementedError
     
     def tweet(self):

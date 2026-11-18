@@ -20,6 +20,7 @@ class UIText:
         obs_config = 'OBS制御設定(&O)...'
         save_image = '画像保存(&S)'
         manual_music_select_import = '選曲画面から手動登録(&R)'
+        official_csv_import = '公式CSVをインポート(&I)...'
         exit = '終了(&X)'
         
         # ツールメニュー
@@ -362,6 +363,29 @@ class UIText:
         invalid_chart_message = '難易度は SPA, SPH, DPA, DPL などの形式で入力してください。'
         registered = '選曲画面から手動登録しました。 -> {result}'
         not_registered = '登録対象の更新がありませんでした。'
+
+    class official_csv_import:
+        title = '公式CSVをインポート'
+        description = '公式サイトからダウンロードしたSPまたはDPのCSVを貼り付けてください。'
+        play_style = 'プレースタイル:'
+        csv_text = 'CSV:'
+        import_button = 'インポート'
+        empty = 'CSVを貼り付けてください。'
+        parse_error_title = 'CSVを読み込めません'
+        correction_title = '保存済みデータの補正確認'
+        correction_message = ('公式CSVより高い自己ベストが保存されています。\n'
+                              '{charts}譜面、{logs}件のプレーログを削除して補正しますか？\n'
+                              '補正対象を確認して「はい」を選んでください。')
+        correction_chart = '譜面'
+        correction_saved = '保存済みベスト'
+        correction_official = '公式ベスト'
+        correction_logs = '削除ログ数'
+        best_format = 'スコア {score} / BP {bp} / {lamp}'
+        completed = ('{imported}件を登録し、同一ベスト{skipped}件をスキップしました。\n'
+                     '補正: {charts}譜面（削除したプレーログ {deleted}件）\n'
+                     '曲情報が見つからずスキップ: {unknown}件')
+        error = '公式CSVのインポートに失敗しました。\n{message}'
+        in_progress = '公式CSVをインポート中です。完了してから終了してください。'
 
     class mode:
         '''検出モード用'''

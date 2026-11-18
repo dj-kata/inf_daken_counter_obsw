@@ -20,6 +20,7 @@ class UIText:
         obs_config = 'OBS Settings(&O)...'
         save_image = '&Save Image'
         manual_music_select_import = 'Register from Song Selection(&R)'
+        official_csv_import = 'Import Official CSV(&I)...'
         exit = 'E&xit'
         
         # ツールメニュー
@@ -361,6 +362,29 @@ class UIText:
         invalid_chart_message = 'Enter a chart such as SPA, SPH, DPA, or DPL.'
         registered = 'Registered from song selection screen. -> {result}'
         not_registered = 'No score update to register.'
+
+    class official_csv_import:
+        title = 'Import Official CSV'
+        description = 'Paste an SP or DP CSV downloaded from the official website.'
+        play_style = 'Play style:'
+        csv_text = 'CSV:'
+        import_button = 'Import'
+        empty = 'Paste the CSV data.'
+        parse_error_title = 'Could not read CSV'
+        correction_title = 'Confirm saved data correction'
+        correction_message = ('Some saved personal bests exceed the official CSV.\n'
+                              'Delete {logs} play logs across {charts} charts to correct them?\n'
+                              'Review the list and select Yes to continue.')
+        correction_chart = 'Chart'
+        correction_saved = 'Saved best'
+        correction_official = 'Official best'
+        correction_logs = 'Logs to delete'
+        best_format = 'Score {score} / BP {bp} / {lamp}'
+        completed = ('Imported {imported} records and skipped {skipped} identical bests.\n'
+                     'Corrected: {charts} charts ({deleted} play logs deleted)\n'
+                     'Skipped because chart data was not found: {unknown}')
+        error = 'Official CSV import failed.\n{message}'
+        in_progress = 'An official CSV import is in progress. Wait for it to finish before exiting.'
 
     class mode:
         '''検出モード用'''

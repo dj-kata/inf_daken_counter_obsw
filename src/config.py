@@ -26,6 +26,7 @@ class Config:
         """GDI直接取得用。DXCAM直接取得では使用しない。"""
         self.autoload_offset = 4
         self.main_window_geometry = None
+        self.official_csv_import_style = "SP"
 
         # 基本機能
         self.keep_on_top = False # 常時最前表示
@@ -141,6 +142,12 @@ class Config:
                     )
                     self.autoload_offset = config_data.get("autoload_offset", 0)
                     self.main_window_geometry = config_data.get("main_window_geometry", None)
+                    official_style = str(
+                        config_data.get("official_csv_import_style", "SP")
+                    ).upper()
+                    self.official_csv_import_style = (
+                        official_style if official_style in ("SP", "DP") else "SP"
+                    )
                     
                     # ウィンドウ位置設定
                     window_config = config_data.get("window", {})
@@ -236,6 +243,7 @@ class Config:
             "spout_sender_name": self.spout_sender_name,
             "autoload_offset": self.autoload_offset,
             "main_window_geometry": self.main_window_geometry,
+            "official_csv_import_style": self.official_csv_import_style,
             "obs_control_settings": self.obs_control_settings,
             "monitor_source_name": self.monitor_source_name,
             "obs_scene_collection": self.obs_scene_collection,

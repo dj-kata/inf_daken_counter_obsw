@@ -11,11 +11,17 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QLabel,
     QLineEdit,
     QMessageBox,
+    QPlainTextEdit,
+    QProgressDialog,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
     QVBoxLayout,
 )
-from PySide6.QtCore import QTimer,Qt,Signal
+from PySide6.QtCore import QThread,QTimer,Qt,Signal
 import traceback
 import datetime
 from pathlib import Path
@@ -55,6 +61,7 @@ from src.update import GitHubUpdater
 from src.random_lane_analysis import RandomLaneAnalysis
 from src.voice_guidance import VoiceGuidance
 from src.game_overlay import GameOverlay
+from src.official_csv_import import OfficialCsvImporter, parse_official_csv
 
 sys.path.append('infnotebook')
 from define import define
@@ -126,6 +133,144 @@ class MusicSelectScoreImportDialog(QDialog):
     @property
     def edited_chart(self) -> str:
         return self.chart_combo.currentText().strip()
+
+
+class OfficialCsvImportDialog(QDialog):
+    """公式サイトのCSVを貼り付けるダイアログ。"""
+
+    def __init__(self, ui, initial_style="SP", parent=None):
+        super().__init__(parent)
+        self.ui = ui
+        self.setWindowTitle(ui.official_csv_import.title)
+        self.resize(850, 560)
+
+        layout = QVBoxLayout(self)
+        description = QLabel(ui.official_csv_import.description)
+        description.setWordWrap(True)
+        layout.addWidget(description)
+
+        form_layout = QFormLayout()
+        self.style_combo = QComboBox()
+        self.style_combo.addItems(["SP", "DP"])
+        initial_index = self.style_combo.findText(str(initial_style).upper())
+        self.style_combo.setCurrentIndex(max(0, initial_index))
+        form_layout.addRow(ui.official_csv_import.play_style, self.style_combo)
+        layout.addLayout(form_layout)
+
+        layout.addWidget(QLabel(ui.official_csv_import.csv_text))
+        self.csv_edit = QPlainTextEdit()
+        self.csv_edit.setLineWrapMode(QPlainTextEdit.NoWrap)
+        layout.addWidget(self.csv_edit, 1)
+
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.button(QDialogButtonBox.Ok).setText(ui.official_csv_import.import_button)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+    @property
+    def selected_style(self) -> play_style:
+        return play_style.sp if self.style_combo.currentText() == "SP" else play_style.dp
+
+    @property
+    def selected_style_name(self) -> str:
+        return self.style_combo.currentText()
+
+    @property
+    def csv_text(self) -> str:
+        return self.csv_edit.toPlainText()
+
+
+class OfficialCsvCorrectionDialog(QDialog):
+    """公式値を超える保存済みベストと削除件数を一覧表示する。"""
+
+    def __init__(self, ui, corrections, total_logs, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(ui.official_csv_import.correction_title)
+        self.resize(900, 500)
+
+        layout = QVBoxLayout(self)
+        message = QLabel(
+            ui.official_csv_import.correction_message.format(
+                charts=len(corrections), logs=total_logs
+            )
+        )
+        message.setWordWrap(True)
+        layout.addWidget(message)
+
+        table = QTableWidget(len(corrections), 4)
+        table.setHorizontalHeaderLabels(
+            [
+                ui.official_csv_import.correction_chart,
+                ui.official_csv_import.correction_saved,
+                ui.official_csv_import.correction_official,
+                ui.official_csv_import.correction_logs,
+            ]
+        )
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setAlternatingRowColors(True)
+        for row, correction in enumerate(corrections):
+            chart = get_chart_name(correction.style, correction.difficulty)
+            saved_bp = "---" if correction.saved_bp is None else str(correction.saved_bp)
+            official_bp = "---" if correction.official_bp is None else str(correction.official_bp)
+            table.setItem(row, 0, QTableWidgetItem(f"{correction.title} ({chart})"))
+            table.setItem(
+                row,
+                1,
+                QTableWidgetItem(
+                    ui.official_csv_import.best_format.format(
+                        score=correction.saved_score,
+                        bp=saved_bp,
+                        lamp=str(correction.saved_lamp),
+                    )
+                ),
+            )
+            table.setItem(
+                row,
+                2,
+                QTableWidgetItem(
+                    ui.official_csv_import.best_format.format(
+                        score=correction.official_score,
+                        bp=official_bp,
+                        lamp=str(correction.official_lamp),
+                    )
+                ),
+            )
+            table.setItem(row, 3, QTableWidgetItem(str(correction.delete_count)))
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        for column in range(1, 4):
+            table.horizontalHeader().setSectionResizeMode(column, QHeaderView.ResizeToContents)
+        layout.addWidget(table, 1)
+
+        button_box = QDialogButtonBox(QDialogButtonBox.Yes | QDialogButtonBox.No)
+        button_box.button(QDialogButtonBox.Yes).setText(ui.dialog.yes)
+        button_box.button(QDialogButtonBox.No).setText(ui.dialog.no)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+
+
+class OfficialCsvImportWorker(QThread):
+    """公式CSVの登録処理をバックグラウンドで実行する。"""
+
+    progress = Signal(int, int)
+    completed = Signal(object)
+    error = Signal(str)
+
+    def __init__(self, importer, plan, parent=None):
+        super().__init__(parent)
+        self.importer = importer
+        self.plan = plan
+
+    def run(self):
+        try:
+            result = self.importer.apply(self.plan, self.progress.emit)
+            self.completed.emit(result)
+        except Exception as e:
+            logger.error(f"公式CSVインポートエラー: {traceback.format_exc()}")
+            self.error.emit(str(e))
+
 
 class MainWindow(MainWindowUI):
     """メインウィンドウクラス - 制御ロジックを担当"""
@@ -1123,6 +1268,112 @@ class MainWindow(MainWindowUI):
 
         self.statusBar().showMessage(self.ui.manual_music_select_import.not_registered, 5000)
         return False
+
+    def official_csv_import(self):
+        """貼り付けられた公式サイトCSVを自己ベストとして登録する。"""
+        worker = getattr(self, "_official_csv_worker", None)
+        if worker and worker.isRunning():
+            self._official_csv_progress.show()
+            self._official_csv_progress.raise_()
+            return False
+
+        dialog = OfficialCsvImportDialog(
+            self.ui,
+            getattr(self.config, "official_csv_import_style", "SP"),
+            self,
+        )
+        if dialog.exec() != QDialog.Accepted:
+            return False
+
+        if not dialog.csv_text.strip():
+            QMessageBox.warning(
+                self,
+                self.ui.official_csv_import.parse_error_title,
+                self.ui.official_csv_import.empty,
+            )
+            return False
+
+        parsed = parse_official_csv(dialog.csv_text)
+        if parsed.errors:
+            details = "\n".join(parsed.errors[:10])
+            if len(parsed.errors) > 10:
+                details += f"\n... ({len(parsed.errors) - 10} more)"
+            QMessageBox.warning(
+                self,
+                self.ui.official_csv_import.parse_error_title,
+                details,
+            )
+            return False
+
+        importer = OfficialCsvImporter(self.result_database)
+        plan = importer.build_plan(parsed.bests, dialog.selected_style)
+        if plan.delete_indexes:
+            correction_dialog = OfficialCsvCorrectionDialog(
+                self.ui,
+                plan.corrections,
+                len(plan.delete_indexes),
+                self,
+            )
+            if correction_dialog.exec() != QDialog.Accepted:
+                return False
+
+        total = len(plan.results)
+        self._official_csv_progress = QProgressDialog(
+            self.ui.status.processing,
+            "",
+            0,
+            max(total, 1),
+            self,
+        )
+        self._official_csv_progress.setWindowTitle(self.ui.official_csv_import.title)
+        self._official_csv_progress.setCancelButton(None)
+        self._official_csv_progress.setWindowModality(Qt.WindowModal)
+        self._official_csv_progress.setMinimumDuration(0)
+        self._official_csv_progress.setValue(0)
+
+        self._official_csv_worker = OfficialCsvImportWorker(importer, plan, self)
+        self._official_csv_pending_style = dialog.selected_style_name
+        self._official_csv_worker.progress.connect(self._on_official_csv_progress)
+        self._official_csv_worker.completed.connect(self._on_official_csv_completed)
+        self._official_csv_worker.error.connect(self._on_official_csv_error)
+        self._official_csv_worker.start()
+        return True
+
+    def _on_official_csv_progress(self, current, total):
+        self._official_csv_progress.setMaximum(max(total, 1))
+        self._official_csv_progress.setValue(current)
+        self._official_csv_progress.setLabelText(
+            f"{self.ui.status.processing} {current}/{total}"
+        )
+
+    def _on_official_csv_completed(self, result):
+        self._official_csv_progress.setValue(self._official_csv_progress.maximum())
+        self._official_csv_progress.close()
+        self.config.official_csv_import_style = self._official_csv_pending_style
+        self.config.save_config()
+        if self.score_viewer:
+            self.score_viewer.refresh_data()
+        self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
+        self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
+        QMessageBox.information(
+            self,
+            self.ui.message.completed_title,
+            self.ui.official_csv_import.completed.format(
+                imported=result.imported,
+                skipped=result.skipped,
+                charts=result.corrected_charts,
+                deleted=result.deleted,
+                unknown=result.unknown_charts,
+            ),
+        )
+
+    def _on_official_csv_error(self, message):
+        self._official_csv_progress.close()
+        QMessageBox.critical(
+            self,
+            self.ui.message.error_title,
+            self.ui.official_csv_import.error.format(message=message),
+        )
     
     def process_play_mode(self):
         """プレー画面での処理"""
@@ -1226,6 +1477,15 @@ class MainWindow(MainWindowUI):
     
     def closeEvent(self, event):
         """アプリ終了時に実行する処理"""
+        worker = getattr(self, "_official_csv_worker", None)
+        if worker and worker.isRunning():
+            QMessageBox.warning(
+                self,
+                self.ui.official_csv_import.title,
+                self.ui.official_csv_import.in_progress,
+            )
+            event.ignore()
+            return
         if self._closing:
             if self.voice_guidance.is_finished():
                 event.accept()

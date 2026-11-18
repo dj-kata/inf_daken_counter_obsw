@@ -1,0 +1,199 @@
+"""Run: .codex-venv/bin/python -B -m unittest misc.test_official_csv_import"""
+
+import unittest
+import tempfile
+from pathlib import Path
+from types import SimpleNamespace
+
+from src.classes import clear_lamp, detect_mode, difficulty, play_style
+from src.config import Config
+from src.official_csv_import import (
+    OfficialCsvBest,
+    OfficialCsvImporter,
+    OfficialCsvImportPlan,
+    parse_official_csv,
+    result_exceeds_official,
+)
+from src.result import OneResult, PlayOption
+
+
+def make_result(score=1000, bp=20, lamp=clear_lamp.clear):
+    return OneResult(
+        title="TEST SONG",
+        play_style=play_style.sp,
+        difficulty=difficulty.another,
+        lamp=lamp,
+        timestamp=123,
+        playspeed=None,
+        option=PlayOption(),
+        detect_mode=detect_mode.result,
+        score=score,
+        bp=bp,
+    )
+
+
+class OfficialCsvParserTests(unittest.TestCase):
+    def test_parses_played_charts_and_skips_zero_scores(self):
+        text = (
+            "バージョン,タイトル,アーティスト,NORMAL スコア,NORMAL 最終スコア更新時刻,"
+            "NORMAL ミスカウント,NORMAL クリアタイプ,NORMAL プレー回数,NORMAL 最終プレー日時,"
+            "ANOTHER スコア,ANOTHER 最終スコア更新時刻,ANOTHER ミスカウント,"
+            "ANOTHER クリアタイプ,ANOTHER プレー回数,ANOTHER 最終プレー日時,\n"
+            "1st,TEST SONG,artist,0,2026-01-01 00:00,---,FAILED,1,2026-01-01 00:00,"
+            "1234,2026-01-02 00:00,12,HARD CLEAR,2,2026-01-03 00:00,\n"
+        )
+
+        parsed = parse_official_csv(text)
+
+        self.assertEqual(parsed.errors, [])
+        self.assertEqual(len(parsed.bests), 1)
+        self.assertEqual(parsed.bests[0].difficulty, difficulty.another)
+        self.assertEqual(parsed.bests[0].score, 1234)
+        self.assertEqual(parsed.bests[0].bp, 12)
+        self.assertEqual(parsed.bests[0].lamp, clear_lamp.hard)
+
+    def test_accepts_scored_no_play_and_missing_bp(self):
+        text = (
+            "タイトル,NORMAL スコア,NORMAL ミスカウント,NORMAL クリアタイプ\n"
+            "TEST SONG,650,---,NO PLAY\n"
+        )
+        parsed = parse_official_csv(text)
+
+        self.assertEqual(parsed.errors, [])
+        self.assertEqual(parsed.bests[0].bp, None)
+        self.assertEqual(parsed.bests[0].lamp, clear_lamp.noplay)
+
+    def test_last_selected_style_is_persisted(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config_path = Path(directory) / "config.json"
+            config = Config(str(config_path))
+            self.assertEqual(config.official_csv_import_style, "SP")
+
+            config.official_csv_import_style = "DP"
+            config.save_config()
+
+            self.assertEqual(
+                Config(str(config_path)).official_csv_import_style,
+                "DP",
+            )
+
+
+class OfficialCsvCorrectionTests(unittest.TestCase):
+    def test_detects_score_bp_and_lamp_overruns(self):
+        official = OfficialCsvBest(
+            "TEST SONG", difficulty.another, 1000, 20, clear_lamp.clear
+        )
+        self.assertTrue(result_exceeds_official(make_result(score=1001), official))
+        self.assertTrue(result_exceeds_official(make_result(bp=19), official))
+        self.assertTrue(result_exceeds_official(make_result(lamp=clear_lamp.hard), official))
+        self.assertFalse(result_exceeds_official(make_result(), official))
+
+    def test_build_plan_marks_only_regular_matching_logs(self):
+        over = make_result(score=1100)
+        other_chart = make_result(score=1200)
+        other_chart.title = "OTHER SONG"
+        db = SimpleNamespace()
+        db.results = [over, other_chart]
+        db.song_database = SimpleNamespace(
+            search=lambda **kwargs: SimpleNamespace(title="TEST SONG", notes=1000)
+        )
+
+        importer = OfficialCsvImporter(db)
+        official = OfficialCsvBest(
+            "TEST SONG", difficulty.another, 1000, 20, clear_lamp.clear
+        )
+
+        plan = importer.build_plan([official], play_style.sp)
+
+        self.assertEqual(plan.delete_indexes, {0})
+        self.assertEqual(len(plan.corrected_charts), 1)
+        self.assertEqual(len(plan.corrections), 1)
+        self.assertEqual(plan.corrections[0].saved_score, 1100)
+        self.assertEqual(plan.corrections[0].official_score, 1000)
+        self.assertEqual(plan.corrections[0].delete_count, 1)
+        self.assertEqual(plan.results[0].detect_mode, detect_mode.select)
+        self.assertEqual(plan.results[0].timestamp, 0)
+
+    def test_title_fallback_absorbs_symbols_and_accents(self):
+        song = SimpleNamespace(
+            title="Ubertreffen",
+            play_style=play_style.sp,
+            difficulty=difficulty.another,
+            notes=1000,
+        )
+        db = SimpleNamespace(
+            results=[],
+            song_database=SimpleNamespace(
+                songs={"song": song},
+                search=lambda **kwargs: None,
+            ),
+        )
+        importer = OfficialCsvImporter(db)
+        official = OfficialCsvBest(
+            "Übertreffen", difficulty.another, 1000, 20, clear_lamp.clear
+        )
+
+        plan = importer.build_plan([official], play_style.sp)
+
+        self.assertEqual(plan.unknown_charts, [])
+        self.assertEqual(plan.results[0].title, "Ubertreffen")
+
+    def test_apply_skips_an_exact_existing_best(self):
+        class FakeDatabase:
+            def __init__(self):
+                self.results = [make_result()]
+                self.saved = False
+
+            def add(self, result):
+                self.results.append(result)
+                return True
+
+            def save(self):
+                self.saved = True
+
+        db = FakeDatabase()
+        importer = OfficialCsvImporter(db)
+        result = make_result()
+        result.detect_mode = detect_mode.select
+        result.timestamp = 0
+        progress = []
+        imported = importer.apply(
+            OfficialCsvImportPlan(results=[result]),
+            lambda current, total: progress.append((current, total)),
+        )
+
+        self.assertEqual(imported.imported, 0)
+        self.assertEqual(imported.skipped, 1)
+        self.assertEqual(len(db.results), 1)
+        self.assertTrue(db.saved)
+        self.assertEqual(progress, [(1, 1)])
+
+    def test_reimport_does_not_add_the_same_best_twice(self):
+        class FakeDatabase:
+            def __init__(self):
+                self.results = []
+
+            def add(self, result):
+                self.results.append(result)
+                return True
+
+            def save(self):
+                pass
+
+        db = FakeDatabase()
+        importer = OfficialCsvImporter(db)
+        result = make_result()
+        result.detect_mode = detect_mode.select
+        plan = OfficialCsvImportPlan(results=[result])
+
+        first = importer.apply(plan)
+        second = importer.apply(plan)
+
+        self.assertEqual(first.imported, 1)
+        self.assertEqual(second.imported, 0)
+        self.assertEqual(second.skipped, 1)
+        self.assertEqual(len(db.results), 1)
+
+
+if __name__ == "__main__":
+    unittest.main()
