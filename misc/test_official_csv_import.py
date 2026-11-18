@@ -2,6 +2,8 @@
 
 import unittest
 import tempfile
+import datetime
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -51,6 +53,10 @@ class OfficialCsvParserTests(unittest.TestCase):
         self.assertEqual(parsed.bests[0].score, 1234)
         self.assertEqual(parsed.bests[0].bp, 12)
         self.assertEqual(parsed.bests[0].lamp, clear_lamp.hard)
+        self.assertEqual(
+            parsed.bests[0].registered_at,
+            int(datetime.datetime(2026, 1, 3, 0, 0).timestamp()),
+        )
 
     def test_accepts_scored_no_play_and_missing_bp(self):
         text = (
@@ -113,6 +119,47 @@ class OfficialCsvCorrectionTests(unittest.TestCase):
         self.assertEqual(plan.corrections[0].delete_count, 1)
         self.assertEqual(plan.results[0].detect_mode, detect_mode.select)
         self.assertEqual(plan.results[0].timestamp, 0)
+        self.assertIsNotNone(plan.results[0].registered_at)
+
+    def test_build_plan_copies_last_played_time_to_registered_at(self):
+        db = SimpleNamespace()
+        db.results = []
+        db.song_database = SimpleNamespace(
+            search=lambda **kwargs: SimpleNamespace(title="TEST SONG", notes=1000)
+        )
+        registered_at = int(datetime.datetime(2026, 1, 3, 0, 0).timestamp())
+        official = OfficialCsvBest(
+            "TEST SONG",
+            difficulty.another,
+            1000,
+            20,
+            clear_lamp.clear,
+            registered_at,
+        )
+
+        plan = OfficialCsvImporter(db).build_plan([official], play_style.sp)
+
+        self.assertEqual(plan.results[0].registered_at, registered_at)
+
+    def test_select_result_gets_registration_time_when_created(self):
+        before = int(time.time())
+        result = make_result()
+        result.detect_mode = detect_mode.select
+        result = OneResult(
+            title=result.title,
+            play_style=result.play_style,
+            difficulty=result.difficulty,
+            lamp=result.lamp,
+            timestamp=0,
+            playspeed=result.playspeed,
+            option=result.option,
+            detect_mode=detect_mode.select,
+            score=result.score,
+            bp=result.bp,
+        )
+
+        self.assertGreaterEqual(result.registered_at, before)
+        self.assertLessEqual(result.registered_at, int(time.time()))
 
     def test_title_fallback_absorbs_symbols_and_accents(self):
         song = SimpleNamespace(

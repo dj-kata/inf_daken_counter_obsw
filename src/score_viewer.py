@@ -366,7 +366,7 @@ class ScoreViewer(QMainWindow):
     def setup_playlog_table(self):
         """プレーログテーブルの初期設定"""
         # 列定義
-        columns = ['プレー日時', 'ランプ', 'スコア', 'BP', 'playspeed', 'プレーオプション']
+        columns = ['プレー/登録日時', 'ランプ', 'スコア', 'BP', 'playspeed', 'プレーオプション']
         
         self.playlog_table.setColumnCount(len(columns))
         self.playlog_table.setHorizontalHeaderLabels(columns)
@@ -1092,16 +1092,20 @@ class ScoreViewer(QMainWindow):
                     result.detect_mode != detect_mode.play):
                     playlogs.append(result)
             
-            # タイムスタンプで降順ソート（新しい順）
-            playlogs.sort(key=lambda x: x.timestamp, reverse=True)
+            # selectは実プレー日時が不明なため、登録日時で並べる。
+            playlogs.sort(key=self._playlog_display_timestamp, reverse=True)
             
             # テーブルに表示
             for row, log in enumerate(playlogs):
                 self.playlog_table.insertRow(row)
                 
-                # プレー日時
-                dt = datetime.fromtimestamp(log.timestamp)
-                date_str = dt.strftime('%Y/%m/%d %H:%M')
+                # resultはプレー日時、selectは登録日時
+                display_timestamp = self._playlog_display_timestamp(log)
+                date_str = (
+                    datetime.fromtimestamp(display_timestamp).strftime('%Y/%m/%d %H:%M')
+                    if display_timestamp
+                    else '不明'
+                )
                 item = QTableWidgetItem(date_str)
                 item.setTextAlignment(Qt.AlignCenter)
                 # OneResultオブジェクトを保持（削除時に使用）
@@ -1143,6 +1147,13 @@ class ScoreViewer(QMainWindow):
         except Exception as e:
             logger.error(f"プレーログ欄更新エラー: {e}")
             logger.error(traceback.format_exc())
+
+    @staticmethod
+    def _playlog_display_timestamp(result: OneResult) -> int:
+        """resultはプレー日時、selectは登録日時を表示用に返す。"""
+        if result.detect_mode == detect_mode.select:
+            return getattr(result, 'registered_at', None) or 0
+        return result.timestamp or 0
     
     @Slot()
     def on_delete_playlog(self):
@@ -1165,8 +1176,12 @@ class ScoreViewer(QMainWindow):
                 return
             
             # 確認ダイアログ
-            dt = datetime.fromtimestamp(result_to_delete.timestamp)
-            date_str = dt.strftime('%Y/%m/%d %H:%M')
+            display_timestamp = self._playlog_display_timestamp(result_to_delete)
+            date_str = (
+                datetime.fromtimestamp(display_timestamp).strftime('%Y/%m/%d %H:%M')
+                if display_timestamp
+                else '不明'
+            )
             
             reply = QMessageBox.question(
                 self,

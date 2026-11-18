@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import datetime
 import io
 import unicodedata
 from dataclasses import dataclass, field
@@ -51,6 +52,7 @@ class OfficialCsvBest:
     score: int
     bp: int | None
     lamp: clear_lamp
+    registered_at: int | None = None
 
 
 @dataclass
@@ -102,6 +104,16 @@ def _parse_int(value: str) -> int | None:
         return None
 
 
+def _parse_timestamp(value: str) -> int | None:
+    value = (value or "").strip()
+    if not value or value == "---":
+        return None
+    try:
+        return int(datetime.datetime.fromisoformat(value.replace("/", "-")).timestamp())
+    except ValueError:
+        return None
+
+
 def parse_official_csv(text: str) -> OfficialCsvParseResult:
     """貼り付けられた公式CSVを譜面単位の自己ベストへ変換する。"""
     parsed = OfficialCsvParseResult()
@@ -135,6 +147,7 @@ def parse_official_csv(text: str) -> OfficialCsvParseResult:
                     score=score,
                     bp=_parse_int(row.get(f"{name} ミスカウント")),
                     lamp=lamp,
+                    registered_at=_parse_timestamp(row.get(f"{name} 最終プレー日時")),
                 )
             )
     return parsed
@@ -250,6 +263,7 @@ class OfficialCsvImporter:
                 pre_lamp=clear_lamp.noplay,
                 pre_bp=None,
                 notes=song.notes,
+                registered_at=best.registered_at,
             )
             plan.results.append(result)
 

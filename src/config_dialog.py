@@ -152,6 +152,7 @@ class PklImportWorker(QThread):
                                        score=item[9],
                                        bp=bp,
                                        notes=notes,
+                                       registered_at=int(timestamp),
                     )
                     
                     # リザルト登録処理

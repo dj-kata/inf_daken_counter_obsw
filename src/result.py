@@ -324,6 +324,7 @@ class OneResult:
                     bpim2:float=None,
                     image_path:str=None,
                     lane_layout:str | None=None,
+                    registered_at:int | None=None,
                 ):
         self.title = title
         '''曲名'''
@@ -352,6 +353,10 @@ class OneResult:
             self.bp    = judge.bp
         self.lamp      = lamp
         self.timestamp = timestamp
+        if registered_at is None and getattr(self.detect_mode, 'name', None) == 'select':
+            registered_at = int(datetime.datetime.now().timestamp())
+        self.registered_at = registered_at
+        '''アプリへの登録日時。実際のプレー日時が不明なselectデータなどで使用する。'''
         self.option    = option
         self.playspeed = playspeed
         self.is_arcade = is_arcade
