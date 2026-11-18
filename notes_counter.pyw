@@ -57,6 +57,7 @@ from src.logger import get_logger
 logger = get_logger('notes_counter')
 
 from src.config_dialog import ConfigDialog
+from src.account_dialog import AccountManagerDialog
 from src.obs_dialog import OBSControlDialog
 from src.main_window import MainWindowUI
 from src.storage import StorageAccessor
@@ -301,7 +302,7 @@ class MainWindow(MainWindowUI):
     songinfo_update_finished = Signal(bool, str)
     save_image_requested = Signal()
     manual_music_select_import_requested = Signal()
-    bpim2_fetch_finished = Signal(object, object)
+    bpim2_fetch_finished = Signal(object, object, str)
     
     def __init__(self, config=None, updater=None):
         # 設定とデータベースの初期化
@@ -312,8 +313,14 @@ class MainWindow(MainWindowUI):
         self.manual_music_select_import_requested.connect(self.manual_music_select_import)
         self.bpim2_fetch_finished.connect(self.on_bpim2_fetch_finished)
         self.song_database = SongDatabase()
-        self.result_database = ResultDatabase(config=self.config)
-        self.rival_manager = RivalManager(parent=self)
+        self.result_database = ResultDatabase(
+            config=self.config,
+            storage_path=self.config.account_playlog_path(),
+        )
+        self.rival_manager = RivalManager(
+            parent=self,
+            cache_path=self.config.account_rival_cache_path(),
+        )
         self.result_database.rival_manager = self.rival_manager
         self.screen_reader = ScreenReader()
         self.songinfo_update_finished.connect(self.on_songinfo_update_finished)
@@ -575,6 +582,55 @@ class MainWindow(MainWindowUI):
                 self.rival_manager.start_fetch(self.config.rivals)
             logger.info("設定を更新しました")
             self.statusBar().showMessage("設定を更新しました", 3000)
+
+    def manage_accounts(self):
+        """アカウントの登録・編集画面を開く。"""
+        dialog = AccountManagerDialog(self.config, self.ui, self)
+        if dialog.exec() == QDialog.Accepted:
+            self.refresh_account_ui()
+            logger.info("アカウント設定を更新しました")
+
+    def switch_account(self, account_id):
+        """プレーログ、ライバル情報、画像保存先を指定アカウントへ切り替える。"""
+        if account_id == self.config.selected_account_id:
+            return
+        csv_worker = getattr(self, "_official_csv_worker", None)
+        if self.current_mode in (detect_mode.play, detect_mode.result) or (
+            csv_worker is not None and csv_worker.isRunning()
+        ):
+            self.refresh_account_menu()
+            self.statusBar().showMessage(self.ui.account.switch_unavailable, 5000)
+            return
+        target = next((a for a in self.config.accounts if a["id"] == account_id), None)
+        if target is None:
+            return
+
+        if self.score_viewer is not None:
+            self.score_viewer.close()
+            self.score_viewer = None
+
+        self.result_database.switch_storage(self.config.account_playlog_path(account_id))
+        if not self.config.select_account(account_id):
+            return
+        self.config.save_config()
+
+        self.rival_manager.switch_cache(self.config.account_rival_cache_path())
+        self.rival_manager.start_fetch(self.config.rivals)
+        self.select_bpim2_timer.stop()
+        self._pending_select_bpim2_args = None
+        self._scheduled_select_bpim2_args = None
+        self.result_pre = None
+        self.last_saved_song = "---"
+        self.set_today_judge()
+        self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
+        self.result_database.broadcast_graph_data(self.start_time_with_offset)
+        self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
+        if self.result_database.ws_server is not None:
+            self.result_database.ws_server.update_history_cursong_data({})
+        self.refresh_account_ui()
+        message = self.ui.account.switched.format(name=target["name"])
+        self.statusBar().showMessage(message, 5000)
+        logger.info(message)
     
     def open_obs_dialog(self):
         """OBS制御設定ダイアログを開く"""
@@ -851,8 +907,9 @@ class MainWindow(MainWindowUI):
             # 画像を保存
             filename += '.png'
             filename = escape_for_filename(filename)
-            os.makedirs(self.config.image_save_path, exist_ok=True)
-            full_path = Path(self.config.image_save_path) / filename
+            image_save_path = self.config.effective_image_save_path
+            os.makedirs(image_save_path, exist_ok=True)
+            full_path = Path(image_save_path) / filename
             logger.info(f"autosaved! dst = {full_path}")
             screen.save(full_path)
             if is_result_screen and detailed_result and result:
@@ -1111,7 +1168,7 @@ class MainWindow(MainWindowUI):
                                 # self.obs_manager.enable_source(mod_scene_name, scene_item_id)
                                 filename = os.path.splitext(source_name)[0]
                                 filename += f"_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
-                                dst = Path(self.config.image_save_path).resolve() / filename
+                                dst = Path(self.config.effective_image_save_path).resolve() / filename
                                 self.obs_manager.save_screenshot_dst(source_name, str(dst), disable_wh=True)
                                 
                 except Exception as e:
@@ -1191,12 +1248,13 @@ class MainWindow(MainWindowUI):
         if key is None or key in self._bpim2_fetching_keys:
             return
         self._bpim2_fetching_keys.add(key)
+        account_id = self.config.selected_account_id
 
         def worker():
             try:
                 bpi_detail = detailed_result._get_bpim2_bpi_detail()
                 if bpi_detail and bpi_detail.source == 'bpim2' and bpi_detail.value is not None:
-                    self.bpim2_fetch_finished.emit(result, bpi_detail)
+                    self.bpim2_fetch_finished.emit(result, bpi_detail, account_id)
                 else:
                     logger.debug(f"BPIM2 async fetch returned no value: {result}")
             except Exception:
@@ -1248,8 +1306,11 @@ class MainWindow(MainWindowUI):
         if best_detail is not None:
             self.fetch_bpim2_async(best_detail)
 
-    def on_bpim2_fetch_finished(self, result: OneResult, bpi_detail):
+    def on_bpim2_fetch_finished(self, result: OneResult, bpi_detail, account_id):
         """バックグラウンド取得したBPIM2を保存・再配信する。"""
+        if account_id != self.config.selected_account_id:
+            logger.debug("切替前のアカウントに対するBPIM2取得結果を破棄しました")
+            return
         if not result or not bpi_detail or bpi_detail.value is None:
             return
         result.bpim2 = bpi_detail.value

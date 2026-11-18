@@ -12,6 +12,7 @@ class UIText:
         """Menu bar"""
         file = '&File'
         tool = '&Tool'
+        account = '&Account'
         language = '&Language'
         help = '&Help'
         
@@ -26,6 +27,7 @@ class UIText:
         # ツールメニュー
         tweet = '&Tweet today playlog'
         score_viewer = '&Score Viewer'
+        manage_accounts = '&Register / Edit Accounts...'
         write_bpi_csv = 'Generate csv for BPI Manager(coming soon)(&B)...'
         
         # Language menu
@@ -36,6 +38,33 @@ class UIText:
         manual_update = 'Check for &Updates...'
         about = '&About'
         documentation = '&Documentation'
+
+    class account:
+        current = 'Account'
+        manage_title = 'Register / Edit Accounts'
+        add_title = 'Register Account'
+        edit_title = 'Edit Account'
+        description = 'Play logs and rival information are stored separately for each account.'
+        name = 'Account name'
+        image_path = 'Image save path'
+        image_path_default = 'Not specified (use global setting)'
+        image_path_help = 'Leave the path empty to use the image save path from the main settings.'
+        color = 'Display color'
+        choose_color = 'Choose Color...'
+        add = 'Register'
+        edit = 'Edit'
+        delete = 'Delete'
+        use_default = 'Use global setting'
+        selected_suffix = ' (Selected)'
+        validation_title = 'Account Settings'
+        name_required = 'Enter an account name.'
+        name_duplicate = 'An account with the same name is already registered.'
+        default_not_deletable = 'The default account cannot be deleted.'
+        selected_not_deletable = 'The selected account cannot be deleted. Select another account first.'
+        delete_title = 'Delete Account'
+        delete_confirm = 'Remove account "{name}" from the account list?\nIts play log and rival cache files will not be deleted.'
+        switched = 'Switched to account "{name}".'
+        switch_unavailable = 'Switch accounts after play/result processing or official CSV import finishes.'
     
     class window:
         """Window titles"""

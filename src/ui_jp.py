@@ -12,6 +12,7 @@ class UIText:
         """メニューバー"""
         file = 'ファイル(&F)'
         tool = 'ツール(&E)'
+        account = 'アカウント(&A)'
         language = 'Language(&L)'
         help = 'ヘルプ(&H)'
         
@@ -27,6 +28,7 @@ class UIText:
         tweet = '成果をツイート(&T)...'
         score_viewer = 'スコアビューワ起動(&S)'
         write_bpi_csv = 'BPI Manager用csvを書き出す(開発中)(&B)...'
+        manage_accounts = 'アカウント登録・編集(&M)...'
         
         # 言語メニュー
         japanese = '日本語'
@@ -36,6 +38,33 @@ class UIText:
         manual_update = '最新版に更新(&U)...'
         about = 'バージョン情報(&A)'
         documentation = 'ドキュメント(&D)'
+
+    class account:
+        current = 'アカウント'
+        manage_title = 'アカウント登録・編集'
+        add_title = 'アカウント登録'
+        edit_title = 'アカウント編集'
+        description = 'アカウントごとにプレーログとライバル情報を分けて保存します。'
+        name = 'アカウント名'
+        image_path = '画像保存先'
+        image_path_default = '未指定（本体設定を使用）'
+        image_path_help = '画像保存先を空欄にすると、基本設定の画像保存先を使用します。'
+        color = '表示色'
+        choose_color = '色を選択...'
+        add = '登録'
+        edit = '編集'
+        delete = '削除'
+        use_default = '本体設定を使用'
+        selected_suffix = '（選択中）'
+        validation_title = 'アカウント設定'
+        name_required = 'アカウント名を入力してください。'
+        name_duplicate = '同じアカウント名が既に登録されています。'
+        default_not_deletable = 'デフォルトアカウントは削除できません。'
+        selected_not_deletable = '選択中のアカウントは削除できません。先に別のアカウントへ切り替えてください。'
+        delete_title = 'アカウント削除'
+        delete_confirm = 'アカウント「{name}」を登録一覧から削除しますか？\nプレーログとライバルキャッシュのファイルは削除されません。'
+        switched = 'アカウントを「{name}」へ切り替えました。'
+        switch_unavailable = 'プレー・リザルト処理または公式CSV取込の完了後にアカウントを切り替えてください。'
     
     class window:
         """ウィンドウタイトル"""

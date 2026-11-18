@@ -1,6 +1,8 @@
 import json
 import os
+import re
 import traceback
+from copy import deepcopy
 from src.logger import get_logger
 logger = get_logger(__name__)
 from src.voice_guidance import VOICE_DEFAULTS
@@ -60,6 +62,10 @@ class Config:
         self.obs_scene_collection = ""  # 使用するシーンコレクション名（空=未設定）
 
         self.image_save_path = 'results'
+
+        # アカウント設定。default は従来の保存先をそのまま使用する。
+        self.accounts = [self._default_account()]
+        self.selected_account_id = "default"
 
         # 言語設定
         self.language = 'ja'  # 'ja' or 'en'
@@ -208,8 +214,16 @@ class Config:
                     self.enable_katate_difficulty_display = config_data.get('enable_katate_difficulty_display', False)
                     self.enable_katate_tweet_grouping = config_data.get('enable_katate_tweet_grouping', False)
 
-                    # ライバルスコア設定
-                    self.rivals = config_data.get('rivals', [])
+                    # アカウント設定。旧設定のライバルはデフォルトアカウントへ移行する。
+                    legacy_rivals = config_data.get('rivals', [])
+                    self.accounts = self._load_accounts(
+                        config_data.get('accounts'), legacy_rivals
+                    )
+                    selected_id = str(config_data.get('selected_account_id', 'default'))
+                    if not any(account['id'] == selected_id for account in self.accounts):
+                        selected_id = 'default'
+                    self.selected_account_id = selected_id
+                    self.rivals = deepcopy(self.selected_account.get('rivals', []))
                     self.csv_export_path = config_data.get('csv_export_path', '')
             except Exception as e:
                 logger.error(traceback.format_exc())
@@ -217,6 +231,7 @@ class Config:
     
     def save_config(self):
         """設定ファイルに設定を保存する"""
+        self._sync_selected_account_rivals()
         config_data = {
             **{key: getattr(self, key) for key in VOICE_DEFAULTS},
             "oraja_path": self.oraja_path,
@@ -272,7 +287,13 @@ class Config:
             "score_viewer_sort_order": self.score_viewer_sort_order,
             "score_viewer_geometry": self.score_viewer_geometry,
             "score_viewer_challenge_mode": self.score_viewer_challenge_mode,
-            "rivals": self.rivals,
+            # 旧バージョンはトップレベルだけを読むため、常にdefaultを残す。
+            "rivals": next(
+                (deepcopy(a.get("rivals", [])) for a in self.accounts if a["id"] == "default"),
+                [],
+            ),
+            "accounts": self.accounts,
+            "selected_account_id": self.selected_account_id,
             "csv_export_path": self.csv_export_path,
         }
         
@@ -282,6 +303,93 @@ class Config:
         except Exception as e:
             logger.error(traceback.format_exc())
             print(f"設定ファイル保存エラー: {e}")
+
+    @staticmethod
+    def _default_account(rivals=None):
+        return {
+            "id": "default",
+            "name": "Default",
+            "image_save_path": "",
+            "color": "#ffffff",
+            "rivals": deepcopy(rivals or []),
+        }
+
+    @classmethod
+    def _load_accounts(cls, value, legacy_rivals):
+        accounts = []
+        seen_ids = set()
+        if isinstance(value, list):
+            for raw in value:
+                if not isinstance(raw, dict):
+                    continue
+                account_id = str(raw.get("id", "")).strip()
+                name = str(raw.get("name", "")).strip()
+                color = str(raw.get("color", "#ffffff")).strip()
+                if (not re.fullmatch(r"[A-Za-z0-9_-]+", account_id)
+                        or not name or account_id in seen_ids):
+                    continue
+                if not (len(color) == 7 and color.startswith("#")):
+                    color = "#ffffff"
+                try:
+                    int(color[1:], 16)
+                except ValueError:
+                    color = "#ffffff"
+                rivals = raw.get("rivals", [])
+                accounts.append({
+                    "id": account_id,
+                    "name": name,
+                    "image_save_path": str(raw.get("image_save_path", "")).strip(),
+                    "color": color.lower(),
+                    "rivals": deepcopy(rivals if isinstance(rivals, list) else []),
+                })
+                seen_ids.add(account_id)
+
+        default = next((account for account in accounts if account["id"] == "default"), None)
+        if default is None:
+            accounts.insert(0, cls._default_account(legacy_rivals))
+        return accounts
+
+    @property
+    def selected_account(self):
+        for account in self.accounts:
+            if account["id"] == self.selected_account_id:
+                return account
+        return self.accounts[0]
+
+    @property
+    def effective_image_save_path(self):
+        return self.selected_account.get("image_save_path") or self.image_save_path
+
+    def account_playlog_path(self, account_id=None):
+        account_id = account_id or self.selected_account_id
+        if account_id == "default":
+            return "playlog.infdc"
+        return os.path.join("accounts", account_id, "playlog.infdc")
+
+    def account_rival_cache_path(self, account_id=None):
+        account_id = account_id or self.selected_account_id
+        if account_id == "default":
+            return os.path.join("out", "rival_log.infdc")
+        return os.path.join("accounts", account_id, "rival_log.infdc")
+
+    def select_account(self, account_id):
+        if account_id == self.selected_account_id:
+            return True
+        target = next((a for a in self.accounts if a["id"] == account_id), None)
+        if target is None:
+            return False
+        self._sync_selected_account_rivals()
+        self.selected_account_id = account_id
+        self.rivals = deepcopy(target.get("rivals", []))
+        return True
+
+    def _sync_selected_account_rivals(self):
+        if not hasattr(self, "rivals"):
+            return
+        for account in self.accounts:
+            if account["id"] == self.selected_account_id:
+                account["rivals"] = deepcopy(self.rivals)
+                break
 
     @staticmethod
     def _load_random_lane_detection_bands(value):

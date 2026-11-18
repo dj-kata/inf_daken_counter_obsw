@@ -120,11 +120,12 @@ def _extract_songinfo_fields(songinfo) -> dict:
 class ResultDatabase:
     """全リザルトを保存するためのクラス"""
 
-    def __init__(self, config: Config = None):
+    def __init__(self, config: Config = None, storage_path=None):
         self.song_database = SongDatabase()
         """曲情報クラスのインスタンス。検索用。"""
         self.results: List[OneResult] = []
         """全リザルトが格納されるリスト。OneResultが1エントリとなる。"""
+        self.storage_path = Path(storage_path or "playlog.infdc")
 
         # WebSocketサーバー関連の初期化
         self.config = config
@@ -504,20 +505,33 @@ class ResultDatabase:
     def load(self):
         """保存済みリザルトをロードする"""
         try:
-            with bz2.BZ2File("playlog.infdc", "rb", compresslevel=9) as f:
+            with bz2.BZ2File(self.storage_path, "rb", compresslevel=9) as f:
                 self.results = pickle.load(f)
             for result in self.results:
                 if not hasattr(result, "lane_layout"):
                     result.lane_layout = None
                 if not hasattr(result, "official_play_count"):
                     result.official_play_count = None
+        except FileNotFoundError:
+            self.results = []
         except Exception:
             logger.error(traceback.format_exc())
 
     def save(self):
         """ファイル出力"""
-        with bz2.BZ2File("playlog.infdc", "wb", compresslevel=9) as f:
+        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+        with bz2.BZ2File(self.storage_path, "wb", compresslevel=9) as f:
             pickle.dump(self.results, f)
+
+    def switch_storage(self, storage_path):
+        """現在のログを保存し、別アカウントのログへ切り替える。"""
+        self.save()
+        self.storage_path = Path(storage_path)
+        self.results = []
+        with self._result_image_cache_lock:
+            self._result_image_cache.clear()
+        self.load()
+        self.save()
 
     def _result_matches_chart(
         self,

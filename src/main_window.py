@@ -46,6 +46,8 @@ class MainWindowUI(QMainWindow):
         self.result_count_label = None
         self.last_song_label = None
         self.mobile_score_url_label = None
+        self.account_label = None
+        self.account_menu = None
         self.save_image_button = None
         self.score_viewer = None
     
@@ -88,42 +90,46 @@ class MainWindowUI(QMainWindow):
         status_layout = QGridLayout()
         
         # ラベル作成
-        status_layout.addWidget(QLabel(self.ui.main.current_mode), 0, 0)
+        status_layout.addWidget(QLabel(self.ui.account.current), 0, 0)
+        self.account_label = QLabel()
+        status_layout.addWidget(self.account_label, 0, 1)
+
+        status_layout.addWidget(QLabel(self.ui.main.current_mode), 1, 0)
         self.mode_label = QLabel(self.ui.mode.init)
-        status_layout.addWidget(self.mode_label, 0, 1)
+        status_layout.addWidget(self.mode_label, 1, 1)
         
-        status_layout.addWidget(QLabel(self.ui.main.ontime), 1, 0)
+        status_layout.addWidget(QLabel(self.ui.main.ontime), 2, 0)
         self.uptime_label = QLabel("00:00:00")
-        status_layout.addWidget(self.uptime_label, 1, 1)
+        status_layout.addWidget(self.uptime_label, 2, 1)
         
-        status_layout.addWidget(QLabel(self.ui.main.today_notes), 2, 0)
+        status_layout.addWidget(QLabel(self.ui.main.today_notes), 3, 0)
         self.keystroke_label = QLabel("0")
-        status_layout.addWidget(self.keystroke_label, 2, 1)
+        status_layout.addWidget(self.keystroke_label, 3, 1)
         
-        status_layout.addWidget(QLabel(self.ui.main.num_saved_results), 3, 0)
+        status_layout.addWidget(QLabel(self.ui.main.num_saved_results), 4, 0)
         self.result_count_label = QLabel("0")
-        status_layout.addWidget(self.result_count_label, 3, 1)
+        status_layout.addWidget(self.result_count_label, 4, 1)
         
-        status_layout.addWidget(QLabel(self.ui.main.last_saved_song), 4, 0)
+        status_layout.addWidget(QLabel(self.ui.main.last_saved_song), 5, 0)
         self.last_song_label = QLabel("---")
         self.last_song_label.setWordWrap(True)
-        status_layout.addWidget(self.last_song_label, 4, 1)
+        status_layout.addWidget(self.last_song_label, 5, 1)
 
-        status_layout.addWidget(QLabel(self.ui.main.random_lane), 5, 0)
+        status_layout.addWidget(QLabel(self.ui.main.random_lane), 6, 0)
         self.random_lane_label = QLabel("---")
         self.random_lane_label.setWordWrap(True)
-        status_layout.addWidget(self.random_lane_label, 5, 1)
+        status_layout.addWidget(self.random_lane_label, 6, 1)
 
-        status_layout.addWidget(QLabel(self.ui.main.mobile_score_url), 6, 0)
+        status_layout.addWidget(QLabel(self.ui.main.mobile_score_url), 7, 0)
         self.mobile_score_url_label = QLabel("---")
         self.mobile_score_url_label.setWordWrap(True)
         self.mobile_score_url_label.setOpenExternalLinks(True)
         self.mobile_score_url_label.setTextFormat(Qt.RichText)
         self.mobile_score_url_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
-        status_layout.addWidget(self.mobile_score_url_label, 6, 1)
+        status_layout.addWidget(self.mobile_score_url_label, 7, 1)
 
         status_row_height = self.fontMetrics().height() + 8
-        for row in range(7):
+        for row in range(8):
             status_layout.setRowMinimumHeight(row, status_row_height)
         
         status_group.setLayout(status_layout)
@@ -145,6 +151,7 @@ class MainWindowUI(QMainWindow):
         status_bar = self.statusBar()
         status_bar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         status_bar.showMessage(self.ui.main.status_ready)
+        self.refresh_account_ui()
     
     def create_menu_bar(self):
         """メニューバー作成"""
@@ -198,6 +205,11 @@ class MainWindowUI(QMainWindow):
         bpi_action.triggered.connect(self.write_bpi_csv)
         tool_menu.addAction(bpi_action)
 
+        # アカウントメニュー
+        self.account_menu = menubar.addMenu(self.ui.menu.account)
+        self.account_menu.aboutToShow.connect(self.refresh_account_menu)
+        self.refresh_account_menu()
+
         # 言語メニュー
         language_menu = menubar.addMenu(self.ui.menu.language)
         
@@ -233,6 +245,43 @@ class MainWindowUI(QMainWindow):
         about_action = QAction(self.ui.menu.about, self)
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
+
+    def refresh_account_menu(self):
+        if self.account_menu is None:
+            return
+        self.account_menu.clear()
+        manage_action = QAction(self.ui.menu.manage_accounts, self)
+        manage_action.triggered.connect(self.manage_accounts)
+        self.account_menu.addAction(manage_action)
+        self.account_menu.addSeparator()
+
+        group = QActionGroup(self.account_menu)
+        group.setExclusive(True)
+        for account in self.config.accounts:
+            action = QAction(account["name"], self.account_menu)
+            action.setCheckable(True)
+            action.setChecked(account["id"] == self.config.selected_account_id)
+            action.triggered.connect(
+                lambda checked=False, account_id=account["id"]: self.switch_account(account_id)
+            )
+            group.addAction(action)
+            self.account_menu.addAction(action)
+        self._account_action_group = group
+
+    def refresh_account_ui(self):
+        if self.account_label is None:
+            return
+        account = self.config.selected_account
+        color = account.get("color", "#ffffff")
+        rgb = tuple(int(color[index:index + 2], 16) for index in (1, 3, 5))
+        background = "#111111" if sum(rgb) >= 384 else "#ffffff"
+        self.account_label.setText(account["name"])
+        self.account_label.setStyleSheet(
+            f"color: {color}; background-color: {background}; "
+            f"border: 1px solid {color}; border-radius: 3px; "
+            "font-weight: bold; padding: 2px 6px;"
+        )
+        self.refresh_account_menu()
     
     def restore_window_geometry(self):
         """ウィンドウ位置とサイズを復元"""
@@ -461,4 +510,12 @@ class MainWindowUI(QMainWindow):
     
     def write_bpi_csv(self):
         '''BPIM用csvの作成 (サブクラスで実装)'''
+        raise NotImplementedError
+
+    def manage_accounts(self):
+        """アカウント登録画面を開く（サブクラスで実装）"""
+        raise NotImplementedError
+
+    def switch_account(self, account_id):
+        """使用アカウントを切り替える（サブクラスで実装）"""
         raise NotImplementedError

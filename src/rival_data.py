@@ -198,8 +198,9 @@ class RivalManager(QObject):
 
     rivals_loaded = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, cache_path=None):
         super().__init__(parent)
+        self.cache_path = cache_path or self.CACHE_PATH
         self.rivals: List[RivalData] = []
         self.prev_rivals: List[RivalData] = []
         self._worker: Optional[RivalFetchWorker] = None
@@ -207,7 +208,7 @@ class RivalManager(QObject):
     def load_cache(self):
         """キャッシュからライバルデータを読み込み、即座に反映する"""
         try:
-            with bz2.BZ2File(self.CACHE_PATH, 'rb') as f:
+            with bz2.BZ2File(self.cache_path, 'rb') as f:
                 self.rivals = pickle.load(f)
             rival_count = len([r for r in self.rivals if not r.error])
             logger.info(f"ライバルキャッシュを読み込みました ({rival_count}人)")
@@ -218,12 +219,22 @@ class RivalManager(QObject):
     def _save_cache(self):
         """ライバルデータをキャッシュに保存する"""
         try:
-            os.makedirs('out', exist_ok=True)
-            with bz2.BZ2File(self.CACHE_PATH, 'wb', compresslevel=9) as f:
+            os.makedirs(os.path.dirname(self.cache_path) or '.', exist_ok=True)
+            with bz2.BZ2File(self.cache_path, 'wb', compresslevel=9) as f:
                 pickle.dump(self.rivals, f)
             logger.info("ライバルキャッシュを保存しました")
         except Exception:
             logger.error(f"ライバルキャッシュ保存エラー: {traceback.format_exc()}")
+
+    def switch_cache(self, cache_path):
+        """別アカウントのライバルキャッシュへ切り替える。"""
+        if self._worker and self._worker.isRunning():
+            self._worker.cancel()
+            self._worker.wait(2000)
+        self.cache_path = cache_path
+        self.rivals = []
+        self.prev_rivals = []
+        self.load_cache()
 
     def start_fetch(self, rival_configs: List[Dict[str, str]]):
         """全ライバルのCSVをバックグラウンドで取得開始"""
