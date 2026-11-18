@@ -215,6 +215,69 @@ class OfficialCsvCorrectionTests(unittest.TestCase):
         self.assertTrue(db.saved)
         self.assertEqual(progress, [(1, 1)])
 
+    def test_apply_fills_missing_registration_time_on_same_select_best(self):
+        class FakeDatabase:
+            def __init__(self, existing):
+                self.results = [existing]
+                self.saved = False
+
+            def add(self, result):
+                self.results.append(result)
+                return True
+
+            def save(self):
+                self.saved = True
+
+        existing = make_result()
+        existing.detect_mode = detect_mode.select
+        existing.timestamp = 0
+        existing.registered_at = None
+        db = FakeDatabase(existing)
+        importer = OfficialCsvImporter(db)
+        imported_result = make_result()
+        imported_result.detect_mode = detect_mode.select
+        imported_result.timestamp = 0
+        imported_result.registered_at = 1234567890
+
+        imported = importer.apply(OfficialCsvImportPlan(results=[imported_result]))
+
+        self.assertEqual(imported.imported, 1)
+        self.assertEqual(imported.skipped, 0)
+        self.assertEqual(len(db.results), 1)
+        self.assertEqual(db.results[0].registered_at, 1234567890)
+        self.assertTrue(db.saved)
+
+    def test_apply_skips_same_select_best_with_registration_time(self):
+        class FakeDatabase:
+            def __init__(self, existing):
+                self.results = [existing]
+
+            def add(self, result):
+                self.results.append(result)
+                return True
+
+            def save(self):
+                pass
+
+        existing = make_result()
+        existing.detect_mode = detect_mode.select
+        existing.timestamp = 0
+        existing.registered_at = 1234567890
+        db = FakeDatabase(existing)
+        imported_result = make_result()
+        imported_result.detect_mode = detect_mode.select
+        imported_result.timestamp = 0
+        imported_result.registered_at = 1234567891
+
+        imported = OfficialCsvImporter(db).apply(
+            OfficialCsvImportPlan(results=[imported_result])
+        )
+
+        self.assertEqual(imported.imported, 0)
+        self.assertEqual(imported.skipped, 1)
+        self.assertEqual(len(db.results), 1)
+        self.assertEqual(db.results[0].registered_at, 1234567890)
+
     def test_reimport_does_not_add_the_same_best_twice(self):
         class FakeDatabase:
             def __init__(self):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import csv
 import datetime
 import io
@@ -315,12 +316,20 @@ class OfficialCsvImporter:
                 del self.result_database.results[index]
 
             current_bests = {}
-            for saved in self.result_database.results:
+            dated_select_bests = set()
+            undated_select_bests = {}
+            for saved_index, saved in enumerate(self.result_database.results):
                 if not self._is_regular_best_result(saved):
                     continue
                 key = calc_chart_lookup_key(
                     saved.title, saved.play_style, saved.difficulty, battle=False
                 )
+                exact_key = (key, saved.score, saved.bp, saved.lamp)
+                if saved.detect_mode == detect_mode.select:
+                    if getattr(saved, "registered_at", None) is not None:
+                        dated_select_bests.add(exact_key)
+                    else:
+                        undated_select_bests.setdefault(exact_key, []).append(saved_index)
                 score, bp, lamp = current_bests.get(key, (None, None, None))
                 if isinstance(saved.score, int):
                     score = saved.score if score is None else max(score, saved.score)
@@ -349,7 +358,24 @@ class OfficialCsvImporter:
                     is_update = True
                 if result.bp is not None and (current_bp is None or result.bp < current_bp):
                     is_update = True
-                if not is_update:
+                exact_key = (key, result.score, result.bp, result.lamp)
+                can_fill_registered_at = (
+                    not is_update
+                    and result.registered_at is not None
+                    and exact_key not in dated_select_bests
+                    and bool(undated_select_bests.get(exact_key))
+                )
+                if can_fill_registered_at:
+                    saved_index = max(
+                        undated_select_bests[exact_key],
+                        key=lambda index: self.result_database.results[index].timestamp,
+                    )
+                    updated = copy.copy(self.result_database.results[saved_index])
+                    updated.registered_at = result.registered_at
+                    self.result_database.results[saved_index] = updated
+                    dated_select_bests.add(exact_key)
+                    imported += 1
+                elif not is_update:
                     skipped += 1
                 elif self.result_database.add(result):
                     imported += 1
