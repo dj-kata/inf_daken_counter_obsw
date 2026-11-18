@@ -52,6 +52,22 @@
                 text-align: right;
                 width:10%;
             }
+            #play-counts {
+                display: flex;
+                justify-content: flex-end;
+                gap: 18px;
+                padding: 4px 24px 10px;
+                color: #b9d9ff;
+                background-color: rgba(0, 0, 70, 0.95);
+                font-size: 38px;
+                line-height: 1.2;
+            }
+            #play-counts .official {
+                color: #ffe7a3;
+            }
+            #play-counts strong {
+                color: #fff;
+            }
             table#result {
                 font-size: 96px;
             	width:100%;
@@ -339,6 +355,15 @@
                 var best_bp_rate = data.best_bp_rate || '';
                 var notes = 0;
                 document.querySelector("#title tbody").innerHTML = '<tr><td>☆'+lv+'</td><td>'+title+'</td><td>('+difficulty+')</td></tr>';
+                document.querySelector('#counter-play-count').textContent = Number(data.counter_play_count) || 0;
+                var officialPlayCount = data.official_play_count;
+                var officialPlayCountElement = document.querySelector('#official-play-count-wrap');
+                if (officialPlayCount === undefined || officialPlayCount === null) {
+                    officialPlayCountElement.style.display = 'none';
+                } else {
+                    document.querySelector('#official-play-count').textContent = Number(officialPlayCount) || 0;
+                    officialPlayCountElement.style.display = 'inline';
+                }
                 (data.items || []).slice(0, 20).forEach(function(item, index){
                     var date = item.date || '';
                     var lamp = item.lamp;
@@ -460,6 +485,10 @@
       <tbody>
       </tbody>
     </table>
+    <div id="play-counts">
+      <span>COUNTER <strong id="counter-play-count">0</strong></span>
+      <span class="official" id="official-play-count-wrap">OFFICIAL <strong id="official-play-count">0</strong></span>
+    </div>
     <table id="best">
       <tbody>
       </tbody>

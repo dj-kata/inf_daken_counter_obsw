@@ -128,6 +128,37 @@
                             1px -1px 0 #000,
                             -1px -1px 0 #000;
             }
+
+            .title-play-counts {
+                display: flex;
+                justify-content: flex-end;
+                gap: 8px;
+                font-size: 17px;
+                white-space: nowrap;
+            }
+
+            .play-count-badge {
+                display: inline-flex;
+                align-items: baseline;
+                gap: 6px;
+                padding: 3px 9px;
+                border-radius: 999px;
+                color: #b9d9ff;
+                background: rgba(20, 70, 145, 0.75);
+                border: 1px solid rgba(130, 190, 255, 0.55);
+            }
+
+            .play-count-badge.official {
+                color: #ffe7a3;
+                background: rgba(125, 78, 10, 0.72);
+                border-color: rgba(255, 205, 95, 0.6);
+            }
+
+            .play-count-value {
+                color: #fff;
+                font-size: 22px;
+                font-weight: bold;
+            }
             
             /* BESTセクション - 横並びレイアウト */
             .best-section {
@@ -705,6 +736,16 @@
         level_str += '<span class="title-difficulty ' + diff_color + '">' + difficulty + '</span>';
         document.querySelector('.title-level-difficulty').innerHTML = level_str;
         document.querySelector('.title-notes').textContent = 'NOTES: ' + notes;
+        var counterPlayCount = Number(data.counter_play_count) || 0;
+        document.querySelector('.counter-play-count').textContent = counterPlayCount;
+        var officialPlayCount = data.official_play_count;
+        var officialPlayBadge = document.querySelector('.play-count-badge.official');
+        if (officialPlayCount === undefined || officialPlayCount === null) {
+            officialPlayBadge.style.display = 'none';
+        } else {
+            document.querySelector('.official-play-count').textContent = Number(officialPlayCount) || 0;
+            officialPlayBadge.style.display = 'inline-flex';
+        }
         
         // BEST情報
         var best_score = data.best_score || 0;
@@ -1033,6 +1074,10 @@
                     <div class="title-info">
                         <div class="title-level-difficulty"></div>
                         <div class="title-notes"></div>
+                        <div class="title-play-counts">
+                            <span class="play-count-badge counter">COUNTER <span class="play-count-value counter-play-count">0</span></span>
+                            <span class="play-count-badge official">OFFICIAL <span class="play-count-value official-play-count">0</span></span>
+                        </div>
                     </div>
                 </div>
             </div>

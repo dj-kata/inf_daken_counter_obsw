@@ -325,6 +325,7 @@ class OneResult:
                     image_path:str=None,
                     lane_layout:str | None=None,
                     registered_at:int | None=None,
+                    official_play_count:int | None=None,
                 ):
         self.title = title
         '''曲名'''
@@ -356,6 +357,8 @@ class OneResult:
         if registered_at is None and getattr(self.detect_mode, 'name', None) == 'select':
             registered_at = int(datetime.datetime.now().timestamp())
         self.registered_at = registered_at
+        self.official_play_count = official_play_count
+        '''公式CSVに記録された譜面別プレー回数。未取込の場合はNone。'''
         '''アプリへの登録日時。実際のプレー日時が不明なselectデータなどで使用する。'''
         self.option    = option
         self.playspeed = playspeed
@@ -426,7 +429,7 @@ class OneResult:
 
     def __str__(self):
         """主要情報の文字列を出力。ログ用"""
-        if self.lamp and self.score:
+        if self.lamp is not None and self.score is not None:
             return f"detect_mode:{self.detect_mode.name}, song:{get_title_with_chart(self.title, self.play_style, self.difficulty)}, score:{self.score}, lamp:{self.lamp.name}, bp:{self.bp}, judge:{self.judge}, dead:{self.dead}, playspeed:{self.playspeed}, option:{self.option}, lane_layout:{getattr(self, 'lane_layout', None)}, is_updated:{self.is_updated()}(pre score:{self.pre_score}, bp:{self.pre_bp}, lamp:{self.pre_lamp}), notes:{self.notes}, is_arcade:{self.is_arcade}, timestamp:{datetime.datetime.fromtimestamp(self.timestamp)}"
         else:
             return "not a result data!"

@@ -77,6 +77,9 @@ body {
 ## 単曲のプレーログ {#history}
 
 `history_cursong.html` は、現在の曲の履歴を表示します。
+タイトル右側の `COUNTER` は打鍵カウンタ内に保存されたプレー回数、`OFFICIAL` は
+公式プレーデータCSVを最後に取り込んだ時点のプレー回数です。公式CSVを未取込の譜面では
+`OFFICIAL` を表示しません。
 表示サイズは配信レイアウトに合わせて調整してください。
 
 ![単曲履歴の表示例](images/wiki/view-history.png)

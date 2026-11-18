@@ -54,6 +54,7 @@ class OfficialCsvBest:
     bp: int | None
     lamp: clear_lamp
     registered_at: int | None = None
+    play_count: int | None = None
 
 
 @dataclass
@@ -135,10 +136,18 @@ def parse_official_csv(text: str) -> OfficialCsvParseResult:
             score_text = (row.get(f"{name} スコア") or "").strip()
             score = _parse_int(score_text)
             lamp_text = (row.get(f"{name} クリアタイプ") or "").strip()
-            if score == 0 or (score is None and score_text in ("", "---")):
+            play_count_text = (row.get(f"{name} プレー回数") or "").strip()
+            play_count = _parse_int(play_count_text)
+            if play_count is not None and play_count < 0:
+                parsed.errors.append(f"{row_number}行目 {title} {name}: プレー回数が不正です。")
+                continue
+            if (
+                (score == 0 or (score is None and score_text in ("", "---")))
+                and not play_count
+            ):
                 continue
             lamp = OFFICIAL_LAMPS.get(lamp_text)
-            if score is None or score <= 0 or lamp is None:
+            if score is None or score < 0 or lamp is None:
                 parsed.errors.append(f"{row_number}行目 {title} {name}: 値を解釈できません。")
                 continue
             parsed.bests.append(
@@ -149,6 +158,7 @@ def parse_official_csv(text: str) -> OfficialCsvParseResult:
                     bp=_parse_int(row.get(f"{name} ミスカウント")),
                     lamp=lamp,
                     registered_at=_parse_timestamp(row.get(f"{name} 最終プレー日時")),
+                    play_count=play_count,
                 )
             )
     return parsed
@@ -265,6 +275,7 @@ class OfficialCsvImporter:
                 pre_bp=None,
                 notes=song.notes,
                 registered_at=best.registered_at,
+                official_play_count=best.play_count,
             )
             plan.results.append(result)
 
@@ -318,6 +329,8 @@ class OfficialCsvImporter:
             current_bests = {}
             dated_select_bests = set()
             undated_select_bests = {}
+            chart_result_indexes = {}
+            official_play_counts = {}
             for saved_index, saved in enumerate(self.result_database.results):
                 if not self._is_regular_best_result(saved):
                     continue
@@ -325,6 +338,12 @@ class OfficialCsvImporter:
                     saved.title, saved.play_style, saved.difficulty, battle=False
                 )
                 exact_key = (key, saved.score, saved.bp, saved.lamp)
+                chart_result_indexes.setdefault(key, []).append(saved_index)
+                saved_official_count = getattr(saved, "official_play_count", None)
+                if saved_official_count is not None:
+                    official_play_counts[key] = max(
+                        official_play_counts.get(key, 0), saved_official_count
+                    )
                 if saved.detect_mode == detect_mode.select:
                     if getattr(saved, "registered_at", None) is not None:
                         dated_select_bests.add(exact_key)
@@ -365,15 +384,46 @@ class OfficialCsvImporter:
                     and exact_key not in dated_select_bests
                     and bool(undated_select_bests.get(exact_key))
                 )
-                if can_fill_registered_at:
-                    saved_index = max(
+                play_count_changed = (
+                    result.official_play_count is not None
+                    and official_play_counts.get(key) != result.official_play_count
+                )
+                metadata_updated = False
+                metadata_index = None
+                if not is_update and can_fill_registered_at:
+                    metadata_index = max(
                         undated_select_bests[exact_key],
                         key=lambda index: self.result_database.results[index].timestamp,
                     )
-                    updated = copy.copy(self.result_database.results[saved_index])
+                    updated = copy.copy(self.result_database.results[metadata_index])
                     updated.registered_at = result.registered_at
-                    self.result_database.results[saved_index] = updated
+                    self.result_database.results[metadata_index] = updated
                     dated_select_bests.add(exact_key)
+                    metadata_updated = True
+
+                if play_count_changed:
+                    # 公式回数は最新CSVの値を正とする。古い値が残っている場合は
+                    # コピー差し替えで消し、失敗時に元リストへ戻せるようにする。
+                    for saved_index in chart_result_indexes.get(key, []):
+                        if getattr(
+                            self.result_database.results[saved_index],
+                            "official_play_count",
+                            None,
+                        ) is None:
+                            continue
+                        updated = copy.copy(self.result_database.results[saved_index])
+                        updated.official_play_count = None
+                        self.result_database.results[saved_index] = updated
+                    official_play_counts[key] = result.official_play_count
+                    if not is_update and chart_result_indexes.get(key):
+                        if metadata_index is None:
+                            metadata_index = chart_result_indexes[key][-1]
+                        updated = copy.copy(self.result_database.results[metadata_index])
+                        updated.official_play_count = result.official_play_count
+                        self.result_database.results[metadata_index] = updated
+                        metadata_updated = True
+
+                if not is_update and metadata_updated:
                     imported += 1
                 elif not is_update:
                     skipped += 1

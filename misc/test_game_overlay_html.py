@@ -53,6 +53,7 @@ class GameOverlayHtmlTests(unittest.TestCase):
         self.history = {'music': 'Overlay test song', 'difficulty': 'SPA', 'lv': 12,
                         'notes': 1000, 'best_score': 1800, 'best_score_rate': .9,
                         'best_bp': 12, 'best_lamp': 5, 'best_bpi': '15.00',
+                        'counter_play_count': 12, 'official_play_count': 37,
                         'items': [dict(history_item) for _ in range(25)]}
         self.today = {'items': [dict(today_item) for _ in range(30)]}
 
@@ -106,6 +107,8 @@ class GameOverlayHtmlTests(unittest.TestCase):
         self.wait_for(lambda: self.javascript("document.querySelectorAll('#result tbody tr').length") == 20)
         self.assertIn('Overlay test song', self.javascript('document.body.innerText'))
         self.assertIn('1800', self.javascript('document.body.innerText'))
+        self.assertEqual(self.javascript("document.querySelector('.counter-play-count').textContent"), '12')
+        self.assertEqual(self.javascript("document.querySelector('.official-play-count').textContent"), '37')
         self.assert_fits()
         self.history['music'] = 'Updated title'
         self.connections[-1].send(json.dumps({'type': 'history_cursong', 'data': self.history}))

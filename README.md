@@ -153,6 +153,7 @@ python misc/update_katate_difficulty.py --input-csv misc/katate_difficulty.csv
 ```
 
 従来通り片手難易度表をオンライン取得したい場合は `python misc/update_db.py --download-katate` を使います。
+DP非公式難易度表は `--download` 指定時にバージョン1から34までを取得します。上限は `--dp-unofficial-max-version` で変更できます。
 
 # ライセンス
 Apache License 2.0に準じるものとします。

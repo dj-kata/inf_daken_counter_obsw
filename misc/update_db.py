@@ -26,6 +26,7 @@ logger = get_logger('convert_db')
 
 OUT_DIR = Path('out')
 DEFAULT_KATATE_CSV = Path('misc/katate_difficulty.csv')
+DEFAULT_DP_UNOFFICIAL_MAX_VERSION = 34
 
 
 def get_pkl_path(filename):
@@ -54,6 +55,13 @@ def str_to_bool(value):
     if value in ('0', 'false', 'no', 'n', 'off'):
         return False
     raise argparse.ArgumentTypeError(f"invalid boolean value: {value}")
+
+
+def positive_int(value):
+    value = int(value)
+    if value < 1:
+        raise argparse.ArgumentTypeError('value must be 1 or greater')
+    return value
 
 
 def parse_args():
@@ -86,6 +94,12 @@ def parse_args():
         '--download-katate',
         action='store_true',
         help='download katate difficulty CSV during update_db',
+    )
+    parser.add_argument(
+        '--dp-unofficial-max-version',
+        type=positive_int,
+        default=DEFAULT_DP_UNOFFICIAL_MAX_VERSION,
+        help='latest DP unofficial table version to download (inclusive)',
     )
     return parser.parse_args()
 
@@ -285,7 +299,10 @@ def set_sp12unofficial(titles:list, sdb:SongDatabase, conv_unof_infn:dict):
             not_found.append((title, play_style.sp, diff))
     return not_found
 
-def get_dp_unofficial(conv, download=False):
+def get_dp_unofficial(
+        conv,
+        download=False,
+        max_version=DEFAULT_DP_UNOFFICIAL_MAX_VERSION):
     '''DP非公式難易度表の取得'''
     pkl_path = get_pkl_path('dp_unofficial.pkl')
     vers = ['RA', 'ROOT', 'SINO', 'CB', 'DJT', 'sub', 'HERO', 'HSKY', 'CH', '4th'
@@ -323,7 +340,7 @@ def get_dp_unofficial(conv, download=False):
             url = 'https://zasa.sakura.ne.jp/dp/rank.php'
             songdb = {}
             # 古い順に実行すればOK。同じkeyが即上書きとすれば最新の難易度だけ残る。
-            for ver in list(range(1,31)):
+            for ver in range(1, max_version + 1):
                 print(f"ver = {ver}")
                 data={'env':f'a{ver:02d}0', 'submit':'表示', 'cat':'0', 'mode':'m1', 'offi':'0'}
                 r = session.post(url, data=data)
@@ -432,7 +449,10 @@ def set_bpim(bpi:dict, sdb:SongDatabase, conv:dict=None):
             not_found.append(k)
     return not_found
 
-args = parse_args() if __name__ == '__main__' else argparse.Namespace(download=False)
+args = parse_args() if __name__ == '__main__' else argparse.Namespace(
+    download=False,
+    dp_unofficial_max_version=DEFAULT_DP_UNOFFICIAL_MAX_VERSION,
+)
 download = args.download
 
 sp12 = get_sp12_unofficial(download=download)
@@ -599,7 +619,11 @@ for i in range(1, 11):
     set_lvall(play_style.dp, i, levels, sdb)
 
 # DP非公式難易度
-dp = get_dp_unofficial(conv_dp, download=download)
+dp = get_dp_unofficial(
+    conv_dp,
+    download=download,
+    max_version=args.dp_unofficial_max_version,
+)
 
 dp_not_found = []
 for k in dp:

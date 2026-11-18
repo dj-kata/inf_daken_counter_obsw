@@ -446,7 +446,7 @@ class ResultDatabase:
             )
             return True
         else:
-            if not result.lamp or not result.score:
+            if result.lamp is None or result.score is None:
                 logger.warning(f"result rejected (lamp or score missing): {result}")
                 return False
             if self._is_unknown_option_result(result):
@@ -509,6 +509,8 @@ class ResultDatabase:
             for result in self.results:
                 if not hasattr(result, "lane_layout"):
                     result.lane_layout = None
+                if not hasattr(result, "official_play_count"):
+                    result.official_play_count = None
         except Exception:
             logger.error(traceback.format_exc())
 
@@ -850,6 +852,31 @@ class ResultDatabase:
 
         return play_counts
 
+    def _get_history_play_counts(
+        self, results: List[DetailedResult], battle: bool = False
+    ) -> tuple[int, int | None]:
+        """HISTORY_CURSONG用の打鍵カウンタ内／公式CSVプレー回数を返す。"""
+        include_legacy_v2_logs = bool(
+            self.config and getattr(self.config, "include_legacy_v2_logs", False)
+        )
+        counter_count = 0
+        official_counts = []
+        for detail in results:
+            result = detail.result
+            if result.detect_mode == detect_mode.result or (
+                include_legacy_v2_logs
+                and result.detect_mode == detect_mode.select
+                and result.timestamp != 0
+            ):
+                counter_count += 1
+            official_count = getattr(result, "official_play_count", None)
+            if official_count is not None:
+                official_counts.append(int(official_count))
+
+        # DBxは公式CSVのDP譜面回数と対象が異なるため比較表示しない。
+        official_count = None if battle or not official_counts else max(official_counts)
+        return counter_count, official_count
+
     def get_graph_data(self, start_time: int, end_time: int | None = None) -> dict:
         """本日のノーツ数用データを辞書形式で返す"""
         target = []
@@ -1152,6 +1179,9 @@ class ResultDatabase:
         results = self.search(
             title=title, style=style, difficulty=difficulty, battle=battle
         )
+        counter_play_count, official_play_count = self._get_history_play_counts(
+            results, battle=bool(battle)
+        )
         best_score = 0
         best_score_opt = None
         best_score_lane_layout = None
@@ -1251,6 +1281,8 @@ class ResultDatabase:
                 "best_score": 0,
                 "best_score_opt": "",
                 "battle": bool(battle),
+                "counter_play_count": counter_play_count,
+                "official_play_count": official_play_count,
                 "items": [],
                 **_extract_songinfo_fields(songinfo),
             }
@@ -1301,6 +1333,8 @@ class ResultDatabase:
             "best_score_opt": best_score_opt.__str__() if best_score_opt else "",
             "best_score_lane_layout": best_score_lane_layout,
             "battle": bool(battle),
+            "counter_play_count": counter_play_count,
+            "official_play_count": official_play_count,
         }
 
         if songinfo and hasattr(songinfo, "bpi_ave") and songinfo.bpi_ave:

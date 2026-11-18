@@ -17,6 +17,7 @@ from src.official_csv_import import (
     result_exceeds_official,
 )
 from src.result import OneResult, PlayOption
+from src.result_database import ResultDatabase
 
 
 def make_result(score=1000, bp=20, lamp=clear_lamp.clear):
@@ -48,13 +49,19 @@ class OfficialCsvParserTests(unittest.TestCase):
         parsed = parse_official_csv(text)
 
         self.assertEqual(parsed.errors, [])
-        self.assertEqual(len(parsed.bests), 1)
-        self.assertEqual(parsed.bests[0].difficulty, difficulty.another)
-        self.assertEqual(parsed.bests[0].score, 1234)
-        self.assertEqual(parsed.bests[0].bp, 12)
-        self.assertEqual(parsed.bests[0].lamp, clear_lamp.hard)
+        self.assertEqual(len(parsed.bests), 2)
+        normal_failed = parsed.bests[0]
+        another_best = parsed.bests[1]
+        self.assertEqual(normal_failed.difficulty, difficulty.normal)
+        self.assertEqual(normal_failed.score, 0)
+        self.assertEqual(normal_failed.play_count, 1)
+        self.assertEqual(another_best.difficulty, difficulty.another)
+        self.assertEqual(another_best.score, 1234)
+        self.assertEqual(another_best.bp, 12)
+        self.assertEqual(another_best.lamp, clear_lamp.hard)
+        self.assertEqual(another_best.play_count, 2)
         self.assertEqual(
-            parsed.bests[0].registered_at,
+            another_best.registered_at,
             int(datetime.datetime(2026, 1, 3, 0, 0).timestamp()),
         )
 
@@ -140,6 +147,25 @@ class OfficialCsvCorrectionTests(unittest.TestCase):
         plan = OfficialCsvImporter(db).build_plan([official], play_style.sp)
 
         self.assertEqual(plan.results[0].registered_at, registered_at)
+
+    def test_build_plan_copies_official_play_count(self):
+        db = SimpleNamespace()
+        db.results = []
+        db.song_database = SimpleNamespace(
+            search=lambda **kwargs: SimpleNamespace(title="TEST SONG", notes=1000)
+        )
+        official = OfficialCsvBest(
+            "TEST SONG",
+            difficulty.another,
+            1000,
+            20,
+            clear_lamp.clear,
+            play_count=37,
+        )
+
+        plan = OfficialCsvImporter(db).build_plan([official], play_style.sp)
+
+        self.assertEqual(plan.results[0].official_play_count, 37)
 
     def test_select_result_gets_registration_time_when_created(self):
         before = int(time.time())
@@ -302,6 +328,58 @@ class OfficialCsvCorrectionTests(unittest.TestCase):
         self.assertEqual(first.imported, 1)
         self.assertEqual(second.imported, 0)
         self.assertEqual(second.skipped, 1)
+        self.assertEqual(len(db.results), 1)
+
+    def test_same_best_updates_play_count_without_adding_result(self):
+        class FakeDatabase:
+            def __init__(self, existing):
+                self.results = [existing]
+
+            def add(self, result):
+                self.results.append(result)
+                return True
+
+            def save(self):
+                pass
+
+        existing = make_result()
+        imported_result = make_result()
+        imported_result.detect_mode = detect_mode.select
+        imported_result.timestamp = 0
+        imported_result.official_play_count = 37
+        db = FakeDatabase(existing)
+        importer = OfficialCsvImporter(db)
+
+        first = importer.apply(OfficialCsvImportPlan(results=[imported_result]))
+        second = importer.apply(OfficialCsvImportPlan(results=[imported_result]))
+
+        self.assertEqual(first.imported, 1)
+        self.assertEqual(second.skipped, 1)
+        self.assertEqual(len(db.results), 1)
+        self.assertEqual(db.results[0].official_play_count, 37)
+
+    def test_history_play_counts_separate_counter_and_official(self):
+        played = make_result()
+        official = make_result()
+        official.detect_mode = detect_mode.select
+        official.timestamp = 0
+        official.official_play_count = 37
+        db = ResultDatabase.__new__(ResultDatabase)
+        db.config = None
+        details = [SimpleNamespace(result=played), SimpleNamespace(result=official)]
+
+        self.assertEqual(db._get_history_play_counts(details), (1, 37))
+        self.assertEqual(db._get_history_play_counts(details, battle=True), (1, None))
+
+    def test_zero_score_played_chart_can_be_registered(self):
+        db = ResultDatabase.__new__(ResultDatabase)
+        db.results = []
+        result = make_result(score=0, bp=None, lamp=clear_lamp.failed)
+        result.detect_mode = detect_mode.select
+        result.pre_score = None
+        result.official_play_count = 1
+
+        self.assertTrue(db.add(result))
         self.assertEqual(len(db.results), 1)
 
 

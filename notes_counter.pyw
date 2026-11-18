@@ -1365,6 +1365,15 @@ class MainWindow(MainWindowUI):
         self.config.save_config()
         if self.score_viewer:
             self.score_viewer.refresh_data()
+        current_title = self.screen_reader.last_select_title
+        current_style = self.screen_reader.last_select_style
+        current_difficulty = self.screen_reader.last_select_difficulty
+        if current_title and current_style is not None and current_difficulty is not None:
+            self.result_database.broadcast_history_cursong_data(
+                title=current_title,
+                style=current_style,
+                difficulty=current_difficulty,
+            )
         self.result_database.broadcast_today_updates_data(self.start_time_with_offset)
         self.result_database.broadcast_today_stats_data(self.start_time_with_offset)
         QMessageBox.information(
