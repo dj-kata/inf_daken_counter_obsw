@@ -7,6 +7,7 @@ import sys
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication,
+    QButtonGroup,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -19,6 +20,8 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QHeaderView,
+    QHBoxLayout,
+    QRadioButton,
     QVBoxLayout,
 )
 from PySide6.QtCore import QThread,QTimer,Qt,Signal
@@ -150,11 +153,20 @@ class OfficialCsvImportDialog(QDialog):
         layout.addWidget(description)
 
         form_layout = QFormLayout()
-        self.style_combo = QComboBox()
-        self.style_combo.addItems(["SP", "DP"])
-        initial_index = self.style_combo.findText(str(initial_style).upper())
-        self.style_combo.setCurrentIndex(max(0, initial_index))
-        form_layout.addRow(ui.official_csv_import.play_style, self.style_combo)
+        style_layout = QHBoxLayout()
+        self.style_button_group = QButtonGroup(self)
+        self.style_sp_radio = QRadioButton("SP")
+        self.style_dp_radio = QRadioButton("DP")
+        self.style_button_group.addButton(self.style_sp_radio, 0)
+        self.style_button_group.addButton(self.style_dp_radio, 1)
+        style_layout.addWidget(self.style_sp_radio)
+        style_layout.addWidget(self.style_dp_radio)
+        style_layout.addStretch()
+        if str(initial_style).upper() == "DP":
+            self.style_dp_radio.setChecked(True)
+        else:
+            self.style_sp_radio.setChecked(True)
+        form_layout.addRow(ui.official_csv_import.play_style, style_layout)
         layout.addLayout(form_layout)
 
         layout.addWidget(QLabel(ui.official_csv_import.csv_text))
@@ -170,11 +182,11 @@ class OfficialCsvImportDialog(QDialog):
 
     @property
     def selected_style(self) -> play_style:
-        return play_style.sp if self.style_combo.currentText() == "SP" else play_style.dp
+        return play_style.dp if self.style_dp_radio.isChecked() else play_style.sp
 
     @property
     def selected_style_name(self) -> str:
-        return self.style_combo.currentText()
+        return "DP" if self.style_dp_radio.isChecked() else "SP"
 
     @property
     def csv_text(self) -> str:
