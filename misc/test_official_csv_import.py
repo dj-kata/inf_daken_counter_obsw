@@ -82,6 +82,35 @@ class OfficialCsvParserTests(unittest.TestCase):
         self.assertEqual(parsed.bests[0].bp, None)
         self.assertEqual(parsed.bests[0].lamp, clear_lamp.noplay)
 
+    def test_accepts_tab_separated_text_copied_from_excel(self):
+        text = (
+            "バージョン\tタイトル\tアーティスト\tNORMAL スコア\t"
+            "NORMAL ミスカウント\tNORMAL クリアタイプ\r\n"
+            "1st\tTEST SONG\tartist\t650\t12\tHARD CLEAR\r\n"
+        )
+
+        parsed = parse_official_csv(text)
+
+        self.assertEqual(parsed.errors, [])
+        self.assertEqual(len(parsed.bests), 1)
+        self.assertEqual(parsed.bests[0].title, "TEST SONG")
+        self.assertEqual(parsed.bests[0].score, 650)
+        self.assertEqual(parsed.bests[0].bp, 12)
+        self.assertEqual(parsed.bests[0].lamp, clear_lamp.hard)
+
+    def test_accepts_comma_separated_text_with_bom(self):
+        text = (
+            "\ufeffタイトル,NORMAL スコア,NORMAL ミスカウント,NORMAL クリアタイプ\n"
+            "TEST SONG,650,---,NO PLAY\n"
+        )
+
+        parsed = parse_official_csv(text)
+
+        self.assertEqual(parsed.errors, [])
+        self.assertEqual(len(parsed.bests), 1)
+        self.assertEqual(parsed.bests[0].title, "TEST SONG")
+        self.assertEqual(parsed.bests[0].score, 650)
+
     def test_last_selected_style_is_persisted(self):
         with tempfile.TemporaryDirectory() as directory:
             config_path = Path(directory) / "config.json"

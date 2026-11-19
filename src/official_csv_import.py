@@ -119,7 +119,10 @@ def _parse_timestamp(value: str) -> int | None:
 def parse_official_csv(text: str) -> OfficialCsvParseResult:
     """貼り付けられた公式CSVを譜面単位の自己ベストへ変換する。"""
     parsed = OfficialCsvParseResult()
-    reader = csv.DictReader(io.StringIO((text or "").lstrip("\ufeff")))
+    csv_text = (text or "").lstrip("\ufeff")
+    first_line = csv_text.splitlines()[0] if csv_text else ""
+    delimiter = "\t" if "\t" in first_line else ","
+    reader = csv.DictReader(io.StringIO(csv_text), delimiter=delimiter)
     headers = [header.strip() for header in (reader.fieldnames or []) if header]
     if "タイトル" not in headers or not any(
         f"{name} スコア" in headers for name in DIFFICULTIES
