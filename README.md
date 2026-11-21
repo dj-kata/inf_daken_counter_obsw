@@ -24,6 +24,15 @@ https://youtu.be/6oGS0dvHhGQ
 - [Track Browser](https://sites.google.com/view/track-browser/home): スマホからのリザルト確認など
 - [Otoge Input Viewer](https://github.com/dj-kata/otoge_input_viewer#otoge-input-viewer): コントローラへの入力の可視化、鍵盤とスクラッチの入力回数の計上など
 
+2026年11月のアップデートでINFINITASのCSVをDLする機能が提供され始めたため、  
+CSV取得のためだけに本アプリを使う必要性は少し薄れつつありますが、  
+以下の機能を使いたい人にはおすすめです。
+- 配信向け機能(OBS自動制御、VOICEVOX連携)
+- 各曲の詳細なプレーログの確認
+  - CSVには自己ベストしか残らないが、本アプリでは更新のないリザルトも全て保存します
+  - 設定すればランダム時のレーン配置も記録可能(SPのみ)
+  - Battleオプション利用時のリザルトも保存されます(DBM, DBRなど)
+  - 速度変更時のリザルトも速度ごとに保存されます
 
 # 動作環境
 下記の環境で確認しています。
