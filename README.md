@@ -20,9 +20,9 @@ https://youtu.be/6oGS0dvHhGQ
 
 
 # おすすめの関連アプリ
-- [INFINITAS PLAYBOOK](https://infinitas-playbook-beta.pages.dev/#main-content)
-- [Track Browser](https://sites.google.com/view/track-browser/home)
-- [Otoge Input Viewer](https://github.com/dj-kata/otoge_input_viewer#otoge-input-viewer)
+- [INFINITAS PLAYBOOK](https://infinitas-playbook-beta.pages.dev/#main-content): プレーログの確認、各種難易度表の表示など
+- [Track Browser](https://sites.google.com/view/track-browser/home): スマホからのリザルト確認など
+- [Otoge Input Viewer](https://github.com/dj-kata/otoge_input_viewer#otoge-input-viewer): コントローラへの入力の可視化、鍵盤とスクラッチの入力回数の計上など
 
 
 # 動作環境
