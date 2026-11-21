@@ -18,6 +18,13 @@ SP,DPのどちらにも対応しています。
 動作例  
 https://youtu.be/6oGS0dvHhGQ
 
+
+# おすすめの関連アプリ
+- [INFINITAS PLAYBOOK](https://infinitas-playbook-beta.pages.dev/#main-content)
+- [Track Browser](https://sites.google.com/view/track-browser/home)
+- [Otoge Input Viewer](https://github.com/dj-kata/otoge_input_viewer#otoge-input-viewer)
+
+
 # 動作環境
 下記の環境で確認しています。
 ```
