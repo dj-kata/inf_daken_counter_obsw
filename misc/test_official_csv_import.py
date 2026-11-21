@@ -14,6 +14,7 @@ from src.official_csv_import import (
     OfficialCsvImporter,
     OfficialCsvImportPlan,
     parse_official_csv,
+    read_official_csv_file,
     result_exceeds_official,
 )
 from src.result import OneResult, PlayOption
@@ -41,6 +42,22 @@ class OfficialCsvParserTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("self.resize(500, 360)", source)
+
+    def test_import_dialog_accepts_dropped_csv_file(self):
+        source = (Path(__file__).resolve().parents[1] / "notes_counter.pyw").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("class OfficialCsvTextEdit(QPlainTextEdit):", source)
+        self.assertIn("read_official_csv_file(path)", source)
+
+    def test_reads_dropped_csv_file_with_bom(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "official.csv"
+            path.write_bytes("タイトル,NORMAL スコア\r\n".encode("utf-8-sig"))
+
+            text = read_official_csv_file(path)
+
+        self.assertEqual(text, "タイトル,NORMAL スコア\n")
 
     def test_parses_played_charts_and_skips_zero_scores(self):
         text = (

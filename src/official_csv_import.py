@@ -8,6 +8,7 @@ import datetime
 import io
 import unicodedata
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from .classes import clear_lamp, detect_mode, difficulty, play_style
 from .funcs import calc_chart_lookup_key
@@ -114,6 +115,11 @@ def _parse_timestamp(value: str) -> int | None:
         return int(datetime.datetime.fromisoformat(value.replace("/", "-")).timestamp())
     except ValueError:
         return None
+
+
+def read_official_csv_file(path: str | Path) -> str:
+    """ドロップされた公式CSVをBOMの有無にかかわらず読み込む。"""
+    return Path(path).read_text(encoding="utf-8-sig")
 
 
 def parse_official_csv(text: str) -> OfficialCsvParseResult:

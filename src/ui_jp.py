@@ -372,12 +372,14 @@ class UIText:
 
     class official_csv_import:
         title = '公式CSVをインポート'
-        description = '公式サイトからダウンロードしたSPまたはDPのCSVを貼り付けてください。'
+        description = ('公式サイトからダウンロードしたSPまたはDPのCSVを貼り付けるか、'
+                       'CSVファイルをドロップしてください。')
         play_style = 'プレースタイル:'
         csv_text = 'CSV:'
         import_button = 'インポート'
         empty = 'CSVを貼り付けてください。'
         parse_error_title = 'CSVを読み込めません'
+        file_read_error = 'CSVファイルを読み込めませんでした。\n{message}'
         correction_title = '保存済みデータの補正確認'
         correction_message = ('公式CSVより高い自己ベストが保存されています。\n'
                               '{charts}譜面、{logs}件のプレーログを削除して補正しますか？\n'
