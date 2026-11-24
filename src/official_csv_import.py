@@ -8,6 +8,7 @@ import datetime
 import io
 import unicodedata
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from .classes import clear_lamp, detect_mode, difficulty, play_style
 from .funcs import calc_chart_lookup_key
@@ -116,10 +117,18 @@ def _parse_timestamp(value: str) -> int | None:
         return None
 
 
+def read_official_csv_file(path: str | Path) -> str:
+    """ドロップされた公式CSVをBOMの有無にかかわらず読み込む。"""
+    return Path(path).read_text(encoding="utf-8-sig")
+
+
 def parse_official_csv(text: str) -> OfficialCsvParseResult:
     """貼り付けられた公式CSVを譜面単位の自己ベストへ変換する。"""
     parsed = OfficialCsvParseResult()
-    reader = csv.DictReader(io.StringIO((text or "").lstrip("\ufeff")))
+    csv_text = (text or "").lstrip("\ufeff")
+    first_line = csv_text.splitlines()[0] if csv_text else ""
+    delimiter = "\t" if "\t" in first_line else ","
+    reader = csv.DictReader(io.StringIO(csv_text), delimiter=delimiter)
     headers = [header.strip() for header in (reader.fieldnames or []) if header]
     if "タイトル" not in headers or not any(
         f"{name} スコア" in headers for name in DIFFICULTIES

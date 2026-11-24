@@ -65,7 +65,11 @@ from src.update import GitHubUpdater
 from src.random_lane_analysis import RandomLaneAnalysis
 from src.voice_guidance import VoiceGuidance
 from src.game_overlay import GameOverlay
-from src.official_csv_import import OfficialCsvImporter, parse_official_csv
+from src.official_csv_import import (
+    OfficialCsvImporter,
+    parse_official_csv,
+    read_official_csv_file,
+)
 
 sys.path.append('infnotebook')
 from define import define
@@ -151,6 +155,24 @@ class MusicSelectScoreImportDialog(QDialog):
         return self.chart_combo.currentText().strip()
 
 
+class OfficialCsvTextEdit(QPlainTextEdit):
+    """貼り付けに加えてローカルCSVのドロップを受け付ける入力欄。"""
+
+    file_read_failed = Signal(str)
+
+    def insertFromMimeData(self, source):
+        urls = source.urls() if source.hasUrls() else []
+        if len(urls) == 1 and urls[0].isLocalFile():
+            path = Path(urls[0].toLocalFile())
+            if path.suffix.lower() == ".csv":
+                try:
+                    self.setPlainText(read_official_csv_file(path))
+                except (OSError, UnicodeError) as error:
+                    self.file_read_failed.emit(str(error))
+                return
+        super().insertFromMimeData(source)
+
+
 class OfficialCsvImportDialog(QDialog):
     """公式サイトのCSVを貼り付けるダイアログ。"""
 
@@ -183,8 +205,9 @@ class OfficialCsvImportDialog(QDialog):
         layout.addLayout(form_layout)
 
         layout.addWidget(QLabel(ui.official_csv_import.csv_text))
-        self.csv_edit = QPlainTextEdit()
+        self.csv_edit = OfficialCsvTextEdit()
         self.csv_edit.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.csv_edit.file_read_failed.connect(self._show_file_read_error)
         layout.addWidget(self.csv_edit, 1)
 
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -204,6 +227,13 @@ class OfficialCsvImportDialog(QDialog):
     @property
     def csv_text(self) -> str:
         return self.csv_edit.toPlainText()
+
+    def _show_file_read_error(self, message):
+        QMessageBox.warning(
+            self,
+            self.ui.official_csv_import.parse_error_title,
+            self.ui.official_csv_import.file_read_error.format(message=message),
+        )
 
 
 class OfficialCsvCorrectionDialog(QDialog):

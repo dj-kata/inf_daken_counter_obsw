@@ -400,12 +400,14 @@ class UIText:
 
     class official_csv_import:
         title = 'Import Official CSV'
-        description = 'Paste an SP or DP CSV downloaded from the official website.'
+        description = ('Paste an SP or DP CSV downloaded from the official website, '
+                       'or drop the CSV file here.')
         play_style = 'Play style:'
         csv_text = 'CSV:'
         import_button = 'Import'
         empty = 'Paste the CSV data.'
         parse_error_title = 'Could not read CSV'
+        file_read_error = 'Could not read the CSV file.\n{message}'
         correction_title = 'Confirm saved data correction'
         correction_message = ('Some saved personal bests exceed the official CSV.\n'
                               'Delete {logs} play logs across {charts} charts to correct them?\n'

@@ -11,7 +11,7 @@ from pathlib import Path
 
 # dbfile = Path('src')/'songinfo.infdc'
 dbfile = Path('.')/'songinfo.infdc'
-songinfo_download_url = "https://github.com/dj-kata/inf_daken_counter_obsw/raw/refs/heads/master/songinfo.infdc"
+songinfo_download_url = "https://github.com/dj-kata/inf_daken_counter_obsw/raw/refs/heads/main/songinfo.infdc"
 
 class OneSongInfo:
     """1譜面分の曲情報を表すクラス"""

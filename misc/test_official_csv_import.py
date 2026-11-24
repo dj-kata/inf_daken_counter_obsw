@@ -14,6 +14,7 @@ from src.official_csv_import import (
     OfficialCsvImporter,
     OfficialCsvImportPlan,
     parse_official_csv,
+    read_official_csv_file,
     result_exceeds_official,
 )
 from src.result import OneResult, PlayOption
@@ -41,6 +42,22 @@ class OfficialCsvParserTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("self.resize(500, 360)", source)
+
+    def test_import_dialog_accepts_dropped_csv_file(self):
+        source = (Path(__file__).resolve().parents[1] / "notes_counter.pyw").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("class OfficialCsvTextEdit(QPlainTextEdit):", source)
+        self.assertIn("read_official_csv_file(path)", source)
+
+    def test_reads_dropped_csv_file_with_bom(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "official.csv"
+            path.write_bytes("タイトル,NORMAL スコア\r\n".encode("utf-8-sig"))
+
+            text = read_official_csv_file(path)
+
+        self.assertEqual(text, "タイトル,NORMAL スコア\n")
 
     def test_parses_played_charts_and_skips_zero_scores(self):
         text = (
@@ -81,6 +98,35 @@ class OfficialCsvParserTests(unittest.TestCase):
         self.assertEqual(parsed.errors, [])
         self.assertEqual(parsed.bests[0].bp, None)
         self.assertEqual(parsed.bests[0].lamp, clear_lamp.noplay)
+
+    def test_accepts_tab_separated_text_copied_from_excel(self):
+        text = (
+            "バージョン\tタイトル\tアーティスト\tNORMAL スコア\t"
+            "NORMAL ミスカウント\tNORMAL クリアタイプ\r\n"
+            "1st\tTEST SONG\tartist\t650\t12\tHARD CLEAR\r\n"
+        )
+
+        parsed = parse_official_csv(text)
+
+        self.assertEqual(parsed.errors, [])
+        self.assertEqual(len(parsed.bests), 1)
+        self.assertEqual(parsed.bests[0].title, "TEST SONG")
+        self.assertEqual(parsed.bests[0].score, 650)
+        self.assertEqual(parsed.bests[0].bp, 12)
+        self.assertEqual(parsed.bests[0].lamp, clear_lamp.hard)
+
+    def test_accepts_comma_separated_text_with_bom(self):
+        text = (
+            "\ufeffタイトル,NORMAL スコア,NORMAL ミスカウント,NORMAL クリアタイプ\n"
+            "TEST SONG,650,---,NO PLAY\n"
+        )
+
+        parsed = parse_official_csv(text)
+
+        self.assertEqual(parsed.errors, [])
+        self.assertEqual(len(parsed.bests), 1)
+        self.assertEqual(parsed.bests[0].title, "TEST SONG")
+        self.assertEqual(parsed.bests[0].score, 650)
 
     def test_last_selected_style_is_persisted(self):
         with tempfile.TemporaryDirectory() as directory:
