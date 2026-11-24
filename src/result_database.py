@@ -556,6 +556,9 @@ class ResultDatabase:
             )
         return {
             "title": getattr(result, "title", None),
+            "title_lookup": normalize_song_title_for_lookup(
+                getattr(result, "title", None)
+            ),
             "play_style": self._enum_value(getattr(result, "play_style", None)),
             "difficulty": self._enum_value(getattr(result, "difficulty", None)),
             "lamp": self._enum_value(getattr(result, "lamp", None)),
@@ -668,6 +671,13 @@ class ResultDatabase:
             }
             for result, row in zip(self.results, rows)
         }
+
+    def _query_result_objects(self, **conditions):
+        """SQLite検索結果をOneResultへ変換する。"""
+        return [
+            self._row_to_result(row)
+            for row in self.database.query_results(**conditions)
+        ]
 
     def _migrate_v3_pickle(self):
         if self.database.get_metadata("v3_pickle_migrated") == "1":
@@ -816,7 +826,24 @@ class ResultDatabase:
             title=title, play_style=style, difficulty=difficulty
         ) or self.song_database.search(chart_id=key)
 
-        for r in self.results:
+        query_title = title or (songinfo.title if songinfo else None)
+        query_style = style or (songinfo.play_style if songinfo else None)
+        query_difficulty = difficulty or (songinfo.difficulty if songinfo else None)
+        if query_title is not None and query_difficulty is not None:
+            candidates = self._query_result_objects(
+                title_lookup=normalize_song_title_for_lookup(query_title),
+                play_style=(
+                    None
+                    if battle
+                    else self._enum_value(query_style)
+                ),
+                difficulty=self._enum_value(query_difficulty),
+                battle=battle,
+            )
+        else:
+            candidates = self._query_result_objects()
+
+        for r in candidates:
             if self._result_matches_chart(r, key, title, style, difficulty, battle):
                 detail_songinfo = songinfo or self._search_songinfo_for_result(r)
                 detail = DetailedResult(detail_songinfo, r)
@@ -892,19 +919,12 @@ class ResultDatabase:
         """その月のノーツ数を算出"""
         if target is None:
             target = datetime.datetime.now()
-        ret = 0
-        for r in reversed(self.results):
-            result_date = datetime.datetime.fromtimestamp(r.timestamp)
-            if r.detect_mode != detect_mode.play:
-                continue
-            if (result_date.month == target.month) and (
-                result_date.year == target.year
-            ):
-                if r.judge:
-                    ret += r.judge.notes
-            else:
-                break
-        return ret
+        start = datetime.datetime(target.year, target.month, 1)
+        if target.month == 12:
+            end = datetime.datetime(target.year + 1, 1, 1)
+        else:
+            end = datetime.datetime(target.year, target.month + 1, 1)
+        return self.database.sum_judge_notes(start.timestamp(), end.timestamp())
 
     def get_recent_monthly_notes(
         self, target: datetime.datetime = None, months: int = 3
@@ -923,20 +943,16 @@ class ResultDatabase:
                 month = 12
                 year -= 1
 
-        totals = {key: 0 for key in month_keys}
-        oldest_year, oldest_month = month_keys[-1]
-
-        for r in reversed(self.results):
-            if r.detect_mode != detect_mode.play or not r.judge:
-                continue
-
-            result_date = datetime.datetime.fromtimestamp(r.timestamp)
-            key = (result_date.year, result_date.month)
-            if key not in totals and key < (oldest_year, oldest_month):
-                break
-
-            if key in totals:
-                totals[key] += r.judge.notes
+        totals = {}
+        for year, month in month_keys:
+            month_start = datetime.datetime(year, month, 1)
+            if month == 12:
+                month_end = datetime.datetime(year + 1, 1, 1)
+            else:
+                month_end = datetime.datetime(year, month + 1, 1)
+            totals[(year, month)] = self.database.sum_judge_notes(
+                month_start.timestamp(), month_end.timestamp()
+            )
 
         return [
             {
@@ -951,19 +967,9 @@ class ResultDatabase:
         if target is None:
             target = datetime.datetime.now()
 
-        ret = 0
-        for r in reversed(self.results):
-            if r.detect_mode != detect_mode.play or not r.judge:
-                continue
-
-            result_date = datetime.datetime.fromtimestamp(r.timestamp)
-            if result_date.year < target.year:
-                break
-
-            if result_date.year == target.year:
-                ret += r.judge.notes
-
-        return ret
+        start = datetime.datetime(target.year, 1, 1)
+        end = datetime.datetime(target.year + 1, 1, 1)
+        return self.database.sum_judge_notes(start.timestamp(), end.timestamp())
 
     def get_all_best_results(self) -> Dict[tuple, OneBestData]:
         """全譜面のベストリザルトをOneBestDataとして集計（battle有効/無効を別々に集計）
@@ -977,7 +983,7 @@ class ResultDatabase:
         """
         best_results: Dict[tuple, OneBestData] = {}
 
-        for result in self.results:
+        for result in self._query_result_objects(best_candidates=True):
             if result.detect_mode == detect_mode.play:
                 continue
             if self._is_unknown_option_result(result):
@@ -1073,7 +1079,10 @@ class ResultDatabase:
             self.config and getattr(self.config, "include_legacy_v2_logs", False)
         )
 
-        for result in self.results:
+        modes = [detect_mode.result.value]
+        if include_legacy_v2_logs:
+            modes.append(detect_mode.select.value)
+        for result in self._query_result_objects(detect_modes=modes):
             is_countable_result = result.detect_mode == detect_mode.result
             is_countable_legacy_v2 = (
                 include_legacy_v2_logs
@@ -1117,14 +1126,16 @@ class ResultDatabase:
 
     def get_graph_data(self, start_time: int, end_time: int | None = None) -> dict:
         """本日のノーツ数用データを辞書形式で返す"""
-        target = []
+        target = self._query_result_objects(
+            detect_modes=[detect_mode.play.value],
+            timestamp_from=start_time,
+            timestamp_to=end_time,
+            newest_first=True,
+        )
         total = Judge()
-        for r in reversed(self.results):
-            if r.detect_mode == detect_mode.play:
-                if self._timestamp_in_range(r.timestamp, start_time, end_time):
-                    target.append(r)
-                    if r.judge:
-                        total += r.judge
+        for r in target:
+            if r.judge:
+                total += r.judge
 
         # 現在のスコアレートを計算
         current_score_rate = "0.00%"
@@ -1173,11 +1184,19 @@ class ResultDatabase:
 
     def get_today_updates_data(self, start_time: int, end_time: int | None = None) -> dict:
         """本日のプレー履歴のデータを辞書形式で返す"""
-        target: list[tuple[int, OneResult]] = []
-        for result_index, r in reversed(list(enumerate(self.results))):
-            if r.detect_mode == detect_mode.result:
-                if self._timestamp_in_range(r.timestamp, start_time, end_time):
-                    target.append((result_index, r))
+        index_by_id = {
+            getattr(result, "id", None): index
+            for index, result in enumerate(self.results)
+        }
+        target = [
+            (index_by_id.get(getattr(result, "id", None), -1), result)
+            for result in self._query_result_objects(
+                detect_modes=[detect_mode.result.value],
+                timestamp_from=start_time,
+                timestamp_to=end_time,
+                newest_first=True,
+            )
+        ]
 
         items = []
         for result_index, r in target:
@@ -1223,7 +1242,7 @@ class ResultDatabase:
                 "timestamp": int(r.timestamp),
             }
             image_url = self._mobile_result_image_url(r)
-            if image_url:
+            if image_url and result_index >= 0:
                 item["image_url"] = image_url
                 item["image_id"] = _mobile_result_image_id(result_index, r)
 
@@ -1259,27 +1278,36 @@ class ResultDatabase:
         now = datetime.datetime.fromtimestamp(end_time) if end_time else datetime.datetime.now()
 
         # --- playcount, score_rate (get_graph_dataと同等のロジック) ---
-        today_target = []
+        today_target = self._query_result_objects(
+            detect_modes=[detect_mode.play.value],
+            timestamp_from=start_time,
+            timestamp_to=end_time,
+            newest_first=True,
+        )
         total_judge = Judge()
-        for r in reversed(self.results):
-            if r.detect_mode == detect_mode.play:
-                if self._timestamp_in_range(r.timestamp, start_time, end_time):
-                    today_target.append(r)
-                    if r.judge:
-                        total_judge += r.judge
+        for r in today_target:
+            if r.judge:
+                total_judge += r.judge
 
         playcount = len(today_target)
         score_rate_str = f"{total_judge.score_rate * 100:.1f}%"
 
         # --- daily_notes: 直近14日分の日別ノーツ ---
         daily_judges = defaultdict(Judge)
-        for r in reversed(self.results):
-            if r.detect_mode != detect_mode.play or not r.judge:
+        daily_start = datetime.datetime.combine(
+            now.date() - datetime.timedelta(days=14), datetime.time.min
+        )
+        daily_end = datetime.datetime.combine(
+            now.date() + datetime.timedelta(days=1), datetime.time.min
+        )
+        for r in self._query_result_objects(
+            detect_modes=[detect_mode.play.value],
+            timestamp_from=daily_start.timestamp(),
+            timestamp_to=daily_end.timestamp(),
+        ):
+            if not r.judge:
                 continue
             r_date = datetime.datetime.fromtimestamp(r.timestamp).date()
-            days_ago = (now.date() - r_date).days
-            if days_ago > 14:
-                break
             daily_judges[r_date] += r.judge
 
         daily_notes = []
@@ -1298,26 +1326,28 @@ class ResultDatabase:
 
         # --- today_level_distribution: 本日のレベル分布 ---
         level_dist = {}
-        for r in reversed(self.results):
-            if r.detect_mode == detect_mode.result:
-                if self._timestamp_in_range(r.timestamp, start_time, end_time):
-                    songinfo = self.song_database.search(
-                        title=r.title, play_style=r.play_style, difficulty=r.difficulty
-                    )
-                    lv = (
-                        str(songinfo.level)
-                        if songinfo and hasattr(songinfo, "level")
-                        else "?"
-                    )
-                    if lv not in level_dist:
-                        level_dist[lv] = {"sp": 0, "dp": 0, "battle": 0}
-                    is_battle = r.option and r.option.battle
-                    if is_battle:
-                        level_dist[lv]["battle"] += 1
-                    elif r.play_style == play_style.sp:
-                        level_dist[lv]["sp"] += 1
-                    else:
-                        level_dist[lv]["dp"] += 1
+        for r in self._query_result_objects(
+            detect_modes=[detect_mode.result.value],
+            timestamp_from=start_time,
+            timestamp_to=end_time,
+        ):
+            songinfo = self.song_database.search(
+                title=r.title, play_style=r.play_style, difficulty=r.difficulty
+            )
+            lv = (
+                str(songinfo.level)
+                if songinfo and hasattr(songinfo, "level")
+                else "?"
+            )
+            if lv not in level_dist:
+                level_dist[lv] = {"sp": 0, "dp": 0, "battle": 0}
+            is_battle = r.option and r.option.battle
+            if is_battle:
+                level_dist[lv]["battle"] += 1
+            elif r.play_style == play_style.sp:
+                level_dist[lv]["sp"] += 1
+            else:
+                level_dist[lv]["dp"] += 1
 
         # --- level_stats: 全レベルのランプ/スコアレート統計 ---
         bests = self.get_all_best_results()

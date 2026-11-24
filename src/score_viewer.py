@@ -507,12 +507,14 @@ class ScoreViewer(QMainWindow):
         try:
             self.scores.clear()
 
-            if not self.result_database or not self.result_database.results:
-                logger.warning("プレーログが空です")
+            if not self.result_database:
                 return
 
             # result_databaseの共通処理で全譜面の自己べを取得
             all_bests = self.result_database.get_all_best_results()
+            if not all_bests:
+                logger.warning("プレーログが空です")
+                return
 
             # BattleはDBxとして別譜面扱いにする。通常プレーのNone/Falseだけマージする。
             for (title, style, diff, battle), best in all_bests.items():
@@ -1081,16 +1083,17 @@ class ScoreViewer(QMainWindow):
                     chart_info += f" ☆{score.level}"
                 self.playlog_title_label.setText(chart_info)
             
-            # 選択中の曲のプレーログをフィルタ（全てのdetect_modeを対象）
-            playlogs = []
-            for result in self.result_database.results:
-                result_battle = result.option.battle if result.option else False
-                if (result.title == score.title and 
-                    result.play_style == score.style and 
-                    result.difficulty == score.difficulty and
-                    result_battle == bool(score.is_battle) and
-                    result.detect_mode != detect_mode.play):
-                    playlogs.append(result)
+            # 選択中の曲をSQLiteから取得（全てのdetect_modeを対象）
+            playlogs = [
+                detail.result
+                for detail in self.result_database.search(
+                    title=score.title,
+                    style=score.style,
+                    difficulty=score.difficulty,
+                    battle=bool(score.is_battle),
+                )
+                if detail.result.detect_mode != detect_mode.play
+            ]
             
             # selectは実プレー日時が不明なため、登録日時で並べる。
             playlogs.sort(key=self._playlog_display_timestamp, reverse=True)
@@ -1198,8 +1201,16 @@ class ScoreViewer(QMainWindow):
             
             if reply == QMessageBox.Yes:
                 # プレーログを削除
-                if result_to_delete in self.result_database.results:
-                    self.result_database.results.remove(result_to_delete)
+                delete_index = next(
+                    (
+                        index
+                        for index, result in enumerate(self.result_database.results)
+                        if getattr(result, "id", None) == getattr(result_to_delete, "id", None)
+                    ),
+                    None,
+                )
+                if delete_index is not None:
+                    self.result_database.results.pop(delete_index)
                     
                     # データベースを保存
                     self.result_database.save()

@@ -11,7 +11,7 @@ from pathlib import Path
 class SQLiteDatabase:
     """プレーログとライバルキャッシュを1つのSQLiteへ保存する。"""
 
-    SCHEMA_VERSION = 1
+    SCHEMA_VERSION = 2
 
     def __init__(self, db_path):
         self.db_path = Path(db_path)
@@ -37,6 +37,7 @@ class SQLiteDatabase:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     sequence INTEGER NOT NULL,
                     title TEXT,
+                    title_lookup TEXT,
                     play_style INTEGER,
                     difficulty INTEGER,
                     lamp INTEGER,
@@ -98,8 +99,24 @@ class SQLiteDatabase:
                     "ALTER TABLE results ADD COLUMN sequence INTEGER NOT NULL DEFAULT 0"
                 )
                 self._conn.execute("UPDATE results SET sequence = id WHERE sequence = 0")
+            if "title_lookup" not in columns:
+                self._conn.execute("ALTER TABLE results ADD COLUMN title_lookup TEXT")
+            self._conn.execute(
+                """UPDATE results
+                   SET title_lookup = REPLACE(REPLACE(REPLACE(REPLACE(
+                       title, ' ', ''), '　', ''), '☆', ''), '★', '')
+                   WHERE title_lookup IS NULL"""
+            )
             self._conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_results_sequence ON results (sequence)"
+            )
+            self._conn.execute(
+                """CREATE INDEX IF NOT EXISTS idx_results_lookup
+                   ON results (title_lookup, play_style, difficulty, option_battle)"""
+            )
+            self._conn.execute(
+                """CREATE INDEX IF NOT EXISTS idx_results_mode_timestamp
+                   ON results (detect_mode, timestamp)"""
             )
             self.set_metadata("schema_version", str(self.SCHEMA_VERSION))
             self._conn.commit()
@@ -151,6 +168,70 @@ class SQLiteDatabase:
 
     def get_all_results(self):
         return self.execute("SELECT * FROM results ORDER BY sequence ASC, id ASC").fetchall()
+
+    def query_results(
+        self,
+        *,
+        title_lookup=None,
+        play_style=None,
+        difficulty=None,
+        battle=None,
+        detect_modes=None,
+        timestamp_from=None,
+        timestamp_to=None,
+        best_candidates=False,
+        newest_first=False,
+    ):
+        """指定条件に一致するプレーログをSQLiteから取得する。"""
+        clauses = []
+        params = []
+        if title_lookup is not None:
+            clauses.append("title_lookup = ?")
+            params.append(title_lookup)
+        if play_style is not None:
+            clauses.append("play_style = ?")
+            params.append(play_style)
+        if difficulty is not None:
+            clauses.append("difficulty = ?")
+            params.append(difficulty)
+        if battle is not None:
+            clauses.append("option_battle = ?")
+            params.append(int(bool(battle)))
+        if detect_modes:
+            placeholders = ", ".join("?" for _ in detect_modes)
+            clauses.append(f"detect_mode IN ({placeholders})")
+            params.extend(detect_modes)
+        if timestamp_from is not None:
+            clauses.append("timestamp >= ?")
+            params.append(int(timestamp_from))
+        if timestamp_to is not None:
+            clauses.append("timestamp < ?")
+            params.append(int(timestamp_to))
+        if best_candidates:
+            clauses.extend((
+                "detect_mode != 1",
+                "(playspeed IS NULL OR playspeed = 1.0)",
+                "option_allscratch = 0",
+                "option_regularspeed = 0",
+                "score IS NOT NULL",
+            ))
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        order = "timestamp DESC, sequence DESC" if newest_first else "sequence ASC, id ASC"
+        return self.execute(
+            f"SELECT * FROM results{where} ORDER BY {order}",
+            tuple(params),
+        ).fetchall()
+
+    def sum_judge_notes(self, timestamp_from, timestamp_to):
+        row = self.execute(
+            """SELECT COALESCE(SUM(judge_pg + judge_gr + judge_gd + judge_bd), 0) AS notes
+               FROM results
+               WHERE detect_mode = ?
+                 AND timestamp >= ? AND timestamp < ?
+                 AND judge_pg IS NOT NULL""",
+            (1, int(timestamp_from), int(timestamp_to)),
+        ).fetchone()
+        return int(row["notes"] or 0)
 
     def insert_result(self, values):
         columns = tuple(values.keys())
