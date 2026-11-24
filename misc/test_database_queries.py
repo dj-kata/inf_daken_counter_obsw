@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src.classes import Judge, clear_lamp, detect_mode, difficulty, play_style
-from src.result import OneResult, PlayOption
+from src.result import DetailedResult, OneResult, PlayOption
 from src.result_database import ResultDatabase
 
 
@@ -105,6 +105,27 @@ class DatabaseQueryTests(unittest.TestCase):
         )
         self.assertEqual(graph["playcount"], 1)
         self.assertEqual(graph["today_notes"], 920)
+
+    def test_history_display_does_not_refetch_bpim2_synchronously(self):
+        result = self._score("TEST SONG", 1900, 20, 200)
+        result.bpim2 = 12.34
+        result.bpim2_arena_averages = []
+        self.database.results = [result]
+        self.database.save()
+
+        with patch.object(
+            DetailedResult,
+            "get_bpim2_bpi_detail",
+            side_effect=AssertionError("synchronous BPIM2 fetch"),
+        ):
+            data = self.database.get_history_cursong_data(
+                title="TEST SONG",
+                style=play_style.sp,
+                difficulty=difficulty.another,
+            )
+
+        self.assertEqual(data["best_bpi"], "12.34")
+        self.assertNotIn("bpi_near_averages", data)
 
 
 if __name__ == "__main__":
