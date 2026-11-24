@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from PySide6.QtGui import QIntValidator
 import os
-import datetime
 
 from src.image_save_settings import ImageSaveSettings
 from src.config import Config
@@ -20,9 +19,9 @@ from src.voice_guidance import start_voice_preview
 from src.voice_audio import audio_output_devices
 from src.classes import music_pack
 from src.logger import get_logger
-from src.result import OneResult, PlayOption
 from src.result_database import ResultDatabase
 from src.screen_reader import ScreenReader
+from src.legacy_migration import load_v2_results
 from src.network_info import get_local_ipv4_interfaces
 from src.funcs import *
 logger = get_logger(__name__)
@@ -106,60 +105,16 @@ class PklImportWorker(QThread):
     def run(self):
         """スレッドで実行される処理"""
         try:
-            import pickle
-            
-            with open(self.pkl_path, 'rb') as f:
-                data = pickle.load(f)
-            
-            # v2はBPIの有無で2通り(長さ14,15)。option, 日付を-2,-1で取得すればよい。長さがこれ以外のものは落とす。
+            results, total_count = load_v2_results(self.pkl_path)
             registered_count = 0
-            total_count = len(data)
-            for i, item in enumerate(data):
+            for i, result in enumerate(results):
                 if self._is_cancelled:
                     break
                 # 進捗通知
                 self.progress.emit(i + 1, total_count)
-
-                if len(item) not in (14, 15):
-                    continue
-
-                style = convert_play_style(item[2][:2]) # sp/dp
-                if item[11]:
-                    bp = item[11]
-                else:
-                    bp = 99999999
-                timestamp = datetime.datetime(year=int(item[-1][0:4]),
-                                              month=int(item[-1][5:7]),
-                                              day=int(item[-1][8:10]),
-                                              hour=int(item[-1][11:13]),
-                                              minute=int(item[-1][14:16]),
-                                              ).timestamp()
-                option = PlayOption(None)
-                option.convert_from_v2(item[-2])
-                notes = item[3]
-                mode = detect_mode.select # result / selectどっちにすべきか?
-                try:
-                    result = OneResult(title=item[1],
-                                       play_style=style,
-                                       difficulty=convert_difficulty(item[2][-1]),
-                                       lamp=convert_lamp(item[7]),
-                                       timestamp=int(timestamp),
-                                       playspeed=None,
-                                       option=option,
-                                       detect_mode=mode,
-                                       is_arcade = False,
-                                       judge=None,
-                                       score=item[9],
-                                       bp=bp,
-                                       notes=notes,
-                                       registered_at=int(timestamp),
-                    )
-                    
-                    # リザルト登録処理
-                    if self.result_database.add(result):
-                        registered_count += 1
-                except:
-                    continue
+                if self.result_database.add(result):
+                    registered_count += 1
+            self.result_database.save()
             # 完了通知
             self.finished.emit(registered_count, total_count)
             

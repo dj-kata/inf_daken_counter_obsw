@@ -198,40 +198,74 @@ class RivalManager(QObject):
 
     rivals_loaded = Signal()
 
-    def __init__(self, parent=None, cache_path=None):
+    def __init__(self, parent=None, database=None, legacy_cache_path=None):
         super().__init__(parent)
-        self.cache_path = cache_path or self.CACHE_PATH
+        self.database = database
+        self.legacy_cache_path = legacy_cache_path or self.CACHE_PATH
         self.rivals: List[RivalData] = []
         self.prev_rivals: List[RivalData] = []
         self._worker: Optional[RivalFetchWorker] = None
 
     def load_cache(self):
-        """キャッシュからライバルデータを読み込み、即座に反映する"""
+        """SQLiteからライバルデータを読み込み、初回だけpickleを移行する。"""
         try:
-            with bz2.BZ2File(self.cache_path, 'rb') as f:
-                self.rivals = pickle.load(f)
+            if self.database is None:
+                return
+            rows = self.database.get_all_rival_scores()
+            if (
+                not rows
+                and self.database.get_metadata("rival_pickle_migrated") != "1"
+                and os.path.exists(self.legacy_cache_path)
+            ):
+                with bz2.BZ2File(self.legacy_cache_path, 'rb') as stream:
+                    self.rivals = pickle.load(stream)
+                self._save_cache()
+                logger.info(
+                    f"ライバルpickle移行完了。元ファイルは保持します: {self.legacy_cache_path}"
+                )
+                rows = self.database.get_all_rival_scores()
+
+            rivals_by_name = {}
+            for row in rows:
+                rival = rivals_by_name.setdefault(row["rival_name"], RivalData(row["rival_name"]))
+                entry = RivalScoreEntry()
+                entry.lamp = clear_lamp(row["lamp"])
+                entry.score = row["score"]
+                entry.bp = row["bp"]
+                entry.last_played = row["last_played"] or ""
+                entry.option = row["option"]
+                rival.scores[(row["title"], row["mode"])] = entry
+            self.rivals = list(rivals_by_name.values())
+            self.database.set_metadata("rival_pickle_migrated", "1")
+            self.database.commit()
             rival_count = len([r for r in self.rivals if not r.error])
             logger.info(f"ライバルキャッシュを読み込みました ({rival_count}人)")
             self.rivals_loaded.emit()
         except Exception:
-            logger.debug("ライバルキャッシュが見つからないか読み込めません")
+            logger.error(f"ライバルDB読み込みエラー: {traceback.format_exc()}")
 
     def _save_cache(self):
-        """ライバルデータをキャッシュに保存する"""
+        """ライバルデータをSQLiteへ保存する。"""
         try:
-            os.makedirs(os.path.dirname(self.cache_path) or '.', exist_ok=True)
-            with bz2.BZ2File(self.cache_path, 'wb', compresslevel=9) as f:
-                pickle.dump(self.rivals, f)
-            logger.info("ライバルキャッシュを保存しました")
+            if self.database is None:
+                return
+            with self.database.transaction():
+                self.database.replace_rival_scores(self.rivals)
+                self.database.set_metadata("rival_pickle_migrated", "1")
+            logger.info("ライバルDBを保存しました")
         except Exception:
-            logger.error(f"ライバルキャッシュ保存エラー: {traceback.format_exc()}")
+            logger.error(f"ライバルDB保存エラー: {traceback.format_exc()}")
 
-    def switch_cache(self, cache_path):
-        """別アカウントのライバルキャッシュへ切り替える。"""
+    def prepare_switch(self):
+        """DB切替前に実行中の取得を止める。"""
         if self._worker and self._worker.isRunning():
             self._worker.cancel()
             self._worker.wait(2000)
-        self.cache_path = cache_path
+
+    def switch_database(self, database, legacy_cache_path=None):
+        """別アカウントのSQLiteへ切り替える。"""
+        self.database = database
+        self.legacy_cache_path = legacy_cache_path or self.CACHE_PATH
         self.rivals = []
         self.prev_rivals = []
         self.load_cache()
@@ -240,6 +274,7 @@ class RivalManager(QObject):
         """全ライバルのCSVをバックグラウンドで取得開始"""
         if not rival_configs:
             self.rivals = []
+            self._save_cache()
             self.rivals_loaded.emit()
             return
 

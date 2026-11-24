@@ -269,7 +269,7 @@ class UIText:
         major_update += 'Importing from result images is more reliable than converting from alllog.pkl.'
 
         ask_import_v2_config = 'Do you want to import v2 settings?\n(Some settings, including OBS auto-control, are incompatible.)'
-        notify_rename_v2_config = 'Successfully renamed the imported v2 settings file.\nalllog.pkl -> alllog.pkl.bak'
+        notify_rename_v2_config = 'Imported the v2 settings. The original settings.json was kept unchanged.'
 
         error_title = 'Error'
         warning_title = 'Warning'

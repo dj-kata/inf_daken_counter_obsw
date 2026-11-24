@@ -97,6 +97,7 @@ class Config:
         self.modify_rivalarea_mode = config_modify_rivalarea.invalid  # ライバル欄編集方法
         self.write_statistics = False  # 統計情報を書き込むか
         self.include_legacy_v2_logs = False  # v2以前のログを集計対象にするか
+        self.v2_config_imported = False
         self.enable_katate_difficulty_display = False  # 片手難易度をレベル表示に含めるか
         self.enable_katate_tweet_grouping = False  # ツイート集計を片手難易度ごとに分けるか
 
@@ -211,6 +212,7 @@ class Config:
                     self.result_image_cache_limit = max(0, int(config_data.get('result_image_cache_limit', 0)))
                     self.write_statistics = config_data.get('write_statistics', False)
                     self.include_legacy_v2_logs = config_data.get('include_legacy_v2_logs', False)
+                    self.v2_config_imported = config_data.get('v2_config_imported', False)
                     self.enable_katate_difficulty_display = config_data.get('enable_katate_difficulty_display', False)
                     self.enable_katate_tweet_grouping = config_data.get('enable_katate_tweet_grouping', False)
 
@@ -278,6 +280,7 @@ class Config:
             "result_image_cache_limit": self.result_image_cache_limit,
             "write_statistics": self.write_statistics,
             "include_legacy_v2_logs": self.include_legacy_v2_logs,
+            "v2_config_imported": self.v2_config_imported,
             "enable_katate_difficulty_display": self.enable_katate_difficulty_display,
             "enable_katate_tweet_grouping": self.enable_katate_tweet_grouping,
             "language": self.language,
@@ -361,10 +364,17 @@ class Config:
         return self.selected_account.get("image_save_path") or self.image_save_path
 
     def account_playlog_path(self, account_id=None):
+        """v3 pickleの移行元。新規保存には使用しない。"""
         account_id = account_id or self.selected_account_id
         if account_id == "default":
             return "playlog.infdc"
         return os.path.join("accounts", account_id, "playlog.infdc")
+
+    def account_database_path(self, account_id=None):
+        account_id = account_id or self.selected_account_id
+        if account_id == "default":
+            return "daken_counter.db"
+        return os.path.join("accounts", account_id, "daken_counter.db")
 
     def account_rival_cache_path(self, account_id=None):
         account_id = account_id or self.selected_account_id

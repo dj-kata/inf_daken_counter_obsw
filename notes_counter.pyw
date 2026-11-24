@@ -345,11 +345,13 @@ class MainWindow(MainWindowUI):
         self.song_database = SongDatabase()
         self.result_database = ResultDatabase(
             config=self.config,
-            storage_path=self.config.account_playlog_path(),
+            storage_path=self.config.account_database_path(),
+            legacy_pickle_path=self.config.account_playlog_path(),
         )
         self.rival_manager = RivalManager(
             parent=self,
-            cache_path=self.config.account_rival_cache_path(),
+            database=self.result_database.database,
+            legacy_cache_path=self.config.account_rival_cache_path(),
         )
         self.result_database.rival_manager = self.rival_manager
         self.screen_reader = ScreenReader()
@@ -554,7 +556,7 @@ class MainWindow(MainWindowUI):
 
     def check_startup_migration(self):
         """起動時にv2からの引き継ぎが必要か確認し、ダイアログを表示する"""
-        if not Path('settings.json').exists():
+        if not Path('settings.json').exists() or self.config.v2_config_imported:
             return
 
         # メジャーアップデートの通知
@@ -587,18 +589,16 @@ class MainWindow(MainWindowUI):
         self.config.image_save_path = v2_settings['autosave_dir'] if 'autosave_dir' in v2_settings else self.config.image_save_path
         self.config.modify_rivalarea_mode = config_modify_rivalarea.mosaic if v2_settings.get('autosave_mosaic', False) else self.config.modify_rivalarea_mode
         self.config.enable_autotweet = v2_settings['tweet_on_exit'] if 'tweet_on_exit' in v2_settings else self.config.enable_autotweet
-        self.config.autosave_image_mode = config_autosave_image.all if v2_settings.get('autosave_always', False) in v2_settings else self.config.autosave_image_mode
+        self.config.autosave_image_mode = config_autosave_image.all if v2_settings.get('autosave_always', False) else self.config.autosave_image_mode
         self.config.obs_scene_collection = v2_settings['scene_collection'] if 'scene_collection' in v2_settings else self.config.obs_scene_collection
+        self.config.v2_config_imported = True
+        self.config.save_config()
 
         QMessageBox.information(
             self,
             self.ui.window.import_v2_config_title,
             self.ui.message.notify_rename_v2_config,
         )
-
-        file_path = Path('settings.json')
-        file_path.rename('settings.json.bak')
-
 
     def open_config_dialog(self):
         """設定ダイアログを開く"""
@@ -639,12 +639,19 @@ class MainWindow(MainWindowUI):
             self.score_viewer.close()
             self.score_viewer = None
 
-        self.result_database.switch_storage(self.config.account_playlog_path(account_id))
+        self.rival_manager.prepare_switch()
+        self.result_database.switch_storage(
+            self.config.account_database_path(account_id),
+            self.config.account_playlog_path(account_id),
+        )
         if not self.config.select_account(account_id):
             return
         self.config.save_config()
 
-        self.rival_manager.switch_cache(self.config.account_rival_cache_path())
+        self.rival_manager.switch_database(
+            self.result_database.database,
+            self.config.account_rival_cache_path(),
+        )
         self.rival_manager.start_fetch(self.config.rivals)
         self.select_bpim2_timer.stop()
         self._pending_select_bpim2_args = None

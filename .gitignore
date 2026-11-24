@@ -28,6 +28,10 @@ qt.conf
 hoge*
 inf_score.csv
 playlog.infdc
+daken_counter.db
+daken_counter.db-wal
+daken_counter.db-shm
+accounts/
 results/*
 site/
 .codex-venv/

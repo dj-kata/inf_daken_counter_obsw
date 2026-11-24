@@ -2,9 +2,17 @@
 from .classes import *
 from .funcs import *
 from .songinfo import *
-from .result import PlayOption, CurrentOption, OneResult, DetailedResult, OneBestData
+from .result import (
+    BpiArenaAverage,
+    PlayOption,
+    CurrentOption,
+    OneResult,
+    DetailedResult,
+    OneBestData,
+)
 from .logger import get_logger
 from .config import Config
+from .database_sqlite import SQLiteDatabase
 
 logger = get_logger(__name__)
 import os
@@ -15,6 +23,7 @@ import bz2, pickle
 import traceback
 import functools
 import csv
+import json
 import urllib.parse
 from collections import defaultdict, OrderedDict
 from pathlib import Path
@@ -120,12 +129,21 @@ def _extract_songinfo_fields(songinfo) -> dict:
 class ResultDatabase:
     """全リザルトを保存するためのクラス"""
 
-    def __init__(self, config: Config = None, storage_path=None):
+    def __init__(
+        self,
+        config: Config = None,
+        storage_path=None,
+        legacy_pickle_path=None,
+    ):
         self.song_database = SongDatabase()
         """曲情報クラスのインスタンス。検索用。"""
         self.results: List[OneResult] = []
         """全リザルトが格納されるリスト。OneResultが1エントリとなる。"""
-        self.storage_path = Path(storage_path or "playlog.infdc")
+        self.storage_path = Path(storage_path or "daken_counter.db")
+        self.legacy_pickle_path = Path(legacy_pickle_path or "playlog.infdc")
+        self.database = SQLiteDatabase(self.storage_path)
+        self._persisted_rows = {}
+        self._database_lock = threading.RLock()
 
         # WebSocketサーバー関連の初期化
         self.config = config
@@ -263,6 +281,7 @@ class ResultDatabase:
         with self._result_image_cache_lock:
             self._result_image_cache.clear()
             self._result_image_cache_dir.cleanup()
+        self.database.close()
         logger.info("サーバーを停止しました")
 
     def update_websocket_port(self, port: int):
@@ -502,36 +521,241 @@ class ResultDatabase:
             else:
                 return False
 
-    def load(self):
-        """保存済みリザルトをロードする"""
+    @staticmethod
+    def _enum_value(value):
+        return value.value if value is not None else None
+
+    @staticmethod
+    def _db_bool(value):
+        return None if value is None else int(bool(value))
+
+    def _result_to_row(self, result):
+        option = getattr(result, "option", None)
+        judge = getattr(result, "judge", None)
+        release = getattr(result, "average_release", None)
+        release_json = None
+        if release is not None:
+            release_json = json.dumps(getattr(release, "histogram", []))
+        arena_averages = getattr(result, "bpim2_arena_averages", None)
+        arena_json = None
+        if arena_averages is not None:
+            def arena_value(average, key):
+                if isinstance(average, dict):
+                    return average.get(key)
+                return getattr(average, key)
+
+            arena_json = json.dumps(
+                [
+                    {
+                        "rank": arena_value(average, "rank"),
+                        "avg_ex_score": arena_value(average, "avg_ex_score"),
+                    }
+                    for average in arena_averages
+                ],
+                ensure_ascii=False,
+            )
+        return {
+            "title": getattr(result, "title", None),
+            "play_style": self._enum_value(getattr(result, "play_style", None)),
+            "difficulty": self._enum_value(getattr(result, "difficulty", None)),
+            "lamp": self._enum_value(getattr(result, "lamp", None)),
+            "timestamp": int(getattr(result, "timestamp", 0)),
+            "playspeed": getattr(result, "playspeed", None),
+            "option_present": int(option is not None),
+            "option_valid": int(bool(getattr(option, "valid", False))),
+            "option_arrange": getattr(option, "arrange", None),
+            "option_flip": getattr(option, "flip", None),
+            "option_assist": getattr(option, "assist", None),
+            "option_battle": int(bool(getattr(option, "battle", False))),
+            "option_allscratch": int(bool(getattr(option, "allscratch", False))),
+            "option_regularspeed": int(bool(getattr(option, "regularspeed", False))),
+            "detect_mode": self._enum_value(getattr(result, "detect_mode", None)),
+            "is_arcade": int(bool(getattr(result, "is_arcade", False))),
+            "judge_pg": getattr(judge, "pg", None),
+            "judge_gr": getattr(judge, "gr", None),
+            "judge_gd": getattr(judge, "gd", None),
+            "judge_bd": getattr(judge, "bd", None),
+            "judge_pr": getattr(judge, "pr", None),
+            "judge_cb": getattr(judge, "cb", None),
+            "score": getattr(result, "score", None),
+            "bp": getattr(result, "bp", None),
+            "pre_score": getattr(result, "pre_score", None),
+            "pre_lamp": self._enum_value(getattr(result, "pre_lamp", None)),
+            "pre_bp": getattr(result, "pre_bp", None),
+            "notes": getattr(result, "notes", None),
+            "dead": self._db_bool(getattr(result, "dead", None)),
+            "average_release_json": release_json,
+            "bpim2": getattr(result, "bpim2", None),
+            "bpim2_arena_averages_json": arena_json,
+            "image_path": getattr(result, "image_path", None),
+            "lane_layout": getattr(result, "lane_layout", None),
+            "registered_at": getattr(result, "registered_at", None),
+            "official_play_count": getattr(result, "official_play_count", None),
+        }
+
+    def _row_to_result(self, row):
+        option = None
+        if row["option_present"]:
+            option = PlayOption(None)
+            option.valid = bool(row["option_valid"])
+            option.arrange = row["option_arrange"]
+            option.flip = row["option_flip"]
+            option.assist = row["option_assist"]
+            option.battle = bool(row["option_battle"])
+            option.allscratch = bool(row["option_allscratch"])
+            option.regularspeed = bool(row["option_regularspeed"])
+
+        judge = None
+        if row["judge_pg"] is not None:
+            judge = Judge(
+                row["judge_pg"],
+                row["judge_gr"],
+                row["judge_gd"],
+                row["judge_bd"],
+                row["judge_pr"],
+                row["judge_cb"],
+            )
+
+        release = None
+        if row["average_release_json"]:
+            release = average_release(json.loads(row["average_release_json"]))
+
+        result = OneResult(
+            title=row["title"],
+            play_style=play_style(row["play_style"]) if row["play_style"] is not None else None,
+            difficulty=difficulty(row["difficulty"]) if row["difficulty"] is not None else None,
+            lamp=clear_lamp(row["lamp"]) if row["lamp"] is not None else None,
+            timestamp=row["timestamp"],
+            playspeed=row["playspeed"],
+            option=option,
+            detect_mode=detect_mode(row["detect_mode"]) if row["detect_mode"] is not None else None,
+            is_arcade=bool(row["is_arcade"]),
+            judge=judge,
+            score=row["score"],
+            bp=row["bp"],
+            pre_score=row["pre_score"],
+            pre_lamp=clear_lamp(row["pre_lamp"]) if row["pre_lamp"] is not None else None,
+            pre_bp=row["pre_bp"],
+            notes=row["notes"],
+            dead=None if row["dead"] is None else bool(row["dead"]),
+            average_release=release,
+            bpim2=row["bpim2"],
+            image_path=row["image_path"],
+            lane_layout=row["lane_layout"],
+            registered_at=row["registered_at"],
+            official_play_count=row["official_play_count"],
+        )
+        if row["bpim2_arena_averages_json"]:
+            result.bpim2_arena_averages = [
+                BpiArenaAverage(
+                    rank=value["rank"],
+                    avg_ex_score=int(value["avg_ex_score"]),
+                )
+                for value in json.loads(row["bpim2_arena_averages_json"])
+            ]
+        # OneResultはselectかつNoneの場合に現在時刻を自動設定するため、DB値で戻す。
+        result.registered_at = row["registered_at"]
+        result.id = row["id"]
+        return result
+
+    def _load_database_rows(self):
+        rows = self.database.get_all_results()
+        self.results = [self._row_to_result(row) for row in rows]
+        self._persisted_rows = {
+            result.id: {
+                **self._result_to_row(result),
+                "sequence": row["sequence"],
+            }
+            for result, row in zip(self.results, rows)
+        }
+
+    def _migrate_v3_pickle(self):
+        if self.database.get_metadata("v3_pickle_migrated") == "1":
+            return
+        if self.database.get_all_results():
+            self.database.set_metadata("v3_pickle_migrated", "1")
+            self.database.commit()
+            return
+        if not self.legacy_pickle_path.exists():
+            self.database.set_metadata("v3_pickle_migrated", "1")
+            self.database.commit()
+            return
+
+        logger.info(f"v3 pickleからSQLiteへの移行を開始: {self.legacy_pickle_path}")
         try:
-            with bz2.BZ2File(self.storage_path, "rb", compresslevel=9) as f:
-                self.results = pickle.load(f)
+            with bz2.BZ2File(self.legacy_pickle_path, "rb") as stream:
+                migrated_results = pickle.load(stream)
+            self.results = list(migrated_results)
             for result in self.results:
+                result.id = None
                 if not hasattr(result, "lane_layout"):
                     result.lane_layout = None
                 if not hasattr(result, "official_play_count"):
                     result.official_play_count = None
-        except FileNotFoundError:
-            self.results = []
+            self._persisted_rows = {}
+            self.save()
+            self.database.set_metadata("v3_pickle_migrated", "1")
+            self.database.commit()
+            logger.info(
+                f"v3 pickle移行完了: {len(self.results)}件。元ファイルは保持します。"
+            )
         except Exception:
-            logger.error(traceback.format_exc())
+            self.database.rollback()
+            self.results = []
+            self._persisted_rows = {}
+            logger.error(f"v3 pickle移行失敗:\n{traceback.format_exc()}")
+
+    def load(self):
+        """SQLiteからリザルトをロードし、初回だけv3 pickleを移行する。"""
+        with self._database_lock:
+            self._migrate_v3_pickle()
+            self._load_database_rows()
 
     def save(self):
-        """ファイル出力"""
-        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-        with bz2.BZ2File(self.storage_path, "wb", compresslevel=9) as f:
-            pickle.dump(self.results, f)
+        """メモリ上の変更分だけをSQLiteへ反映する。"""
+        with self._database_lock:
+            try:
+                with self.database.transaction():
+                    current_ids = []
+                    next_persisted = {}
+                    next_sequence = max(
+                        (values["sequence"] for values in self._persisted_rows.values()),
+                        default=0,
+                    )
+                    for result in self.results:
+                        values = self._result_to_row(result)
+                        row_id = getattr(result, "id", None)
+                        if row_id not in self._persisted_rows:
+                            next_sequence += 1
+                            values["sequence"] = next_sequence
+                            row_id = self.database.insert_result(values)
+                            result.id = row_id
+                        else:
+                            values["sequence"] = self._persisted_rows[row_id]["sequence"]
+                            if self._persisted_rows[row_id] != values:
+                                self.database.update_result(row_id, values)
+                        current_ids.append(row_id)
+                        next_persisted[row_id] = values
+                    deleted_ids = set(self._persisted_rows) - set(current_ids)
+                    self.database.delete_results(deleted_ids)
+                self._persisted_rows = next_persisted
+            except Exception:
+                logger.error(f"SQLite保存失敗:\n{traceback.format_exc()}")
+                raise
 
-    def switch_storage(self, storage_path):
-        """現在のログを保存し、別アカウントのログへ切り替える。"""
-        self.save()
-        self.storage_path = Path(storage_path)
-        self.results = []
-        with self._result_image_cache_lock:
-            self._result_image_cache.clear()
-        self.load()
-        self.save()
+    def switch_storage(self, storage_path, legacy_pickle_path=None):
+        """現在のDBを閉じ、別アカウントのSQLiteへ切り替える。"""
+        with self._database_lock:
+            self.save()
+            self.database.close()
+            self.storage_path = Path(storage_path)
+            self.legacy_pickle_path = Path(legacy_pickle_path or "playlog.infdc")
+            self.database = SQLiteDatabase(self.storage_path)
+            self.results = []
+            self._persisted_rows = {}
+            with self._result_image_cache_lock:
+                self._result_image_cache.clear()
+            self.load()
 
     def _result_matches_chart(
         self,

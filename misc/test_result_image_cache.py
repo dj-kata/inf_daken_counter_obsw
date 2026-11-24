@@ -31,10 +31,18 @@ class ResultImageCacheTests(unittest.TestCase):
         # Avoid loading/saving the user's playlog or starting application servers.
         with patch('src.result_database.SongDatabase'), \
                 patch.object(ResultDatabase, 'load'), patch.object(ResultDatabase, 'save'):
-            db = ResultDatabase()
+            db = ResultDatabase(
+                storage_path=self.root / "result-image-cache.db",
+                legacy_pickle_path=self.root / "missing.infdc",
+            )
         db.config = SimpleNamespace(result_image_cache_limit=0)
-        self.addCleanup(db.shutdown_servers)
+        self.addCleanup(self._shutdown_database, db)
         return db
+
+    @staticmethod
+    def _shutdown_database(db):
+        db.results = []
+        db.shutdown_servers()
 
     def result(self, timestamp):
         result = SimpleNamespace(timestamp=timestamp, detect_mode=detect_mode.result,
@@ -167,7 +175,8 @@ class ResultImageCacheTests(unittest.TestCase):
         result.is_updated = lambda: updated
         config = SimpleNamespace(autosave_image_mode=config_autosave_image.only_updates,
                                  write_statistics=False, modify_rivalarea_mode=config_modify_rivalarea.invalid,
-                                 image_save_path=str(self.root / 'results'))
+                                 image_save_path=str(self.root / 'results'),
+                                 effective_image_save_path=str(self.root / 'results'))
         window = SimpleNamespace(config=config, result_database=self.db,
                                  screen_reader=SimpleNamespace(screen=SimpleNamespace(original=self.image),
                                                                is_result=lambda: True),

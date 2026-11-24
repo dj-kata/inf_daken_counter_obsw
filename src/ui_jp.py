@@ -269,7 +269,7 @@ class UIText:
         major_update += 'alllog.pklからのコンバートよりも、リザルト画像からの取り込みがより確実です。'
 
         ask_import_v2_config = 'v2の設定をインポートしますか? \n(OBS自動制御設定など一部の設定は引き継げません)'
-        notify_rename_v2_config = 'インポート済みのv2の設定ファイルをリネームしました。\nalllog.pkl -> alllog.pkl.bak'
+        notify_rename_v2_config = 'v2の設定をインポートしました。元のsettings.jsonはそのまま保持します。'
 
         error_title = 'エラー'
         warning_title = '警告'
