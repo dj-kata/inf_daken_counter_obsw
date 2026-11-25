@@ -8,6 +8,7 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const shared = read('template/lane_option.js');
+const sharedCss = read('template/lane_option.css');
 
 function load(file, search = '') {
     const elements = new Map();
@@ -64,6 +65,12 @@ test('all seven digits have the same markup and only their color class differs',
     assert.deepEqual(keys.map(key => key[1]), ['white', 'red', 'white', 'blue', 'blue', 'white', 'blue']);
     assert.equal(digits(context.renderLaneOptionToken('REGULAR')).map(key => key[2]).join(''), '1234567');
     assert.equal(digits(context.renderLaneOptionToken('MIRROR')).map(key => key[2]).join(''), '7654321');
+});
+
+test('partial layouts reserve the same seven fixed positions as complete layouts', () => {
+    assert.match(sharedCss, /\.lane-option\s*{[^}]*\bwidth:\s*5\.52em;/s);
+    assert.match(sharedCss, /\.lane-option-key\s*{[^}]*\bwidth:\s*\.72em;[^}]*\bmin-width:\s*\.72em;/s);
+    assert.match(sharedCss, /\.lane-option-key:empty::before\s*{[^}]*content:\s*"\\00a0";/s);
 });
 
 test('unknown, absent, or invalid layouts keep the original text', () => {
