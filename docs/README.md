@@ -5,6 +5,7 @@
 - [v2からの移行](migration-v2.md)
 - [OBS向けHTMLビュー](obs-views.md)
 - [設定画面で設定できること](settings.md)
+- [公式CSV・複数アカウント・バックアップ](data-management.md)
 - [ゲーム画面の取得](capture.md)
 - [更新情報](releases.md)
 

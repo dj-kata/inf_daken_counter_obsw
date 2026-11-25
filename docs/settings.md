@@ -30,6 +30,9 @@ SQLiteファイル `daken_counter.db` へ保存されます。旧v3の `playlog.
 `out/rival_log.infdc` がある場合は初回起動時に自動変換し、元ファイルもそのまま残します。
 アカウント登録を削除してもデータファイルは自動削除されません。
 
+公式CSVの取り込み先、アカウントごとの保存内容、`config.json` に保存される項目、
+バックアップ方法は[公式CSV・複数アカウント・バックアップ](data-management.md)を参照してください。
+
 ## 基本設定タブ {#basic}
 
 ![基本設定タブの初期表示](images/settings-basic-ja.png)

@@ -38,6 +38,7 @@ nav:
   - 設定画面で設定できること: settings.md
   - OBS向けHTMLビューの利用方法: obs-views.md
   - その他の機能:
+      - 公式CSV・複数アカウント・バックアップ: data-management.md
       - スコアビューワ: score-viewer.md
       - HTTPサーバ（スマホ連携）: mobile.md
       - ライバル登録: rivals.md
