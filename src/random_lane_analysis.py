@@ -333,6 +333,8 @@ class RandomLaneAnalysis:
             "option": "",
             "registered_key": None,
             "registered_events": None,
+            "existing_events": None,
+            "recording_identified": False,
             "analyzed_events": [],
         }
         self.detectors[side].reset()
@@ -356,23 +358,20 @@ class RandomLaneAnalysis:
             self.result_layout = (
                 REGULAR_LAYOUT if arrange == "REGULAR" else MIRROR_LAYOUT
             )
-            if self._load_chart(self.chart_key):
-                self._publish(
-                    "ready",
-                    title=title,
-                    chart=difficulty,
-                    layout=self.result_layout,
-                    message="正規譜面データは登録済みです",
-                )
-                return
+            existing_events = self._load_chart(self.chart_key)
+            if self._play_context is not None:
+                self._play_context["existing_events"] = existing_events
             self.mode = "record"
             self.recorder = NormalChartRecorder()
             self.record_mirror = arrange == "MIRROR"
-            message = (
-                "MIRROR譜面を正規配置へ変換して記録中"
-                if self.record_mirror
-                else "正規譜面データを記録中"
-            )
+            if existing_events:
+                message = "登録済みの正規譜面データを確認中"
+            else:
+                message = (
+                    "MIRROR譜面を正規配置へ変換して記録中"
+                    if self.record_mirror
+                    else "正規譜面データを記録中"
+                )
             self._publish(
                 "recording",
                 title=title,
@@ -432,16 +431,13 @@ class RandomLaneAnalysis:
         else:
             recording_complete = False
 
-        if self.mode == "record" and recording_complete:
-            self._save_chart(self.chart_key, self.chart_meta, self.recorder.events)
-            if self._play_context is not None:
-                self._play_context["registered_key"] = self.chart_key
-                self._play_context["registered_events"] = list(self.recorder.events)
-            self.mode = None
+        if (self.mode == "record" and recording_complete
+                and not self._play_context.get("recording_identified", False)):
+            self._play_context["recording_identified"] = True
             self._publish(
-                "registered", **self.chart_meta,
+                "recording", **self.chart_meta,
                 layout=self.result_layout,
-                message=f"正規譜面データを登録しました（{len(self.recorder.events)}イベント）",
+                message=f"正規譜面データを取得中（{len(self.recorder.events)}イベント）",
             )
         elif self.mode == "analyze":
             if self._play_context is not None:
@@ -493,9 +489,41 @@ class RandomLaneAnalysis:
     def end_play(self):
         if not self.enabled:
             return
+        self._finish_chart_recording()
         self._reset_session()
         if self.capture_supported:
             self._publish("waiting", message="プレー終了。次のSPプレーを待っています")
+
+    def _finish_chart_recording(self):
+        """Keep the most complete uniquely identifiable REGULAR/MIRROR capture."""
+        if self.mode != "record" or self.recorder is None or self._play_context is None:
+            return False
+        events = self.recorder.events
+        if not events or not self._play_context.get("recording_identified", False):
+            logger.warning("正規譜面データは配置を一意に識別できないため保存しません")
+            return False
+
+        existing_events = self._play_context.get("existing_events") or []
+        if existing_events and len(events) <= len(existing_events):
+            logger.info(
+                "登録済みの正規譜面データを維持: existing=%d captured=%d chart=%s",
+                len(existing_events), len(events), self.chart_key,
+            )
+            return False
+
+        self._save_chart(self.chart_key, self.chart_meta, events)
+        self._play_context["registered_key"] = self.chart_key
+        self._play_context["registered_events"] = list(events)
+        logger.info(
+            "正規譜面データを%s: %dイベント chart=%s",
+            "更新" if existing_events else "登録", len(events), self.chart_key,
+        )
+        self._publish(
+            "registered", **self.chart_meta,
+            layout=self.result_layout,
+            message=f"正規譜面データを{'更新' if existing_events else '登録'}しました（{len(events)}イベント）",
+        )
+        return True
 
     @_synchronized
     def take_notification(self):
@@ -531,7 +559,14 @@ class RandomLaneAnalysis:
         registered_key = context.get("registered_key")
         registered_events = context.get("registered_events")
         if registered_key and registered_events:
-            self._reassign_chart(registered_key, corrected_key, corrected_meta, registered_events)
+            self._reassign_chart(
+                registered_key,
+                corrected_key,
+                corrected_meta,
+                registered_events,
+                old_meta=old_meta,
+                old_events=context.get("existing_events"),
+            )
             context["registered_key"] = corrected_key
 
         option = context.get("option")
@@ -638,28 +673,57 @@ class RandomLaneAnalysis:
             )
         logger.info("RANDOM配置認識用の正規譜面を登録: %s", chart_key)
 
-    def _reassign_chart(self, old_key, new_key, meta, events):
+    def _reassign_chart(self, old_key, new_key, meta, events, *, old_meta=None, old_events=None):
         with closing(sqlite3.connect(self.db_path)) as conn, conn:
-            conn.execute(
-                """INSERT INTO normal_charts
-                   (chart_key,title,style,difficulty,level,note_events,created_at,data_version)
-                   VALUES (?,?,?,?,?,?,?,?)
-                   ON CONFLICT(chart_key) DO UPDATE SET
-                       title=excluded.title,
-                       style=excluded.style,
-                       difficulty=excluded.difficulty,
-                       level=excluded.level,
-                       note_events=excluded.note_events,
-                       created_at=excluded.created_at,
-                       data_version=excluded.data_version""",
-                (
-                    new_key, meta["title"], meta["style"], meta["difficulty"], meta["level"],
-                    json.dumps(events, ensure_ascii=False), int(time.time()), CHART_DATA_VERSION,
-                ),
-            )
+            destination_exists = old_key != new_key and conn.execute(
+                "SELECT 1 FROM normal_charts WHERE chart_key=? AND data_version=?",
+                (new_key, CHART_DATA_VERSION),
+            ).fetchone() is not None
+            if not destination_exists:
+                conn.execute(
+                    """INSERT INTO normal_charts
+                       (chart_key,title,style,difficulty,level,note_events,created_at,data_version)
+                       VALUES (?,?,?,?,?,?,?,?)
+                       ON CONFLICT(chart_key) DO UPDATE SET
+                           title=excluded.title,
+                           style=excluded.style,
+                           difficulty=excluded.difficulty,
+                           level=excluded.level,
+                           note_events=excluded.note_events,
+                           created_at=excluded.created_at,
+                           data_version=excluded.data_version""",
+                    (
+                        new_key, meta["title"], meta["style"], meta["difficulty"], meta["level"],
+                        json.dumps(events, ensure_ascii=False), int(time.time()), CHART_DATA_VERSION,
+                    ),
+                )
             if old_key != new_key:
-                conn.execute("DELETE FROM normal_charts WHERE chart_key=?", (old_key,))
-        logger.info("RANDOM配置認識用の正規譜面を付け替え: %s -> %s", old_key, new_key)
+                if old_events and old_meta:
+                    conn.execute(
+                        """INSERT INTO normal_charts
+                           (chart_key,title,style,difficulty,level,note_events,created_at,data_version)
+                           VALUES (?,?,?,?,?,?,?,?)
+                           ON CONFLICT(chart_key) DO UPDATE SET
+                               title=excluded.title,
+                               style=excluded.style,
+                               difficulty=excluded.difficulty,
+                               level=excluded.level,
+                               note_events=excluded.note_events,
+                               created_at=excluded.created_at,
+                               data_version=excluded.data_version""",
+                        (
+                            old_key, old_meta["title"], old_meta["style"],
+                            old_meta["difficulty"], old_meta.get("level"),
+                            json.dumps(old_events, ensure_ascii=False), int(time.time()),
+                            CHART_DATA_VERSION,
+                        ),
+                    )
+                else:
+                    conn.execute("DELETE FROM normal_charts WHERE chart_key=?", (old_key,))
+        if destination_exists:
+            logger.info("補正先の登録済み正規譜面を維持: %s -> %s", old_key, new_key)
+        else:
+            logger.info("RANDOM配置認識用の正規譜面を付け替え: %s -> %s", old_key, new_key)
 
     def _publish(self, phase, *, title=None, chart=None, style=None, difficulty=None,
                  level=None, layout="", message=""):

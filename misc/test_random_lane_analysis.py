@@ -207,11 +207,12 @@ class RandomLaneIntegrationTests(unittest.TestCase):
                     self.analysis.detectors[side].detect = lambda image: (1, next(events))
                     for _ in lane.LANES:
                         self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
-                    self.assertEqual(self.analysis._last_state['phase'], 'registered')
+                    self.assertEqual(self.analysis._last_state['phase'], 'recording')
                 self.assertEqual(self.analysis.get_result_lane_layout(), lane.MIRROR_LAYOUT)
-                saved = self.analysis._load_chart(self.analysis.chart_key)
-                self.assertEqual([e['event_lanes'] for e in saved], [[n] for n in lane.LANES])
+                chart_key = self.analysis.chart_key
                 self.analysis.end_play()
+                saved = self.analysis._load_chart(chart_key)
+                self.assertEqual([e['event_lanes'] for e in saved], [[n] for n in lane.LANES])
                 self.start(arrange, side)
                 permutation = (4, 1, 7, 2, 6, 3, 5)
                 events = iter([[n] for n in permutation])
@@ -229,9 +230,9 @@ class RandomLaneIntegrationTests(unittest.TestCase):
         self.analysis.detectors['1P'].detect = lambda image: (1, next(events))
         for _ in lane.LANES:
             self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
-        self.assertEqual(self.analysis._last_state['phase'], 'registered')
-        recorded_events = self.analysis._load_chart(wrong_key)
+        self.assertEqual(self.analysis._last_state['phase'], 'recording')
         self.analysis.end_play()
+        recorded_events = self.analysis._load_chart(wrong_key)
 
         self.assertTrue(self.analysis.correct_result_chart(
             title='correct song', style='sp', difficulty='ANOTHER', level=12,
@@ -240,6 +241,73 @@ class RandomLaneIntegrationTests(unittest.TestCase):
         self.assertIsNone(self.analysis._load_chart(wrong_key))
         self.assertEqual(self.analysis._load_chart(correct_key), recorded_events)
         self.assertEqual(self.analysis.get_result_lane_layout(), lane.REGULAR_LAYOUT)
+
+    def test_longer_regular_play_replaces_incomplete_registered_chart(self):
+        self.analysis._save_chart('test song\x1fsp\x1fANOTHER', {
+            'title': 'test song', 'style': 'sp', 'difficulty': 'ANOTHER', 'level': 12,
+        }, self.events[:6])
+        self.start('REGULAR')
+        events = iter([[n] for n in lane.LANES])
+        self.analysis.detectors['1P'].detect = lambda image: (1, next(events))
+        for _ in lane.LANES:
+            self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
+        self.analysis.end_play()
+        self.assertEqual(self.analysis._load_chart('test song\x1fsp\x1fANOTHER'), self.events)
+
+    def test_shorter_regular_play_does_not_replace_registered_chart(self):
+        self.save_chart()
+        original = self.analysis._load_chart(self.analysis.chart_key)
+        self.start('MIRROR')
+        self.analysis.detectors['1P'].detect = lambda image: (1, [7])
+        self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
+        self.analysis.end_play()
+        self.assertEqual(self.analysis._load_chart('test song\x1fsp\x1fANOTHER'), original)
+
+    def test_result_title_correction_preserves_existing_destination_chart(self):
+        destination_events = self.events + [{'event_no': 8, 'event_lanes': [1, 2]}]
+        self.analysis._save_chart('correct song\x1fsp\x1fANOTHER', {
+            'title': 'correct song', 'style': 'sp', 'difficulty': 'ANOTHER', 'level': 12,
+        }, destination_events)
+        self.start('REGULAR', title='wrong song')
+        events = iter([[n] for n in lane.LANES])
+        self.analysis.detectors['1P'].detect = lambda image: (1, next(events))
+        for _ in lane.LANES:
+            self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
+        self.analysis.end_play()
+
+        self.assertTrue(self.analysis.correct_result_chart(
+            title='correct song', style='sp', difficulty='ANOTHER', level=12,
+        ))
+        self.assertIsNone(self.analysis._load_chart('wrong song\x1fsp\x1fANOTHER'))
+        self.assertEqual(
+            self.analysis._load_chart('correct song\x1fsp\x1fANOTHER'),
+            destination_events,
+        )
+
+    def test_result_title_correction_restores_preexisting_source_chart(self):
+        source_events = self.events[:6]
+        self.analysis._save_chart('wrong song\x1fsp\x1fANOTHER', {
+            'title': 'wrong song', 'style': 'sp', 'difficulty': 'ANOTHER', 'level': 12,
+        }, source_events)
+        self.start('REGULAR', title='wrong song')
+        events = iter([[n] for n in lane.LANES])
+        self.analysis.detectors['1P'].detect = lambda image: (1, next(events))
+        for _ in lane.LANES:
+            self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
+        self.analysis.end_play()
+        self.assertEqual(
+            self.analysis._load_chart('wrong song\x1fsp\x1fANOTHER'), self.events,
+        )
+
+        self.assertTrue(self.analysis.correct_result_chart(
+            title='correct song', style='sp', difficulty='ANOTHER', level=12,
+        ))
+        self.assertEqual(
+            self.analysis._load_chart('wrong song\x1fsp\x1fANOTHER'), source_events,
+        )
+        self.assertEqual(
+            self.analysis._load_chart('correct song\x1fsp\x1fANOTHER'), self.events,
+        )
 
     def test_result_correction_reanalyzes_random_events_for_correct_chart(self):
         # The misidentified chart fails immediately, but event capture continues
