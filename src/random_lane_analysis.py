@@ -373,7 +373,7 @@ class RandomLaneAnalysis:
                     else "正規譜面データを記録中"
                 )
             self._publish(
-                "recording",
+                "ready" if existing_events else "recording",
                 title=title,
                 chart=difficulty,
                 layout=self.result_layout,
@@ -434,11 +434,12 @@ class RandomLaneAnalysis:
         if (self.mode == "record" and recording_complete
                 and not self._play_context.get("recording_identified", False)):
             self._play_context["recording_identified"] = True
-            self._publish(
-                "recording", **self.chart_meta,
-                layout=self.result_layout,
-                message=f"正規譜面データを取得中（{len(self.recorder.events)}イベント）",
-            )
+            if not self._play_context.get("existing_events"):
+                self._publish(
+                    "recording", **self.chart_meta,
+                    layout=self.result_layout,
+                    message=f"正規譜面データを取得中（{len(self.recorder.events)}イベント）",
+                )
         elif self.mode == "analyze":
             if self._play_context is not None:
                 self._play_context["analyzed_events"].append(list(lanes))

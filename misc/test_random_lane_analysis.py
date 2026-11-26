@@ -207,7 +207,8 @@ class RandomLaneIntegrationTests(unittest.TestCase):
                     self.analysis.detectors[side].detect = lambda image: (1, next(events))
                     for _ in lane.LANES:
                         self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
-                    self.assertEqual(self.analysis._last_state['phase'], 'recording')
+                    expected_phase = 'ready' if side == '2P' else 'recording'
+                    self.assertEqual(self.analysis._last_state['phase'], expected_phase)
                 self.assertEqual(self.analysis.get_result_lane_layout(), lane.MIRROR_LAYOUT)
                 chart_key = self.analysis.chart_key
                 self.analysis.end_play()
@@ -262,6 +263,20 @@ class RandomLaneIntegrationTests(unittest.TestCase):
         self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
         self.analysis.end_play()
         self.assertEqual(self.analysis._load_chart('test song\x1fsp\x1fANOTHER'), original)
+
+    def test_registered_chart_reacquisition_does_not_publish_recording(self):
+        self.save_chart()
+        callback = self.analysis.state_callback
+        callback.reset_mock()
+        self.start('REGULAR')
+        events = iter([[n] for n in lane.LANES])
+        self.analysis.detectors['1P'].detect = lambda image: (1, next(events))
+        for _ in lane.LANES:
+            self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
+
+        phases = [call.args[0]['phase'] for call in callback.call_args_list]
+        self.assertIn('ready', phases)
+        self.assertNotIn('recording', phases)
 
     def test_result_title_correction_preserves_existing_destination_chart(self):
         destination_events = self.events + [{'event_no': 8, 'event_lanes': [1, 2]}]
