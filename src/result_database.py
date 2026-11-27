@@ -535,7 +535,10 @@ class ResultDatabase:
         release = getattr(result, "average_release", None)
         release_json = None
         if release is not None:
-            release_json = json.dumps(getattr(release, "histogram", []))
+            release_json = json.dumps({
+                "interval_seconds": release.interval_seconds,
+                "histogram": release.histogram,
+            })
         arena_averages = getattr(result, "bpim2_arena_averages", None)
         arena_json = None
         if arena_averages is not None:
@@ -621,7 +624,11 @@ class ResultDatabase:
 
         release = None
         if row["average_release_json"]:
-            release = average_release(json.loads(row["average_release_json"]))
+            release_data = json.loads(row["average_release_json"])
+            release = average_release(
+                release_data["histogram"],
+                interval_seconds=release_data["interval_seconds"],
+            )
 
         result = OneResult(
             title=row["title"],

@@ -70,6 +70,7 @@ from src.official_csv_import import (
     parse_official_csv,
     read_official_csv_file,
 )
+from src.otoge_input_viewer_client import OtogeInputViewerClient
 
 sys.path.append('infnotebook')
 from define import define
@@ -365,6 +366,8 @@ class MainWindow(MainWindowUI):
         self.obs_manager.connection_changed.connect(self.on_obs_connection_changed)
 
         self.voice_guidance = VoiceGuidance(self.config)
+        self.otoge_input_viewer_client = OtogeInputViewerClient()
+        self._pending_average_release = None
         self._closing = False
         self._voice_obs_startup_checked = False
         self.random_lane_analysis = RandomLaneAnalysis(
@@ -1113,6 +1116,8 @@ class MainWindow(MainWindowUI):
 
 
         if new_mode == detect_mode.play and old_mode != detect_mode.play: # プレー画面の先頭で実行
+            self._pending_average_release = None
+            self.otoge_input_viewer_client.start_play()
             self.last_play_mode = self.screen_reader.detect_playside()
             song = self.song_database.search(
                 title=self.screen_reader.last_select_title,
@@ -1130,11 +1135,13 @@ class MainWindow(MainWindowUI):
             )
 
         if old_mode == detect_mode.play and new_mode != detect_mode.play:
+            self._pending_average_release = self.otoge_input_viewer_client.finish_play()
             self.random_lane_analysis.end_play()
 
         if trigger == 'play_end': # プレー画面の終わりに実行
             if self.current_judge and  self.current_judge.notes > 0:
                 result = self.screen_reader.read_play_screen(self.current_judge)
+                result.average_release = self._pending_average_release
                 self._apply_lane_layout_to_result(result)
                 self.result_database.add(result)
                 self.result_database.save()
@@ -1547,6 +1554,7 @@ class MainWindow(MainWindowUI):
             if not detailed_result or not detailed_result.result:
                 return False
             result = detailed_result.result
+            result.average_release = self._pending_average_release
             if result.option is None or not result.option.valid:
                 logger.warning(f"result skipped until option is recognized: {result}")
                 return False
@@ -1646,6 +1654,7 @@ class MainWindow(MainWindowUI):
                 event.ignore()
             return
         self._closing = True
+        self.otoge_input_viewer_client.stop()
         self.voice_guidance.shutdown()
         self.random_lane_analysis.set_enabled(False)
         self.game_overlay.close()

@@ -192,11 +192,14 @@ class Judge:
         return f"PG:{self.pg}, GR:{self.gr}, GD:{self.gd}, BD:{self.bd}, PR:{self.pr}, CB:{self.cb},  score:{self.score}, bp:{self.bp},  rate:{self.score_rate*100:.1f}%"
 
 class average_release:
-    '''キー入力の平均リリース時間保存用。100ノーツ平均のリスト(長さ不定)を持つ?'''
-    def __init__(self, hist:List[float]):
+    '''キー入力の平均リリース時間保存用。一定時間ごとの平均値を持つ。'''
+    def __init__(self, hist:List[float | None], *, interval_seconds:float):
         self.histogram = hist
-        '''平均リリース時間のヒストグラム。1要素が100ノーツ平均を表す。'''
-        self.total = sum(hist) / len(hist) if len(hist) > 0 else 0.0
+        '''平均リリース時間の時系列。入力のなかった区間はNone。'''
+        self.interval_seconds = interval_seconds
+        '''時系列1要素が表す秒数。'''
+        values = [value for value in hist if value is not None]
+        self.total = sum(values) / len(values) if values else 0.0
         '''トータルの平均リリース時間'''
 
     def __str__(self):

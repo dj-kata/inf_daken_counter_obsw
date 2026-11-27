@@ -24,6 +24,38 @@ from src.funcs import *
 logger = get_logger(__name__)
 
 
+def format_average_release(release) -> tuple[str, str]:
+    """平均リリース時間をプレーログ一覧用の概要と詳細へ整形する。"""
+    histogram = getattr(release, 'histogram', None)
+    if not isinstance(histogram, list) or not histogram:
+        return "", ""
+
+    values = [value for value in histogram if isinstance(value, (int, float))]
+    if not values:
+        return "", ""
+
+    average = sum(values) / len(values)
+    interval_seconds = getattr(release, 'interval_seconds', None)
+    if not isinstance(interval_seconds, (int, float)) or interval_seconds <= 0:
+        return "", ""
+
+    def format_seconds(value):
+        return f"{value:g}"
+
+    summary = f"{average:.1f} / {len(histogram)}区間"
+    lines = [
+        f"平均: {average:.1f} ms",
+        f"記録区間: {len(histogram)}（1区間{format_seconds(interval_seconds)}秒）",
+        "",
+    ]
+    for index, value in enumerate(histogram):
+        value_text = f"{value:.1f} ms" if isinstance(value, (int, float)) else "---"
+        start = format_seconds(index * interval_seconds)
+        end = format_seconds((index + 1) * interval_seconds)
+        lines.append(f"{start}–{end}秒: {value_text}")
+    return summary, "\n".join(lines)
+
+
 class SortableItem(QTableWidgetItem):
     '''UserRoleに渡された数値でソートするための表アイテム。表示とソートを分ける時に使う。'''
     def __lt__(self, other):
@@ -366,7 +398,10 @@ class ScoreViewer(QMainWindow):
     def setup_playlog_table(self):
         """プレーログテーブルの初期設定"""
         # 列定義
-        columns = ['プレー/登録日時', 'ランプ', 'スコア', 'BP', 'playspeed', 'プレーオプション']
+        columns = [
+            'プレー/登録日時', 'ランプ', 'スコア', 'BP', 'playspeed',
+            'プレーオプション', 'リリース(ms)',
+        ]
         
         self.playlog_table.setColumnCount(len(columns))
         self.playlog_table.setHorizontalHeaderLabels(columns)
@@ -382,6 +417,7 @@ class ScoreViewer(QMainWindow):
         self.playlog_table.setColumnWidth(3, 100)  # BP
         self.playlog_table.setColumnWidth(4, 80)   # playspeed
         self.playlog_table.setColumnWidth(5, 180)  # option
+        self.playlog_table.setColumnWidth(6, 120)  # average release
         
         # 編集不可
         self.playlog_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -389,6 +425,7 @@ class ScoreViewer(QMainWindow):
         # 選択設定（行全体を選択）
         self.playlog_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.playlog_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.playlog_table.cellDoubleClicked.connect(self.on_playlog_double_clicked)
     
     def create_rival_widget(self) -> QWidget:
         """ライバル欄ウィジェットを作成"""
@@ -1146,6 +1183,16 @@ class ScoreViewer(QMainWindow):
                 item = QTableWidgetItem(option_str)
                 item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
                 self.playlog_table.setItem(row, 5, item)
+
+                # 平均リリース時間（詳細はツールチップとダブルクリックで確認）
+                release_summary, release_detail = format_average_release(
+                    getattr(log, 'average_release', None)
+                )
+                item = QTableWidgetItem(release_summary)
+                item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                if release_detail:
+                    item.setToolTip(f"{release_detail}\n\nダブルクリックで表示")
+                self.playlog_table.setItem(row, 6, item)
         
         except Exception as e:
             logger.error(f"プレーログ欄更新エラー: {e}")
@@ -1157,6 +1204,22 @@ class ScoreViewer(QMainWindow):
         if result.detect_mode == detect_mode.select:
             return getattr(result, 'registered_at', None) or 0
         return result.timestamp or 0
+
+    @Slot(int, int)
+    def on_playlog_double_clicked(self, row: int, column: int):
+        """平均リリース時間がある行をダブルクリックしたら全区間を表示する。"""
+        result_item = self.playlog_table.item(row, 0)
+        result = result_item.data(Qt.UserRole) if result_item else None
+        _, detail = format_average_release(getattr(result, 'average_release', None))
+        if not detail:
+            return
+        QMessageBox.information(
+            self,
+            "平均リリース時間",
+            f"{result.title}\n"
+            f"{get_chart_name(result.play_style, result.difficulty)}\n\n"
+            f"{detail}",
+        )
     
     @Slot()
     def on_delete_playlog(self):

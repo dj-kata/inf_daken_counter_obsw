@@ -92,11 +92,18 @@ class AccountConfigTests(unittest.TestCase):
         self.assertEqual(restored.option.arrange, "RANDOM")
         self.assertTrue(restored.option.valid)
         self.assertEqual(restored.judge.pg, 300)
-        self.assertEqual(restored.average_release.histogram, [10.5, 20.5])
+        self.assertEqual(restored.average_release.histogram, [10.5, None, 20.5])
+        self.assertEqual(restored.average_release.interval_seconds, 10.0)
+        release_data = json.loads(
+            database.database.get_all_results()[0]["average_release_json"]
+        )
+        self.assertEqual(release_data["interval_seconds"], 10.0)
+        self.assertEqual(release_data["histogram"], [10.5, None, 20.5])
         self.assertEqual(restored.bpim2_arena_averages[0].rank, "A1")
         self.assertEqual(restored.lane_layout, "1234567")
         self.assertTrue(default_path.exists())
         self.assertTrue(second_path.exists())
+
         database.switch_storage(second_path, self.root / "missing.infdc")
         database.results[0].official_play_count = 9
         database.save()
@@ -173,7 +180,9 @@ class AccountConfigTests(unittest.TestCase):
             judge=Judge(300, 100, 20, 5, 7, 12),
             notes=600,
             dead=False,
-            average_release=average_release([10.5, 20.5]),
+            average_release=average_release(
+                [10.5, None, 20.5], interval_seconds=10.0
+            ),
             bpim2=12.34,
             image_path="results/test.png",
             lane_layout="1234567",

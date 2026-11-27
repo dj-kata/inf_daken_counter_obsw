@@ -24,6 +24,8 @@ https://youtu.be/6oGS0dvHhGQ
 - [Track Browser](https://sites.google.com/view/track-browser/home): スマホからのリザルト確認など
 - [Otoge Input Viewer](https://github.com/dj-kata/otoge_input_viewer#otoge-input-viewer): コントローラへの入力の可視化、鍵盤とスクラッチの入力回数の計上など
 
+Otoge Input Viewerをデフォルト設定（WebSocketポート8765）で同時起動すると、プレー中の平均リリース時間を10秒区間ごとの時系列としてプレーログへ保存します。区間秒数もプレーログへ保存するため、将来集計間隔が変わっても時間軸を復元できます。入力のなかった区間は欠損値として保持し、Otoge Input Viewerが起動していない場合は記録しません。
+
 2026年11月のアップデートでINFINITASのCSVをDLする機能が提供され始めたため、  
 CSV取得のためだけに本アプリを使う必要性は少し薄れつつありますが、  
 以下の機能を使いたい人にはおすすめです。
