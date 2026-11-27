@@ -6,6 +6,8 @@ target_zip=$(project_name).zip
 prepared=$(project_name)/.prepared
 srcs=$(wildcard *.py) $(wildcard *.pyw) $(wildcard src/*.py) $(wildcard misc/*.py)
 html_files=$(wildcard template/*.html) $(wildcard template/*.css) $(wildcard template/*.js)
+catalog_preview_files=$(filter-out docs/images/wiki/view-stats-receipt.png,$(wildcard docs/images/wiki/view-*.png))
+catalog_generated_preview_files=$(wildcard template/thumbnails/*.png)
 version=$(shell head -n1 version.txt)
 ZIP ?= 7z a -tzip -mx=1 -mmt=on
 SYNC_DEST ?= /mnt/d/bin/YouTubeLive
@@ -26,10 +28,12 @@ $(target_zip): $(prepared)
 	@rm -rf $(target_zip)
 	$(ZIP) $(target_zip) $(project_name)
 
-$(prepared): $(target) $(html_files) version.txt songinfo.infdc
+$(prepared): $(target) $(html_files) $(catalog_preview_files) $(catalog_generated_preview_files) version.txt songinfo.infdc
 	@rm -rf $(project_name)/tmp
 	@cp version.txt $(project_name)
 	@cp -a template $(project_name)
+	@mkdir -p $(project_name)/template/thumbnails
+	@cp $(catalog_preview_files) $(project_name)/template/thumbnails/
 	@mkdir -p $(project_name)/infnotebook
 	@cp -a infnotebook/resources $(project_name)/infnotebook/
 	@cp songinfo.infdc $(project_name)

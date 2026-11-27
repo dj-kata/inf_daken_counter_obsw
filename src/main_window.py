@@ -22,6 +22,7 @@ from src.logger import get_logger
 from src.funcs import load_ui_text
 from src.network_info import get_mobile_score_url
 from src.score_viewer import ScoreViewer
+from src.html_catalog import HtmlCatalogWindow
 logger = get_logger(__name__)
 
 # UIの型チェック用
@@ -50,6 +51,7 @@ class MainWindowUI(QMainWindow):
         self.account_menu = None
         self.save_image_button = None
         self.score_viewer = None
+        self.html_catalog_window = None
     
     def init_ui(self):
         """UI初期化"""
@@ -168,6 +170,10 @@ class MainWindowUI(QMainWindow):
         obs_action.triggered.connect(self.open_obs_dialog)
         file_menu.addAction(obs_action)
 
+        obs_template_action = QAction(self.ui.menu.obs_template, self)
+        obs_template_action.triggered.connect(self.open_html_catalog)
+        file_menu.addAction(obs_template_action)
+
         file_menu.addSeparator() ##############################################
         
         # 画像保存アクション
@@ -245,6 +251,16 @@ class MainWindowUI(QMainWindow):
         about_action = QAction(self.ui.menu.about, self)
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
+
+    def open_html_catalog(self):
+        """OBSへドラッグできるHTMLビューのカタログを開く。"""
+        if self.html_catalog_window is None:
+            self.html_catalog_window = HtmlCatalogWindow(
+                language=self.config.language, parent=self
+            )
+        self.html_catalog_window.show()
+        self.html_catalog_window.raise_()
+        self.html_catalog_window.activateWindow()
 
     def refresh_account_menu(self):
         if self.account_menu is None:

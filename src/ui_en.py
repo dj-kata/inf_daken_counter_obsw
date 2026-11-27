@@ -19,6 +19,7 @@ class UIText:
         # File menu
         base_config = 'Configure(&C)...'
         obs_config = 'OBS Settings(&O)...'
+        obs_template = 'OBS &Templates...'
         save_image = '&Save Image'
         manual_music_select_import = 'Register from Song Selection(&R)'
         official_csv_import = 'Import Official CSV(&I)...'

@@ -19,6 +19,7 @@ class UIText:
         # ファイルメニュー
         base_config = '基本設定(&C)...'
         obs_config = 'OBS制御設定(&O)...'
+        obs_template = 'OBS用テンプレート(&T)...'
         save_image = '画像保存(&S)'
         manual_music_select_import = '選曲画面から手動登録(&R)'
         official_csv_import = '公式CSVをインポート(&I)...'
