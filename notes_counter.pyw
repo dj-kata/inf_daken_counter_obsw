@@ -65,6 +65,8 @@ from src.update import GitHubUpdater
 from src.random_lane_analysis import RandomLaneAnalysis
 from src.voice_guidance import VoiceGuidance
 from src.game_overlay import GameOverlay
+from src.html_catalog import application_root
+from src.html_server import HtmlCatalogHTTPServer
 from src.official_csv_import import (
     OfficialCsvImporter,
     parse_official_csv,
@@ -340,6 +342,10 @@ class MainWindow(MainWindowUI):
         self.config = config or Config()
         self.updater = updater or create_updater()
         super().__init__(self.config)
+        self.html_catalog_server = HtmlCatalogHTTPServer(application_root())
+        self.html_catalog_server_port = self.html_catalog_server.start(
+            self.config.websocket_data_port
+        )
         self.save_image_requested.connect(self.save_image)
         self.manual_music_select_import_requested.connect(self.manual_music_select_import)
         self.bpim2_fetch_finished.connect(self.on_bpim2_fetch_finished)
@@ -1658,6 +1664,7 @@ class MainWindow(MainWindowUI):
         self.voice_guidance.shutdown()
         self.random_lane_analysis.set_enabled(False)
         self.game_overlay.close()
+        self.html_catalog_server.stop()
 
         # アプリ終了時のOBS処理
         self.execute_obs_triggers('app_end')

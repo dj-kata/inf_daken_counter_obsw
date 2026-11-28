@@ -20,6 +20,8 @@ class UIText:
         base_config = 'Configure(&C)...'
         obs_config = 'OBS Settings(&O)...'
         obs_template = 'OBS &Templates...'
+        obs_template_error_title = 'OBS Templates'
+        obs_template_error_message = 'Could not start the template HTTP server.\nRestart the application and try again.'
         save_image = '&Save Image'
         manual_music_select_import = 'Register from Song Selection(&R)'
         official_csv_import = 'Import Official CSV(&I)...'

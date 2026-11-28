@@ -52,6 +52,7 @@ class MainWindowUI(QMainWindow):
         self.save_image_button = None
         self.score_viewer = None
         self.html_catalog_window = None
+        self.html_catalog_server_port = None
     
     def init_ui(self):
         """UI初期化"""
@@ -254,9 +255,18 @@ class MainWindowUI(QMainWindow):
 
     def open_html_catalog(self):
         """OBSへドラッグできるHTMLビューのカタログを開く。"""
+        if self.html_catalog_server_port is None:
+            QMessageBox.warning(
+                self,
+                self.ui.menu.obs_template_error_title,
+                self.ui.menu.obs_template_error_message,
+            )
+            return
         if self.html_catalog_window is None:
             self.html_catalog_window = HtmlCatalogWindow(
-                language=self.config.language, parent=self
+                self.html_catalog_server_port,
+                language=self.config.language,
+                parent=self,
             )
         self.html_catalog_window.show()
         self.html_catalog_window.raise_()

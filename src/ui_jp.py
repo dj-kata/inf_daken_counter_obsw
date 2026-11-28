@@ -20,6 +20,8 @@ class UIText:
         base_config = '基本設定(&C)...'
         obs_config = 'OBS制御設定(&O)...'
         obs_template = 'OBS用テンプレート(&T)...'
+        obs_template_error_title = 'OBS用テンプレート'
+        obs_template_error_message = 'テンプレート配信用HTTPサーバーを起動できませんでした。\nアプリを再起動してから、もう一度お試しください。'
         save_image = '画像保存(&S)'
         manual_music_select_import = '選曲画面から手動登録(&R)'
         official_csv_import = '公式CSVをインポート(&I)...'

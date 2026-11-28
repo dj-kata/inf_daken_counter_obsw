@@ -105,9 +105,9 @@ def application_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def build_obs_source_url(view: HtmlView, template_dir: Path) -> QUrl:
+def build_obs_source_url(view: HtmlView, server_port: int) -> QUrl:
     """OBSのURLドロップが解釈するソース名とサイズを付ける。"""
-    source_url = QUrl.fromLocalFile(str((template_dir / view.filename).resolve()))
+    source_url = QUrl(f"http://127.0.0.1:{server_port}/template/{view.filename}")
     query = QUrlQuery()
     query.addQueryItem("layer-name", view.source_name)
     query.addQueryItem("layer-width", str(view.width))
@@ -177,7 +177,14 @@ class HtmlDragLabel(QLabel):
 
 
 class HtmlViewCard(QFrame):
-    def __init__(self, view: HtmlView, template_dir: Path, language: str, parent=None):
+    def __init__(
+        self,
+        view: HtmlView,
+        template_dir: Path,
+        server_port: int,
+        language: str,
+        parent=None,
+    ):
         super().__init__(parent)
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setStyleSheet(
@@ -223,7 +230,7 @@ class HtmlViewCard(QFrame):
 
         drag_text = "Drag here to OBS" if language == "en" else "ここをOBSへD&D"
         drag_label = HtmlDragLabel(
-            drag_text, build_obs_source_url(view, template_dir), pixmap, self
+            drag_text, build_obs_source_url(view, server_port), pixmap, self
         )
         tooltip = (
             "Drag this area onto the OBS preview."
@@ -235,8 +242,15 @@ class HtmlViewCard(QFrame):
 
 
 class HtmlCatalogWindow(QWidget):
-    def __init__(self, template_dir: Path | None = None, language: str = "ja", parent=None):
+    def __init__(
+        self,
+        server_port: int,
+        template_dir: Path | None = None,
+        language: str = "ja",
+        parent=None,
+    ):
         super().__init__(parent, Qt.WindowType.Window)
+        self.server_port = server_port
         template_dir = Path(template_dir) if template_dir else application_root() / "template"
         self.setWindowTitle(
             "OBS Templates - HTML Catalog"
@@ -273,6 +287,8 @@ class HtmlCatalogWindow(QWidget):
         grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
         for index, view in enumerate(HTML_VIEWS):
             grid.addWidget(
-                HtmlViewCard(view, template_dir, language), index // 2, index % 2
+                HtmlViewCard(view, template_dir, server_port, language),
+                index // 2,
+                index % 2,
             )
         scroll_area.setWidget(contents)
