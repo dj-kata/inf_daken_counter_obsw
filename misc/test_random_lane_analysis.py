@@ -278,6 +278,55 @@ class RandomLaneIntegrationTests(unittest.TestCase):
         self.assertIn('ready', phases)
         self.assertNotIn('recording', phases)
 
+    def test_normal_chart_stops_recording_after_unique_identification(self):
+        self.start('REGULAR')
+        events = iter([[n] for n in lane.LANES] + [[1], [2], [3]])
+        self.analysis.detectors['1P'].detect = lambda image: (1, next(events))
+        for _ in range(10):
+            self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
+
+        self.assertEqual(self.analysis.recorder.events, self.events)
+        self.analysis.end_play()
+        self.assertEqual(
+            self.analysis._load_chart('test song\x1fsp\x1fANOTHER'), self.events,
+        )
+
+    def test_reacquisition_compares_only_required_event_prefix(self):
+        legacy_events = self.events + [
+            {'event_no': 8, 'event_lanes': [1]},
+            {'event_no': 9, 'event_lanes': [2]},
+        ]
+        self.analysis._save_chart('test song\x1fsp\x1fANOTHER', {
+            'title': 'test song', 'style': 'sp', 'difficulty': 'ANOTHER', 'level': 12,
+        }, legacy_events)
+        self.start('REGULAR')
+        events = iter([[n] for n in lane.LANES])
+        self.analysis.detectors['1P'].detect = lambda image: (1, next(events))
+        for _ in lane.LANES:
+            self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
+        self.analysis.end_play()
+
+        self.assertEqual(
+            self.analysis._load_chart('test song\x1fsp\x1fANOTHER'), self.events,
+        )
+
+    def test_required_event_difference_updates_same_length_chart(self):
+        different_events = [dict(event) for event in self.events]
+        different_events[0] = {'event_no': 1, 'event_lanes': [1, 2]}
+        self.analysis._save_chart('test song\x1fsp\x1fANOTHER', {
+            'title': 'test song', 'style': 'sp', 'difficulty': 'ANOTHER', 'level': 12,
+        }, different_events)
+        self.start('REGULAR')
+        events = iter([[n] for n in lane.LANES])
+        self.analysis.detectors['1P'].detect = lambda image: (1, next(events))
+        for _ in lane.LANES:
+            self.analysis.process_frame(np.zeros((1, 1, 3), dtype=np.uint8))
+        self.analysis.end_play()
+
+        self.assertEqual(
+            self.analysis._load_chart('test song\x1fsp\x1fANOTHER'), self.events,
+        )
+
     def test_result_title_correction_preserves_existing_destination_chart(self):
         destination_events = self.events + [{'event_no': 8, 'event_lanes': [1, 2]}]
         self.analysis._save_chart('correct song\x1fsp\x1fANOTHER', {
@@ -370,6 +419,8 @@ class RandomLaneIntegrationTests(unittest.TestCase):
         for n in lane.LANES[:-2]:
             self.assertFalse(recorder.add([n]))
         self.assertTrue(recorder.add([6]))
+        self.assertEqual(len(recorder.events), 7)
+        self.assertTrue(recorder.add([7]))
         self.assertEqual(len(recorder.events), 7)
 
     def test_old_event_sequences_are_preserved_but_require_reregistration(self):

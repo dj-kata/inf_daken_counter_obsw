@@ -115,14 +115,18 @@ class NormalChartRecorder:
     def __init__(self):
         self.events = []
         self.seen_lanes = set()
+        self.complete = False
 
     def add(self, lanes) -> bool:
+        if self.complete:
+            return True
         lanes = tuple(sorted(set(map(int, lanes))))
         if not lanes:
             return False
         self.events.append({"event_no": len(self.events) + 1, "event_lanes": list(lanes)})
         self.seen_lanes.update(lanes)
-        return self.seen_lanes == set(LANES) and self._identity_is_unique()
+        self.complete = self.seen_lanes == set(LANES) and self._identity_is_unique()
+        return self.complete
 
     def _identity_is_unique(self) -> bool:
         for permutation in itertools.permutations(LANES):
@@ -135,6 +139,15 @@ class NormalChartRecorder:
             ):
                 return False
         return True
+
+
+def _required_normal_events(events):
+    """Return only the prefix needed to identify a normal chart uniquely."""
+    recorder = NormalChartRecorder()
+    for event in events:
+        if recorder.add(event.get("event_lanes", [])):
+            return recorder.events
+    return None
 
 
 class RandomMappingAnalyzer:
@@ -414,6 +427,8 @@ class RandomLaneAnalysis:
             self._start_arrangement(arrange)
             if self.mode not in ("record", "analyze"):
                 return
+        if self.mode == "record" and self.recorder.complete:
+            return
         event_no, lanes = self.detectors[self.side].detect(rgb[:, :, :3])
         if not lanes:
             return
@@ -496,7 +511,7 @@ class RandomLaneAnalysis:
             self._publish("waiting", message="プレー終了。次のSPプレーを待っています")
 
     def _finish_chart_recording(self):
-        """Keep the most complete uniquely identifiable REGULAR/MIRROR capture."""
+        """Save only the uniquely identifying REGULAR/MIRROR event prefix."""
         if self.mode != "record" or self.recorder is None or self._play_context is None:
             return False
         events = self.recorder.events
@@ -505,10 +520,13 @@ class RandomLaneAnalysis:
             return False
 
         existing_events = self._play_context.get("existing_events") or []
-        if existing_events and len(events) <= len(existing_events):
+        existing_required_events = _required_normal_events(existing_events)
+        existing_is_minimal = existing_required_events == existing_events
+        if (existing_events and existing_is_minimal
+                and events == existing_required_events):
             logger.info(
-                "登録済みの正規譜面データを維持: existing=%d captured=%d chart=%s",
-                len(existing_events), len(events), self.chart_key,
+                "登録済みの正規譜面データを維持: required=%d chart=%s",
+                len(events), self.chart_key,
             )
             return False
 
