@@ -94,15 +94,39 @@ class AccountConfigTests(unittest.TestCase):
         self.assertEqual(restored.judge.pg, 300)
         self.assertEqual(restored.average_release.histogram, [10.5, None, 20.5])
         self.assertEqual(restored.average_release.interval_seconds, 10.0)
+        self.assertEqual(restored.average_release.key_counts_cumulative, [0, 100, 220, 300])
+        self.assertEqual(restored.average_release.other_counts_cumulative, [0, 10, 20, 25])
+        self.assertEqual(restored.average_release.release_sample_counts, [40, 0, 35])
         release_data = json.loads(
             database.database.get_all_results()[0]["average_release_json"]
         )
         self.assertEqual(release_data["interval_seconds"], 10.0)
         self.assertEqual(release_data["histogram"], [10.5, None, 20.5])
+        self.assertEqual(release_data["key_counts_cumulative"], [0, 100, 220, 300])
+        self.assertEqual(release_data["other_counts_cumulative"], [0, 10, 20, 25])
+        self.assertEqual(release_data["release_sample_counts"], [40, 0, 35])
         self.assertEqual(restored.bpim2_arena_averages[0].rank, "A1")
         self.assertEqual(restored.lane_layout, "1234567")
         self.assertTrue(default_path.exists())
         self.assertTrue(second_path.exists())
+
+        # 打鍵数追加前の現行形式は、新しい項目を未取得として読み込む。
+        database.database.execute(
+            "UPDATE results SET average_release_json = ? WHERE id = ?",
+            (
+                json.dumps({
+                    "interval_seconds": 10.0,
+                    "histogram": [10.5, None, 20.5],
+                }),
+                restored.id,
+            ),
+        )
+        database.database.commit()
+        database._load_database_rows()
+        previous_release = database.results[0].average_release
+        self.assertIsNone(previous_release.key_counts_cumulative)
+        self.assertIsNone(previous_release.other_counts_cumulative)
+        self.assertIsNone(previous_release.release_sample_counts)
 
         database.switch_storage(second_path, self.root / "missing.infdc")
         database.results[0].official_play_count = 9
@@ -181,7 +205,11 @@ class AccountConfigTests(unittest.TestCase):
             notes=600,
             dead=False,
             average_release=average_release(
-                [10.5, None, 20.5], interval_seconds=10.0
+                [10.5, None, 20.5],
+                interval_seconds=10.0,
+                key_counts_cumulative=[0, 100, 220, 300],
+                other_counts_cumulative=[0, 10, 20, 25],
+                release_sample_counts=[40, 0, 35],
             ),
             bpim2=12.34,
             image_path="results/test.png",

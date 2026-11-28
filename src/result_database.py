@@ -538,6 +538,9 @@ class ResultDatabase:
             release_json = json.dumps({
                 "interval_seconds": release.interval_seconds,
                 "histogram": release.histogram,
+                "key_counts_cumulative": release.key_counts_cumulative,
+                "other_counts_cumulative": release.other_counts_cumulative,
+                "release_sample_counts": release.release_sample_counts,
             })
         arena_averages = getattr(result, "bpim2_arena_averages", None)
         arena_json = None
@@ -628,6 +631,9 @@ class ResultDatabase:
             release = average_release(
                 release_data["histogram"],
                 interval_seconds=release_data["interval_seconds"],
+                key_counts_cumulative=release_data.get("key_counts_cumulative"),
+                other_counts_cumulative=release_data.get("other_counts_cumulative"),
+                release_sample_counts=release_data.get("release_sample_counts"),
             )
 
         result = OneResult(

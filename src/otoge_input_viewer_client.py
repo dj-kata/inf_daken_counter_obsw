@@ -29,7 +29,12 @@ class OtogeInputViewerClient:
         self._thread = None
         self._play_started_at = None
         self._buckets = []
+        self._count_buckets = []
         self._received_release = False
+        self._connected = False
+        self._latest_counts = None
+        self._play_count_baseline = None
+        self._counts_valid = False
         if autostart:
             self.start()
 
@@ -53,7 +58,12 @@ class OtogeInputViewerClient:
         with self._lock:
             self._play_started_at = time.monotonic() if now is None else now
             self._buckets = []
+            self._count_buckets = []
             self._received_release = False
+            self._play_count_baseline = (
+                self._latest_counts if self._connected else None
+            )
+            self._counts_valid = self._play_count_baseline is not None
 
     def finish_play(self, now=None):
         """終了したプレーの10秒区間平均を返す。受信なしならNone。"""
@@ -68,13 +78,35 @@ class OtogeInputViewerClient:
                 round(sum(values) / len(values), 1) if values else None
                 for values in self._buckets
             ]
+            release_sample_counts = [len(values) for values in self._buckets]
+            key_counts_cumulative = None
+            other_counts_cumulative = None
+            if self._counts_valid and self._play_count_baseline is not None:
+                key_counts_cumulative = [0]
+                other_counts_cumulative = [0]
+                current_key = 0
+                current_other = 0
+                for count_values in self._count_buckets:
+                    if count_values:
+                        current_key, current_other = count_values[-1]
+                    key_counts_cumulative.append(current_key)
+                    other_counts_cumulative.append(current_other)
             received_release = self._received_release
             self._play_started_at = None
             self._buckets = []
+            self._count_buckets = []
             self._received_release = False
+            self._play_count_baseline = None
+            self._counts_valid = False
         if not received_release:
             return None
-        return average_release(histogram, interval_seconds=self.BUCKET_SECONDS)
+        return average_release(
+            histogram,
+            interval_seconds=self.BUCKET_SECONDS,
+            key_counts_cumulative=key_counts_cumulative,
+            other_counts_cumulative=other_counts_cumulative,
+            release_sample_counts=release_sample_counts,
+        )
 
     def handle_message(self, message, now=None):
         """WebSocketメッセージを処理する。公開して単体テストにも利用する。"""
@@ -86,8 +118,15 @@ class OtogeInputViewerClient:
             return
 
         received_at = time.monotonic() if now is None else now
+        with self._lock:
+            self._connected = True
         for event in events:
-            if not isinstance(event, dict) or event.get("type") != "release":
+            if not isinstance(event, dict):
+                continue
+            if event.get("type") == "notes":
+                self._handle_notes_event(event, received_at)
+                continue
+            if event.get("type") != "release":
                 continue
             try:
                 value = float(event.get("value"))
@@ -107,6 +146,39 @@ class OtogeInputViewerClient:
     def _ensure_bucket(self, index):
         while len(self._buckets) <= index:
             self._buckets.append([])
+            self._count_buckets.append([])
+
+    def _handle_notes_event(self, event, received_at):
+        try:
+            key_count = int(event.get("key"))
+            other_count = int(event.get("other"))
+        except (TypeError, ValueError):
+            return
+        if key_count < 0 or other_count < 0:
+            return
+
+        with self._lock:
+            self._latest_counts = (key_count, other_count)
+            if (
+                self._play_started_at is None
+                or not self._counts_valid
+                or self._play_count_baseline is None
+            ):
+                return
+            base_key, base_other = self._play_count_baseline
+            if key_count < base_key or other_count < base_other:
+                self._counts_valid = False
+                return
+            elapsed = max(0.0, received_at - self._play_started_at)
+            bucket_index = int(elapsed // self.BUCKET_SECONDS)
+            self._ensure_bucket(bucket_index)
+            self._count_buckets[bucket_index].append(
+                (key_count - base_key, other_count - base_other)
+            )
+
+    def _set_connected(self, connected):
+        with self._lock:
+            self._connected = connected
 
     def _run(self):
         try:
@@ -124,6 +196,7 @@ class OtogeInputViewerClient:
                     close_timeout=1.0,
                     ping_interval=20.0,
                 ) as websocket:
+                    self._set_connected(True)
                     if not connected_once:
                         logger.info(f"Otoge Input Viewerに接続しました: {self.url}")
                         connected_once = True
@@ -135,6 +208,8 @@ class OtogeInputViewerClient:
                         self.handle_message(message)
             except (OSError, asyncio.TimeoutError, websockets.ConnectionClosed):
                 pass
+            finally:
+                self._set_connected(False)
             if not self._stop_event.is_set():
                 await asyncio.sleep(self.RECONNECT_SECONDS)
 

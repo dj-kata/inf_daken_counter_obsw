@@ -193,11 +193,36 @@ class Judge:
 
 class average_release:
     '''キー入力の平均リリース時間保存用。一定時間ごとの平均値を持つ。'''
-    def __init__(self, hist:List[float | None], *, interval_seconds:float):
+    def __init__(
+        self,
+        hist:List[float | None],
+        *,
+        interval_seconds:float,
+        key_counts_cumulative:List[int] | None=None,
+        other_counts_cumulative:List[int] | None=None,
+        release_sample_counts:List[int] | None=None,
+    ):
+        if (key_counts_cumulative is None) != (other_counts_cumulative is None):
+            raise ValueError('鍵盤と皿の累積値は両方指定する必要があります')
+        if key_counts_cumulative is not None:
+            expected_count = len(hist) + 1
+            if (
+                len(key_counts_cumulative) != expected_count
+                or len(other_counts_cumulative) != expected_count
+            ):
+                raise ValueError('累積打鍵数は区間数+1要素である必要があります')
+        if release_sample_counts is not None and len(release_sample_counts) != len(hist):
+            raise ValueError('リリースサンプル数は区間数と同じ要素数である必要があります')
         self.histogram = hist
         '''平均リリース時間の時系列。入力のなかった区間はNone。'''
         self.interval_seconds = interval_seconds
         '''時系列1要素が表す秒数。'''
+        self.key_counts_cumulative = key_counts_cumulative
+        '''曲開始を0とした区間境界ごとの累積鍵盤数。'''
+        self.other_counts_cumulative = other_counts_cumulative
+        '''曲開始を0とした区間境界ごとの累積皿数。'''
+        self.release_sample_counts = release_sample_counts
+        '''各区間の平均に使った有効リリースサンプル数。'''
         values = [value for value in hist if value is not None]
         self.total = sum(values) / len(values) if values else 0.0
         '''トータルの平均リリース時間'''
