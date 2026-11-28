@@ -30,6 +30,35 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from src.ui_jp import UIText
 
+
+class ElidedLabel(QLabel):
+    """幅に収まらないプレーンテキストを1行で省略表示するラベル。"""
+
+    def __init__(self, text="", parent=None):
+        super().__init__(parent)
+        self._full_text = ""
+        self.setMinimumWidth(0)
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self.setText(text)
+
+    def setText(self, text):
+        self._full_text = str(text)
+        self._update_elided_text()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_elided_text()
+
+    def _update_elided_text(self):
+        available_width = max(0, self.width() - self.contentsMargins().left()
+                              - self.contentsMargins().right())
+        display_text = self.fontMetrics().elidedText(
+            self._full_text, Qt.ElideRight, available_width
+        )
+        super().setText(display_text)
+        self.setToolTip(self._full_text if display_text != self._full_text else "")
+
+
 class MainWindowUI(QMainWindow):
     """メインウィンドウのUIレイアウトを担当するクラス"""
     def __init__(self, config):
@@ -77,6 +106,8 @@ class MainWindowUI(QMainWindow):
         obs_layout = QHBoxLayout()
         self.obs_status_label = QLabel(self.ui.obs.not_connected)
         self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")
+        self.obs_status_label.setMinimumWidth(0)
+        self.obs_status_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         obs_layout.addWidget(self.obs_status_label)
         obs_group.setLayout(obs_layout)
         obs_group.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -114,13 +145,11 @@ class MainWindowUI(QMainWindow):
         status_layout.addWidget(self.result_count_label, 4, 1)
         
         status_layout.addWidget(QLabel(self.ui.main.last_saved_song), 5, 0)
-        self.last_song_label = QLabel("---")
-        self.last_song_label.setWordWrap(True)
+        self.last_song_label = ElidedLabel("---")
         status_layout.addWidget(self.last_song_label, 5, 1)
 
         status_layout.addWidget(QLabel(self.ui.main.random_lane), 6, 0)
-        self.random_lane_label = QLabel("---")
-        self.random_lane_label.setWordWrap(True)
+        self.random_lane_label = ElidedLabel("---")
         status_layout.addWidget(self.random_lane_label, 6, 1)
 
         status_layout.addWidget(QLabel(self.ui.main.mobile_score_url), 7, 0)
@@ -369,8 +398,10 @@ class MainWindowUI(QMainWindow):
         """表示更新"""
         # ゲーム画面取得状態
         try:
-            status_msg, is_connected = self.obs_manager.get_status()
+            full_status_msg, is_connected = self.obs_manager.get_status()
+            status_msg = self.obs_manager.compact_status_message(full_status_msg)
             self.obs_status_label.setText(status_msg)
+            self.obs_status_label.setToolTip(full_status_msg)
             if '<span' in status_msg:
                 self.obs_status_label.setStyleSheet("font-weight: bold;")
             elif is_connected:

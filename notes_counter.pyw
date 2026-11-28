@@ -1027,8 +1027,10 @@ class MainWindow(MainWindowUI):
         # logger.info(f"OBS connection changed: connected={is_connected}, message={message}")
 
         # UIを更新（スレッドセーフに）
-        status_message, is_ready = self.obs_manager.get_status()
+        full_status_message, is_ready = self.obs_manager.get_status()
+        status_message = self.obs_manager.compact_status_message(full_status_message)
         self.obs_status_label.setText(status_message)
+        self.obs_status_label.setToolTip(full_status_message)
 
         if '<span' in status_message:
             self.obs_status_label.setStyleSheet("font-weight: bold;")

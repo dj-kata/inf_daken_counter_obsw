@@ -159,6 +159,26 @@ class OBSConnectionSettingsTests(unittest.TestCase):
         self.assertEqual(self.manager.get_status(), (self.manager.ui.obs.websocket_disabled, False))
         self.assertFalse(self.manager.is_capture_ready())
 
+    def test_compact_spout_status_omits_connection_details(self):
+        self.config.capture_method = 'spout'
+        self.config.spout_sender_name = 'Spout_OBS_Filter'
+        self.config.websocket_host = 'localhost'
+        self.config.websocket_port = 4455
+        self.manager.is_connected = True
+        self.manager.spout_capture.dependency_error.return_value = None
+        self.manager.spout_capture.current_status.return_value = ('waiting', '')
+        self.manager.spout_capture.is_connected = False
+
+        full_status, _ = self.manager.get_status()
+        compact_status = self.manager.compact_status_message(full_status)
+
+        self.assertIn('(Spout_OBS_Filter)', full_status)
+        self.assertIn('(localhost:4455)', full_status)
+        self.assertNotIn('Spout_OBS_Filter', compact_status)
+        self.assertNotIn('localhost:4455', compact_status)
+        self.assertIn('Spout:', compact_status)
+        self.assertIn('OBS制御:', compact_status)
+
     def test_stop_monitor_interrupts_reconnect_wait(self):
         self.manager.monitor_running = True
         self.manager.stop_event.clear()

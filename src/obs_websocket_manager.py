@@ -447,6 +447,21 @@ class OBSWebSocketManager(QObject):
         else:
             return f"OBS WebSocket: {self.ui.obs.connected} ({self.config.websocket_host}:{self.config.websocket_port})", True
 
+    def compact_status_message(self, status_message: str) -> str:
+        """詳細な状態メッセージから、メイン画面では冗長な接続先を除く。"""
+        if not self.config:
+            return status_message
+
+        compact_message = status_message
+        if self.is_spout_capture():
+            sender_name = escape(str(getattr(
+                self.config, "spout_sender_name", "Spout_OBS_Filter"
+            )))
+            compact_message = compact_message.replace(f' ({sender_name})', '', 1)
+
+        obs_destination = f' ({self.config.websocket_host}:{self.config.websocket_port})'
+        return compact_message.replace(obs_destination, '', 1)
+
     def _spout_capture_status(self) -> tuple[str, bool]:
         error = self.spout_capture.dependency_error()
         if error:
