@@ -136,14 +136,31 @@ class SpoutRecoveryTests(unittest.TestCase):
         self.assertEqual(self.context.create.call_count, 2)
         self.assertEqual(self.capture.current_status()[0], 'connected')
 
-    def test_connected_without_new_frames_times_out_and_releases_resources(self):
+    def test_connected_without_new_frame_flag_uses_fallback_frame(self):
         self.receiver.isFrameNew.return_value = False
-        with self.assertRaises(TimeoutError):
-            self.capture._receive()
-        self.assertGreaterEqual(self.now, FRAME_TIMEOUT)
+        frames = []
+
+        def received(frame):
+            frames.append(frame)
+            self.capture._stop_event.set()
+
+        self.capture.set_frame_callback(received)
+        self.capture._receive()
+        self.assertEqual(len(frames), 1)
+        self.assertLess(self.now, FRAME_TIMEOUT)
         self.receiver.__exit__.assert_called_once()
         self.gl.glDeleteTextures.assert_called_once()
         self.context.doneCurrent.assert_called_once()
+
+    def test_receive_texture_failure_times_out_with_diagnostics(self):
+        self.receiver.receiveTexture.return_value = False
+        self.receiver.isFrameNew.return_value = False
+        with self.assertRaisesRegex(
+            TimeoutError,
+            r"receiveTexture=False, isFrameNew=False, isUpdated=False, size=1x1",
+        ):
+            self.capture._receive()
+        self.assertGreaterEqual(self.now, FRAME_TIMEOUT)
 
     def test_invalid_frame_dimensions_also_time_out(self):
         self.receiver.getSenderWidth.return_value = 0
@@ -152,14 +169,12 @@ class SpoutRecoveryTests(unittest.TestCase):
             self.capture._receive()
         self.gl.glDeleteTextures.assert_called_once()
 
-    def test_stalled_session_restarts_and_delivers_frames(self):
-        self.receiver.isFrameNew.side_effect = lambda: self.spout.SpoutReceiver.call_count > 1
+    def test_false_frame_new_does_not_restart_receiver(self):
+        self.receiver.isFrameNew.return_value = False
         self.capture.set_frame_callback(lambda _: self.capture._stop_event.set())
-        with patch.object(self.capture._stop_event, 'wait', side_effect=lambda _: self.capture._stop_event.is_set()):
-            self.capture._run()
-        self.assertGreaterEqual(self.now, FRAME_TIMEOUT)
-        self.assertEqual(self.spout.SpoutReceiver.call_count, 2)
-        self.assertEqual(self.gl.glDeleteTextures.call_count, 2)
+        self.capture._run()
+        self.assertEqual(self.spout.SpoutReceiver.call_count, 1)
+        self.assertEqual(self.gl.glDeleteTextures.call_count, 1)
         self.assertEqual(self.capture.current_status()[0], 'connected')
 
     def test_normal_frames_keep_session_alive_beyond_timeout(self):

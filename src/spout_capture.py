@@ -17,6 +17,7 @@ logger = get_logger(__name__)
 TARGET_SIZE = (1920, 1080)
 RETRY_INTERVAL = 2.0
 FRAME_TIMEOUT = 5.0
+FALLBACK_FRAME_INTERVAL = 0.1
 GL_TEXTURE_2D = 0x0DE1
 GL_RGBA = 0x1908
 GL_UNSIGNED_BYTE = 0x1401
@@ -225,7 +226,9 @@ class SpoutCapture:
                 texture_size = None
                 connected = False
                 next_sender_check = 0.0
-                last_frame_at = time.monotonic()
+                last_receive_at = time.monotonic()
+                last_read_at = None
+                fallback_reported = False
                 self._emit_status("waiting", f"Spout送信待ち: {self._sender_name}")
 
                 while not self._stop_event.is_set():
@@ -241,7 +244,8 @@ class SpoutCapture:
                             if not connected:
                                 self._latest_frame = None
                         if connected:
-                            last_frame_at = time.monotonic()
+                            last_receive_at = time.monotonic()
+                            last_read_at = None
                             self._emit_status(
                                 "connected",
                                 f"Spout接続: {self._sender_name}",
@@ -265,15 +269,24 @@ class SpoutCapture:
                         self._stop_event.wait(0.05)
                         continue
 
-                    if time.monotonic() - last_frame_at >= FRAME_TIMEOUT:
-                        raise TimeoutError(f"接続中に{FRAME_TIMEOUT:g}秒間フレームを取得できませんでした")
+                    now = time.monotonic()
+                    is_updated = bool(receiver.isUpdated())
+                    is_frame_new = bool(receiver.isFrameNew())
+                    if result and width > 0 and height > 0:
+                        last_receive_at = now
+                    elif now - last_receive_at >= FRAME_TIMEOUT:
+                        raise TimeoutError(
+                            f"接続中に{FRAME_TIMEOUT:g}秒間テクスチャを受信できませんでした "
+                            f"(receiveTexture={bool(result)}, isFrameNew={is_frame_new}, "
+                            f"isUpdated={is_updated}, size={width}x{height})"
+                        )
 
                     size = (width, height)
                     if width <= 0 or height <= 0:
                         self._stop_event.wait(0.01)
                         continue
 
-                    if bool(receiver.isUpdated()) or texture_size != size:
+                    if is_updated or texture_size != size:
                         gl.glBindTexture(GL_TEXTURE_2D, texture.value)
                         gl.glTexImage2D(
                             GL_TEXTURE_2D,
@@ -290,7 +303,16 @@ class SpoutCapture:
                         texture_size = size
                         continue
 
-                    if result and bool(receiver.isFrameNew()) and pixels is not None:
+                    fallback_due = (
+                        last_read_at is None
+                        or now - last_read_at >= FALLBACK_FRAME_INTERVAL
+                    )
+                    if result and pixels is not None and (is_frame_new or fallback_due):
+                        if not is_frame_new and not fallback_reported:
+                            logger.warning(
+                                "isFrameNewが検出できないため定期読み取りへ切り替えます"
+                            )
+                            fallback_reported = True
                         gl.glBindTexture(GL_TEXTURE_2D, texture.value)
                         gl.glGetTexImage(
                             GL_TEXTURE_2D,
@@ -307,7 +329,7 @@ class SpoutCapture:
                         with self._lock:
                             self._latest_frame = rgb
                             frame_callback = self.frame_callback
-                        last_frame_at = time.monotonic()
+                        last_read_at = now
                         if frame_callback is not None:
                             frame_callback(rgb)
 
