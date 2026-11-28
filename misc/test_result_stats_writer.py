@@ -4,7 +4,7 @@ import unittest
 
 from PIL import Image, ImageDraw
 
-from src.classes import average_release
+from src.classes import average_release, clear_lamp, difficulty, play_style
 from src.result_stats_writer import ResultStatsWriter
 
 
@@ -53,6 +53,38 @@ class ResultStatsWriterReleaseGraphTests(unittest.TestCase):
         self.assertIn((255, 220, 75, 255), colors)
         self.assertIn((55, 145, 255, 230), colors)
         self.assertIn((255, 105, 75, 230), colors)
+
+    def test_release_graph_is_drawn_automatically_when_data_exists(self):
+        image = self.writer.write_statistics(
+            Image.new("RGB", (1920, 1080), (0, 0, 0)),
+            title="PROMISE FOR LIFE",
+            level=8,
+            play_style=play_style.sp,
+            difficulty=difficulty.another,
+            ex_score=175,
+            bp=757,
+            max_notes=875,
+            lamp=clear_lamp.failed,
+            average_release=self.release,
+        )
+
+        self.assertIn((65, 225, 255), set(image.get_flattened_data()))
+
+    def test_release_graph_is_not_drawn_without_data(self):
+        image = self.writer.write_statistics(
+            Image.new("RGB", (1920, 1080), (0, 0, 0)),
+            title="PROMISE FOR LIFE",
+            level=8,
+            play_style=play_style.sp,
+            difficulty=difficulty.another,
+            ex_score=175,
+            bp=757,
+            max_notes=875,
+            lamp=clear_lamp.failed,
+            average_release=None,
+        )
+
+        self.assertNotIn((65, 225, 255), set(image.get_flattened_data()))
 
 
 if __name__ == "__main__":

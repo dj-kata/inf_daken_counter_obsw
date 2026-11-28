@@ -184,6 +184,10 @@ def parse_args():
     parser.add_argument("--notes", type=int, help="Override notes.")
     parser.add_argument("--lamp", choices=tuple(LAMPS), help="Override lamp.")
     parser.add_argument("--bpi", type=float, help="Override BPI/BPIM2 value.")
+    parser.add_argument(
+        "--no-release-data", action="store_true",
+        help="Preview without Otoge Input Viewer data.",
+    )
     return parser.parse_args()
 
 
@@ -214,6 +218,8 @@ def main():
         params["lamp"] = LAMPS[args.lamp]
     if args.bpi is not None:
         params["bpi"] = args.bpi
+    if args.no_release_data:
+        params["average_release"] = None
 
     output = args.output
     if output is None:
