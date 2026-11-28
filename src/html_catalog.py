@@ -10,8 +10,12 @@ from PySide6.QtWidgets import (
     QApplication,
     QFrame,
     QGridLayout,
+    QHBoxLayout,
     QLabel,
+    QMessageBox,
+    QPushButton,
     QScrollArea,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -141,6 +145,16 @@ class HtmlDragLabel(QLabel):
             "QLabel { border: 2px dashed #6aa9ff; border-radius: 6px;"
             " background: #17304f; color: white; font-weight: bold; padding: 6px; }"
             "QLabel:hover { background: #214a78; }"
+            "QLabel:disabled { border-color: #666; background: #333; color: #999; }"
+        )
+
+    def set_source(self, source_url: QUrl):
+        self.source_url = source_url
+
+    def set_available(self, available: bool):
+        self.setEnabled(available)
+        self.setCursor(
+            Qt.CursorShape.OpenHandCursor if available else Qt.CursorShape.ArrowCursor
         )
 
     def mousePressEvent(self, event: QMouseEvent):
@@ -154,6 +168,8 @@ class HtmlDragLabel(QLabel):
         super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent):
+        if not self.isEnabled():
+            return
         if not event.buttons() & Qt.MouseButton.LeftButton:
             return
         distance = (event.position().toPoint() - self.drag_start_position).manhattanLength()
@@ -182,6 +198,7 @@ class HtmlViewCard(QFrame):
         view: HtmlView,
         template_dir: Path,
         server_port: int,
+        server_running: bool,
         language: str,
         parent=None,
     ):
@@ -229,7 +246,7 @@ class HtmlViewCard(QFrame):
         layout.addWidget(size_label)
 
         drag_text = "Drag here to OBS" if language == "en" else "ここをOBSへD&D"
-        drag_label = HtmlDragLabel(
+        self.drag_label = HtmlDragLabel(
             drag_text, build_obs_source_url(view, server_port), pixmap, self
         )
         tooltip = (
@@ -237,20 +254,32 @@ class HtmlViewCard(QFrame):
             if language == "en"
             else "この部分をOBSのプレビュー画面へドラッグしてください"
         )
-        drag_label.setToolTip(tooltip)
-        layout.addWidget(drag_label)
+        self.drag_label.setToolTip(tooltip)
+        self.drag_label.set_available(server_running)
+        layout.addWidget(self.drag_label)
+
+        self.view = view
+
+    def set_server(self, server_port: int, running: bool):
+        self.drag_label.set_source(build_obs_source_url(self.view, server_port))
+        self.drag_label.set_available(running)
 
 
 class HtmlCatalogWindow(QWidget):
     def __init__(
         self,
         server_port: int,
+        server_running: bool = True,
+        port_change_callback=None,
         template_dir: Path | None = None,
         language: str = "ja",
         parent=None,
     ):
         super().__init__(parent, Qt.WindowType.Window)
         self.server_port = server_port
+        self.server_running = server_running
+        self.port_change_callback = port_change_callback
+        self.language = language
         template_dir = Path(template_dir) if template_dir else application_root() / "template"
         self.setWindowTitle(
             "OBS Templates - HTML Catalog"
@@ -262,6 +291,32 @@ class HtmlCatalogWindow(QWidget):
 
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(10, 10, 10, 10)
+
+        port_layout = QHBoxLayout()
+        port_label = QLabel("Template HTTP port:" if language == "en" else "テンプレート配信用ポート:")
+        self.port_spin = QSpinBox()
+        self.port_spin.setRange(1024, 65535)
+        self.port_spin.setValue(server_port)
+        self.apply_port_button = QPushButton("Apply" if language == "en" else "適用")
+        self.apply_port_button.clicked.connect(self.apply_port)
+        self.port_status = QLabel()
+        port_layout.addWidget(port_label)
+        port_layout.addWidget(self.port_spin)
+        port_layout.addWidget(self.apply_port_button)
+        port_layout.addWidget(self.port_status)
+        port_layout.addStretch()
+        outer_layout.addLayout(port_layout)
+
+        port_warning = QLabel(
+            "After changing the port, remove existing OBS sources and drag them again."
+            if language == "en"
+            else "ポート変更後は、既存のOBSソースを削除してD&Dし直してください。"
+        )
+        port_warning.setStyleSheet("color: #d08000; padding: 0 4px 6px 4px;")
+        port_warning.setWordWrap(True)
+        outer_layout.addWidget(port_warning)
+        self.update_port_status()
+
         guide_text = (
             "Drag 'Drag here to OBS' for the desired view onto the OBS preview. "
             "Choose Yes if OBS asks for confirmation."
@@ -285,10 +340,47 @@ class HtmlCatalogWindow(QWidget):
         grid.setHorizontalSpacing(10)
         grid.setVerticalSpacing(10)
         grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
+        self.cards = []
         for index, view in enumerate(HTML_VIEWS):
-            grid.addWidget(
-                HtmlViewCard(view, template_dir, server_port, language),
-                index // 2,
-                index % 2,
+            card = HtmlViewCard(
+                view,
+                template_dir,
+                server_port,
+                server_running,
+                language,
             )
+            self.cards.append(card)
+            grid.addWidget(card, index // 2, index % 2)
         scroll_area.setWidget(contents)
+
+    def apply_port(self):
+        requested_port = self.port_spin.value()
+        if self.port_change_callback is None:
+            return
+        if not self.port_change_callback(requested_port):
+            if self.server_running:
+                self.port_spin.setValue(self.server_port)
+            title = "OBS Templates" if self.language == "en" else "OBS用テンプレート"
+            message = (
+                f"Port {requested_port} is already in use. Choose another port."
+                if self.language == "en"
+                else f"ポート {requested_port} は使用中です。別のポートを指定してください。"
+            )
+            QMessageBox.warning(self, title, message)
+            self.update_port_status()
+            return
+
+        self.server_port = requested_port
+        self.server_running = True
+        for card in self.cards:
+            card.set_server(requested_port, True)
+        self.update_port_status()
+
+    def update_port_status(self):
+        if self.server_running:
+            text = "Running" if self.language == "en" else "起動中"
+            self.port_status.setStyleSheet("color: #188038; font-weight: bold;")
+        else:
+            text = "Unavailable" if self.language == "en" else "使用不可"
+            self.port_status.setStyleSheet("color: #d93025; font-weight: bold;")
+        self.port_status.setText(text)

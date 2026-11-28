@@ -344,7 +344,7 @@ class MainWindow(MainWindowUI):
         super().__init__(self.config)
         self.html_catalog_server = HtmlCatalogHTTPServer(application_root())
         self.html_catalog_server_port = self.html_catalog_server.start(
-            self.config.websocket_data_port
+            self.config.obs_template_port
         )
         self.save_image_requested.connect(self.save_image)
         self.manual_music_select_import_requested.connect(self.manual_music_select_import)
@@ -478,6 +478,27 @@ class MainWindow(MainWindowUI):
         self.voice_guidance.announce("startup", "打鍵カウンタを起動しました")
         self.update_voice_warning()
         logger.info("アプリケーション起動完了")
+
+    def change_html_catalog_port(self, port: int) -> bool:
+        """OBSテンプレート配信用HTTPサーバーを指定ポートへ切り替える。"""
+        port = int(port)
+        if self.html_catalog_server.port == port:
+            self.config.obs_template_port = port
+            self.config.save_config()
+            self.html_catalog_server_port = port
+            return True
+
+        replacement = HtmlCatalogHTTPServer(application_root())
+        if replacement.start(port) is None:
+            return False
+
+        previous = self.html_catalog_server
+        self.html_catalog_server = replacement
+        self.html_catalog_server_port = port
+        self.config.obs_template_port = port
+        self.config.save_config()
+        previous.stop()
+        return True
 
     def start_songinfo_update(self):
         """songinfo.infdcの更新をバックグラウンドで開始"""

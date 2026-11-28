@@ -255,16 +255,13 @@ class MainWindowUI(QMainWindow):
 
     def open_html_catalog(self):
         """OBSへドラッグできるHTMLビューのカタログを開く。"""
-        if self.html_catalog_server_port is None:
-            QMessageBox.warning(
-                self,
-                self.ui.menu.obs_template_error_title,
-                self.ui.menu.obs_template_error_message,
-            )
-            return
         if self.html_catalog_window is None:
             self.html_catalog_window = HtmlCatalogWindow(
-                self.html_catalog_server_port,
+                self.config.obs_template_port,
+                server_running=(
+                    self.html_catalog_server_port == self.config.obs_template_port
+                ),
+                port_change_callback=self.change_html_catalog_port,
                 language=self.config.language,
                 parent=self,
             )

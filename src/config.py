@@ -72,6 +72,8 @@ class Config:
         
         # WebSocketデータ配信ポート
         self.websocket_data_port = 8767
+        # OBSテンプレート配信用HTTPポート
+        self.obs_template_port = 8768
 
         # スマホ向けHTTPスコア閲覧サーバ
         self.mobile_score_server_enabled = False
@@ -175,6 +177,7 @@ class Config:
                     
                     # WebSocketポート設定
                     self.websocket_data_port = config_data.get('websocket_data_port', 8767)
+                    self.obs_template_port = config_data.get('obs_template_port', 8768)
                     self.mobile_score_server_enabled = config_data.get('mobile_score_server_enabled', False)
                     self.mobile_score_server_host = config_data.get('mobile_score_server_host', '0.0.0.0')
                     self.mobile_score_server_port = config_data.get('mobile_score_server_port', 8787)
@@ -269,6 +272,7 @@ class Config:
             "obs_scene_collection": self.obs_scene_collection,
             "image_save_path": self.image_save_path,
             "websocket_data_port": self.websocket_data_port,
+            "obs_template_port": self.obs_template_port,
             "mobile_score_server_enabled": self.mobile_score_server_enabled,
             "mobile_score_server_host": self.mobile_score_server_host,
             "mobile_score_server_port": self.mobile_score_server_port,

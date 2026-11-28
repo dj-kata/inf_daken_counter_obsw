@@ -1,12 +1,26 @@
 from pathlib import Path
+import tempfile
 import unittest
+from unittest.mock import patch
 
 from PySide6.QtCore import QUrlQuery
+from PySide6.QtWidgets import QApplication, QMessageBox
 
-from src.html_catalog import HTML_VIEWS, build_obs_source_url, thumbnail_path
+from src.config import Config
+from src.html_catalog import (
+    HTML_VIEWS,
+    HtmlCatalogWindow,
+    HtmlDragLabel,
+    build_obs_source_url,
+    thumbnail_path,
+)
 
 
 class HtmlCatalogTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.app = QApplication.instance() or QApplication([])
+
     def test_recommended_views_are_first(self):
         self.assertEqual(
             [view.filename for view in HTML_VIEWS[:4]],
@@ -46,6 +60,54 @@ class HtmlCatalogTest(unittest.TestCase):
                 if view.thumbnail_filename:
                     self.assertIsNotNone(preview_path)
                     self.assertTrue(preview_path.is_file())
+
+    def test_template_port_defaults_and_round_trips(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config_path = Path(directory) / "config.json"
+            config = Config(str(config_path))
+            self.assertEqual(config.obs_template_port, 8768)
+
+            config.obs_template_port = 9876
+            config.save_config()
+            self.assertEqual(Config(str(config_path)).obs_template_port, 9876)
+
+    def test_applying_port_enables_all_drag_urls(self):
+        requested = []
+        window = HtmlCatalogWindow(
+            8768,
+            server_running=False,
+            port_change_callback=lambda port: requested.append(port) or True,
+        )
+        self.addCleanup(window.deleteLater)
+        labels = window.findChildren(HtmlDragLabel)
+        self.assertTrue(labels)
+        self.assertTrue(all(not label.isEnabled() for label in labels))
+
+        window.port_spin.setValue(9876)
+        window.apply_port()
+
+        self.assertEqual(requested, [9876])
+        self.assertTrue(all(label.isEnabled() for label in labels))
+        self.assertTrue(all(label.source_url.port() == 9876 for label in labels))
+
+    def test_rejected_port_keeps_current_server(self):
+        window = HtmlCatalogWindow(
+            8768,
+            server_running=True,
+            port_change_callback=lambda port: False,
+        )
+        self.addCleanup(window.deleteLater)
+        window.port_spin.setValue(9876)
+        with patch.object(QMessageBox, "warning") as warning:
+            window.apply_port()
+
+        self.assertEqual(window.port_spin.value(), 8768)
+        self.assertEqual(window.server_port, 8768)
+        self.assertTrue(all(
+            label.source_url.port() == 8768
+            for label in window.findChildren(HtmlDragLabel)
+        ))
+        warning.assert_called_once()
 
 
 if __name__ == "__main__":

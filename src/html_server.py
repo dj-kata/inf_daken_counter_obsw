@@ -46,7 +46,7 @@ class _CatalogThreadingHTTPServer(ThreadingHTTPServer):
 
 
 class HtmlCatalogHTTPServer:
-    """データ表示用ポートの直後から空きポートを探してHTMLを配信する。"""
+    """設定された固定ポートでHTMLを配信する。"""
 
     def __init__(self, application_root: Path):
         self.application_root = Path(application_root).resolve()
@@ -54,27 +54,22 @@ class HtmlCatalogHTTPServer:
         self.thread: threading.Thread | None = None
         self.port: int | None = None
 
-    def start(self, data_port: int) -> int | None:
+    def start(self, port: int) -> int | None:
         if self.httpd is not None:
             return self.port
 
-        first_port = int(data_port) + 1
-        for port in range(first_port, min(first_port + 10, 65536)):
-            handler = partial(
-                _CatalogRequestHandler,
-                application_root=self.application_root,
-            )
-            try:
-                self.httpd = _CatalogThreadingHTTPServer(("127.0.0.1", port), handler)
-            except OSError as error:
-                logger.warning(f"OBSカタログHTTPポート {port} を使用できません: {error}")
-                continue
-            self.port = port
-            break
-
-        if self.httpd is None:
-            logger.error("OBSカタログ用HTTPサーバーの空きポートを確保できませんでした")
+        port = int(port)
+        handler = partial(
+            _CatalogRequestHandler,
+            application_root=self.application_root,
+        )
+        try:
+            self.httpd = _CatalogThreadingHTTPServer(("127.0.0.1", port), handler)
+        except OSError as error:
+            logger.error(f"OBSカタログHTTPポート {port} を使用できません: {error}")
+            self.httpd = None
             return None
+        self.port = port
 
         self.thread = threading.Thread(
             target=self.httpd.serve_forever,
