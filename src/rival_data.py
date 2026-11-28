@@ -69,8 +69,12 @@ class RivalFetchWorker(QThread):
         self._is_cancelled = False
 
     def cancel(self):
-        self._is_cancelled = True
+        self.request_cancel()
         self.wait()
+
+    def request_cancel(self):
+        """待機せずに取得処理へキャンセルを通知する。"""
+        self._is_cancelled = True
 
     def run(self):
         logger.debug(f"hoge")
@@ -205,6 +209,7 @@ class RivalManager(QObject):
         self.rivals: List[RivalData] = []
         self.prev_rivals: List[RivalData] = []
         self._worker: Optional[RivalFetchWorker] = None
+        self._shutting_down = False
 
     def load_cache(self):
         """SQLiteからライバルデータを読み込み、初回だけpickleを移行する。"""
@@ -262,6 +267,19 @@ class RivalManager(QObject):
             self._worker.cancel()
             self._worker.wait(2000)
 
+    def shutdown(self) -> bool:
+        """取得ワーカーへ終了を通知し、停止済みならTrueを返す。"""
+        self._shutting_down = True
+        worker = self._worker
+        if worker is None:
+            return True
+        worker.request_cancel()
+        if worker.isRunning():
+            return False
+        worker.deleteLater()
+        self._worker = None
+        return True
+
     def switch_database(self, database, legacy_cache_path=None):
         """別アカウントのSQLiteへ切り替える。"""
         self.database = database
@@ -272,6 +290,7 @@ class RivalManager(QObject):
 
     def start_fetch(self, rival_configs: List[Dict[str, str]]):
         """全ライバルのCSVをバックグラウンドで取得開始"""
+        self._shutting_down = False
         if not rival_configs:
             self.rivals = []
             self._save_cache()
@@ -287,6 +306,8 @@ class RivalManager(QObject):
         self._worker.start()
 
     def _on_fetch_finished(self, results: List[RivalData]):
+        if self._shutting_down:
+            return
         self.prev_rivals = self.rivals
         self.rivals = results
         self._save_cache()

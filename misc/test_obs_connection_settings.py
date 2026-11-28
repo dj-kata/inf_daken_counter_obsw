@@ -3,6 +3,8 @@
 import importlib.util
 from pathlib import Path
 import tempfile
+import threading
+import time
 import types
 import unittest
 from unittest.mock import Mock, patch
@@ -156,6 +158,30 @@ class OBSConnectionSettingsTests(unittest.TestCase):
         self.config.obs_websocket_enabled = False
         self.assertEqual(self.manager.get_status(), (self.manager.ui.obs.websocket_disabled, False))
         self.assertFalse(self.manager.is_capture_ready())
+
+    def test_stop_monitor_interrupts_reconnect_wait(self):
+        self.manager.monitor_running = True
+        self.manager.stop_event.clear()
+        self.manager.monitor_thread = threading.Thread(
+            target=lambda: self.manager.stop_event.wait(30),
+        )
+        self.manager.monitor_thread.start()
+
+        started = time.monotonic()
+        self.assertTrue(self.manager.stop_monitor())
+
+        self.assertLess(time.monotonic() - started, 1.0)
+        self.assertTrue(self.manager.is_monitor_stopped())
+
+    def test_stop_monitor_keeps_reference_to_running_thread(self):
+        thread = Mock()
+        thread.is_alive.return_value = True
+        self.manager.monitor_running = True
+        self.manager.monitor_thread = thread
+
+        self.assertFalse(self.manager.stop_monitor())
+
+        self.assertIs(self.manager.monitor_thread, thread)
 
 
 if __name__ == '__main__':

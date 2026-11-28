@@ -379,6 +379,11 @@ class MainWindow(MainWindowUI):
         self.otoge_input_viewer_client = OtogeInputViewerClient()
         self._pending_average_release = None
         self._closing = False
+        self._shutdown_complete = False
+        self._obs_disconnected = False
+        self._rival_shutdown_complete = False
+        self.songinfo_update_thread = None
+        self.shutdown_retry_timer = None
         self._voice_obs_startup_checked = False
         self.random_lane_analysis = RandomLaneAnalysis(
             state_callback=self._on_random_lane_state,
@@ -506,7 +511,14 @@ class MainWindow(MainWindowUI):
 
     def start_songinfo_update(self):
         """songinfo.infdcの更新をバックグラウンドで開始"""
-        threading.Thread(target=self._download_songinfo_update, daemon=True).start()
+        if self.songinfo_update_thread and self.songinfo_update_thread.is_alive():
+            return
+        self.songinfo_update_thread = threading.Thread(
+            target=self._download_songinfo_update,
+            name="songinfo-update",
+            daemon=True,
+        )
+        self.songinfo_update_thread.start()
 
     def _download_songinfo_update(self):
         try:
@@ -520,6 +532,9 @@ class MainWindow(MainWindowUI):
 
     def on_songinfo_update_finished(self, success: bool, message: str):
         """DL済みの曲情報DBを即座に再読込し、表示データへ反映"""
+        if self._closing:
+            logger.info("終了処理中のため曲情報DB更新の反映を省略しました")
+            return
         if success:
             self.song_database.load()
             self.result_database.song_database.load()
@@ -1681,15 +1696,25 @@ class MainWindow(MainWindowUI):
             )
             event.ignore()
             return
+        if self._shutdown_complete:
+            event.accept()
+            return
         if self._closing:
-            if self.voice_guidance.is_finished():
-                event.accept()
-            else:
-                event.ignore()
+            event.ignore()
             return
         self._closing = True
+        event.ignore()
+        self.setEnabled(False)
+        self.statusBar().showMessage("終了処理中...")
+
+        # バックグラウンド処理を停止する間、画面認識を進めない。
+        self.main_timer.stop()
+        self.display_timer.stop()
+        self.select_bpim2_timer.stop()
+
         self.otoge_input_viewer_client.stop()
         self.voice_guidance.shutdown()
+        self._rival_shutdown_complete = self.rival_manager.shutdown()
         self.random_lane_analysis.set_enabled(False)
         self.game_overlay.close()
         self.html_catalog_server.stop()
@@ -1701,7 +1726,7 @@ class MainWindow(MainWindowUI):
         self.remove_global_hotkeys()
         
         # OBS接続を切断（監視スレッドも停止）
-        self.obs_manager.disconnect()
+        self._obs_disconnected = self.obs_manager.disconnect()
 
         # ウィンドウ位置を保存
         self.save_window_geometry()
@@ -1717,11 +1742,6 @@ class MainWindow(MainWindowUI):
         if bpim2_savecache is not None:
             bpim2_savecache()
         
-        # タイマーを停止
-        self.main_timer.stop()
-        self.display_timer.stop()
-        self.select_bpim2_timer.stop()
-
         # スコアビューワを終了
         if self.score_viewer is not None:
             self.score_viewer.close()
@@ -1730,19 +1750,33 @@ class MainWindow(MainWindowUI):
         if hasattr(self.result_database, 'shutdown_servers'):
             self.result_database.shutdown_servers()
 
-        logger.info("アプリケーション終了")
-        if self.voice_guidance.is_finished():
-            event.accept()
-        else:
-            event.ignore()
-            self.voice_close_timer = QTimer(self)
-            self.voice_close_timer.timeout.connect(self._finish_voice_shutdown)
-            self.voice_close_timer.start(100)
+        self.shutdown_retry_timer = QTimer(self)
+        self.shutdown_retry_timer.timeout.connect(self._finish_shutdown)
+        self.shutdown_retry_timer.start(100)
+        self._finish_shutdown()
 
-    def _finish_voice_shutdown(self):
-        if self.voice_guidance.is_finished():
-            self.voice_close_timer.stop()
-            self.close()
+    def _finish_shutdown(self):
+        if not self._obs_disconnected:
+            if not self.obs_manager.is_monitor_stopped():
+                return
+            self._obs_disconnected = self.obs_manager.disconnect()
+        if not self._rival_shutdown_complete:
+            self._rival_shutdown_complete = self.rival_manager.shutdown()
+        if (
+            not self._obs_disconnected
+            or not self._rival_shutdown_complete
+            or (
+                self.songinfo_update_thread is not None
+                and self.songinfo_update_thread.is_alive()
+            )
+            or not self.voice_guidance.is_finished()
+        ):
+            return
+        if self.shutdown_retry_timer is not None:
+            self.shutdown_retry_timer.stop()
+        logger.info("アプリケーション終了")
+        self._shutdown_complete = True
+        self.close()
 
     def tweet(self):
         '''成果ツイート'''
@@ -1936,7 +1970,7 @@ def main(config=None, updater=None):
     window.setWindowIcon(QIcon('src/icon.ico'))
     window.show()
     
-    sys.exit(app.exec())
+    return app.exec()
 
 
 def show_already_running_message():
@@ -1954,11 +1988,13 @@ if __name__ == "__main__":
     if not instance_lock.try_acquire():
         show_already_running_message()
         sys.exit(0)
-
-    app_config = Config()
-    updater = create_updater(app_config.include_prerelease_updates)
-    if app_config.enable_auto_update:
-        if updater.check_and_update():
-            sys.exit(0)
-    
-    main(config=app_config, updater=updater)
+    try:
+        app_config = Config()
+        updater = create_updater(app_config.include_prerelease_updates)
+        if app_config.enable_auto_update:
+            if updater.check_and_update():
+                sys.exit(0)
+        exit_code = main(config=app_config, updater=updater)
+    finally:
+        instance_lock.release()
+    sys.exit(exit_code)

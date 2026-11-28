@@ -235,7 +235,8 @@ class OBSWebSocketManager(QObject):
         logger.info("Disconnecting from OBS WebSocket")
         
         # 監視スレッドを停止
-        self.stop_monitor()
+        if not self.stop_monitor():
+            return False
 
         if self.direct_capture and hasattr(self.direct_capture, "close"):
             self.direct_capture.close()
@@ -252,6 +253,7 @@ class OBSWebSocketManager(QObject):
         self.is_connected = False
         self._scene_collection_applied = False
         self._emit_status(self.ui.obs.status_disconnected, False)
+        return True
     
     def start_monitor(self):
         """接続監視スレッドを開始"""
@@ -272,17 +274,26 @@ class OBSWebSocketManager(QObject):
     
     def stop_monitor(self):
         """接続監視スレッドを停止"""
-        if not self.monitor_running:
-            return
-        
         self.monitor_running = False
         self.stop_event.set()
-        
-        if self.monitor_thread:
-            self.monitor_thread.join(timeout=2.0)
-            self.monitor_thread = None
-        
+
+        thread = self.monitor_thread
+        if thread and thread is not threading.current_thread():
+            # 接続APIのタイムアウト中はQtイベントループを塞がず、呼び出し側で再確認する。
+            thread.join(timeout=0.1)
+            if thread.is_alive():
+                logger.warning("OBS接続監視スレッドの停止を待機しています")
+                return False
+        self.monitor_thread = None
         logger.info("Connection monitor thread stopped")
+        return True
+
+    def is_monitor_stopped(self):
+        thread = self.monitor_thread
+        if thread is not None and not thread.is_alive():
+            self.monitor_thread = None
+            thread = None
+        return thread is None
     
     def _monitor_connection(self):
         """
@@ -299,7 +310,8 @@ class OBSWebSocketManager(QObject):
             try:
                 # 設定チェック
                 if not self.config:
-                    time.sleep(check_interval)
+                    if self.stop_event.wait(check_interval):
+                        break
                     continue
                 
                 # 接続状態チェック
@@ -324,7 +336,8 @@ class OBSWebSocketManager(QObject):
                         if self.max_reconnect_attempts > 0 and consecutive_failures >= self.max_reconnect_attempts:
                             logger.error(f"Max reconnection attempts reached: {self.max_reconnect_attempts}")
                             self._emit_status(f"{self.ui.obs.status_reconnect_failed}（{self.max_reconnect_attempts}回試行）", False)
-                            time.sleep(check_interval)
+                            if self.stop_event.wait(check_interval):
+                                break
                             continue
                         
                         # 再接続試行
@@ -341,6 +354,10 @@ class OBSWebSocketManager(QObject):
                             
                             # 接続テスト
                             self.client.get_version()
+
+                            if self.stop_event.is_set():
+                                self.client = None
+                                break
                             
                             # 成功
                             self.is_connected = True
@@ -359,14 +376,16 @@ class OBSWebSocketManager(QObject):
                             # logger.debug(f"Reconnection failed: {e}")
                             
                             # 次の再接続まで待機
-                            time.sleep(self.reconnect_interval)
+                            if self.stop_event.wait(self.reconnect_interval):
+                                break
                             continue
                 
             except Exception as e:
                 logger.error(f"Monitor thread error: {e}\n{traceback.format_exc()}")
             
             # 次のチェックまで待機
-            time.sleep(check_interval)
+            if self.stop_event.wait(check_interval):
+                break
         
         logger.info("Monitor thread terminated")
     
@@ -645,10 +664,6 @@ class OBSWebSocketManager(QObject):
                         ret = x['sourceName'], y['sceneItemId']
         return ret
     
-    def __del__(self):
-        """デストラクタ"""
-        self.disconnect()
-
 # メイン関数（テスト用）
 if __name__ == "__main__":
     # テスト用のダミー設定
