@@ -968,6 +968,10 @@ class MainWindow(MainWindowUI):
                             songinfo=detailed_result.songinfo,
                             enable_katate_difficulty_display=self.config.enable_katate_difficulty_display,
                             lane_layout=getattr(result, "lane_layout", None),
+                            average_release=(
+                                getattr(result, "average_release", None)
+                                or getattr(self, "_pending_average_release", None)
+                            ),
                         )
                     except Exception:
                         logger.error(

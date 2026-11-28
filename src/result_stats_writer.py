@@ -44,6 +44,8 @@ class ResultStatsWriter:
         self.sub_font = self._load_font(size=28)
         self.label_font = self._load_font(size=21, bold=True)
         self.small_font = self._load_font(size=22)
+        self.graph_font = self._load_font(size=15, bold=True)
+        self.graph_small_font = self._load_font(size=13)
     
     def _load_font(self, size=28, bold=False):
         """システムフォントを読み込む"""
@@ -83,6 +85,7 @@ class ResultStatsWriter:
         songinfo=None,
         enable_katate_difficulty_display=False,
         lane_layout=None,
+        average_release=None,
         position=(600, 405),  # (x, y) 座標で指定
         box_width=790,     # ボックス幅（Noneで画像幅）
         box_height=430,
@@ -99,6 +102,11 @@ class ResultStatsWriter:
         # 画像を開く
         max_score = max_notes * 2
         lane_layout_text = str(lane_layout).strip() if lane_layout else ""
+        release_graph_data = self._release_graph_data(average_release)
+        arena_text = self._format_arena_average_text(
+            bpi_arena_averages, bpi_arena_average_text
+        )
+        ereter_items = self._format_ereter_items(play_style, songinfo, lamp)
         
         # RGBA変換（透明度サポート）
         if img.mode != 'RGBA':
@@ -127,6 +135,9 @@ class ResultStatsWriter:
         panel_top = y - 12
         panel_right = panel_left + box_width
         panel_bottom = y + box_height + (50 if lane_layout_text else 0)
+        if release_graph_data:
+            # 下部の曲名・譜面情報に被らない範囲まで統計パネルを広げる。
+            panel_bottom = max(panel_bottom, img.height - 125)
 
         # 背景ボックスを描画（半透明、透明度を指定可能）
         self._draw_rounded_rectangle(
@@ -183,18 +194,30 @@ class ResultStatsWriter:
         self._draw_metric(draw, content_x + col_w + col_gap, y, col_w, bpi_label, bpi_text, (255, 245, 90))
         y += row_h + 3
 
-        if lane_layout_text:
-            self._draw_lane_layout(draw, content_x, y, content_w, lane_layout_text)
-            y += row_h
-
-        arena_text = self._format_arena_average_text(bpi_arena_averages, bpi_arena_average_text)
         if arena_text:
             self._draw_arena_average(draw, content_x, y, content_w, bpi_arena_averages, arena_text, ex_score)
             y += 58
 
-        ereter_items = self._format_ereter_items(play_style, songinfo, lamp)
         if ereter_items:
             self._draw_ereter_items(draw, content_x, y, content_w, ereter_items)
+            y += 55
+
+        if lane_layout_text:
+            self._draw_lane_layout(draw, content_x, y, content_w, lane_layout_text)
+            y += row_h
+
+        if release_graph_data:
+            graph_y = y + 4
+            graph_height = min(190, panel_bottom - 18 - graph_y)
+            if graph_height >= 110:
+                self._draw_release_graph(
+                    draw,
+                    content_x,
+                    graph_y,
+                    content_w,
+                    graph_height,
+                    release_graph_data,
+                )
         
         # オーバーレイを合成
         img = Image.alpha_composite(img, overlay)
@@ -264,6 +287,202 @@ class ResultStatsWriter:
             ("EXH", getattr(songinfo, "dp_ereter_exh", None), clear_lamp.exh),
         ]
         return [(label, str(value), lamp.value >= target.value) for label, value, target in items if value]
+
+    def _release_graph_data(self, release):
+        """保存済みリリース情報を描画用データへ変換する。"""
+        histogram = getattr(release, "histogram", None)
+        if not isinstance(histogram, list) or not histogram:
+            return None
+        values = [
+            float(value) if isinstance(value, (int, float)) else None
+            for value in histogram
+        ]
+        valid_values = [value for value in values if value is not None]
+        if not valid_values:
+            return None
+
+        key_cumulative = getattr(release, "key_counts_cumulative", None)
+        other_cumulative = getattr(release, "other_counts_cumulative", None)
+        key_counts = None
+        other_counts = None
+        expected_count = len(values) + 1
+        if (
+            isinstance(key_cumulative, list)
+            and isinstance(other_cumulative, list)
+            and len(key_cumulative) == expected_count
+            and len(other_cumulative) == expected_count
+        ):
+            try:
+                key_counts = [
+                    max(0, int(key_cumulative[index + 1]) - int(key_cumulative[index]))
+                    for index in range(len(values))
+                ]
+                other_counts = [
+                    max(0, int(other_cumulative[index + 1]) - int(other_cumulative[index]))
+                    for index in range(len(values))
+                ]
+            except (TypeError, ValueError):
+                key_counts = None
+                other_counts = None
+
+        return {
+            "values": values,
+            "average": sum(valid_values) / len(valid_values),
+            "key_counts": key_counts,
+            "other_counts": other_counts,
+        }
+
+    @staticmethod
+    def _release_axis_range_and_ticks(values, average):
+        """余白付きY軸範囲と、10の倍数だけのラベル位置を返す。"""
+        all_values = [*values, average]
+        value_min = min(all_values)
+        value_max = max(all_values)
+        spread = value_max - value_min
+        padding = max(3.0, spread * 0.12)
+        axis_min = value_min - padding
+        axis_max = value_max + padding
+        if axis_max - axis_min < 12:
+            center = (axis_min + axis_max) / 2
+            axis_min = center - 6
+            axis_max = center + 6
+        first_tick = int((axis_min + 9.999999) // 10) * 10
+        last_tick = int(axis_max // 10) * 10
+        ticks = list(range(first_tick, last_tick + 1, 10))
+        return axis_min, axis_max, ticks
+
+    def _draw_release_graph(self, draw, x, y, width, height, data):
+        """リリース推移と区間打鍵数を黒基調の複合グラフとして描く。"""
+        background = (5, 10, 17, 235)
+        border = (65, 95, 115, 230)
+        grid = (65, 85, 100, 150)
+        release_color = (65, 225, 255, 255)
+        average_color = (255, 220, 75, 255)
+        key_color = (55, 145, 255, 230)
+        scratch_color = (255, 105, 75, 230)
+
+        draw.rounded_rectangle(
+            (x, y, x + width, y + height),
+            radius=7,
+            fill=background,
+            outline=border,
+            width=1,
+        )
+
+        header_y = y + 7
+        draw.text((x + 10, header_y), "RELEASE", font=self.graph_font, fill=(190, 215, 230))
+        legend_x = x + width - 306
+        self._draw_legend_line(draw, legend_x, header_y + 8, release_color, dotted=False)
+        draw.text((legend_x + 28, header_y), "RELEASE", font=self.graph_small_font, fill=(190, 215, 230))
+        legend_x += 96
+        self._draw_legend_line(draw, legend_x, header_y + 8, average_color, dotted=True)
+        draw.text((legend_x + 28, header_y), "AVG", font=self.graph_small_font, fill=(190, 215, 230))
+        legend_x += 67
+        draw.rectangle((legend_x, header_y + 3, legend_x + 10, header_y + 13), fill=key_color)
+        draw.text((legend_x + 15, header_y), "KEY", font=self.graph_small_font, fill=(190, 215, 230))
+        legend_x += 58
+        draw.rectangle((legend_x, header_y + 3, legend_x + 10, header_y + 13), fill=scratch_color)
+        draw.text((legend_x + 15, header_y), "SCR", font=self.graph_small_font, fill=(190, 215, 230))
+
+        values = data["values"]
+        valid_values = [value for value in values if value is not None]
+        average = data["average"]
+        axis_min, axis_max, ticks = self._release_axis_range_and_ticks(valid_values, average)
+
+        plot_left = x + 38
+        plot_right = x + width - 10
+        plot_width = plot_right - plot_left
+        plot_top = y + 31
+        bar_bottom = y + height - 8
+        bar_height = max(24, min(42, int(height * 0.24)))
+        bar_top = bar_bottom - bar_height
+        line_bottom = bar_top - 7
+        line_height = max(35, line_bottom - plot_top)
+
+        def value_y(value):
+            return plot_top + (axis_max - value) / (axis_max - axis_min) * line_height
+
+        for tick in ticks:
+            tick_y = value_y(tick)
+            draw.line((plot_left, tick_y, plot_right, tick_y), fill=grid, width=1)
+            label = str(tick)
+            bbox = draw.textbbox((0, 0), label, font=self.graph_small_font)
+            draw.text(
+                (plot_left - 7 - (bbox[2] - bbox[0]), tick_y - 7),
+                label,
+                font=self.graph_small_font,
+                fill=(145, 170, 185),
+            )
+
+        average_y = value_y(average)
+        dash_x = plot_left
+        while dash_x < plot_right:
+            draw.line(
+                (dash_x, average_y, min(dash_x + 7, plot_right), average_y),
+                fill=average_color,
+                width=2,
+            )
+            dash_x += 12
+
+        bucket_width = plot_width / len(values)
+        line_segments = []
+        current_segment = []
+        for index, value in enumerate(values):
+            if value is None:
+                if current_segment:
+                    line_segments.append(current_segment)
+                    current_segment = []
+                continue
+            point_x = plot_left + (index + 0.5) * bucket_width
+            current_segment.append((point_x, value_y(value)))
+        if current_segment:
+            line_segments.append(current_segment)
+
+        for segment in line_segments:
+            if len(segment) > 1:
+                draw.line(segment, fill=release_color, width=3, joint="curve")
+            for point_x, point_y in segment:
+                draw.ellipse(
+                    (point_x - 2.5, point_y - 2.5, point_x + 2.5, point_y + 2.5),
+                    fill=release_color,
+                )
+
+        key_counts = data["key_counts"]
+        other_counts = data["other_counts"]
+        if key_counts is not None and other_counts is not None:
+            max_count = max(
+                1,
+                max(key + other for key, other in zip(key_counts, other_counts)),
+            )
+            bar_w = max(2, int(bucket_width * 0.58))
+            for index, (key_count, other_count) in enumerate(zip(key_counts, other_counts)):
+                center_x = plot_left + (index + 0.5) * bucket_width
+                key_h = bar_height * key_count / max_count
+                other_h = bar_height * other_count / max_count
+                if key_h > 0:
+                    draw.rectangle(
+                        (center_x - bar_w / 2, bar_bottom - key_h, center_x + bar_w / 2, bar_bottom),
+                        fill=key_color,
+                    )
+                if other_h > 0:
+                    draw.rectangle(
+                        (
+                            center_x - bar_w / 2,
+                            bar_bottom - key_h - other_h,
+                            center_x + bar_w / 2,
+                            bar_bottom - key_h,
+                        ),
+                        fill=scratch_color,
+                    )
+        draw.line((plot_left, bar_bottom, plot_right, bar_bottom), fill=border, width=1)
+
+    @staticmethod
+    def _draw_legend_line(draw, x, y, fill, dotted=False):
+        if not dotted:
+            draw.line((x, y, x + 21, y), fill=fill, width=2)
+            return
+        for offset in (0, 8, 16):
+            draw.line((x + offset, y, x + offset + 4, y), fill=fill, width=2)
 
     def _draw_metric(self, draw, x, y, width, label, value, value_fill, compact=False):
         label_bbox = draw.textbbox((0, 0), label, font=self.label_font)

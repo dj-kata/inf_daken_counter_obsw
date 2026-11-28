@@ -19,9 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.classes import clear_lamp, difficulty, play_style
+from src.classes import average_release, clear_lamp, difficulty, play_style
 from src.result import BpiArenaAverage
-from src.screen_reader import ScreenReader
 from src.result_stats_writer import ResultStatsWriter
 
 
@@ -74,6 +73,13 @@ LAMPS = {
 
 
 def build_sample(name: str):
+    release = average_release(
+        [71.5, 70.6, 75.3, 76.6, 70.3, None, 69.1, 65.1, 71.5, 80.7, 85.7, 89.8, 91.5],
+        interval_seconds=10.0,
+        key_counts_cumulative=[0, 54, 121, 196, 268, 312, 336, 401, 475, 548, 632, 721, 805, 875],
+        other_counts_cumulative=[0, 2, 6, 9, 14, 15, 15, 21, 24, 28, 35, 41, 47, 51],
+        release_sample_counts=[51, 62, 70, 68, 41, 0, 61, 69, 67, 79, 84, 80, 66],
+    )
     if name == "dp":
         return {
             "title": "千年ノ理",
@@ -95,6 +101,7 @@ def build_sample(name: str):
                 dp_ereter_exh="12.6",
             ),
             "enable_katate_difficulty_display": False,
+            "average_release": release,
         }
 
     return {
@@ -114,10 +121,14 @@ def build_sample(name: str):
         ],
         "songinfo": PreviewSongInfo(level=11, katate_11=3),
         "enable_katate_difficulty_display": True,
+        "lane_layout": "5273146",
+        "average_release": release,
     }
 
 
 def build_from_image(path: Path, fetch_bpim2: bool = True):
+    from src.screen_reader import ScreenReader
+
     reader = ScreenReader()
     reader.update_screen_from_file(str(path))
     detail = reader.read_result_screen()
@@ -152,6 +163,8 @@ def build_from_image(path: Path, fetch_bpim2: bool = True):
         "bpi_arena_averages": bpi_arena_averages,
         "songinfo": songinfo,
         "enable_katate_difficulty_display": True,
+        "lane_layout": getattr(result, "lane_layout", None),
+        "average_release": getattr(result, "average_release", None),
     }
 
 
