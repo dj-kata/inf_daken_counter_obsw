@@ -21,7 +21,7 @@ on:
   workflow_dispatch:
     inputs:
       deploy:
-        description: GitHub Pagesへ公開する（既定ブランチのみ）
+        description: GitHub Pagesへ公開する（mainのみ）
         type: boolean
         default: false
 
@@ -45,9 +45,14 @@ jobs:
         with:
           path: site
   deploy:
-    if: github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy && github.ref == 'refs/heads/main')
     needs: build
     runs-on: ubuntu-latest
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
     permissions:
       pages: write
       id-token: write

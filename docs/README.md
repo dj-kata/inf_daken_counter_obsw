@@ -34,15 +34,16 @@ WindowsではPythonのパスを `.codex-venv\Scripts\python.exe` に読み替え
 ## GitHub Pagesへ公開する
 
 `.github/workflows/docs.yml` は、説明書用ブランチ・mainへの対象ファイルのpushやPRでビルドを検証します。
-この時点では自動公開しません。公開時には次の操作を行います。
+mainへのpushでは、ビルドが成功するとGitHub Pagesへ自動公開します。
+初回の自動公開前に、次の設定を行います。
 
-1. 内容を確認し、説明書の変更を既定ブランチへマージします。
-2. Settings → Actions → General の **Actions permissions** で、GitHub公式のActionを許可します（後述）。
-3. GitHubリポジトリの Settings → Pages → Source を **GitHub Actions** に設定します。
-4. Actions → Documentation → Run workflow で既定ブランチを選び、`deploy` を有効にして実行します。
+1. Settings → Actions → General の **Actions permissions** で、GitHub公式のActionを許可します（後述）。
+2. GitHubリポジトリの Settings → Pages → Source を **GitHub Actions** に設定します。
+3. 内容を確認し、説明書の変更をmainへマージまたはpushします。
 
 公開URLは `https://dj-kata.github.io/inf_daken_counter_obsw/` を想定しています。
-手動の公開処理は既定ブランチからのみ実行できます。通常のpush・PRはビルドと成果物の作成だけです。
+説明書用ブランチへのpushとPRは、ビルドと成果物の作成だけで公開しません。
+再公開が必要な場合は、Actions → Documentation → Run workflowでmainを選び、`deploy`を有効にして手動実行できます。
 既存のPages公開元が設定されている場合は、切り替え前に確認してください。
 
 ### Documentationが起動直後に失敗する場合
@@ -62,9 +63,10 @@ dj-kata所有のActionだけを許可するポリシーによって、次のGitH
 2. Actions permissionsで **Allow dj-kata, and select non-dj-kata, actions and reusable workflows** を選びます。
 3. **Allow actions created by GitHub** を有効にして保存します。これにより、上記のActionと、その内部で使うGitHub公式Actionを許可できます。
 4. 失敗した実行で **Re-run all jobs** を選ぶか、Documentationを手動実行して、buildジョブが成功することを確認します。
-5. 公開する場合はPagesのSourceを確認し、既定ブランチから `deploy` を有効にしてDocumentationを実行します。
+5. PagesのSourceを確認し、説明書の変更をmainへpushして自動公開を確認します。必要ならmainから `deploy` を有効にして手動実行できます。
 
-Actionを許可しただけではサイトは公開されません。通常のpush・PRではビルドと成果物作成までです。
+Actionを許可しただけではサイトは公開されません。mainへの対象ファイルのpush、またはmainからの手動公開が必要です。
+PRと説明書用ブランチへのpushはビルドと成果物作成までです。
 また、ワークフローの `pages: write` や `contents: read` を変更しても、この起動拒否は解消しません。
 許可ポリシーの説明は[GitHub公式ドキュメント](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-select-actions-and-reusable-workflows-to-run)を参照してください。
 
