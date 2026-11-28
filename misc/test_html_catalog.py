@@ -58,6 +58,9 @@ class HtmlCatalogTest(unittest.TestCase):
             build_obs_source_url(view, 8768, show_when_idle=False)
         )
 
+        self.assertEqual((view.width, view.height), (500, 115))
+        self.assertEqual(default_query.queryItemValue("layer-width"), "500")
+        self.assertEqual(default_query.queryItemValue("layer-height"), "115")
         self.assertEqual(default_query.queryItemValue("show_when_idle"), "1")
         self.assertEqual(play_only_query.queryItemValue("show_when_idle"), "0")
 

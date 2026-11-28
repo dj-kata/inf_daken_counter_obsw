@@ -86,7 +86,7 @@ HTML_VIEWS = (
     HtmlView(
         "random_lane.html", "RANDOMレーン配置", "RANDOM lane layout",
         "認識したSPのレーン配置", "Recognized SP lane layout",
-        800, 200, "view-random-lane.png", True,
+        500, 115, "view-random-lane.png", True,
     ),
     HtmlView(
         "option.html", "プレーオプション", "Play options",

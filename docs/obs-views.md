@@ -57,7 +57,7 @@ body { background-color: rgba(0, 0, 0, 0.0); margin: 0px auto; overflow: hidden;
 | [`today_stats.html`](#today-stats) | 打鍵数・レベル別の統計とプレーログ | 2600×2200 |
 | [`today_receipt.html`](#receipt) | 本日の成果をレシート形式で表示 | 1500×1500 |
 | [`graph.html`](#graph) | ノーツ数のグラフ | 500×250 |
-| [`random_lane.html`](#random-lane) | SPのレーン配置 | 800×200 |
+| [`random_lane.html`](#random-lane) | SPのレーン配置 | 500×115 |
 | `option.html` | 現在のオプション | レイアウトに合わせて調整 |
 | `all_info.html` | 履歴・ライバル・グラフ・レシートの複合表示 | レイアウトに合わせて調整 |
 | `column_log_cur_graph.html` | プレーログ・単曲履歴・グラフの横並び | レイアウトに合わせて調整 |
@@ -223,7 +223,7 @@ body {
 
 ## RANDOMレーン配置ビュー {#random-lane}
 
-`random_lane.html` は、SPのレーン配置を番号・鍵盤色で表示します。幅800・高さ200が目安です。
+`random_lane.html` は、SPのレーン配置を番号・鍵盤色で表示します。幅500・高さ115が目安です。
 先に[配置認識](features.md#random-lane)を設定してください。
 カタログから追加する場合は「常時表示」と「プレー中のみ」を選択でき、初期値は「常時表示」です。
 
