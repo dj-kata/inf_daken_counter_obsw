@@ -11,8 +11,9 @@ catalog_generated_preview_files=$(wildcard template/thumbnails/*.png)
 version=$(shell head -n1 version.txt)
 ZIP ?= 7z a -tzip -mx=1 -mmt=on
 SYNC_DEST ?= /mnt/d/bin/YouTubeLive
+DOCS_PYTHON ?= .codex-venv/bin/python
 
-.PHONY: all top build-sync sync dist clean test
+.PHONY: all top build-sync sync dist clean test serve
 
 all: $(target_zip)
 top: $(target)
@@ -73,3 +74,7 @@ clean:
 
 test:
 	@$(wuv) run python $(main_file_name).pyw
+
+serve:
+	@test -x "$(DOCS_PYTHON)" || (echo "$(DOCS_PYTHON) が見つかりません。docs/README.mdの手順で説明書用環境を準備してください。"; exit 1)
+	$(DOCS_PYTHON) -m mkdocs serve

@@ -18,11 +18,12 @@
 ```bash
 python3 -m venv .codex-venv  # Codex用環境がまだない場合のみ
 uv pip install --python .codex-venv/bin/python -r requirements-docs.txt
-.codex-venv/bin/python -m mkdocs serve
+make serve
 ```
 
-WindowsではPythonのパスを `.codex-venv\Scripts\python.exe` に読み替えてください。
-ブラウザで `http://127.0.0.1:8000/` を開くと、原稿の編集が反映されます。
+Windowsでは `make serve DOCS_PYTHON=.codex-venv/Scripts/python.exe` として実行してください。
+ブラウザで `http://127.0.0.1:8000/inf_daken_counter_obsw/` を開くと、原稿の編集が反映されます。
+別のPythonを使う場合は、`make serve DOCS_PYTHON=/path/to/python` のように指定できます。
 
 ```bash
 .codex-venv/bin/python -m mkdocs build --strict
