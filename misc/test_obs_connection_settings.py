@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch
 
 from src.config import Config
 from src.funcs import load_ui_text
+from src.obs_dialog import OBSControlDialog
 
 
 class OBSConnectionSettingsTests(unittest.TestCase):
@@ -75,6 +76,80 @@ class OBSConnectionSettingsTests(unittest.TestCase):
         self.assertFalse(self.manager.is_connected)
         self.assertIsNone(self.manager.client)
         self.assertTrue(self.manager.is_capture_ready())
+
+    def test_direct_capture_without_rules_does_not_connect_automatically(self):
+        self.config.capture_method = 'direct_window'
+        self.config.obs_control_settings = []
+        with patch.object(self.manager, 'stop_monitor') as stop_monitor, \
+                patch.object(self.module, 'ReqClient') as request_client:
+            self.assertFalse(self.manager.connect())
+        stop_monitor.assert_called_once()
+        request_client.assert_not_called()
+
+    def test_forced_setup_connection_works_without_control_rules(self):
+        self.config.capture_method = 'direct_window'
+        self.config.obs_control_settings = []
+        client = Mock()
+        with patch.object(self.module, 'OBSWS_AVAILABLE', True), \
+                patch.object(self.module, 'ReqClient', return_value=client) as request_client, \
+                patch.object(self.manager, 'start_monitor') as start_monitor, \
+                patch.object(self.manager, '_apply_scene_collection') as apply_collection:
+            self.assertTrue(self.manager.connect(force=True))
+        request_client.assert_called_once_with(
+            host=self.config.websocket_host,
+            port=self.config.websocket_port,
+            password=self.config.websocket_password,
+            timeout=5,
+        )
+        client.get_version.assert_called_once_with()
+        apply_collection.assert_called_once_with()
+        start_monitor.assert_called_once_with()
+        self.assertTrue(self.manager.is_connected)
+
+    def test_forced_setup_connection_respects_disabled_integration(self):
+        self.config.capture_method = 'direct_window'
+        self.config.obs_control_settings = []
+        self.config.obs_websocket_enabled = False
+        with patch.object(self.module, 'ReqClient') as request_client:
+            self.assertFalse(self.manager.connect(force=True))
+        request_client.assert_not_called()
+
+    def test_dialog_applies_connection_fields_before_reconnect(self):
+        dialog = types.SimpleNamespace(
+            config=self.config,
+            obs_websocket_enabled_check=Mock(isChecked=Mock(return_value=True)),
+            websocket_host_edit=Mock(text=Mock(return_value='127.0.0.1')),
+            websocket_port_spin=Mock(value=Mock(return_value=4455)),
+            websocket_password_edit=Mock(text=Mock(return_value='new password')),
+        )
+        OBSControlDialog._apply_websocket_settings(dialog)
+        self.assertTrue(self.config.obs_websocket_enabled)
+        self.assertEqual(self.config.websocket_host, '127.0.0.1')
+        self.assertEqual(self.config.websocket_port, 4455)
+        self.assertEqual(self.config.websocket_password, 'new password')
+
+    def test_dialog_reconnect_forces_initial_setup_connection(self):
+        dialog = types.SimpleNamespace(
+            _apply_websocket_settings=Mock(),
+            obs_manager=Mock(),
+            update_scene_list=Mock(),
+            ui=types.SimpleNamespace(
+                message=types.SimpleNamespace(
+                    success='success',
+                    reconnected_to_obs='connected',
+                    error_title='error',
+                    failed_reconnection_to_obs='failed',
+                ),
+            ),
+        )
+        dialog.obs_manager.connect.return_value = True
+        with patch('src.obs_dialog.QMessageBox.information') as information:
+            OBSControlDialog.reconnect_obs(dialog)
+        dialog._apply_websocket_settings.assert_called_once_with()
+        dialog.obs_manager.disconnect.assert_called_once_with()
+        dialog.obs_manager.connect.assert_called_once_with(force=True)
+        dialog.update_scene_list.assert_called_once_with()
+        information.assert_called_once_with(dialog, 'success', 'connected')
 
     def test_obs_capture_reports_disabled(self):
         self.config.capture_method = 'obs_websocket'

@@ -640,8 +640,10 @@ class OBSControlDialog(QDialog):
     def reconnect_obs(self):
         """OBSに再接続"""
         try:
+            self._apply_websocket_settings()
             self.obs_manager.disconnect()
-            success = self.obs_manager.connect()
+            # 初回の制御ルール登録前でも、明示的な再接続ではOBSへ接続する。
+            success = self.obs_manager.connect(force=True)
             if success:
                 self.update_scene_list()
                 QMessageBox.information(self, self.ui.message.success, self.ui.message.reconnected_to_obs)
@@ -675,14 +677,17 @@ class OBSControlDialog(QDialog):
             logger.info("監視対象ソースをクリアしました")
             QMessageBox.information(self, self.ui.message.completed_title, self.ui.message.target_source_removed)
     
-    def accept(self):
-        """OKボタン"""
+    def _apply_websocket_settings(self):
+        """画面上のWebSocket設定を現在の設定オブジェクトへ反映。"""
         self.config.obs_websocket_enabled = self.obs_websocket_enabled_check.isChecked()
-
-        # WebSocket設定を保存
         self.config.websocket_host = self.websocket_host_edit.text()
         self.config.websocket_port = self.websocket_port_spin.value()
         self.config.websocket_password = self.websocket_password_edit.text()
+
+    def accept(self):
+        """OKボタン"""
+        # WebSocket設定を保存
+        self._apply_websocket_settings()
 
         # シーンコレクション設定を保存
         selected_collection = self.scene_collection_combo.currentData()

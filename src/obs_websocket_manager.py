@@ -151,9 +151,13 @@ class OBSWebSocketManager(QObject):
             return self.spout_capture.get_latest_frame() is not None
         return self.is_connected and self.is_monitor_source_configured()
     
-    def connect(self):
-        """OBSに接続"""
-        if not self.uses_obs_websocket():
+    def connect(self, force: bool = False):
+        """OBSに接続。force時は初回設定用に制御ルール未登録でも接続する。"""
+        integration_enabled = bool(
+            self.config
+            and getattr(self.config, "obs_websocket_enabled", True)
+        )
+        if not integration_enabled or (not force and not self.uses_obs_websocket()):
             self.stop_monitor()
             if self.client:
                 try:
