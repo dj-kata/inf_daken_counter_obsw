@@ -7,6 +7,7 @@ from src.logger import get_logger
 logger = get_logger(__name__)
 from src.voice_guidance import VOICE_DEFAULTS
 from src.classes import config_autosave_image, config_modify_rivalarea, music_pack
+from src.theme import normalize_theme_mode
 
 class Config:
     '''設定を管理するクラス'''
@@ -70,6 +71,7 @@ class Config:
 
         # 言語設定
         self.language = 'ja'  # 'ja' or 'en'
+        self.theme = 'system'  # 'system', 'light', or 'dark'
         
         # WebSocketデータ配信ポート
         self.websocket_data_port = 8767
@@ -189,6 +191,7 @@ class Config:
 
                     # 言語設定
                     self.language = config_data.get('language', 'ja')
+                    self.theme = normalize_theme_mode(config_data.get('theme', 'system'))
                     
                     # スコアビューワ設定
                     self.score_viewer_style = config_data.get('score_viewer_style', 'SP')
@@ -293,6 +296,7 @@ class Config:
             "enable_katate_difficulty_display": self.enable_katate_difficulty_display,
             "enable_katate_tweet_grouping": self.enable_katate_tweet_grouping,
             "language": self.language,
+            "theme": self.theme,
             "score_viewer_style": self.score_viewer_style,
             "score_viewer_levels": self.score_viewer_levels,
             "score_viewer_sort_column": self.score_viewer_sort_column,

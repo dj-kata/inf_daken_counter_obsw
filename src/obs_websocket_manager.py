@@ -9,6 +9,7 @@ from PySide6.QtCore import QObject, Signal
 import logging
 from src.config import Config
 from src.logger import get_logger
+from src.theme import semantic_text_color
 from src.funcs import load_ui_text
 from src.direct_window_capture import DirectWindowCapture
 from src.dxcam_window_capture import DxcamWindowCapture
@@ -424,8 +425,8 @@ class OBSWebSocketManager(QObject):
         elif self.is_spout_capture() and self.is_obs_control_enabled():
             spout_status, spout_ready = self._spout_capture_status()
             if not self.is_connected:
-                return f'{spout_status} / OBS制御: <span style="color:#d93025;">未接続</span>', False
-            return f'{spout_status} / OBS制御: <span style="color:#188038;">接続中</span> ({self.config.websocket_host}:{self.config.websocket_port})', spout_ready
+                return f'{spout_status} / OBS制御: {self._status_span("未接続", "error")}', False
+            return f'{spout_status} / OBS制御: {self._status_span("接続中", "success")} ({self.config.websocket_host}:{self.config.websocket_port})', spout_ready
         elif self.is_direct_capture() and not self.is_obs_control_enabled():
             self._probe_direct_capture_if_needed()
             direct_status, direct_ready = self._direct_capture_status()
@@ -434,8 +435,8 @@ class OBSWebSocketManager(QObject):
             self._probe_direct_capture_if_needed()
             direct_status, direct_ready = self._direct_capture_status()
             if not self.is_connected:
-                return f'{direct_status} / OBS制御: <span style="color:#d93025;">未接続</span>', False
-            return f'{direct_status} / OBS制御: <span style="color:#188038;">接続中</span> ({self.config.websocket_host}:{self.config.websocket_port})', direct_ready
+                return f'{direct_status} / OBS制御: {self._status_span("未接続", "error")}', False
+            return f'{direct_status} / OBS制御: {self._status_span("接続中", "success")} ({self.config.websocket_host}:{self.config.websocket_port})', direct_ready
         elif not getattr(self.config, "obs_websocket_enabled", True):
             return self.ui.obs.websocket_disabled, False
         elif not OBSWS_AVAILABLE:
@@ -465,25 +466,29 @@ class OBSWebSocketManager(QObject):
     def _spout_capture_status(self) -> tuple[str, bool]:
         error = self.spout_capture.dependency_error()
         if error:
-            return f'Spout: <span style="color:#d93025;">{escape(error)}</span>', False
+            return f'Spout: {self._status_span(escape(error), "error")}', False
 
         sender_name = escape(str(getattr(self.config, "spout_sender_name", "Spout_OBS_Filter")))
         status = self.spout_capture.current_status()
         if status and status[0] == "error":
-            return f'Spout: <span style="color:#d93025;">{escape(status[1])}</span>', False
+            return f'Spout: {self._status_span(escape(status[1]), "error")}', False
         if self.spout_capture.is_connected and self.spout_capture.get_latest_frame() is not None:
-            return f'Spout: <span style="color:#188038;">接続中</span> ({sender_name})', True
-        return f'Spout: <span style="color:#5f6368;">送信待ち</span> ({sender_name})', False
+            return f'Spout: {self._status_span("接続中", "success")} ({sender_name})', True
+        return f'Spout: {self._status_span("送信待ち", "info")} ({sender_name})', False
 
     def _direct_capture_status(self) -> tuple[str, bool]:
         error = self.direct_capture.last_error if self.direct_capture else ""
         if error:
             if self.direct_capture and self.direct_capture.is_waiting_for_target():
-                return f'{self._direct_capture_label()}: <span style="color:#5f6368;">ゲーム起動待ち</span> ({escape(error)})', False
-            return f'{self._direct_capture_label()}: <span style="color:#d93025;">{escape(error)}</span>', False
+                return f'{self._direct_capture_label()}: {self._status_span("ゲーム起動待ち", "info")} ({escape(error)})', False
+            return f'{self._direct_capture_label()}: {self._status_span(escape(error), "error")}', False
         if not self.direct_capture or not self.direct_capture.has_successful_frame:
-            return f'{self._direct_capture_label()}: <span style="color:#5f6368;">未確認</span>', False
-        return f'{self._direct_capture_label()}: <span style="color:#188038;">OK</span>', True
+            return f'{self._direct_capture_label()}: {self._status_span("未確認", "info")}', False
+        return f'{self._direct_capture_label()}: {self._status_span("OK", "success")}', True
+
+    @staticmethod
+    def _status_span(text: str, kind: str) -> str:
+        return f'<span style="color:{semantic_text_color(kind)};">{text}</span>'
 
     def _direct_capture_label(self) -> str:
         return '直接取得'

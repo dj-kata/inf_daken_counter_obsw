@@ -20,6 +20,7 @@ from src.classes import play_style, difficulty, clear_lamp, detect_mode
 from src.config import Config
 from src.logger import get_logger
 from src.funcs import *
+from src.theme import set_item_background
 
 logger = get_logger(__name__)
 
@@ -841,7 +842,7 @@ class ScoreViewer(QMainWindow):
         item = QTableWidgetItem(challenger_name)
         item.setTextAlignment(Qt.AlignCenter)
         if challenger_name:
-            item.setBackground(QBrush(QColor(255, 200, 200)))
+            set_item_background(item, QColor(255, 200, 200))
         self.table.setItem(row, 0, item)
 
         # Lv (column 1)
@@ -877,7 +878,7 @@ class ScoreViewer(QMainWindow):
         item.setData(Qt.UserRole, score.difficulty.value)
         item.setTextAlignment(Qt.AlignCenter)
         if chart_color:
-            item.setBackground(QBrush(chart_color))
+            set_item_background(item, chart_color)
         self.table.setItem(row, 4, item)
 
         # ランプ (column 5)
@@ -885,7 +886,7 @@ class ScoreViewer(QMainWindow):
         item = SortableItem(lamp_name)
         item.setTextAlignment(Qt.AlignCenter)
         if lamp_color:
-            item.setBackground(QBrush(lamp_color))
+            set_item_background(item, lamp_color)
         item.setData(Qt.UserRole, score.lamp.value)
         self.table.setItem(row, 5, item)
 
@@ -918,7 +919,7 @@ class ScoreViewer(QMainWindow):
             item.setData(Qt.UserRole, -16)
         item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         if is_legacy_bpi:
-            item.setBackground(QBrush(QColor(230, 230, 230)))
+            set_item_background(item, QColor(230, 230, 230))
         self.table.setItem(row, 6, item)
 
         # ベストスコア (column 7)
@@ -1086,7 +1087,7 @@ class ScoreViewer(QMainWindow):
                 lamp_name, lamp_color = self.get_lamp_info(entry['lamp'])
                 lamp_item = QTableWidgetItem(lamp_name)
                 lamp_item.setTextAlignment(Qt.AlignCenter)
-                lamp_item.setBackground(QBrush(lamp_color))
+                set_item_background(lamp_item, lamp_color)
                 self.rival_table.setItem(row, 2, lamp_item)
 
                 # スコア (column 3)
@@ -1157,7 +1158,7 @@ class ScoreViewer(QMainWindow):
                 item = QTableWidgetItem(lamp_name)
                 item.setTextAlignment(Qt.AlignCenter)
                 if lamp_color:
-                    item.setBackground(QBrush(lamp_color))
+                    set_item_background(item, lamp_color)
                 self.playlog_table.setItem(row, 1, item)
                 
                 # スコア

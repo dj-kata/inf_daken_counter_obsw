@@ -114,6 +114,7 @@ build_exe_options = {
     "includes": [
         "src",
         "src.config",
+        "src.theme",
         "src.classes",
         "src.funcs",
         "src.logger",

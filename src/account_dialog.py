@@ -4,6 +4,7 @@ from copy import deepcopy
 from uuid import uuid4
 
 from PySide6.QtGui import QColor
+from src.theme import set_item_background
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QColorDialog,
@@ -146,7 +147,7 @@ class AccountManagerDialog(QDialog):
             path = account.get("image_save_path") or self.ui.account.use_default
             self.table.setItem(row, 1, QTableWidgetItem(path))
             color_item = QTableWidgetItem(account.get("color", "#ffffff"))
-            color_item.setForeground(QColor(account.get("color", "#ffffff")))
+            set_item_background(color_item, QColor(account.get("color", "#ffffff")))
             self.table.setItem(row, 2, color_item)
         self.table.resizeColumnsToContents()
 

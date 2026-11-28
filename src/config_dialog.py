@@ -310,6 +310,12 @@ class ConfigDialog(QDialog):
         self.keep_on_top_check = QCheckBox(self.ui.feature.keep_on_top)
         other_layout.addRow(self.keep_on_top_check)
 
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItem(self.ui.feature.theme_system, 'system')
+        self.theme_combo.addItem(self.ui.feature.theme_light, 'light')
+        self.theme_combo.addItem(self.ui.feature.theme_dark, 'dark')
+        other_layout.addRow(self.ui.feature.theme, self.theme_combo)
+
         self.enable_auto_update_check = QCheckBox(self.ui.feature.enable_auto_update)
         self.enable_auto_update_check.setToolTip(self.ui.feature.enable_auto_update_tip)
         other_layout.addRow(self.enable_auto_update_check)
@@ -961,6 +967,8 @@ class ConfigDialog(QDialog):
         self.voice_pan_spin.setValue(self.config.voice_pan)
         # 機能設定
         self.keep_on_top_check.setChecked(self.config.keep_on_top)
+        theme_index = self.theme_combo.findData(getattr(self.config, 'theme', 'system'))
+        self.theme_combo.setCurrentIndex(max(0, theme_index))
         self.enable_auto_update_check.setChecked(self.config.enable_auto_update)
         self.include_prerelease_updates_check.setChecked(
             self.config.include_prerelease_updates
@@ -1089,6 +1097,7 @@ class ConfigDialog(QDialog):
         self.config.voice_pan = self.voice_pan_spin.value()
         # 機能設定
         self.config.keep_on_top = self.keep_on_top_check.isChecked()
+        self.config.theme = self.theme_combo.currentData()
         self.config.enable_auto_update = self.enable_auto_update_check.isChecked()
         self.config.include_prerelease_updates = (
             self.include_prerelease_updates_check.isChecked()

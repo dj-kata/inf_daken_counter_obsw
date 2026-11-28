@@ -23,6 +23,7 @@ from src.funcs import load_ui_text
 from src.network_info import get_mobile_score_url
 from src.score_viewer import ScoreViewer
 from src.html_catalog import HtmlCatalogWindow
+from src.theme import semantic_text_color
 logger = get_logger(__name__)
 
 # UIの型チェック用
@@ -105,7 +106,9 @@ class MainWindowUI(QMainWindow):
         obs_group = QGroupBox(self.ui.obs.connection_state)
         obs_layout = QHBoxLayout()
         self.obs_status_label = QLabel(self.ui.obs.not_connected)
-        self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")
+        self.obs_status_label.setStyleSheet(
+            f"color: {semantic_text_color('error')}; font-weight: bold;"
+        )
         self.obs_status_label.setMinimumWidth(0)
         self.obs_status_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
         obs_layout.addWidget(self.obs_status_label)
@@ -115,7 +118,9 @@ class MainWindowUI(QMainWindow):
 
         self.voice_warning_label = QLabel(self.ui.main.voicevox_unavailable)
         self.voice_warning_label.setWordWrap(True)
-        self.voice_warning_label.setStyleSheet("color: red; font-weight: bold;")
+        self.voice_warning_label.setStyleSheet(
+            f"color: {semantic_text_color('error')}; font-weight: bold;"
+        )
         self.voice_warning_label.hide()
         main_layout.addWidget(self.voice_warning_label)
         
@@ -405,9 +410,13 @@ class MainWindowUI(QMainWindow):
             if '<span' in status_msg:
                 self.obs_status_label.setStyleSheet("font-weight: bold;")
             elif is_connected:
-                self.obs_status_label.setStyleSheet("color: green; font-weight: bold;")
+                self.obs_status_label.setStyleSheet(
+                    f"color: {semantic_text_color('success')}; font-weight: bold;"
+                )
             else:
-                self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")
+                self.obs_status_label.setStyleSheet(
+                    f"color: {semantic_text_color('error')}; font-weight: bold;"
+                )
 
             if self.mobile_score_url_label is not None:
                 self.mobile_score_url_label.setText(self._mobile_score_url_text())

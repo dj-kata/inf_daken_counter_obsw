@@ -183,6 +183,10 @@ class UIText:
         cache_custom = '件数を指定'
         cache_help = '上限を超えた古い一時画像は破棄します。無効にして保存すると一時画像はすべて破棄されます。再起動後は利用できません。通常保存した画像ファイルは引き続き投稿できます。'
         keep_on_top = '常に最前面表示する'
+        theme = '外観:'
+        theme_system = 'システムに合わせる'
+        theme_light = 'ライト'
+        theme_dark = 'ダーク'
     
     class music_pack:
         """楽曲パック設定タブ"""

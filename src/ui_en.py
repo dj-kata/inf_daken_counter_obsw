@@ -183,6 +183,10 @@ class UIText:
         cache_custom = 'Custom count'
         cache_help = 'Older temporary images exceeding the limit are discarded. Saving with this feature disabled clears temporary images. They are unavailable after restart. Permanently saved image files remain available for posting.'
         keep_on_top = 'Always on Top'
+        theme = 'Appearance:'
+        theme_system = 'Use system setting'
+        theme_light = 'Light'
+        theme_dark = 'Dark'
     
     class music_pack:
         """Music pack settings tab"""

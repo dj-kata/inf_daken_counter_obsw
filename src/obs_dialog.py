@@ -11,6 +11,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from src.logger import get_logger
 from src.funcs import load_ui_text
+from src.theme import semantic_text_color, set_item_background
 
 logger = get_logger(__name__)
 
@@ -114,7 +115,9 @@ class OBSControlDialog(QDialog):
         
         self.monitor_label = QLabel(self.ui.obs.target_source_not_set)
         self.monitor_label.setTextFormat(Qt.TextFormat.PlainText)
-        self.monitor_label.setStyleSheet("font-weight: bold; color: blue;")
+        self.monitor_label.setStyleSheet(
+            f"font-weight: bold; color: {semantic_text_color('info')};"
+        )
         monitor_layout.addWidget(QLabel(self.ui.obs.target_source_label))
         monitor_layout.addWidget(self.monitor_label)
         monitor_layout.addStretch()
@@ -515,10 +518,8 @@ class OBSControlDialog(QDialog):
             action_id = setting.get("action", "")
             if action_id in self.ACTION_COLORS:
                 bg_color = self.ACTION_COLORS[action_id]
-                timing_item.setBackground(bg_color)
-                action_item.setBackground(bg_color)
-                scene_item.setBackground(bg_color)
-                source_item.setBackground(bg_color)
+                for item in (timing_item, action_item, scene_item, source_item):
+                    set_item_background(item, bg_color)
     
     def reset_form(self):
         """フォームをリセット"""

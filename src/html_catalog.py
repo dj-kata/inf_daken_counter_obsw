@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from src.theme import semantic_text_color
 
 
 @dataclass(frozen=True)
@@ -359,15 +360,14 @@ class HtmlCatalogWindow(QWidget):
         port_layout.addStretch()
         outer_layout.addLayout(port_layout)
 
-        port_warning = QLabel(
+        self.port_warning = QLabel(
             "After changing the port, remove existing OBS sources and drag them again."
             if language == "en"
             else "ポート変更後は、既存のOBSソースを削除してD&Dし直してください。"
         )
-        port_warning.setStyleSheet("color: #d08000; padding: 0 4px 6px 4px;")
-        port_warning.setWordWrap(True)
-        outer_layout.addWidget(port_warning)
-        self.update_port_status()
+        self.port_warning.setWordWrap(True)
+        outer_layout.addWidget(self.port_warning)
+        self.update_theme()
 
         guide_text = (
             "Drag 'Drag here to OBS' for the desired view onto the OBS preview. "
@@ -431,8 +431,18 @@ class HtmlCatalogWindow(QWidget):
     def update_port_status(self):
         if self.server_running:
             text = "Running" if self.language == "en" else "起動中"
-            self.port_status.setStyleSheet("color: #188038; font-weight: bold;")
+            self.port_status.setStyleSheet(
+                f"color: {semantic_text_color('success')}; font-weight: bold;"
+            )
         else:
             text = "Unavailable" if self.language == "en" else "使用不可"
-            self.port_status.setStyleSheet("color: #d93025; font-weight: bold;")
+            self.port_status.setStyleSheet(
+                f"color: {semantic_text_color('error')}; font-weight: bold;"
+            )
         self.port_status.setText(text)
+
+    def update_theme(self):
+        self.port_warning.setStyleSheet(
+            f"color: {semantic_text_color('warning')}; padding: 0 4px 6px 4px;"
+        )
+        self.update_port_status()

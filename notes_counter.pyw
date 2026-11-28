@@ -74,6 +74,7 @@ from src.official_csv_import import (
 )
 from src.otoge_input_viewer_client import OtogeInputViewerClient
 from src.single_instance import SingleInstanceLock
+from src.theme import apply_application_theme, semantic_text_color
 
 sys.path.append('infnotebook')
 from define import define
@@ -742,6 +743,12 @@ class MainWindow(MainWindowUI):
     def update_all_configs(self):
         """全てのクラスに設定を反映"""
         self.config.load_config()  # 最新の設定を読み込み
+        apply_application_theme(QApplication.instance(), self.config.theme)
+        self.voice_warning_label.setStyleSheet(
+            f"color: {semantic_text_color('error')}; font-weight: bold;"
+        )
+        if self.html_catalog_window is not None:
+            self.html_catalog_window.update_theme()
         self.updater.include_prerelease_updates = (
             self.config.include_prerelease_updates
         )
@@ -1036,7 +1043,9 @@ class MainWindow(MainWindowUI):
             self.obs_status_label.setStyleSheet("font-weight: bold;")
         elif is_ready:
             # 接続成功時
-            self.obs_status_label.setStyleSheet("color: green; font-weight: bold;")
+            self.obs_status_label.setStyleSheet(
+                f"color: {semantic_text_color('success')}; font-weight: bold;"
+            )
             logger.info("OBS接続が確立されました")
 
             # 必要に応じて追加の処理
@@ -1044,7 +1053,9 @@ class MainWindow(MainWindowUI):
 
         else:
             # 切断時
-            self.obs_status_label.setStyleSheet("color: red; font-weight: bold;")
+            self.obs_status_label.setStyleSheet(
+                f"color: {semantic_text_color('error')}; font-weight: bold;"
+            )
             # logger.warning("OBS接続が切断されました")
 
             # 必要に応じて追加の処理
@@ -1967,6 +1978,7 @@ def main(config=None, updater=None):
     QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
     app = QApplication(sys.argv)
     app.setStyle("Fusion")  # モダンなスタイルを適用
+    apply_application_theme(app, config.theme if config is not None else 'system')
     
     window = MainWindow(config=config, updater=updater)
     window.setWindowIcon(QIcon('src/icon.ico'))
