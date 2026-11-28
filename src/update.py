@@ -18,7 +18,7 @@ from src.logger import get_logger
 logger = get_logger(__name__)
 
 class GitHubUpdater:
-    def __init__(self, github_author='', github_repo='', zipfile_basename='', current_version='', main_exe_name=None, updator_exe_name=None):
+    def __init__(self, github_author='', github_repo='', zipfile_basename='', current_version='', main_exe_name=None, updator_exe_name=None, include_prerelease_updates=False):
         """
         GitHub自動アップデータの初期化
         
@@ -34,6 +34,7 @@ class GitHubUpdater:
         self.current_version = current_version
         self.main_exe_name = main_exe_name or "main.exe"
         self.updator_exe_name = updator_exe_name or "update.exe"
+        self.include_prerelease_updates = include_prerelease_updates
         self.base_dir = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path.cwd()
         self.temp_dir = self.base_dir / "tmp"
         self.backup_dir = self.base_dir / "backup"
@@ -49,6 +50,7 @@ class GitHubUpdater:
         self.last_latest_version = None
         self.last_release_notes = None
         self.last_release_url = None
+        self.last_release_is_prerelease = False
         self.progress_frame = None
 
     def ico_path(self, relative_path):
@@ -59,7 +61,10 @@ class GitHubUpdater:
         return os.path.join(base_path, relative_path)
 
     def get_latest_release(self):
-        """GitHubから最新の正式リリースを取得する。"""
+        """GitHubから設定に合う最新リリースを取得する。"""
+        if self.include_prerelease_updates:
+            return self.get_latest_release_including_prereleases()
+
         url = (
             f'https://api.github.com/repos/{self.github_author}/'
             f'{self.github_repo}/releases/latest'
@@ -84,6 +89,37 @@ class GitHubUpdater:
             raise RuntimeError('最新リリースのタグがプレリリースです')
         return release
 
+    def get_latest_release_including_prereleases(self):
+        """正式版とプレリリース版から最新バージョンを取得する。"""
+        url = (
+            f'https://api.github.com/repos/{self.github_author}/'
+            f'{self.github_repo}/releases?per_page=30'
+        )
+        response = requests.get(
+            url,
+            headers={'Accept': 'application/vnd.github+json'},
+            timeout=15,
+        )
+        response.raise_for_status()
+
+        candidates = []
+        for release in response.json():
+            if release.get('draft'):
+                continue
+            tag_name = release.get('tag_name')
+            if not tag_name:
+                continue
+            try:
+                parsed_version = version.parse(tag_name.split('v.')[-1])
+            except Exception:
+                logger.warning(f'バージョンを解釈できないReleaseを除外: {tag_name}')
+                continue
+            candidates.append((parsed_version, release))
+
+        if not candidates:
+            raise RuntimeError('更新対象のReleaseが見つかりませんでした')
+        return max(candidates, key=lambda candidate: candidate[0])[1]
+
     def check_for_updates(self):
         """
         GitHubで最新版をチェック
@@ -96,6 +132,10 @@ class GitHubUpdater:
             release = self.get_latest_release()
             latest_version = release['tag_name']
             self.last_release_notes = release.get('body') or ''
+            parsed_latest_version = version.parse(latest_version.split('v.')[-1])
+            self.last_release_is_prerelease = bool(
+                release.get('prerelease') or parsed_latest_version.is_prerelease
+            )
             self.last_release_url = (
                 release.get('html_url')
                 or f'https://github.com/{self.github_author}/{self.github_repo}/releases/tag/{latest_version}'
@@ -112,6 +152,7 @@ class GitHubUpdater:
         except Exception as e:
             self.last_release_notes = None
             self.last_release_url = None
+            self.last_release_is_prerelease = False
             print(f"アップデートチェックエラー: {e}")
             return False, None, None
     
@@ -174,9 +215,10 @@ class GitHubUpdater:
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(4, weight=1)
 
+        release_kind = 'プレリリース版' if self.last_release_is_prerelease else '正式版'
         ttk.Label(
             frame,
-            text=f"新しいバージョン（{latest_version}）が利用可能です。",
+            text=f"新しい{release_kind}（{latest_version}）が利用可能です。",
             font=("Arial", 12, "bold"),
         ).grid(row=0, column=0, sticky=tk.W, pady=(0, 4))
         ttk.Label(

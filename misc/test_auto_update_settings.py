@@ -37,6 +37,18 @@ class AutoUpdateSettingsTests(unittest.TestCase):
 
             self.assertFalse(Config(str(config_path)).enable_auto_update)
 
+    def test_prerelease_updates_default_to_disabled_and_round_trip(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config_path = Path(directory) / 'config.json'
+            config = Config(str(config_path))
+
+            self.assertFalse(config.include_prerelease_updates)
+            config.include_prerelease_updates = True
+            config.save_config()
+
+            loaded = Config(str(config_path))
+            self.assertTrue(loaded.include_prerelease_updates)
+
     def test_basic_settings_dialog_wires_auto_update_checkbox(self):
         source = (
             Path(__file__).resolve().parents[1] / 'src/config_dialog.py'
@@ -49,6 +61,11 @@ class AutoUpdateSettingsTests(unittest.TestCase):
         )
         self.assertIn(
             'self.config.enable_auto_update = self.enable_auto_update_check.isChecked()',
+            source,
+        )
+        self.assertIn('self.include_prerelease_updates_check = QCheckBox', source)
+        self.assertIn(
+            'self.config.include_prerelease_updates',
             source,
         )
 

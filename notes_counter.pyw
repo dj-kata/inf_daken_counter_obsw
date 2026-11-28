@@ -89,7 +89,7 @@ except Exception:
     SWVER = "0.0.0"
 
 
-def create_updater():
+def create_updater(include_prerelease_updates=False):
     return GitHubUpdater(
         github_author='dj-kata',
         github_repo='inf_daken_counter_obsw',
@@ -97,6 +97,7 @@ def create_updater():
         current_version=SWVER,
         main_exe_name="notes_counter.exe",
         updator_exe_name="notes_counter.exe",
+        include_prerelease_updates=include_prerelease_updates,
     )
 
 
@@ -340,7 +341,9 @@ class MainWindow(MainWindowUI):
     def __init__(self, config=None, updater=None):
         # 設定とデータベースの初期化
         self.config = config or Config()
-        self.updater = updater or create_updater()
+        self.updater = updater or create_updater(
+            self.config.include_prerelease_updates
+        )
         super().__init__(self.config)
         self.html_catalog_server = HtmlCatalogHTTPServer(application_root())
         self.html_catalog_server_port = self.html_catalog_server.start(
@@ -723,6 +726,9 @@ class MainWindow(MainWindowUI):
     def update_all_configs(self):
         """全てのクラスに設定を反映"""
         self.config.load_config()  # 最新の設定を読み込み
+        self.updater.include_prerelease_updates = (
+            self.config.include_prerelease_updates
+        )
         self.voice_guidance.set_config(self.config)
         self.update_voice_warning()
         self.obs_manager.set_config(self.config)
@@ -1934,7 +1940,7 @@ def main(config=None, updater=None):
 
 if __name__ == "__main__":
     app_config = Config()
-    updater = create_updater()
+    updater = create_updater(app_config.include_prerelease_updates)
     if app_config.enable_auto_update:
         if updater.check_and_update():
             sys.exit(0)

@@ -162,6 +162,8 @@ class UIText:
         other_group = 'Other'
         enable_auto_update = 'Automatically check for updates at startup'
         enable_auto_update_tip = 'Takes effect on the next launch. You can still check manually from the Help menu when disabled.'
+        include_prerelease_updates = 'Include pre-release versions in update checks'
+        include_prerelease_updates_tip = 'Offers a development version when it is newer than the latest stable release. Pre-release versions may be unstable, so leaving this off is recommended.'
         image_save_path = 'Image save path:'
         autoload_offset = "Today's results offset:"
         autoload_offset_unit = 'h'

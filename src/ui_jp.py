@@ -162,6 +162,8 @@ class UIText:
         other_group = 'その他'
         enable_auto_update = '起動時に自動で最新版を確認する'
         enable_auto_update_tip = '変更は次回起動時から有効です。無効時もヘルプメニューから手動で更新できます。'
+        include_prerelease_updates = 'プレリリース版も更新対象にする'
+        include_prerelease_updates_tip = '開発中のバージョンが正式版より新しい場合、そちらへの更新も通知します。不安定な場合があるため、通常はOFFを推奨します。'
         image_save_path = '画像保存先:'
         autoload_offset = '本日の成果に含めるオフセット:'
         autoload_offset_unit = '時間'

@@ -163,6 +163,40 @@ class UpdateTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'タグがプレリリース'):
             self.updater.get_latest_release()
 
+    def test_prerelease_setting_selects_highest_non_draft_release(self):
+        self.updater.include_prerelease_updates = True
+        self.updater.github_author = 'dj-kata'
+        self.updater.github_repo = 'inf_daken_counter_obsw'
+        response = Mock()
+        response.json.return_value = [
+            {
+                'tag_name': 'v3.2.0',
+                'prerelease': False,
+                'draft': False,
+            },
+            {
+                'tag_name': 'v3.3.0-beta.1',
+                'prerelease': True,
+                'draft': False,
+            },
+            {
+                'tag_name': 'v4.0.0-alpha.1',
+                'prerelease': True,
+                'draft': True,
+            },
+        ]
+        namespace['requests'].get.return_value = response
+
+        release = self.updater.get_latest_release()
+
+        self.assertEqual(release['tag_name'], 'v3.3.0-beta.1')
+        namespace['requests'].get.assert_called_once_with(
+            'https://api.github.com/repos/dj-kata/inf_daken_counter_obsw/'
+            'releases?per_page=30',
+            headers={'Accept': 'application/vnd.github+json'},
+            timeout=15,
+        )
+
     def test_update_check_keeps_release_notes_for_confirmation(self):
         self.updater.current_version = '3.1.2'
         self.updater.github_author = 'dj-kata'
@@ -180,6 +214,7 @@ class UpdateTests(unittest.TestCase):
         self.assertTrue(available)
         self.assertEqual(latest, 'v3.2.0')
         self.assertEqual(self.updater.last_release_notes, 'Release notes')
+        self.assertFalse(self.updater.last_release_is_prerelease)
         self.assertEqual(
             self.updater.last_release_url,
             'https://github.com/dj-kata/inf_daken_counter_obsw/releases/tag/v3.2.0',
@@ -201,6 +236,23 @@ class UpdateTests(unittest.TestCase):
         namespace['webbrowser'].open.assert_called_once_with(
             self.updater.last_release_url
         )
+
+    def test_update_check_marks_prerelease_for_confirmation(self):
+        self.updater.include_prerelease_updates = True
+        self.updater.current_version = '3.2.0'
+        self.updater.get_latest_release = Mock(return_value={
+            'tag_name': 'v3.3.0-beta.1',
+            'body': 'Preview notes',
+            'html_url': 'https://example.invalid/release',
+            'prerelease': True,
+            'draft': False,
+        })
+
+        available, latest, _download_url = self.updater.check_for_updates()
+
+        self.assertTrue(available)
+        self.assertEqual(latest, 'v3.3.0-beta.1')
+        self.assertTrue(self.updater.last_release_is_prerelease)
 
     def test_extraction_uses_base_directory_even_with_different_cwd(self):
         archive = self.base / 'update.zip'
@@ -303,6 +355,19 @@ class UpdateTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             exec(compile(ast.Module(body=[guard], type_ignores=[]), str(entry), 'exec'),
                  dict(updater=updater, sys=sys))
+
+    def test_entry_point_passes_prerelease_setting_to_updater(self):
+        entry = SOURCE.parents[1] / 'notes_counter.pyw'
+        source = entry.read_text(encoding='utf-8')
+
+        self.assertIn(
+            'create_updater(app_config.include_prerelease_updates)',
+            source,
+        )
+        self.assertIn(
+            'self.updater.include_prerelease_updates = (',
+            source,
+        )
 
 
 if __name__ == '__main__':
