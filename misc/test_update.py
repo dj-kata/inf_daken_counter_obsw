@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import webbrowser
 from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
@@ -25,14 +26,15 @@ updater_class = next(node for node in tree.body if isinstance(node, ast.ClassDef
                      and node.name == 'GitHubUpdater')
 namespace = dict(os=os, sys=sys, Path=Path, shutil=shutil, subprocess=subprocess,
                  logger=Mock(), traceback=SimpleNamespace(format_exc=Mock()),
-                 messagebox=Mock(), threading=Mock(), requests=Mock(), version=version)
+                 messagebox=Mock(), threading=Mock(), requests=Mock(), version=version,
+                 webbrowser=Mock())
 exec(compile(ast.Module(body=[updater_class], type_ignores=[]), str(SOURCE), 'exec'), namespace)
 GitHubUpdater = namespace['GitHubUpdater']
 
 
 class UpdateTests(unittest.TestCase):
     def setUp(self):
-        for dependency in ('requests', 'messagebox', 'threading'):
+        for dependency in ('requests', 'messagebox', 'threading', 'webbrowser'):
             namespace[dependency].reset_mock()
             namespace[dependency].side_effect = None
         directory = tempfile.TemporaryDirectory()
@@ -168,6 +170,7 @@ class UpdateTests(unittest.TestCase):
         self.updater.get_latest_release = Mock(return_value={
             'tag_name': 'v3.2.0',
             'body': 'Release notes',
+            'html_url': 'https://github.com/dj-kata/inf_daken_counter_obsw/releases/tag/v3.2.0',
             'prerelease': False,
             'draft': False,
         })
@@ -178,9 +181,25 @@ class UpdateTests(unittest.TestCase):
         self.assertEqual(latest, 'v3.2.0')
         self.assertEqual(self.updater.last_release_notes, 'Release notes')
         self.assertEqual(
+            self.updater.last_release_url,
+            'https://github.com/dj-kata/inf_daken_counter_obsw/releases/tag/v3.2.0',
+        )
+        self.assertEqual(
             download_url,
             'https://github.com/dj-kata/inf_daken_counter_obsw/releases/'
             'download/v3.2.0/inf_daken_counter.zip',
+        )
+
+    def test_release_page_opens_in_default_browser(self):
+        self.updater.last_release_url = (
+            'https://github.com/dj-kata/inf_daken_counter_obsw/releases/tag/v3.2.0'
+        )
+        namespace['webbrowser'].open.return_value = True
+
+        self.assertTrue(self.updater.open_release_page())
+
+        namespace['webbrowser'].open.assert_called_once_with(
+            self.updater.last_release_url
         )
 
     def test_extraction_uses_base_directory_even_with_different_cwd(self):
@@ -214,12 +233,12 @@ class UpdateTests(unittest.TestCase):
     def test_update_flow_hands_off_without_copying_or_renaming_running_files(self):
         self.updater.check_for_updates = Mock(return_value=(True, '3.1.3', 'url'))
         self.updater.last_release_notes = 'Release notes shown before updating'
+        self.updater.confirm_update = Mock(return_value=True)
         self.updater.create_gui = Mock()
         self.updater.cleanup = Mock()
         self.updater.download_file = Mock()
         self.updater.extract_zip_file = Mock()
         self.updater.update_status = Mock()
-        namespace['messagebox'].askyesno.return_value = True
         # Run the download worker synchronously; GUI callbacks stay queued.
         namespace['threading'].Thread.side_effect = lambda target, **kw: SimpleNamespace(start=target)
         with patch.object(sys, 'platform', 'win32'), \
@@ -229,17 +248,13 @@ class UpdateTests(unittest.TestCase):
                 patch.object(shutil, 'copy2', side_effect=AssertionError('running DLL copied')):
             self.assertTrue(self.updater.check_and_update())
         self.assertEqual((self.base / 'lib/Qt6Core.dll').read_bytes(), b'old')
-        namespace['messagebox'].askyesno.assert_called_once()
-        self.assertEqual(
-            namespace['messagebox'].askyesno.call_args.kwargs['detail'],
-            'Release notes shown before updating',
-        )
+        self.updater.confirm_update.assert_called_once_with('3.1.3')
 
     def test_failed_handoff_is_not_reported_as_an_update(self):
         self.updater.check_for_updates = Mock(return_value=(True, '3.1.3', 'url'))
+        self.updater.confirm_update = Mock(return_value=True)
         for name in ('create_gui', 'cleanup', 'download_file', 'extract_zip_file', 'update_status'):
             setattr(self.updater, name, Mock())
-        namespace['messagebox'].askyesno.return_value = True
         namespace['threading'].Thread.side_effect = lambda target, **kw: SimpleNamespace(start=target)
         with patch.object(sys, 'platform', 'win32'), \
                 patch.object(subprocess, 'CREATE_NEW_CONSOLE', 16, create=True), \

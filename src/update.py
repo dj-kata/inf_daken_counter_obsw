@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import threading
 import time
+import webbrowser
 from pathlib import Path
 from packaging import version
 import tkinter as tk
@@ -47,6 +48,8 @@ class GitHubUpdater:
         self.last_update_available = None
         self.last_latest_version = None
         self.last_release_notes = None
+        self.last_release_url = None
+        self.progress_frame = None
 
     def ico_path(self, relative_path):
         try:
@@ -93,6 +96,10 @@ class GitHubUpdater:
             release = self.get_latest_release()
             latest_version = release['tag_name']
             self.last_release_notes = release.get('body') or ''
+            self.last_release_url = (
+                release.get('html_url')
+                or f'https://github.com/{self.github_author}/{self.github_repo}/releases/tag/{latest_version}'
+            )
             download_url = f"https://github.com/{self.github_author}/{self.github_repo}/releases/download/{latest_version}/{self.zipfile_basename}.zip"
             logger.debug(f"latest_version:{latest_version}, current:{self.current_version}")
             
@@ -104,6 +111,7 @@ class GitHubUpdater:
                 
         except Exception as e:
             self.last_release_notes = None
+            self.last_release_url = None
             print(f"アップデートチェックエラー: {e}")
             return False, None, None
     
@@ -113,41 +121,143 @@ class GitHubUpdater:
         # self.icon = tk.PhotoImage(data=icon.icon_data)
         # self.root.iconphoto(False, self.icon)
         self.root.title("プログラム更新中...")
-        self.root.geometry("500x200")
+        self.center_window(500, 200)
         self.root.resizable(False, False)
-        
-        # 中央に配置
-        self.root.geometry("+%d+%d" % (
-            (self.root.winfo_screenwidth() / 2 - 250),
-            (self.root.winfo_screenheight() / 2 - 100)
-        ))
+        self.root.withdraw()
         
         # メインフレーム
-        main_frame = ttk.Frame(self.root, padding="20")
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        self.progress_frame = ttk.Frame(self.root, padding="20")
         
         # タイトル
-        title_label = ttk.Label(main_frame, text="プログラムを最新版に更新しています...", 
+        title_label = ttk.Label(self.progress_frame, text="プログラムを最新版に更新しています...",
                                font=("Arial", 12, "bold"))
         title_label.pack(pady=(0, 20))
         
         # ステータステキスト
         self.status_var = tk.StringVar(value="更新確認中...")
-        status_label = ttk.Label(main_frame, textvariable=self.status_var)
+        status_label = ttk.Label(self.progress_frame, textvariable=self.status_var)
         status_label.pack(pady=(0, 10))
         
         # プログレスバー
         self.progress_var = tk.DoubleVar()
-        self.progress_bar = ttk.Progressbar(main_frame, variable=self.progress_var, 
+        self.progress_bar = ttk.Progressbar(self.progress_frame, variable=self.progress_var,
                                           maximum=100, length=400)
         self.progress_bar.pack(pady=(0, 20))
         
         # キャンセルボタン
-        cancel_button = ttk.Button(main_frame, text="キャンセル", 
+        cancel_button = ttk.Button(self.progress_frame, text="キャンセル",
                                  command=self.cancel_update)
         cancel_button.pack()
         
         self.root.protocol("WM_DELETE_WINDOW", self.cancel_update)
+
+    def center_window(self, width, height):
+        """指定サイズでウィンドウを画面中央に配置する。"""
+        x = int((self.root.winfo_screenwidth() - width) / 2)
+        y = int((self.root.winfo_screenheight() - height) / 2)
+        self.root.geometry(f'{width}x{height}+{x}+{y}')
+
+    def open_release_page(self):
+        """最新Releaseの情報ページを既定のブラウザで開く。"""
+        if not self.last_release_url:
+            return False
+        return webbrowser.open(self.last_release_url)
+
+    def confirm_update(self, latest_version):
+        """リリース情報とノートを表示し、更新するか確認する。"""
+        self.root.title("アップデート確認")
+        self.center_window(680, 520)
+        self.root.resizable(True, True)
+
+        frame = ttk.Frame(self.root, padding=16)
+        frame.pack(fill=tk.BOTH, expand=True)
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(4, weight=1)
+
+        ttk.Label(
+            frame,
+            text=f"新しいバージョン（{latest_version}）が利用可能です。",
+            font=("Arial", 12, "bold"),
+        ).grid(row=0, column=0, sticky=tk.W, pady=(0, 4))
+        ttk.Label(
+            frame,
+            text=f"現在のバージョン: {self.current_version}",
+        ).grid(row=1, column=0, sticky=tk.W, pady=(0, 12))
+
+        release_link = tk.Label(
+            frame,
+            text=f"リリース情報: {self.last_release_url}",
+            anchor=tk.W,
+            justify=tk.LEFT,
+            foreground="#0563c1",
+            cursor="hand2",
+            font=("Arial", 9, "underline"),
+            takefocus=True,
+        )
+        release_link.grid(row=2, column=0, sticky=tk.EW, pady=(0, 12))
+        release_link.bind("<Button-1>", lambda _event: self.open_release_page())
+        release_link.bind("<Return>", lambda _event: self.open_release_page())
+
+        ttk.Label(frame, text="リリースノート").grid(
+            row=3, column=0, sticky=tk.W, pady=(0, 4)
+        )
+        notes_frame = ttk.Frame(frame)
+        notes_frame.grid(row=4, column=0, sticky=tk.NSEW)
+        notes_frame.columnconfigure(0, weight=1)
+        notes_frame.rowconfigure(0, weight=1)
+
+        notes_text = tk.Text(
+            notes_frame,
+            wrap=tk.WORD,
+            padx=8,
+            pady=8,
+            height=14,
+            relief=tk.SOLID,
+            borderwidth=1,
+        )
+        notes_scrollbar = ttk.Scrollbar(
+            notes_frame,
+            orient=tk.VERTICAL,
+            command=notes_text.yview,
+        )
+        notes_text.configure(yscrollcommand=notes_scrollbar.set)
+        notes_text.grid(row=0, column=0, sticky=tk.NSEW)
+        notes_scrollbar.grid(row=0, column=1, sticky=tk.NS)
+        notes_text.insert(
+            tk.END,
+            self.last_release_notes or 'リリースノートはありません。',
+        )
+        notes_text.configure(state=tk.DISABLED)
+
+        decision = tk.StringVar(value='')
+        button_frame = ttk.Frame(frame)
+        button_frame.grid(row=5, column=0, sticky=tk.E, pady=(16, 0))
+        ttk.Button(
+            button_frame,
+            text="今すぐ更新",
+            command=lambda: decision.set('yes'),
+        ).pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(
+            button_frame,
+            text="キャンセル",
+            command=lambda: decision.set('no'),
+        ).pack(side=tk.LEFT)
+
+        self.root.protocol("WM_DELETE_WINDOW", lambda: decision.set('no'))
+        self.root.deiconify()
+        self.root.lift()
+        self.root.wait_variable(decision)
+        should_update = decision.get() == 'yes'
+        frame.destroy()
+
+        if should_update:
+            self.root.title("プログラム更新中...")
+            self.center_window(500, 200)
+            self.root.resizable(False, False)
+            self.progress_frame.pack(fill=tk.BOTH, expand=True)
+            self.root.protocol("WM_DELETE_WINDOW", self.cancel_update)
+            self.root.update_idletasks()
+        return should_update
         
     def update_status(self, message, progress=None):
         """ステータス更新"""
@@ -296,14 +406,7 @@ exit /b 1
             
             if is_update_available:
                 self.create_gui()
-                # 確認ダイアログ
-                result = messagebox.askyesno(
-                    "アップデート確認",
-                    f"新しいバージョン（{latest_version}）が利用可能です。\n"
-                    f"現在のバージョン: {self.current_version}\n\n"
-                    "今すぐ更新しますか？",
-                    detail=self.last_release_notes or 'リリースノートはありません。',
-                )
+                result = self.confirm_update(latest_version)
                 
                 if result:
                     self.cleanup()
