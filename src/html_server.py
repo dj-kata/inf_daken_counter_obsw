@@ -40,7 +40,9 @@ class _CatalogRequestHandler(SimpleHTTPRequestHandler):
 
 
 class _CatalogThreadingHTTPServer(ThreadingHTTPServer):
-    allow_reuse_address = True
+    # WindowsではSO_REUSEADDRにより別プロセスが同じポートを共有できるため、
+    # 固定ポートの競合を確実に検出できるよう再利用を許可しない。
+    allow_reuse_address = False
     daemon_threads = True
     block_on_close = False
 

@@ -73,6 +73,7 @@ from src.official_csv_import import (
     read_official_csv_file,
 )
 from src.otoge_input_viewer_client import OtogeInputViewerClient
+from src.single_instance import SingleInstanceLock
 
 sys.path.append('infnotebook')
 from define import define
@@ -1938,7 +1939,22 @@ def main(config=None, updater=None):
     sys.exit(app.exec())
 
 
+def show_already_running_message():
+    """多重起動を拒否したことを利用者へ通知する。"""
+    app = QApplication.instance() or QApplication(sys.argv)
+    QMessageBox.information(
+        None,
+        "INFINITAS打鍵カウンタ",
+        "INFINITAS打鍵カウンタはすでに起動しています。",
+    )
+
+
 if __name__ == "__main__":
+    instance_lock = SingleInstanceLock()
+    if not instance_lock.try_acquire():
+        show_already_running_message()
+        sys.exit(0)
+
     app_config = Config()
     updater = create_updater(app_config.include_prerelease_updates)
     if app_config.enable_auto_update:
