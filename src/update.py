@@ -13,7 +13,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 import traceback
-from bs4 import BeautifulSoup
 from src.logger import get_logger
 logger = get_logger(__name__)
 
@@ -47,6 +46,7 @@ class GitHubUpdater:
         self.update_pending = False
         self.last_update_available = None
         self.last_latest_version = None
+        self.last_release_notes = None
 
     def ico_path(self, relative_path):
         try:
@@ -55,19 +55,31 @@ class GitHubUpdater:
             base_path = os.path.abspath(".")
         return os.path.join(base_path, relative_path)
 
-    def get_latest_version(self):
-        # self.ico=self.ico_path('icon.ico')
-        ret = None
-        url = f'https://github.com/{self.github_author}/{self.github_repo}/tags'
-        r = requests.get(url, timeout=15)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text,features="html.parser")
-        for tag in soup.find_all('a'):
-            if 'releases/tag/' in tag['href']:
-                logger.debug(f"tag = {tag}")
-                ret = tag['href'].split('/')[-1]
-                break # 1番上が最新なので即break
-        return ret
+    def get_latest_release(self):
+        """GitHubから最新の正式リリースを取得する。"""
+        url = (
+            f'https://api.github.com/repos/{self.github_author}/'
+            f'{self.github_repo}/releases/latest'
+        )
+        response = requests.get(
+            url,
+            headers={'Accept': 'application/vnd.github+json'},
+            timeout=15,
+        )
+        response.raise_for_status()
+        release = response.json()
+
+        # releases/latest は本来プレリリースとドラフトを除外するが、
+        # APIの応答を防御的に検査して誤更新を防ぐ。
+        if release.get('prerelease') or release.get('draft'):
+            raise RuntimeError('最新リリースが正式版ではありません')
+        tag_name = release.get('tag_name')
+        if not tag_name:
+            raise RuntimeError('最新リリースのタグを取得できませんでした')
+        parsed_version = version.parse(tag_name.split('v.')[-1])
+        if parsed_version.is_prerelease:
+            raise RuntimeError('最新リリースのタグがプレリリースです')
+        return release
 
     def check_for_updates(self):
         """
@@ -78,7 +90,9 @@ class GitHubUpdater:
         """
         logger.debug(f"github_repo:{self.github_author}/{self.github_repo}")
         try:
-            latest_version = self.get_latest_version()
+            release = self.get_latest_release()
+            latest_version = release['tag_name']
+            self.last_release_notes = release.get('body') or ''
             download_url = f"https://github.com/{self.github_author}/{self.github_repo}/releases/download/{latest_version}/{self.zipfile_basename}.zip"
             logger.debug(f"latest_version:{latest_version}, current:{self.current_version}")
             
@@ -89,6 +103,7 @@ class GitHubUpdater:
                 return False, latest_version, None
                 
         except Exception as e:
+            self.last_release_notes = None
             print(f"アップデートチェックエラー: {e}")
             return False, None, None
     
@@ -286,7 +301,8 @@ exit /b 1
                     "アップデート確認",
                     f"新しいバージョン（{latest_version}）が利用可能です。\n"
                     f"現在のバージョン: {self.current_version}\n\n"
-                    "今すぐ更新しますか？"
+                    "今すぐ更新しますか？",
+                    detail=self.last_release_notes or 'リリースノートはありません。',
                 )
                 
                 if result:

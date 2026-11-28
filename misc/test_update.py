@@ -16,6 +16,8 @@ import unittest
 from unittest.mock import Mock, patch
 from zipfile import ZipFile
 
+from packaging import version
+
 
 SOURCE = Path(__file__).resolve().parents[1] / 'src/update.py'
 tree = ast.parse(SOURCE.read_text(encoding='utf-8'))
@@ -23,13 +25,16 @@ updater_class = next(node for node in tree.body if isinstance(node, ast.ClassDef
                      and node.name == 'GitHubUpdater')
 namespace = dict(os=os, sys=sys, Path=Path, shutil=shutil, subprocess=subprocess,
                  logger=Mock(), traceback=SimpleNamespace(format_exc=Mock()),
-                 messagebox=Mock(), threading=Mock())
+                 messagebox=Mock(), threading=Mock(), requests=Mock(), version=version)
 exec(compile(ast.Module(body=[updater_class], type_ignores=[]), str(SOURCE), 'exec'), namespace)
 GitHubUpdater = namespace['GitHubUpdater']
 
 
 class UpdateTests(unittest.TestCase):
     def setUp(self):
+        for dependency in ('requests', 'messagebox', 'threading'):
+            namespace[dependency].reset_mock()
+            namespace[dependency].side_effect = None
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.base = Path(directory.name) / '日本語 & space! (100%)'
@@ -108,6 +113,76 @@ class UpdateTests(unittest.TestCase):
             self.updater.create_restart_script()
         self.assertEqual((self.base / 'notes_counter.exe').read_bytes(), b'old')
 
+    def test_latest_release_uses_github_endpoint_that_excludes_prereleases(self):
+        response = Mock()
+        response.json.return_value = {
+            'tag_name': 'v3.2.0',
+            'body': 'Changes in this release',
+            'prerelease': False,
+            'draft': False,
+        }
+        namespace['requests'].get.return_value = response
+        self.updater.github_author = 'dj-kata'
+        self.updater.github_repo = 'inf_daken_counter_obsw'
+
+        release = self.updater.get_latest_release()
+
+        self.assertEqual(release['tag_name'], 'v3.2.0')
+        namespace['requests'].get.assert_called_once_with(
+            'https://api.github.com/repos/dj-kata/inf_daken_counter_obsw/releases/latest',
+            headers={'Accept': 'application/vnd.github+json'},
+            timeout=15,
+        )
+        response.raise_for_status.assert_called_once_with()
+
+    def test_prerelease_response_is_rejected_defensively(self):
+        response = Mock()
+        response.json.return_value = {
+            'tag_name': 'v3.3.0-beta.1',
+            'body': 'Preview',
+            'prerelease': True,
+            'draft': False,
+        }
+        namespace['requests'].get.return_value = response
+
+        with self.assertRaisesRegex(RuntimeError, '正式版'):
+            self.updater.get_latest_release()
+
+    def test_prerelease_version_tag_is_rejected_even_without_github_flag(self):
+        response = Mock()
+        response.json.return_value = {
+            'tag_name': 'v3.3.0-rc.1',
+            'body': 'Release candidate',
+            'prerelease': False,
+            'draft': False,
+        }
+        namespace['requests'].get.return_value = response
+
+        with self.assertRaisesRegex(RuntimeError, 'タグがプレリリース'):
+            self.updater.get_latest_release()
+
+    def test_update_check_keeps_release_notes_for_confirmation(self):
+        self.updater.current_version = '3.1.2'
+        self.updater.github_author = 'dj-kata'
+        self.updater.github_repo = 'inf_daken_counter_obsw'
+        self.updater.get_latest_release = Mock(return_value={
+            'tag_name': 'v3.2.0',
+            'body': 'Release notes',
+            'prerelease': False,
+            'draft': False,
+        })
+
+        available, latest, download_url = self.updater.check_for_updates()
+
+        self.assertTrue(available)
+        self.assertEqual(latest, 'v3.2.0')
+        self.assertEqual(self.updater.last_release_notes, 'Release notes')
+        self.assertEqual(
+            download_url,
+            'https://github.com/dj-kata/inf_daken_counter_obsw/releases/'
+            'download/v3.2.0/inf_daken_counter.zip',
+        )
+
     def test_extraction_uses_base_directory_even_with_different_cwd(self):
         archive = self.base / 'update.zip'
         with ZipFile(archive, 'w') as zipfile:
@@ -138,6 +213,7 @@ class UpdateTests(unittest.TestCase):
 
     def test_update_flow_hands_off_without_copying_or_renaming_running_files(self):
         self.updater.check_for_updates = Mock(return_value=(True, '3.1.3', 'url'))
+        self.updater.last_release_notes = 'Release notes shown before updating'
         self.updater.create_gui = Mock()
         self.updater.cleanup = Mock()
         self.updater.download_file = Mock()
@@ -153,6 +229,11 @@ class UpdateTests(unittest.TestCase):
                 patch.object(shutil, 'copy2', side_effect=AssertionError('running DLL copied')):
             self.assertTrue(self.updater.check_and_update())
         self.assertEqual((self.base / 'lib/Qt6Core.dll').read_bytes(), b'old')
+        namespace['messagebox'].askyesno.assert_called_once()
+        self.assertEqual(
+            namespace['messagebox'].askyesno.call_args.kwargs['detail'],
+            'Release notes shown before updating',
+        )
 
     def test_failed_handoff_is_not_reported_as_an_update(self):
         self.updater.check_for_updates = Mock(return_value=(True, '3.1.3', 'url'))
