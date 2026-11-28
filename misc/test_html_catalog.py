@@ -51,6 +51,16 @@ class HtmlCatalogTest(unittest.TestCase):
         self.assertEqual(len(names), len(set(names)))
         self.assertTrue(all(name.startswith("infdc_") for name in names))
 
+    def test_random_lane_url_defaults_to_always_visible(self):
+        view = next(view for view in HTML_VIEWS if view.filename == "random_lane.html")
+        default_query = QUrlQuery(build_obs_source_url(view, 8768))
+        play_only_query = QUrlQuery(
+            build_obs_source_url(view, 8768, show_when_idle=False)
+        )
+
+        self.assertEqual(default_query.queryItemValue("show_when_idle"), "1")
+        self.assertEqual(play_only_query.queryItemValue("show_when_idle"), "0")
+
     def test_catalog_files_and_thumbnails_exist(self):
         template_dir = Path(__file__).resolve().parents[1] / "template"
         for view in HTML_VIEWS:
@@ -89,6 +99,31 @@ class HtmlCatalogTest(unittest.TestCase):
         self.assertEqual(requested, [9876])
         self.assertTrue(all(label.isEnabled() for label in labels))
         self.assertTrue(all(label.source_url.port() == 9876 for label in labels))
+
+    def test_random_lane_card_switches_idle_display_query(self):
+        window = HtmlCatalogWindow(8768)
+        self.addCleanup(window.deleteLater)
+        card = next(
+            card for card in window.cards if card.view.filename == "random_lane.html"
+        )
+
+        self.assertTrue(card.always_radio.isChecked())
+        self.assertEqual(
+            QUrlQuery(card.drag_label.source_url).queryItemValue("show_when_idle"),
+            "1",
+        )
+        card.play_only_radio.setChecked(True)
+        self.assertEqual(
+            QUrlQuery(card.drag_label.source_url).queryItemValue("show_when_idle"),
+            "0",
+        )
+        card.set_server(9876, True)
+        updated_url = card.drag_label.source_url
+        self.assertEqual(updated_url.port(), 9876)
+        self.assertEqual(
+            QUrlQuery(updated_url).queryItemValue("show_when_idle"),
+            "0",
+        )
 
     def test_rejected_port_keeps_current_server(self):
         window = HtmlCatalogWindow(

@@ -253,3 +253,17 @@ test('idle preview without a saved layout shows seven empty gray keys', () => {
     assert.equal(digits(preview).length, 0);
     assert.doesNotMatch(preview, /REGULAR|RANDOM|1234567/);
 });
+
+test('random lane URL idle setting overrides standalone CSS', () => {
+    const enabled = load('template/random_lane.html', '?show_when_idle=1');
+    enabled.context.window.INFDC_RANDOM_LANE_STATE = {phase: 'waiting'};
+    enabled.context.render();
+    assert.equal((enabled.elements.get('layout').innerHTML
+        .match(/lane-option-key-unknown"><\/span>/g) || []).length, 7);
+
+    const disabled = load('template/random_lane.html', '?show_when_idle=0');
+    disabled.properties['--show-when-idle'] = '1';
+    disabled.context.window.INFDC_RANDOM_LANE_STATE = {phase: 'waiting'};
+    disabled.context.render();
+    assert.equal(disabled.elements.get('layout').innerHTML, '');
+});

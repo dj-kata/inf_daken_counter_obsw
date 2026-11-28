@@ -43,8 +43,12 @@
           localStorage.setItem(lastLayoutKey, lastLayout);
         } catch (_) {}
       }
-      const showWhenIdle = getComputedStyle(document.body)
-        .getPropertyValue('--show-when-idle').trim() === '1';
+      const params = new URLSearchParams(window.location.search);
+      const queryShowWhenIdle = params.get('show_when_idle');
+      const showWhenIdle = queryShowWhenIdle !== null
+        ? queryShowWhenIdle === '1'
+        : getComputedStyle(document.body)
+          .getPropertyValue('--show-when-idle').trim() === '1';
       const retained = renderLaneOptionToken('RANDOM', lastLayout);
       layout.innerHTML = active
         ? current

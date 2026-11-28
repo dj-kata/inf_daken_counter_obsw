@@ -8,12 +8,14 @@ from PySide6.QtCore import QMimeData, QPoint, QSize, Qt, QUrl, QUrlQuery
 from PySide6.QtGui import QDrag, QMouseEvent, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
+    QButtonGroup,
     QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QMessageBox,
     QPushButton,
+    QRadioButton,
     QScrollArea,
     QSpinBox,
     QVBoxLayout,
@@ -31,6 +33,7 @@ class HtmlView:
     width: int
     height: int
     thumbnail_filename: str | None = None
+    idle_display_options: bool = False
 
     @property
     def source_name(self) -> str:
@@ -83,7 +86,7 @@ HTML_VIEWS = (
     HtmlView(
         "random_lane.html", "RANDOMレーン配置", "RANDOM lane layout",
         "認識したSPのレーン配置", "Recognized SP lane layout",
-        800, 200, "view-random-lane.png",
+        800, 200, "view-random-lane.png", True,
     ),
     HtmlView(
         "option.html", "プレーオプション", "Play options",
@@ -109,13 +112,19 @@ def application_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def build_obs_source_url(view: HtmlView, server_port: int) -> QUrl:
+def build_obs_source_url(
+    view: HtmlView,
+    server_port: int,
+    show_when_idle: bool = True,
+) -> QUrl:
     """OBSのURLドロップが解釈するソース名とサイズを付ける。"""
     source_url = QUrl(f"http://127.0.0.1:{server_port}/template/{view.filename}")
     query = QUrlQuery()
     query.addQueryItem("layer-name", view.source_name)
     query.addQueryItem("layer-width", str(view.width))
     query.addQueryItem("layer-height", str(view.height))
+    if view.idle_display_options:
+        query.addQueryItem("show_when_idle", "1" if show_when_idle else "0")
     source_url.setQuery(query)
     return source_url
 
@@ -203,10 +212,14 @@ class HtmlViewCard(QFrame):
         parent=None,
     ):
         super().__init__(parent)
+        self.view = view
+        self.server_port = server_port
+        self.show_when_idle = True
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setStyleSheet(
             "QFrame { border: 1px solid #555; border-radius: 8px; background: #252525; }"
             "QLabel { border: none; background: transparent; color: #eee; }"
+            "QRadioButton { border: none; color: #eee; }"
         )
 
         layout = QVBoxLayout(self)
@@ -240,6 +253,29 @@ class HtmlViewCard(QFrame):
         description.setStyleSheet("color: #ccc;")
         layout.addWidget(description)
 
+        if view.idle_display_options:
+            options = QWidget()
+            options_layout = QHBoxLayout(options)
+            options_layout.setContentsMargins(0, 0, 0, 0)
+            options_layout.setSpacing(12)
+            options_layout.addWidget(
+                QLabel("Display:" if language == "en" else "表示:")
+            )
+            self.always_radio = QRadioButton(
+                "Always" if language == "en" else "常時表示"
+            )
+            self.play_only_radio = QRadioButton(
+                "During play only" if language == "en" else "プレー中のみ"
+            )
+            self.always_radio.setChecked(True)
+            self.idle_button_group = QButtonGroup(self)
+            self.idle_button_group.addButton(self.always_radio)
+            self.idle_button_group.addButton(self.play_only_radio)
+            options_layout.addWidget(self.always_radio)
+            options_layout.addWidget(self.play_only_radio)
+            options_layout.addStretch()
+            layout.addWidget(options)
+
         size_prefix = "Recommended size" if language == "en" else "推奨サイズ"
         size_label = QLabel(f"{size_prefix}: {view.width} × {view.height}")
         size_label.setStyleSheet("color: #a9cfff;")
@@ -247,7 +283,10 @@ class HtmlViewCard(QFrame):
 
         drag_text = "Drag here to OBS" if language == "en" else "ここをOBSへD&D"
         self.drag_label = HtmlDragLabel(
-            drag_text, build_obs_source_url(view, server_port), pixmap, self
+            drag_text,
+            build_obs_source_url(view, server_port, self.show_when_idle),
+            pixmap,
+            self,
         )
         tooltip = (
             "Drag this area onto the OBS preview."
@@ -258,11 +297,24 @@ class HtmlViewCard(QFrame):
         self.drag_label.set_available(server_running)
         layout.addWidget(self.drag_label)
 
-        self.view = view
+        if view.idle_display_options:
+            self.always_radio.toggled.connect(self.update_source)
 
     def set_server(self, server_port: int, running: bool):
-        self.drag_label.set_source(build_obs_source_url(self.view, server_port))
+        self.server_port = server_port
+        self.update_source()
         self.drag_label.set_available(running)
+
+    def update_source(self, *_):
+        if self.view.idle_display_options:
+            self.show_when_idle = self.always_radio.isChecked()
+        self.drag_label.set_source(
+            build_obs_source_url(
+                self.view,
+                self.server_port,
+                self.show_when_idle,
+            )
+        )
 
 
 class HtmlCatalogWindow(QWidget):
